@@ -1,0 +1,17 @@
+node_modules/
+.pnpm-store/
+dist/
+.env
+.env.*
+!.env.example
+.supabase-private/
+supabase/.branches/
+supabase/.temp/
+*.log
+*.dump
+*.sql.gz
+*.zip
+.DS_Store
+
+# Local Netlify folder
+.netlify
