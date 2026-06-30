@@ -20,6 +20,7 @@ import type {
   Profile,
   StrategicPlan,
   StrategicProject,
+  WhatsAppSettings,
 } from "../types";
 
 type AppAction =
@@ -41,6 +42,15 @@ type AppAction =
   | { type: "update_strategic_plan"; plan: StrategicPlan }
   | { type: "upsert_area_plan"; plan: AreaPlan }
   | { type: "upsert_ai_settings"; provider: AiSettings["provider"]; model: string; apiKey?: string }
+  | {
+      type: "upsert_whatsapp_settings";
+      instanceUrl: string;
+      instanceName: string;
+      connectedNumber: string;
+      apiKey?: string;
+      webhookSecret?: string;
+      enabled: boolean;
+    }
   | { type: "run_monthly_check_in"; areaId: string; period: string };
 
 interface UiState {
@@ -77,6 +87,7 @@ const EMPTY_STATE: AppState = {
   currentMembership: null,
   currentProfile: null,
   aiSettings: null,
+  whatsappSettings: null,
   areas: [],
   strategicPlan: null,
   areaPlans: [],
@@ -275,6 +286,7 @@ function mapChatMessage(row: any): ChatMessage {
     areaId: row.area_id ?? null,
     author: row.author,
     text: row.text,
+    channel: row.channel ?? "web",
     createdAt: row.created_at,
   };
 }
@@ -286,6 +298,20 @@ function mapAiSettings(row: any): AiSettings {
     model: row.model,
     hasKey: row.has_key,
     keyPreview: row.key_preview ?? null,
+  };
+}
+
+function mapWhatsAppSettings(row: any): WhatsAppSettings {
+  return {
+    orgId: row.org_id,
+    instanceUrl: row.instance_url ?? null,
+    instanceName: row.instance_name ?? null,
+    connectedNumber: row.connected_number ?? null,
+    enabled: row.enabled ?? false,
+    hasApiKey: row.has_api_key ?? false,
+    keyPreview: row.key_preview ?? null,
+    hasWebhookSecret: row.has_webhook_secret ?? false,
+    webhookSecretPreview: row.webhook_secret_preview ?? null,
   };
 }
 
@@ -563,6 +589,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const whatsappSettingsQuery = useQuery({
+    queryKey: ["whatsapp_settings", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("whatsapp_settings").select("*").eq("org_id", orgId).maybeSingle();
+      if (error) throw error;
+      return data ? mapWhatsAppSettings(data) : null;
+    },
+  });
+
   const checkInsQuery = useQuery({
     queryKey: ["check_ins", orgId],
     enabled: Boolean(supabase && orgId),
@@ -599,6 +636,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["evidences", orgId] });
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["whatsapp_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["check_ins", orgId] });
   }, [orgId, queryClient, userId]);
 
@@ -635,6 +673,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evidencesQuery.isLoading ||
       chatMessagesQuery.isLoading ||
       aiSettingsQuery.isLoading ||
+      whatsappSettingsQuery.isLoading ||
       checkInsQuery.isLoading;
 
     return {
@@ -647,6 +686,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentMembership,
       currentProfile: currentProfileQuery.data ?? currentMembership?.profile ?? null,
       aiSettings: aiSettingsQuery.data ?? null,
+      whatsappSettings: whatsappSettingsQuery.data ?? null,
       areas,
       strategicPlan,
       areaPlans: areaPlansQuery.data ?? [],
@@ -693,6 +733,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     strategicProjectsQuery.isLoading,
     ui,
     userId,
+    whatsappSettingsQuery.data,
+    whatsappSettingsQuery.isLoading,
   ]);
 
   const dispatch = useCallback(
@@ -789,6 +831,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             area_id: action.message.areaId ?? null,
             author: action.message.author,
             text: action.message.text,
+            channel: action.message.channel ?? "web",
           })
           .then(({ error }) => {
             if (error) throw error;
@@ -915,6 +958,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           provider: action.provider,
           model: action.model,
           apiKey: action.apiKey ?? "",
+        }).then(invalidateOrg);
+        return;
+      }
+
+      if (action.type === "upsert_whatsapp_settings") {
+        void callEdgeFunction("save-whatsapp-settings", {
+          orgId,
+          instanceUrl: action.instanceUrl,
+          instanceName: action.instanceName,
+          connectedNumber: action.connectedNumber,
+          apiKey: action.apiKey ?? "",
+          webhookSecret: action.webhookSecret ?? "",
+          enabled: action.enabled,
         }).then(invalidateOrg);
         return;
       }

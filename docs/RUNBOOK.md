@@ -116,6 +116,21 @@ Verifique:
 - existencia de linha em `private.ai_model_keys`;
 - logs da Edge Function `oracle-chat`.
 
+## Configurar WhatsApp real
+
+O app ja tem a base para Evolution API, mas a hospedagem e o pareamento do numero sao manuais.
+
+1. Hospede a Evolution API em ambiente proprio.
+2. Crie uma instancia e escaneie o QR Code com o aparelho que sera usado.
+3. No Oraculo, abra Configuracoes > WhatsApp.
+4. Preencha URL da Evolution API, nome da instancia, numero conectado, chave da Evolution API e um segredo forte de webhook.
+5. Copie a URL do webhook exibida na tela.
+6. Configure a Evolution API para enviar mensagens recebidas para essa URL.
+7. Envie no webhook o cabecalho `x-oraculo-webhook-secret` com o mesmo segredo salvo.
+8. Cadastre o celular da pessoa na conta dela ou no convite.
+
+Sem a Evolution API hospedada e sem QR pareado, o painel do sistema continua funcionando, mas o WhatsApp real nao recebe mensagens.
+
 ## Problema: salvar chave de IA falha
 
 Possiveis causas:

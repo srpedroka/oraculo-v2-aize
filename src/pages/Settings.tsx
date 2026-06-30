@@ -1,5 +1,5 @@
-import { FormEvent, useMemo, useState } from "react";
-import { Bot, Building2, LogOut, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Bot, Building2, LogOut, MessageCircle, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAppState } from "../state/store";
@@ -26,12 +26,29 @@ export function Settings() {
   const [provider, setProvider] = useState<AiSettings["provider"]>(state.aiSettings?.provider ?? "openai");
   const [model, setModel] = useState(state.aiSettings?.model ?? "gpt-5.4");
   const [apiKey, setApiKey] = useState("");
+  const [whatsappInstanceUrl, setWhatsappInstanceUrl] = useState(state.whatsappSettings?.instanceUrl ?? "");
+  const [whatsappInstanceName, setWhatsappInstanceName] = useState(state.whatsappSettings?.instanceName ?? "");
+  const [whatsappConnectedNumber, setWhatsappConnectedNumber] = useState(state.whatsappSettings?.connectedNumber ?? "");
+  const [whatsappApiKey, setWhatsappApiKey] = useState("");
+  const [whatsappWebhookSecret, setWhatsappWebhookSecret] = useState("");
+  const [whatsappEnabled, setWhatsappEnabled] = useState(state.whatsappSettings?.enabled ?? false);
+  const [whatsappMessage, setWhatsappMessage] = useState("");
   const isOwner = state.currentMembership?.role === "owner";
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const whatsappWebhookUrl =
+    supabaseUrl && state.activeOrgId ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/whatsapp-webhook?orgId=${state.activeOrgId}` : "";
 
   const coordinators = useMemo(
     () => state.memberships.filter((membership) => membership.role === "coordinator"),
     [state.memberships],
   );
+
+  useEffect(() => {
+    setWhatsappInstanceUrl(state.whatsappSettings?.instanceUrl ?? "");
+    setWhatsappInstanceName(state.whatsappSettings?.instanceName ?? "");
+    setWhatsappConnectedNumber(state.whatsappSettings?.connectedNumber ?? "");
+    setWhatsappEnabled(state.whatsappSettings?.enabled ?? false);
+  }, [state.whatsappSettings]);
 
   function createArea(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,6 +85,22 @@ export function Settings() {
     event.preventDefault();
     dispatch({ type: "upsert_ai_settings", provider, model: model.trim() || "gpt-5.4", apiKey: apiKey.trim() || undefined });
     setApiKey("");
+  }
+
+  function saveWhatsApp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    dispatch({
+      type: "upsert_whatsapp_settings",
+      instanceUrl: whatsappInstanceUrl.trim(),
+      instanceName: whatsappInstanceName.trim(),
+      connectedNumber: whatsappConnectedNumber.trim(),
+      apiKey: whatsappApiKey.trim() || undefined,
+      webhookSecret: whatsappWebhookSecret.trim() || undefined,
+      enabled: whatsappEnabled,
+    });
+    setWhatsappApiKey("");
+    setWhatsappWebhookSecret("");
+    setWhatsappMessage("Configuração do WhatsApp salva.");
   }
 
   return (
@@ -300,6 +333,80 @@ export function Settings() {
               Salvar IA
             </Button>
           </form>
+        </Card>
+
+        <Card>
+          <div className="mb-4 flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-text-secondary" />
+            <h2 className="text-base font-semibold text-text">WhatsApp</h2>
+          </div>
+          <form onSubmit={saveWhatsApp} className="grid gap-3">
+            <label className="flex items-center gap-2 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={whatsappEnabled}
+                onChange={(event) => setWhatsappEnabled(event.target.checked)}
+                className="h-4 w-4"
+              />
+              Ativar webhook do WhatsApp
+            </label>
+            <input
+              value={whatsappInstanceUrl}
+              onChange={(event) => setWhatsappInstanceUrl(event.target.value)}
+              placeholder="URL da Evolution API"
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            <input
+              value={whatsappInstanceName}
+              onChange={(event) => setWhatsappInstanceName(event.target.value)}
+              placeholder="Nome da instância"
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            <input
+              value={whatsappConnectedNumber}
+              onChange={(event) => setWhatsappConnectedNumber(normalizePhone(event.target.value))}
+              placeholder="Número conectado, ex: +5546999990000"
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            <input
+              type="password"
+              value={whatsappApiKey}
+              onChange={(event) => setWhatsappApiKey(event.target.value)}
+              placeholder={
+                state.whatsappSettings?.hasApiKey ? `Chave Evolution cadastrada ${state.whatsappSettings.keyPreview ?? ""}` : "Chave da Evolution API"
+              }
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            <input
+              type="password"
+              value={whatsappWebhookSecret}
+              onChange={(event) => setWhatsappWebhookSecret(event.target.value)}
+              placeholder={
+                state.whatsappSettings?.hasWebhookSecret
+                  ? `Segredo cadastrado ${state.whatsappSettings.webhookSecretPreview ?? ""}`
+                  : "Segredo do webhook"
+              }
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            {whatsappWebhookUrl ? (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-text-secondary">URL do webhook</span>
+                <input
+                  value={whatsappWebhookUrl}
+                  readOnly
+                  className="h-10 w-full rounded-xl border border-border bg-[#FAFAFB] px-3 text-xs text-text-secondary"
+                />
+              </label>
+            ) : null}
+            <Button type="submit" icon={MessageCircle}>
+              Salvar WhatsApp
+            </Button>
+          </form>
+          {whatsappMessage ? (
+            <p className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+              {whatsappMessage}
+            </p>
+          ) : null}
         </Card>
       </div>
         </>

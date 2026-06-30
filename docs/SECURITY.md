@@ -29,6 +29,11 @@ Secrets das Edge Functions:
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+Segredos operacionais salvos pelo app:
+
+- chaves de IA ficam em `private.ai_model_keys`;
+- chave da Evolution API e segredo do webhook ficam em `private.whatsapp_instance_keys`.
+
 ## Chaves de IA
 
 O usuario configura a chave pela tela de configuracoes. O frontend envia a chave para `save-ai-settings`, e a funcao:
@@ -39,6 +44,10 @@ O usuario configura a chave pela tela de configuracoes. O frontend envia a chave
 4. salva apenas `has_key` e `key_preview` em `public.ai_settings`.
 
 O schema `private` tem acesso revogado para `anon` e `authenticated`.
+
+## WhatsApp
+
+O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
 
 ## RLS
 

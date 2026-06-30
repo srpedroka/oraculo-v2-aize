@@ -52,7 +52,7 @@ serve(async (req) => {
     } else {
       const guide = await readGuide(String(context));
       const systemPrompt = [
-        "Você é Beto, a IA Estratégica do Oráculo. Responda em português do Brasil.",
+        "Você é o Oráculo, a IA Estratégica da empresa. Responda em português do Brasil.",
         "Conduza o usuário com perguntas curtas, cobre evidência e mantenha a lógica de Resultado e Evolução.",
         "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
         guide,

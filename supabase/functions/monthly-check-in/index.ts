@@ -8,7 +8,7 @@ serve(async (req) => {
   try {
     const user = await getUser(req);
     const { orgId, areaId, period = "Set 2026" } = await req.json();
-    if (!orgId || !areaId) return jsonResponse({ error: "Empresa e departamento são obrigatórios" }, 400);
+    if (!orgId || !areaId) return jsonResponse({ error: "Empresa e área são obrigatórias" }, 400);
 
     await assertAreaWriter(user.id, orgId, areaId);
     const client = serviceClient();
@@ -38,8 +38,8 @@ serve(async (req) => {
     const atRisk = (objectives ?? []).filter((objective) => objective.status === "at_risk").length;
     const onTrack = (objectives ?? []).filter((objective) => objective.status === "on_track").length;
     const summary = (objectives ?? []).length
-      ? `${period} · ${area?.name ?? "Departamento"}: ${onTrack} no prazo, ${atRisk} em risco e ${late} atrasado. ${evidences?.length ?? 0} evidência(s) registrada(s), ${actions?.length ?? 0} ação(ões)-chave acompanhada(s). Próximo passo: atualizar progresso e evidência dos pontos críticos.`
-      : `${period} · ${area?.name ?? "Departamento"} ainda não tem objetivos mensais. Crie o primeiro objetivo com o Oráculo antes do fechamento.`;
+      ? `${period} · ${area?.name ?? "Área"}: ${onTrack} no prazo, ${atRisk} em risco e ${late} atrasado. ${evidences?.length ?? 0} evidência(s) registrada(s), ${actions?.length ?? 0} ação(ões)-chave acompanhada(s). Próximo passo: atualizar progresso e evidência dos pontos críticos.`
+      : `${period} · ${area?.name ?? "Área"} ainda não tem objetivos mensais. Crie o primeiro objetivo com o Oráculo antes do fechamento.`;
 
     const { data: checkIn, error: checkInError } = await client
       .from("check_ins")

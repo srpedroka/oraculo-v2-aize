@@ -539,6 +539,7 @@ export const initialState: AppState = {
     phone: null,
   },
   aiSettings: null,
+  whatsappSettings: null,
   areas,
   strategicPlan,
   areaPlans,

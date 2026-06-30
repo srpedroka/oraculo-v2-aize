@@ -88,8 +88,10 @@ As Edge Functions ficam em `supabase/functions/`:
 
 - `invite-member`
 - `save-ai-settings`
+- `save-whatsapp-settings`
 - `oracle-chat`
 - `monthly-check-in`
+- `whatsapp-webhook`
 
 ## Documentacao
 

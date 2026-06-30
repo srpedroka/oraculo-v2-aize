@@ -128,6 +128,7 @@ export interface ChatMessage {
   areaId?: string | null;
   author: "oracle" | "user";
   text: string;
+  channel?: "web" | "whatsapp";
   createdAt?: string;
 }
 
@@ -158,6 +159,18 @@ export interface AiSettings {
   keyPreview?: string | null;
 }
 
+export interface WhatsAppSettings {
+  orgId: string;
+  instanceUrl: string | null;
+  instanceName: string | null;
+  connectedNumber: string | null;
+  enabled: boolean;
+  hasApiKey: boolean;
+  keyPreview?: string | null;
+  hasWebhookSecret: boolean;
+  webhookSecretPreview?: string | null;
+}
+
 export interface CheckIn {
   id: string;
   orgId: string;
@@ -177,6 +190,7 @@ export interface AppState {
   currentMembership: Membership | null;
   currentProfile: Profile | null;
   aiSettings: AiSettings | null;
+  whatsappSettings: WhatsAppSettings | null;
   areas: Area[];
   strategicPlan: StrategicPlan | null;
   areaPlans: AreaPlan[];

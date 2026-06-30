@@ -38,19 +38,23 @@ Tabelas publicas principais:
 - `chat_messages`
 - `check_ins`
 - `ai_settings`
+- `whatsapp_settings`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
 Schema privado:
 
 - `private.ai_model_keys`: guarda chaves de provedores de IA. Nao deve ser acessivel por `anon` nem por `authenticated`.
+- `private.whatsapp_instance_keys`: guarda chave da Evolution API e segredo do webhook. Nao deve ser acessivel por `anon` nem por `authenticated`.
 
 ### Edge Functions
 
 - `invite-member`: cria ou registra membros convidados.
 - `save-ai-settings`: salva provider, modelo, preview de chave e a chave real no schema privado.
+- `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API no schema privado.
 - `oracle-chat`: consulta contexto da empresa e responde com fallback deterministico ou modelo configurado.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
+- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, responde e grava historico com canal `whatsapp`.
 
 Funcoes compartilhadas:
 
