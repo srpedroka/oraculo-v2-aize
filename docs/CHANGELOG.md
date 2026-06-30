@@ -12,6 +12,7 @@
 - Adicionado mapa de acessos e custodia de chaves em `docs/ACCESS.md`.
 - Repositorio GitHub tornado publico para leitura.
 - Corrigida nomenclatura da interface: Oraculo e Areas.
+- Adicionada importacao de plano estrategico por PDF, PPTX, DOCX e TXT na aba de revisao do Oraculo.
 
 ## 2026-06-28
 

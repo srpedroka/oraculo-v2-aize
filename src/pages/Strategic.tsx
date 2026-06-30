@@ -1,10 +1,11 @@
-import { ClipboardCheck, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ClipboardCheck, FileText, Loader2, Plus, Upload } from "lucide-react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { LineageTag } from "../components/ui/LineageTag";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
+import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { formatDate } from "../lib/format";
 import { reviewPastedPlan, type PastedPlanReview } from "../lib/oracle";
 import { useAppState } from "../state/store";
@@ -70,11 +71,46 @@ export function Strategic() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [pastedPlan, setPastedPlan] = useState("");
   const [review, setReview] = useState<PastedPlanReview | null>(null);
+  const [importingPlan, setImportingPlan] = useState(false);
+  const [importedFileName, setImportedFileName] = useState<string | null>(null);
+  const [importFeedback, setImportFeedback] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const plan = state.strategicPlan;
   const strategicObjectives = useMemo(
     () => state.objectives.filter((objective) => objective.level === "strategic"),
     [state.objectives],
   );
+
+  function updatePastedPlan(value: string) {
+    setPastedPlan(value);
+    setReview(null);
+    setImportedFileName(null);
+    setImportFeedback(null);
+    setImportError(null);
+  }
+
+  async function handlePlanFileImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setImportingPlan(true);
+    setReview(null);
+    setImportError(null);
+    setImportFeedback(null);
+
+    try {
+      const imported = await importStrategicPlanFile(file);
+      setPastedPlan(imported.text);
+      setImportedFileName(imported.fileName);
+      setImportFeedback(imported.warning ?? "Texto importado. Agora peça a revisão ao Oráculo.");
+    } catch (error) {
+      setImportedFileName(null);
+      setImportError(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
+    } finally {
+      setImportingPlan(false);
+    }
+  }
 
   if (!plan) {
     return (
@@ -155,18 +191,60 @@ export function Strategic() {
       {tab === "paste" ? (
         <div className="space-y-4">
           <Card>
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-text">Plano existente</p>
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  Importe PDF, PPTX, DOCX ou TXT. O texto extraído cai neste campo para a revisão.
+                </p>
+              </div>
+              <label
+                className={[
+                  "inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-border px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white",
+                  importingPlan ? "cursor-wait opacity-70" : "",
+                ].join(" ")}
+              >
+                {importingPlan ? (
+                  <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload aria-hidden="true" className="h-4 w-4" />
+                )}
+                <span>{importingPlan ? "Importando..." : "Importar arquivo"}</span>
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept={STRATEGIC_PLAN_FILE_ACCEPT}
+                  disabled={importingPlan}
+                  onChange={(event) => {
+                    void handlePlanFileImport(event);
+                  }}
+                />
+              </label>
+            </div>
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-text">Plano existente</span>
+              <span className="sr-only">Texto do plano existente</span>
               <textarea
                 value={pastedPlan}
-                onChange={(event) => setPastedPlan(event.target.value)}
+                onChange={(event) => updatePastedPlan(event.target.value)}
                 rows={10}
                 className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm leading-6"
                 placeholder="Cole aqui o planejamento existente"
               />
             </label>
+            {importedFileName ? (
+              <p className="mt-3 flex items-center gap-2 text-xs font-medium text-text-secondary">
+                <FileText aria-hidden="true" className="h-4 w-4" />
+                Texto importado de {importedFileName}.
+              </p>
+            ) : null}
+            {importFeedback ? <p className="mt-2 text-xs leading-5 text-[#1D7A3E]">{importFeedback}</p> : null}
+            {importError ? <p className="mt-2 text-xs leading-5 text-[#B42318]">{importError}</p> : null}
             <div className="mt-4">
-              <Button icon={ClipboardCheck} onClick={() => setReview(reviewPastedPlan(pastedPlan))}>
+              <Button
+                icon={ClipboardCheck}
+                disabled={!pastedPlan.trim() || importingPlan}
+                onClick={() => setReview(reviewPastedPlan(pastedPlan))}
+              >
                 Pedir revisão ao Oráculo
               </Button>
             </div>
