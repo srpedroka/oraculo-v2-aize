@@ -30,7 +30,8 @@ type AppAction =
   | { type: "create_organization"; name: string; subtitle?: string }
   | { type: "create_area"; name: string; coordinatorId?: string | null }
   | { type: "update_area"; areaId: string; name: string; coordinatorId?: string | null }
-  | { type: "create_member"; email: string; fullName?: string; role: MembershipRole; areaId?: string | null }
+  | { type: "create_member"; email: string; fullName?: string; phone?: string | null; role: MembershipRole; areaId?: string | null }
+  | { type: "remove_member"; membershipId: string }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
   | { type: "add_evidence"; evidence: Evidence }
@@ -126,6 +127,7 @@ function mapProfile(row: any): Profile {
   return {
     id: row.id,
     fullName: row.full_name ?? null,
+    email: row.email ?? null,
     phone: row.phone ?? null,
   };
 }
@@ -394,7 +396,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: Boolean(supabase && userId),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("profiles").select("id, full_name, phone").eq("id", userId).maybeSingle();
+      const { data, error } = await client.from("profiles").select("id, full_name, email, phone").eq("id", userId).maybeSingle();
       if (error) throw error;
       return data ? mapProfile(data) : null;
     },
@@ -405,7 +407,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: Boolean(supabase && profileIds.length),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("profiles").select("id, full_name").in("id", profileIds);
+      const { data, error } = await client.from("profiles").select("id, full_name, email").in("id", profileIds);
       if (error) throw error;
       return (data ?? []).map(mapProfile);
     },
@@ -759,9 +761,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
           orgId,
           email: action.email,
           fullName: action.fullName ?? "",
+          phone: action.phone ?? null,
           role: action.role,
           areaId: action.areaId ?? null,
         }).then(invalidateOrg);
+        return;
+      }
+
+      if (action.type === "remove_member") {
+        void client
+          .from("memberships")
+          .delete()
+          .eq("id", action.membershipId)
+          .eq("org_id", orgId)
+          .then(({ error }) => {
+            if (error) throw error;
+            invalidateOrg();
+          });
         return;
       }
 
@@ -946,6 +962,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .from("profiles")
         .update({
           full_name: profile.fullName.trim() || null,
+          email: session?.user.email ?? null,
           phone: profile.phone,
         })
         .eq("id", userId);
@@ -954,7 +971,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["profile", userId] });
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
     },
-    [queryClient, userId],
+    [queryClient, session?.user.email, userId],
   );
 
   const refresh = useCallback(() => {

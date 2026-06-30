@@ -59,6 +59,18 @@ Diagnostico:
 3. verificar tabelas `organizations` e `memberships` no Supabase;
 4. confirmar se o usuario tem linha em `profiles`.
 
+## Convites por email
+
+O app usa a Edge Function `invite-member`, que chama `inviteUserByEmail` no Supabase Auth. Para o email chegar de verdade, configure SMTP no painel do Supabase:
+
+1. Acesse Supabase Auth > Emails/SMTP.
+2. Conecte um provedor transacional, por exemplo Resend, Postmark ou SendGrid.
+3. Configure remetente, host, porta, usuario e senha do SMTP.
+4. Envie um convite pela tela Configuracoes > Pessoas.
+5. Confira logs de Auth e da Edge Function `invite-member` se o email nao chegar.
+
+Sem SMTP, o vinculo pode ser criado no banco, mas o email de convite pode nao ser entregue.
+
 ## Problema: acesso negado em escrita
 
 Possiveis causas:

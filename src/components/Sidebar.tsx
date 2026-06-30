@@ -80,7 +80,7 @@ export function Sidebar() {
   const collapsed = state.ui.sidebarCollapsed;
   const width = collapsed ? COMPACT_WIDTH : state.ui.sidebarWidth;
   const currentProfile = state.currentProfile ?? state.currentMembership?.profile ?? null;
-  const accountEmail = session?.user.email ?? "";
+  const accountEmail = currentProfile?.email ?? session?.user.email ?? "";
   const accountDisplayName = currentProfile?.fullName || accountEmail || "Conta";
   const accountDisplayPhone = currentProfile?.phone || "Celular não cadastrado";
   const accountInitials = getInitials(accountDisplayName);

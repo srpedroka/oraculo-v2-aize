@@ -138,6 +138,7 @@ export type MembershipRole = "owner" | "coordinator";
 export interface Profile {
   id: string;
   fullName: string | null;
+  email: string | null;
   phone: string | null;
 }
 

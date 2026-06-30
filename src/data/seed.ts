@@ -535,6 +535,7 @@ export const initialState: AppState = {
   currentProfile: {
     id: "profile-gui",
     fullName: "Gui",
+    email: null,
     phone: null,
   },
   aiSettings: null,

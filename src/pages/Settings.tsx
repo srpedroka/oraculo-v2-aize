@@ -1,19 +1,32 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Bot, Building2, LogOut, Plus, UserPlus } from "lucide-react";
+import { Bot, Building2, LogOut, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAppState } from "../state/store";
 import type { AiSettings } from "../types";
+
+function normalizePhone(value: string) {
+  const startsWithPlus = value.trim().startsWith("+");
+  const digits = value.replace(/\D/g, "");
+  return `${startsWithPlus ? "+" : ""}${digits}`;
+}
+
+function isValidInternationalPhone(value: string) {
+  return /^\+[1-9][0-9]{7,14}$/.test(value);
+}
 
 export function Settings() {
   const { state, dispatch, signOut } = useAppState();
   const [areaName, setAreaName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberName, setMemberName] = useState("");
+  const [memberPhone, setMemberPhone] = useState("");
   const [memberAreaId, setMemberAreaId] = useState("");
+  const [memberMessage, setMemberMessage] = useState("");
   const [provider, setProvider] = useState<AiSettings["provider"]>(state.aiSettings?.provider ?? "openai");
   const [model, setModel] = useState(state.aiSettings?.model ?? "gpt-5.4");
   const [apiKey, setApiKey] = useState("");
+  const isOwner = state.currentMembership?.role === "owner";
 
   const coordinators = useMemo(
     () => state.memberships.filter((membership) => membership.role === "coordinator"),
@@ -30,16 +43,25 @@ export function Settings() {
   function inviteMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!memberEmail.trim()) return;
+    const phone = memberPhone.trim();
+    if (phone && !isValidInternationalPhone(phone)) {
+      setMemberMessage("Use o celular em formato internacional, por exemplo +5546999990000.");
+      return;
+    }
+
     dispatch({
       type: "create_member",
       email: memberEmail.trim(),
       fullName: memberName.trim(),
+      phone: phone || null,
       role: "coordinator",
       areaId: memberAreaId || null,
     });
     setMemberEmail("");
     setMemberName("");
+    setMemberPhone("");
     setMemberAreaId("");
+    setMemberMessage("Convite solicitado. Se o envio de email estiver configurado, a pessoa receberá o convite.");
   }
 
   function saveAi(event: FormEvent<HTMLFormElement>) {
@@ -60,6 +82,22 @@ export function Settings() {
         </Button>
       </div>
 
+      {!isOwner ? (
+        <Card>
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-5 w-5 text-text-secondary" />
+            <div>
+              <p className="text-base font-semibold text-text">Administração restrita ao dono da empresa</p>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">
+                Sua conta pessoal fica no rodapé da barra lateral. Convites, áreas e IA são geridos pelo dono da empresa.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {!isOwner ? null : (
+        <>
       <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
         <Card>
           <div className="mb-4 flex items-center gap-2">
@@ -146,6 +184,9 @@ export function Settings() {
             <UserPlus className="h-5 w-5 text-text-secondary" />
             <h2 className="text-base font-semibold text-text">Pessoas</h2>
           </div>
+          <p className="mb-4 text-sm leading-6 text-text-secondary">
+            Entrada de coordenadores é feita por convite do dono da empresa.
+          </p>
           <form onSubmit={inviteMember} className="grid gap-3">
             <input
               value={memberName}
@@ -160,6 +201,18 @@ export function Settings() {
               placeholder="email@empresa.com"
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+              <input
+                value={memberPhone}
+                onChange={(event) => {
+                  setMemberPhone(normalizePhone(event.target.value));
+                  setMemberMessage("");
+                }}
+                placeholder="+5546999990000"
+                className="h-10 w-full rounded-xl border border-border bg-white pl-9 pr-3 text-sm"
+              />
+            </div>
             <select
               value={memberAreaId}
               onChange={(event) => setMemberAreaId(event.target.value)}
@@ -176,15 +229,43 @@ export function Settings() {
               Convidar coordenador
             </Button>
           </form>
+          {memberMessage ? (
+            <p className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+              {memberMessage}
+            </p>
+          ) : null}
           <div className="mt-4 space-y-2">
-            {state.memberships.map((membership) => (
-              <div key={membership.id} className="flex items-center justify-between rounded-2xl border border-border bg-[#FAFAFB] p-3">
-                <span className="text-sm text-text">{membership.profile?.fullName ?? membership.userId}</span>
-                <span className="rounded-[10px] bg-[#F0F0F2] px-2.5 py-1 text-xs font-medium text-text-secondary">
-                  {membership.role === "owner" ? "Dono" : "Coordenador"}
-                </span>
-              </div>
-            ))}
+            {state.memberships.map((membership) => {
+              const linkedArea = state.areas.find((area) => area.coordinatorId === membership.id);
+              const isCurrentUser = membership.userId === state.sessionUserId;
+              return (
+                <div key={membership.id} className="rounded-2xl border border-border bg-[#FAFAFB] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-text">
+                        {membership.profile?.fullName ?? membership.profile?.email ?? membership.userId}
+                      </p>
+                      <p className="truncate text-xs text-text-secondary">{membership.profile?.email ?? "Email não registrado"}</p>
+                      <p className="mt-1 text-xs text-text-tertiary">Área: {linkedArea?.name ?? "Sem área vinculada"}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-[10px] bg-[#F0F0F2] px-2.5 py-1 text-xs font-medium text-text-secondary">
+                        {membership.role === "owner" ? "Dono" : "Coordenador"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={Trash2}
+                        disabled={isCurrentUser}
+                        onClick={() => dispatch({ type: "remove_member", membershipId: membership.id })}
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
 
@@ -221,6 +302,8 @@ export function Settings() {
           </form>
         </Card>
       </div>
+        </>
+      )}
     </div>
   );
 }

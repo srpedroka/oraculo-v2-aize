@@ -14,6 +14,7 @@
 - Corrigida nomenclatura da interface: Oraculo e Areas.
 - Adicionada importacao de plano estrategico por PDF, PPTX, DOCX e TXT na aba de revisao do Oraculo.
 - Adicionado celular unico ao perfil e rodape da sidebar com conta do usuario e seletor de empresa.
+- Melhorada administracao de convites: email no perfil, celular opcional no convite, listagem de vinculos e remocao por owner.
 
 ## 2026-06-28
 

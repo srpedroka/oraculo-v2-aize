@@ -7,24 +7,31 @@ serve(async (req) => {
 
   try {
     const user = await getUser(req);
-    const { orgId, email, fullName, role = "coordinator", areaId = null } = await req.json();
+    const { orgId, email, fullName, phone = null, role = "coordinator", areaId = null } = await req.json();
     if (!orgId || !email) return jsonResponse({ error: "Empresa e email são obrigatórios" }, 400);
+    if (phone && !/^\+[1-9][0-9]{7,14}$/.test(phone)) {
+      return jsonResponse({ error: "Celular deve estar no formato internacional, por exemplo +5546999990000" }, 400);
+    }
 
     await assertOwner(user.id, orgId);
     const client = serviceClient();
 
     const invite = await client.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName || email },
+      data: { full_name: fullName || email, phone: phone || undefined },
     });
 
     if (invite.error) throw invite.error;
     const invitedUser = invite.data.user;
     if (!invitedUser) throw new Error("Usuário não retornado pelo convite");
 
-    await client.from("profiles").upsert({
+    const profilePayload: Record<string, unknown> = {
       id: invitedUser.id,
       full_name: fullName || email,
-    });
+      email,
+    };
+    if (phone) profilePayload.phone = phone;
+
+    await client.from("profiles").upsert(profilePayload);
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
