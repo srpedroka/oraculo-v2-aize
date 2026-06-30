@@ -71,7 +71,7 @@ export function Execution() {
           <div>
             <h2 className="text-base font-semibold text-text">Check-in mensal</h2>
             <p className="mt-1 text-sm leading-6 text-text-secondary">
-              O Oráculo puxa os objetivos mensais por departamento, registra evidências e salva o resumo do mês.
+              O Oráculo puxa os objetivos mensais por área, registra evidências e salva o resumo do mês.
             </p>
           </div>
         </div>
@@ -108,7 +108,7 @@ export function Execution() {
             })
           ) : (
             <p className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-4 text-sm text-text-secondary">
-              Crie departamentos para liberar o check-in mensal.
+              Crie áreas para liberar o check-in mensal.
             </p>
           )}
         </div>

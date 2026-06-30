@@ -21,7 +21,7 @@ Repositorio:
 git@github.com:srpedroka/oraculo-v2-aize.git
 ```
 
-O repositorio foi criado como privado.
+O repositorio esta publico para leitura e clonar, mas escrita e configuracoes continuam restritas a quem tiver permissao no GitHub.
 
 ### Como o computador envia codigo
 
@@ -223,7 +223,7 @@ pnpm run build
 
 1. Confirmar que o usuario tem linha em `memberships`.
 2. Confirmar `role`: `owner` ou `coordinator`.
-3. Conferir se o departamento tem `coordinator_id` correto.
+3. Conferir se a area tem `coordinator_id` correto.
 4. Revisar policies em `supabase/migrations/20260629150200_auth_rls.sql`.
 
 ### Chave vazou

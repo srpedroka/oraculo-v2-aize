@@ -22,7 +22,7 @@ export function Onboarding() {
           <p className="text-sm font-bold tracking-normal text-[#1D2A31]">ORÁCULO</p>
           <h1 className="mt-3 text-2xl font-semibold text-text">Crie a primeira empresa</h1>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
-            A empresa nasce vazia. Depois você cria departamentos, coordenadores e começa pelo Plano Estratégico.
+            A empresa nasce vazia. Depois você cria áreas, coordenadores e começa pelo Plano Estratégico.
           </p>
         </div>
 

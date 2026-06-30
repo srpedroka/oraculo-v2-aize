@@ -93,12 +93,12 @@ export function Settings() {
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-base font-semibold text-text">Departamentos</h2>
+          <h2 className="mb-4 text-base font-semibold text-text">Áreas</h2>
           <form onSubmit={createArea} className="mb-4 flex gap-2">
             <input
               value={areaName}
               onChange={(event) => setAreaName(event.target.value)}
-              placeholder="Nome do departamento"
+              placeholder="Nome da área"
               className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-white px-3 text-sm"
             />
             <Button type="submit" icon={Plus}>
@@ -133,7 +133,7 @@ export function Settings() {
               ))
             ) : (
               <p className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-4 text-sm text-text-secondary">
-                Nenhum departamento ainda.
+                Nenhuma área ainda.
               </p>
             )}
           </div>

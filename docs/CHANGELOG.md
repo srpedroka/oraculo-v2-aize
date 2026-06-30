@@ -10,9 +10,11 @@
 - Configurado fallback SPA para rotas diretas no Netlify.
 - Criada documentacao minima de manutencao: README, AGENTS, Architecture, Security, Decisions, Runbook e Changelog.
 - Adicionado mapa de acessos e custodia de chaves em `docs/ACCESS.md`.
+- Repositorio GitHub tornado publico para leitura.
+- Corrigida nomenclatura da interface: Oraculo e Areas.
 
 ## 2026-06-28
 
-- Construida a V1 navegavel do Oraculo com dashboard, planejamento estrategico, departamentos, planos trimestrais e demonstracao WhatsApp.
+- Construida a V1 navegavel do Oraculo com dashboard, planejamento estrategico, areas, planos trimestrais e demonstracao WhatsApp.
 - Ajustada sidebar redimensionavel e compacta conforme referencia visual.
 - Gerado pacote local com o codigo da V1.

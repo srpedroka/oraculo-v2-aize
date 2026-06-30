@@ -56,8 +56,6 @@ function AppRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/estrategico" element={<Strategic />} />
         <Route path="/planos-trimestrais" element={<QuarterlyPlans />} />
-        <Route path="/departamentos" element={<Areas />} />
-        <Route path="/departamentos/:areaId" element={<AreaDetail />} />
         <Route path="/areas" element={<Areas />} />
         <Route path="/areas/:areaId" element={<AreaDetail />} />
         <Route path="/execucao" element={<Execution />} />

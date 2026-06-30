@@ -23,16 +23,16 @@ export function Areas() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-medium text-text-tertiary">Departamentos da {state.organization?.name}</p>
-        <h1 className="text-2xl font-semibold text-text">Departamentos</h1>
+        <p className="text-sm font-medium text-text-tertiary">Áreas da {state.organization?.name}</p>
+        <h1 className="text-2xl font-semibold text-text">Áreas</h1>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         {!state.areas.length ? (
           <Card className="xl:col-span-2">
-            <p className="text-base font-semibold text-text">Nenhum departamento cadastrado.</p>
+            <p className="text-base font-semibold text-text">Nenhuma área cadastrada.</p>
             <p className="mt-2 text-sm leading-6 text-text-secondary">
-              Vá em Configurações para criar departamentos e vincular coordenadores.
+              Vá em Configurações para criar áreas e vincular coordenadores.
             </p>
           </Card>
         ) : null}
@@ -55,7 +55,7 @@ export function Areas() {
             <Card key={area.id} interactive className="flex h-full flex-col gap-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-medium text-text-tertiary">Departamento</p>
+                  <p className="text-xs font-medium text-text-tertiary">Área</p>
                   <h2 className="mt-1 text-lg font-semibold text-text">{area.name}</h2>
                   <p className="mt-1 text-sm text-text-secondary">Coordenador: {area.coordinator}</p>
                 </div>
@@ -68,7 +68,7 @@ export function Areas() {
               </div>
 
               <div className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
-                <p className="text-xs font-medium text-text-tertiary">Papel do departamento</p>
+                <p className="text-xs font-medium text-text-tertiary">Papel da área</p>
                 <p className="mt-1 text-sm leading-6 text-text-secondary">{plan?.role.mission}</p>
               </div>
 
@@ -97,10 +97,10 @@ export function Areas() {
 
               <div className="mt-auto flex flex-wrap gap-2">
                 <Link
-                  to={`/departamentos/${area.id}`}
+                  to={`/areas/${area.id}`}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-accent bg-accent px-4 text-sm font-medium text-white transition hover:bg-[#0066CC]"
                 >
-                  Abrir departamento
+                  Abrir área
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link

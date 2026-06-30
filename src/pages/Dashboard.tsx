@@ -38,7 +38,7 @@ export function Dashboard() {
         <Card>
           <p className="text-base font-semibold text-text">A empresa está pronta para começar.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
-            Crie o Plano Estratégico e os departamentos para o Oráculo mostrar Resultado e Evolução ao vivo.
+            Crie o Plano Estratégico e as áreas para o Oráculo mostrar Resultado e Evolução ao vivo.
           </p>
         </Card>
       ) : null}

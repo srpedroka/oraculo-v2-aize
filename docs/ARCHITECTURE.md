@@ -61,7 +61,7 @@ Funcoes compartilhadas:
 
 1. Usuario autentica pelo Supabase Auth.
 2. Frontend carrega empresas e memberships do usuario.
-3. Ao existir empresa ativa, o app carrega departamentos, planos, objetivos, acoes, evidencias, mensagens e check-ins.
+3. Ao existir empresa ativa, o app carrega areas, planos, objetivos, acoes, evidencias, mensagens e check-ins.
 4. Mutacoes comuns escrevem em tabelas publicas com RLS.
 5. Acoes sensiveis chamam Edge Functions com o token da sessao.
 6. Edge Functions validam usuario e permissao antes de usar service role.
@@ -70,7 +70,7 @@ Funcoes compartilhadas:
 
 Papeis:
 
-- `owner`: administra empresa, membros, departamentos, planos e configuracoes.
+- `owner`: administra empresa, membros, areas, planos e configuracoes.
 - `coordinator`: escreve apenas no escopo da propria area quando a politica permitir.
 
 As politicas RLS seguem a regra:

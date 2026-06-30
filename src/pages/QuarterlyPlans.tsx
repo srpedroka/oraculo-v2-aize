@@ -40,7 +40,7 @@ export function QuarterlyPlans() {
             <Card key={area.id} className="space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-medium text-text-tertiary">Departamento</p>
+                  <p className="text-xs font-medium text-text-tertiary">Área</p>
                   <h2 className="mt-1 text-lg font-semibold text-text">{area.name}</h2>
                   <p className="mt-1 text-sm text-text-secondary">Coordenador: {area.coordinator}</p>
                 </div>
@@ -50,11 +50,11 @@ export function QuarterlyPlans() {
                   {counts.late ? <StatusBadge status="late" /> : null}
                   {counts.done ? <StatusBadge status="done" /> : null}
                   <Link
-                    to={`/departamentos/${area.id}`}
+                    to={`/areas/${area.id}`}
                     className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-border bg-transparent px-3 text-[13px] font-medium text-text transition hover:border-accent/30 hover:bg-white"
                   >
                     <ArrowRight className="h-4 w-4" />
-                    Abrir departamento
+                    Abrir área
                   </Link>
                 </div>
               </div>
@@ -86,7 +86,7 @@ export function QuarterlyPlans() {
                   })
                 ) : (
                   <div className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-5 text-sm text-text-secondary">
-                    Nenhum objetivo trimestral definido para este departamento.
+                    Nenhum objetivo trimestral definido para esta área.
                   </div>
                 )}
               </div>

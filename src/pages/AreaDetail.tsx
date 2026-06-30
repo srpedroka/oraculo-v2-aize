@@ -49,15 +49,15 @@ export function AreaDetail() {
     return (
       <div className="space-y-6">
         <div>
-          <Link to="/departamentos" className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-accent">
+          <Link to="/areas" className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-accent">
             <ArrowLeft className="h-4 w-4" />
-            Departamentos
+            Áreas
           </Link>
           <p className="text-sm font-medium text-text-tertiary">Coordenador: {area.coordinator}</p>
-          <h1 className="text-2xl font-semibold text-text">Departamento: {area.name}</h1>
+          <h1 className="text-2xl font-semibold text-text">Área: {area.name}</h1>
         </div>
         <Card>
-          <p className="text-base font-semibold text-text">Nenhum plano anual do departamento ainda.</p>
+          <p className="text-base font-semibold text-text">Nenhum plano anual da área ainda.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
             Crie a base anual para depois desdobrar objetivos trimestrais e mensais.
           </p>
@@ -80,7 +80,7 @@ export function AreaDetail() {
                 })
               }
             >
-              Criar plano do departamento
+              Criar plano da área
             </Button>
           </div>
         </Card>
@@ -96,12 +96,12 @@ export function AreaDetail() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to="/departamentos" className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-accent">
+          <Link to="/areas" className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-accent">
             <ArrowLeft className="h-4 w-4" />
-            Departamentos
+            Áreas
           </Link>
           <p className="text-sm font-medium text-text-tertiary">Coordenador: {area.coordinator}</p>
-          <h1 className="text-2xl font-semibold text-text">Departamento: {area.name}</h1>
+          <h1 className="text-2xl font-semibold text-text">Área: {area.name}</h1>
         </div>
         <Button icon={Plus} onClick={() => setBuilderLevel(tab)}>
           Novo objetivo com o Oráculo

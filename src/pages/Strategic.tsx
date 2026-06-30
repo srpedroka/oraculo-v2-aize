@@ -86,7 +86,7 @@ export function Strategic() {
         <Card>
           <p className="text-base font-semibold text-text">Nenhum Plano Estratégico ainda.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
-            Crie a estrutura anual para começar a desdobrar objetivos por departamento, trimestre e mês.
+            Crie a estrutura anual para começar a desdobrar objetivos por área, trimestre e mês.
           </p>
           <div className="mt-4">
             <Button

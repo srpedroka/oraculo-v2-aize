@@ -110,7 +110,7 @@ export function OraclePanel() {
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white">
           <Sparkles className="h-4 w-4" />
         </span>
-        Beto
+        Oráculo
         <span className="h-2 w-2 rounded-full bg-[#B42318]" />
       </button>
     );
@@ -126,11 +126,11 @@ export function OraclePanel() {
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#ECECEF] text-sm font-semibold text-text">
-            B
+            O
             <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-[#30D158]" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-text">Beto <span className="font-medium text-text-secondary">(IA Estratégica)</span></h2>
+            <h2 className="text-base font-semibold text-text">Oráculo <span className="font-medium text-text-secondary">(IA Estratégica)</span></h2>
             <p className="text-xs text-text-tertiary">Oráculo da {state.organization?.name}</p>
           </div>
         </div>

@@ -43,7 +43,7 @@ export function Auth() {
             {mode === "signin" ? "Entrar no sistema" : "Criar primeiro acesso"}
           </h1>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
-            A V2 salva os planos por empresa, com permissões por papel e departamento.
+            A V2 salva os planos por empresa, com permissões por papel e área.
           </p>
         </div>
 

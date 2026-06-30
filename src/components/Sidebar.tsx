@@ -23,7 +23,7 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/estrategico", label: "Plano Estratégico", icon: Target },
   { to: "/planos-trimestrais", label: "Planos Trimestrais", icon: Waypoints },
-  { to: "/departamentos", label: "Departamentos", icon: Users },
+  { to: "/areas", label: "Áreas", icon: Users },
   { to: "/execucao", label: "Execução Viva", icon: PlayCircle },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, badge: "Prévia" },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
