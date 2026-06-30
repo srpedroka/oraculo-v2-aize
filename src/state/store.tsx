@@ -55,6 +55,7 @@ interface AppContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (profile: { fullName: string; phone: string | null }) => Promise<void>;
   refresh: () => void;
 }
 
@@ -73,6 +74,7 @@ const EMPTY_STATE: AppState = {
   organization: null,
   memberships: [],
   currentMembership: null,
+  currentProfile: null,
   aiSettings: null,
   areas: [],
   strategicPlan: null,
@@ -124,6 +126,7 @@ function mapProfile(row: any): Profile {
   return {
     id: row.id,
     fullName: row.full_name ?? null,
+    phone: row.phone ?? null,
   };
 }
 
@@ -386,6 +389,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const orgIds = useMemo(() => [...new Set(rawMemberships.map((item: any) => item.org_id))], [rawMemberships]);
   const profileIds = useMemo(() => [...new Set(rawMemberships.map((item: any) => item.user_id))], [rawMemberships]);
 
+  const currentProfileQuery = useQuery({
+    queryKey: ["profile", userId],
+    enabled: Boolean(supabase && userId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("profiles").select("id, full_name, phone").eq("id", userId).maybeSingle();
+      if (error) throw error;
+      return data ? mapProfile(data) : null;
+    },
+  });
+
   const profilesQuery = useQuery({
     queryKey: ["profiles", profileIds],
     enabled: Boolean(supabase && profileIds.length),
@@ -570,6 +584,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const invalidateOrg = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["memberships"] });
+    queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+    queryClient.invalidateQueries({ queryKey: ["profiles"] });
     if (!orgId) return;
     queryClient.invalidateQueries({ queryKey: ["organizations"] });
     queryClient.invalidateQueries({ queryKey: ["areas", orgId] });
@@ -582,7 +598,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["check_ins", orgId] });
-  }, [orgId, queryClient]);
+  }, [orgId, queryClient, userId]);
 
   useEffect(() => {
     if (!supabase || !orgId) return;
@@ -605,6 +621,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const loading =
       authLoading ||
       rawMembershipsQuery.isLoading ||
+      currentProfileQuery.isLoading ||
       profilesQuery.isLoading ||
       organizationsQuery.isLoading ||
       areasQuery.isLoading ||
@@ -626,6 +643,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       organization,
       memberships: orgMemberships,
       currentMembership,
+      currentProfile: currentProfileQuery.data ?? currentMembership?.profile ?? null,
       aiSettings: aiSettingsQuery.data ?? null,
       areas,
       strategicPlan,
@@ -652,6 +670,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     checkInsQuery.data,
     checkInsQuery.isLoading,
     currentMembership,
+    currentProfileQuery.data,
+    currentProfileQuery.isLoading,
     evidencesQuery.data,
     evidencesQuery.isLoading,
     keyActionsQuery.data,
@@ -917,13 +937,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem("oraculo.activeOrgId");
   }, []);
 
+  const updateProfile = useCallback(
+    async (profile: { fullName: string; phone: string | null }) => {
+      const client = requireClient();
+      if (!userId) return;
+
+      const { error } = await client
+        .from("profiles")
+        .update({
+          full_name: profile.fullName.trim() || null,
+          phone: profile.phone,
+        })
+        .eq("id", userId);
+
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+    [queryClient, userId],
+  );
+
   const refresh = useCallback(() => {
     invalidateOrg();
   }, [invalidateOrg]);
 
   const value = useMemo(
-    () => ({ state, dispatch, session, signIn, signUp, signOut, refresh }),
-    [dispatch, refresh, session, signIn, signOut, signUp, state],
+    () => ({ state, dispatch, session, signIn, signUp, signOut, updateProfile, refresh }),
+    [dispatch, refresh, session, signIn, signOut, signUp, state, updateProfile],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

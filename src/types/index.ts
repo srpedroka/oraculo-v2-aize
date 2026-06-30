@@ -138,6 +138,7 @@ export type MembershipRole = "owner" | "coordinator";
 export interface Profile {
   id: string;
   fullName: string | null;
+  phone: string | null;
 }
 
 export interface Membership {
@@ -173,6 +174,7 @@ export interface AppState {
   organization: Organization | null;
   memberships: Membership[];
   currentMembership: Membership | null;
+  currentProfile: Profile | null;
   aiSettings: AiSettings | null;
   areas: Area[];
   strategicPlan: StrategicPlan | null;

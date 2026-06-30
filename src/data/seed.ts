@@ -532,6 +532,11 @@ export const initialState: AppState = {
   organization,
   memberships: [],
   currentMembership: null,
+  currentProfile: {
+    id: "profile-gui",
+    fullName: "Gui",
+    phone: null,
+  },
   aiSettings: null,
   areas,
   strategicPlan,

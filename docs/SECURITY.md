@@ -51,6 +51,10 @@ Regras principais:
 - coordenador escreve apenas na propria area;
 - acoes e evidencias seguem permissao do objetivo ligado.
 
+## Dados de conta
+
+O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e deve ser tratado como identificador de acesso, especialmente para a futura integracao com WhatsApp. A interface edita apenas o celular da propria conta.
+
 Ao criar nova tabela:
 
 1. habilite RLS;

@@ -39,6 +39,8 @@ Tabelas publicas principais:
 - `check_ins`
 - `ai_settings`
 
+`profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
+
 Schema privado:
 
 - `private.ai_model_keys`: guarda chaves de provedores de IA. Nao deve ser acessivel por `anon` nem por `authenticated`.
