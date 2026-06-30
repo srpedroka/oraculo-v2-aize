@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Home,
   LogOut,
-  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   PlayCircle,
@@ -30,7 +29,6 @@ const navItems = [
   { to: "/planos-trimestrais", label: "Planos Trimestrais", icon: Waypoints },
   { to: "/areas", label: "Áreas", icon: Users },
   { to: "/execucao", label: "Execução Viva", icon: PlayCircle },
-  { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, badge: "Prévia" },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -190,14 +188,7 @@ export function Sidebar() {
           >
             <item.icon className="h-5 w-5 shrink-0 text-text-secondary group-hover:text-text" />
             {!collapsed ? (
-              <>
-                <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                {item.badge ? (
-                  <span className="rounded-[10px] bg-[#ECECEF] px-2 py-0.5 text-[11px] font-medium text-text-secondary">
-                    {item.badge}
-                  </span>
-                ) : null}
-              </>
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
             ) : null}
           </NavLink>
         ))}

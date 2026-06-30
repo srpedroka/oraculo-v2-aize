@@ -65,7 +65,7 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 const INITIAL_UI: UiState = {
   sidebarCollapsed: false,
   sidebarWidth: 240,
-  oracleMode: "normal",
+  oracleMode: "minimized",
 };
 
 const EMPTY_STATE: AppState = {

@@ -10,7 +10,6 @@ import { Onboarding } from "./pages/Onboarding";
 import { QuarterlyPlans } from "./pages/QuarterlyPlans";
 import { Settings } from "./pages/Settings";
 import { Strategic } from "./pages/Strategic";
-import { WhatsApp } from "./pages/WhatsApp";
 import { useAppState } from "./state/store";
 
 function LoadingScreen() {
@@ -60,7 +59,6 @@ function AppRoutes() {
         <Route path="/areas/:areaId" element={<AreaDetail />} />
         <Route path="/execucao" element={<Execution />} />
         <Route path="/configuracoes" element={<Settings />} />
-        <Route path="/whatsapp" element={<WhatsApp />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

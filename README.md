@@ -15,7 +15,7 @@ A V2 inclui autenticacao, empresas, membros, areas, planos estrategicos, planos 
 
 ## Requisitos
 
-- Node.js 18+
+- Node.js 22.13+
 - pnpm
 - Acesso ao projeto Supabase da V2
 - Acesso ao site Netlify da V2, se for publicar

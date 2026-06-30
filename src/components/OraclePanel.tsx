@@ -1,4 +1,4 @@
-import { ChevronRight, Maximize2, Minimize2, Send, Sparkles } from "lucide-react";
+import { Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { createMessageId, generateWeeklyReview, respondToUserMessage } from "../lib/oracle";
@@ -105,13 +105,13 @@ export function OraclePanel() {
       <button
         type="button"
         onClick={() => setMode("normal")}
-        className="fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-3 text-sm font-semibold text-text shadow-card"
+        className="fixed right-0 top-1/2 z-40 flex h-16 w-11 -translate-y-1/2 items-center justify-center rounded-l-2xl border border-r-0 border-[#0B6B5C] bg-[#075E54] text-white shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition hover:w-12"
+        aria-label="Abrir Oráculo"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white">
+        <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
           <Sparkles className="h-4 w-4" />
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-[#075E54] bg-[#25D366]" />
         </span>
-        Oráculo
-        <span className="h-2 w-2 rounded-full bg-[#B42318]" />
       </button>
     );
   }
@@ -119,99 +119,123 @@ export function OraclePanel() {
   return (
     <aside
       className={[
-        "fixed bottom-4 right-4 top-4 z-30 flex w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-[width] duration-200 lg:static lg:min-h-screen lg:rounded-none lg:border-y-0 lg:border-r-0",
-        mode === "expanded" ? "lg:w-[560px]" : "lg:w-[360px]",
+        "fixed bottom-4 right-4 top-4 z-40 w-[calc(100vw-2rem)] transition-[max-width] duration-200",
+        mode === "expanded" ? "max-w-[560px]" : "max-w-[420px]",
       ].join(" ")}
     >
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#ECECEF] text-sm font-semibold text-text">
-            O
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-[#30D158]" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-text">Oráculo <span className="font-medium text-text-secondary">(IA Estratégica)</span></h2>
-            <p className="text-xs text-text-tertiary">Oráculo da {state.organization?.name}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="quiet"
-            size="icon"
-            icon={mode === "expanded" ? Minimize2 : Maximize2}
-            onClick={() => setMode(mode === "expanded" ? "normal" : "expanded")}
-            aria-label={mode === "expanded" ? "Voltar ao normal" : "Expandir"}
-          />
-          <Button variant="quiet" size="icon" icon={ChevronRight} onClick={() => setMode("minimized")} aria-label="Minimizar" />
-        </div>
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-auto p-4">
-        {state.chatMessages.map((chatMessage) => (
-          <div
-            key={chatMessage.id}
-            className={[
-              "max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-6",
-              chatMessage.author === "oracle"
-                ? "mr-auto bg-[#F0F0F2] text-text"
-                : "ml-auto bg-[#E8F2FF] text-text",
-            ].join(" ")}
-          >
-            {chatMessage.text}
-          </div>
-        ))}
-      </div>
-
-      {isDashboard ? (
-        <div className="space-y-3 border-t border-border p-4">
-          <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setEvidenceOpen((current) => !current)}>
-              Registrar evidência
-            </Button>
-            <Button variant="ghost" className="flex-1" onClick={runWeeklyReview}>
-              Revisão semanal
-            </Button>
-          </div>
-          {evidenceOpen ? (
-            <div className="space-y-2 rounded-2xl border border-border bg-[#FAFAFB] p-3">
-              <select
-                value={selectedObjectiveId}
-                onChange={(event) => setSelectedObjectiveId(event.target.value)}
-                className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+      <div className="flex h-full rounded-[34px] border border-[#D5D5DA] bg-[#111] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.25)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] bg-[#E9E0D2]">
+          <div className="flex items-center justify-between bg-[#075E54] px-4 py-3 text-white">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
+                O
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#075E54] bg-[#25D366]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold">Oráculo</h2>
+                <p className="truncate text-xs text-white/75">IA Estratégica · {state.organization?.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMode(mode === "expanded" ? "normal" : "expanded")}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                aria-label={mode === "expanded" ? "Voltar ao normal" : "Expandir"}
               >
-                {!state.objectives.length ? <option value="">Nenhum objetivo disponível</option> : null}
-                {state.objectives.map((objective) => (
-                  <option key={objective.id} value={objective.id}>
-                    {objective.title}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                value={evidenceText}
-                onChange={(event) => setEvidenceText(event.target.value)}
-                rows={3}
-                placeholder="O que prova o avanço?"
-                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm"
-              />
-              <Button className="w-full" onClick={saveEvidence} disabled={!evidenceText.trim() || !selectedObjectiveId}>
-                Salvar evidência
-              </Button>
+                {mode === "expanded" ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("minimized")}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                aria-label="Fechar Oráculo"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
+            {state.chatMessages.map((chatMessage) => (
+              <div
+                key={chatMessage.id}
+                className={[
+                  "max-w-[84%] rounded-xl px-3 py-2 text-[13px] leading-5 shadow-sm",
+                  chatMessage.author === "oracle"
+                    ? "mr-auto rounded-tl-sm bg-white text-[#1D1D1F]"
+                    : "ml-auto rounded-tr-sm bg-[#DCF8C6] text-[#1D1D1F]",
+                ].join(" ")}
+              >
+                <p>{chatMessage.text}</p>
+              </div>
+            ))}
+          </div>
+
+          {isDashboard ? (
+            <div className="space-y-3 border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEvidenceOpen((current) => !current)}
+                  className="h-9 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
+                >
+                  Registrar evidência
+                </button>
+                <button
+                  type="button"
+                  onClick={runWeeklyReview}
+                  className="h-9 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
+                >
+                  Revisão semanal
+                </button>
+              </div>
+              {evidenceOpen ? (
+                <div className="space-y-2 rounded-2xl bg-white/80 p-3 shadow-sm">
+                  <select
+                    value={selectedObjectiveId}
+                    onChange={(event) => setSelectedObjectiveId(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm"
+                  >
+                    {!state.objectives.length ? <option value="">Nenhum objetivo disponível</option> : null}
+                    {state.objectives.map((objective) => (
+                      <option key={objective.id} value={objective.id}>
+                        {objective.title}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea
+                    value={evidenceText}
+                    onChange={(event) => setEvidenceText(event.target.value)}
+                    rows={3}
+                    placeholder="O que prova o avanço?"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm"
+                  />
+                  <Button className="w-full bg-[#25D366] hover:bg-[#20BD5A]" onClick={saveEvidence} disabled={!evidenceText.trim() || !selectedObjectiveId}>
+                    Salvar evidência
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : null}
-        </div>
-      ) : null}
 
-      <form onSubmit={submitMessage} className="flex gap-2 border-t border-border p-4">
-        <input
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder="Escreva para o Oráculo"
-          className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-white px-3 text-sm"
-        />
-        <Button type="submit" size="icon" icon={Send} aria-label="Enviar mensagem" />
-      </form>
-      <div className="hidden">
-        V2: a resposta determinística do painel será substituída por uma chamada ao modelo real, mantendo a régua determinística.
+          <form onSubmit={submitMessage} className="flex items-center gap-2 border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
+            <input
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Escreva para o Oráculo"
+              className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
+            />
+            <button
+              type="submit"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!message.trim()}
+              aria-label="Enviar mensagem"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
       </div>
     </aside>
   );
