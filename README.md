@@ -95,6 +95,7 @@ As Edge Functions ficam em `supabase/functions/`:
 
 - Arquitetura: `docs/ARCHITECTURE.md`
 - Seguranca: `docs/SECURITY.md`
+- Acessos e chaves: `docs/ACCESS.md`
 - Decisoes: `docs/DECISIONS.md`
 - Runbook: `docs/RUNBOOK.md`
 - Changelog: `docs/CHANGELOG.md`

@@ -6,6 +6,7 @@
 - Dados de empresa sao isolados por membership e RLS.
 - Acoes sensiveis passam por Edge Functions com validacao de sessao.
 - Documentacao pode citar nomes de variaveis, mas nunca valores secretos.
+- O mapa operacional de onde cada acesso vive fica em `docs/ACCESS.md`.
 
 ## Variaveis e segredos
 

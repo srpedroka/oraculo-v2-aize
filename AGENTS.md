@@ -33,7 +33,7 @@ pnpm run build
 ## Antes de mexer no codigo
 
 1. Leia `README.md`.
-2. Leia `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/RUNBOOK.md` e `docs/DECISIONS.md`.
+2. Leia `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/ACCESS.md`, `docs/RUNBOOK.md` e `docs/DECISIONS.md`.
 3. Rode `git status`.
 4. Se existir repositorio remoto configurado, rode `git pull` antes de alterar arquivos.
 5. Verifique se a mudanca afeta ambiente, banco, deploy, autenticacao, seguranca ou fluxo de negocio. Se afetar, atualize a documentacao junto.
@@ -58,6 +58,7 @@ Observacao: se o diretorio ainda nao for um repositorio Git, avise o usuario ant
 - Nunca commitar `.env`, `.env.*`, chaves, tokens, dumps ou arquivos privados.
 - Nunca colocar `SUPABASE_SERVICE_ROLE_KEY` no frontend. Ela pertence apenas aos secrets das Edge Functions.
 - Chaves de modelo de IA nao devem ir para o cliente. O app envia a chave para a Edge Function `save-ai-settings`, que salva em `private.ai_model_keys`.
+- A documentacao deve explicar onde as chaves ficam, mas nunca registrar valores reais. Use `docs/ACCESS.md` para mapa de acessos.
 - Toda escrita sensivel deve respeitar RLS e/ou validacao server-side nas Edge Functions.
 - Donos (`owner`) podem administrar empresa, membros, areas e configuracoes. Coordenadores (`coordinator`) so podem escrever na propria area quando permitido.
 - Ao encontrar segredo exposto, pare, remova, avise o usuario e oriente rotacao da credencial.

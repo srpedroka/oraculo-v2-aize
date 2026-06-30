@@ -2,6 +2,8 @@
 
 Manual rapido para quando precisar rodar, diagnosticar ou recuperar o Oraculo V2.
 
+Para saber onde ficam contas, chaves, secrets e URLs administrativas, leia tambem `docs/ACCESS.md`.
+
 ## Rodar localmente
 
 1. Conferir `.env`.

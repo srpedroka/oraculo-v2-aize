@@ -9,6 +9,7 @@
 - Adicionadas rotas de autenticacao, onboarding, configuracoes, execucao e planos.
 - Configurado fallback SPA para rotas diretas no Netlify.
 - Criada documentacao minima de manutencao: README, AGENTS, Architecture, Security, Decisions, Runbook e Changelog.
+- Adicionado mapa de acessos e custodia de chaves em `docs/ACCESS.md`.
 
 ## 2026-06-28
 
