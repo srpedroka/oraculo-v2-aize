@@ -227,18 +227,51 @@ function extractBase64FromMediaResponse(value: any) {
   );
 }
 
+async function audioFileFromMediaResponse(response: Response, mimeType: string) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json") || contentType.includes("text/")) {
+    const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : null;
+    const base64 = extractBase64FromMediaResponse(payload);
+    if (base64) return audioFileFromBase64(base64, mimeType);
+
+    const text = payload ? "" : await response.text().catch(() => "");
+    const textBase64 = firstText(text);
+    if (textBase64 && /^[A-Za-z0-9+/=\s]+$/.test(textBase64) && textBase64.length > 120) {
+      return audioFileFromBase64(textBase64, mimeType);
+    }
+    return null;
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.length) return null;
+
+  return {
+    bytes,
+    mimeType: contentType || mimeType,
+    fileName: contentType.includes("mpeg") ? "whatsapp-audio.mp3" : "whatsapp-audio.ogg",
+  };
+}
+
 async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo: NonNullable<ReturnType<typeof extractAudioInfo>>) {
   const baseUrl = String(settings?.instance_url ?? "").replace(/\/+$/, "");
   const instanceName = String(settings?.instance_name ?? "").trim();
   if (!baseUrl || !instanceName || !keyRow?.api_key) return null;
 
   const endpoints = [
+    `${baseUrl}/message/downloadimage`,
     `${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
     `${baseUrl}/message/getBase64FromMediaMessage/${instanceName}`,
     `${baseUrl}/chat/getBase64FromMediaMessage`,
   ];
 
   const bodies = [
+    {
+      instance: instanceName,
+      message: audioInfo.rawData,
+      messageId: audioInfo.messageId || audioInfo.key.id,
+      key: audioInfo.key,
+      convertToMp4: false,
+    },
     {
       message: {
         key: audioInfo.key,
@@ -272,6 +305,26 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
       message: audioInfo.rawData,
       convertToMp4: false,
     },
+    {
+      instance: instanceName,
+      message: audioInfo.rawMessage,
+      convertToMp4: false,
+    },
+    {
+      instanceName,
+      message: audioInfo.rawMessage,
+      key: audioInfo.key,
+      convertToMp4: false,
+    },
+    {
+      instance: instanceName,
+      mediaKey: firstText(audioInfo.audioMessage?.mediaKey, audioInfo.audioMessage?.MediaKey),
+      directPath: firstText(audioInfo.audioMessage?.directPath, audioInfo.audioMessage?.DirectPath),
+      url: firstText(audioInfo.audioMessage?.url, audioInfo.audioMessage?.URL),
+      mimetype: audioInfo.mimeType,
+      type: "audio",
+      convertToMp4: false,
+    },
   ];
 
   for (const endpoint of endpoints) {
@@ -292,9 +345,8 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
         }
         continue;
       }
-      const payload = await response.json().catch(() => null);
-      const base64 = extractBase64FromMediaResponse(payload);
-      if (base64) return audioFileFromBase64(base64, audioInfo.mimeType);
+      const file = await audioFileFromMediaResponse(response, audioInfo.mimeType);
+      if (file) return file;
       console.error("Evolution retornou mídia sem base64 reconhecido", endpoint);
     }
   }
