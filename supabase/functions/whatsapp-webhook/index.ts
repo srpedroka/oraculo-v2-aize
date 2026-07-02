@@ -266,6 +266,9 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
 
   const bodies = [
     {
+      message: audioInfo.rawMessage,
+    },
+    {
       instance: instanceName,
       message: audioInfo.rawData,
       messageId: audioInfo.messageId || audioInfo.key.id,
@@ -340,8 +343,12 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
 
       if (!response?.ok) {
         if (response) {
-          const errorText = await response.text().catch(() => "");
-          console.error("Evolution não retornou mídia", response.status, endpoint, errorText.slice(0, 180));
+          await response.body?.cancel().catch(() => undefined);
+          console.error("Evolution não retornou mídia", {
+            status: response.status,
+            endpoint: endpoint.replace(baseUrl, ""),
+            contentType: response.headers.get("content-type") ?? "",
+          });
         }
         continue;
       }
