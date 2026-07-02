@@ -12,6 +12,7 @@ Regra principal: documentamos o caminho de recuperacao, nunca o valor real de um
 | Netlify | Deploy do frontend | `oraculo-v2-aize` | `https://app.netlify.com/projects/oraculo-v2-aize` |
 | Supabase | Auth, banco, RLS, Edge Functions e secrets server-side | projeto `bkswkfazkjilwfzwzthz` | `https://supabase.com/dashboard/project/bkswkfazkjilwfzwzthz` |
 | App em producao | Produto publicado | `oraculo-v2-aize` | `https://oraculo-v2-aize.netlify.app` |
+| Evolution API/Evo Go | Envio e recebimento de WhatsApp | instancia `oraculo` | URL publica configurada em Configuracoes > WhatsApp |
 
 ## GitHub
 
@@ -115,7 +116,7 @@ O Supabase guarda:
 - politicas RLS;
 - Edge Functions;
 - secrets de servidor das Edge Functions;
-- chaves de IA no schema privado.
+- chaves de IA e WhatsApp em tabelas bloqueadas para leitura do navegador.
 
 ### Secrets das Edge Functions
 
@@ -143,7 +144,7 @@ Pontos de seguranca:
 
 - RLS habilitado nas tabelas publicas.
 - Funcoes auxiliares validam membership, owner e permissao por area.
-- Schema `private` nao e liberado para `anon` nem `authenticated`.
+- Tabelas de segredo `public.ai_model_keys` e `public.whatsapp_instance_keys` tem RLS habilitado, acesso revogado para `anon` e `authenticated`, e acesso apenas por `service_role`.
 
 Por que assim: mesmo que alguem veja a anon key do frontend, a leitura e a escrita continuam bloqueadas pelas politicas do banco.
 
@@ -167,10 +168,60 @@ Fluxo:
 2. Informa provider, modelo e chave.
 3. Frontend envia para a Edge Function `save-ai-settings`.
 4. A funcao valida sessao e exige papel `owner`.
-5. A chave real e salva em `private.ai_model_keys`.
-6. A tabela publica `ai_settings` guarda apenas `has_key` e `key_preview`.
+5. A chave real e salva em `public.ai_model_keys`, acessivel apenas por service role.
+6. A tabela publica `ai_settings` guarda apenas `has_key`, `key_preview`, provider, modelo, pricing e fonte do pricing.
 
-Por que assim: a chave de IA nunca fica exposta no cliente, no GitHub ou na tabela publica. O app mostra apenas que existe uma chave e os ultimos caracteres para conferencia.
+Estado atual: a chave real fica em `public.ai_model_keys`, protegida por RLS/revokes e acessivel apenas por service role. O desenho inicial usava `private.ai_model_keys`; migrations antigas podem citar esse caminho por historico.
+
+Por que assim: a chave de IA nunca fica exposta no cliente ou no GitHub. O app mostra apenas que existe uma chave e os ultimos caracteres para conferencia.
+
+## Evolution API / WhatsApp
+
+Configuracao operacional atual:
+
+```text
+Instancia: oraculo
+URL publica: https://143-95-217-64.sslip.io
+Numero conectado: +554691228197
+Webhook Supabase: https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=66fee6c9-df10-4f86-924c-103a25778d7d
+```
+
+Valores secretos:
+
+- chave da Evolution API;
+- segredo do webhook.
+
+Onde ficam: `public.whatsapp_instance_keys`, com RLS/revokes e acesso apenas por service role. O app mostra apenas previews mascarados.
+
+Por que assim: o frontend precisa saber a URL publica e o nome da instancia, mas nao pode receber chave da Evolution nem segredo de webhook. A Edge Function `save-whatsapp-settings` grava os segredos com service role.
+
+Se precisar recuperar:
+
+1. Entrar na VPS/painel Evolution.
+2. Conferir se a instancia `oraculo` esta conectada.
+3. Gerar nova chave/segredo se houver suspeita de vazamento.
+4. Abrir Configuracoes > WhatsApp no app e salvar novamente.
+5. Atualizar o webhook da Evolution com a URL e o mesmo segredo salvo no app.
+
+## Pricing e consumo de IA
+
+O pricing fica em:
+
+- `public.ai_settings`: precos salvos do modelo ativo;
+- `public.ai_usage_logs`: snapshot do preco e custo em cada chamada.
+
+No codigo:
+
+- `src/lib/aiPricing.ts`: catalogo usado pela tela;
+- `supabase/functions/_shared/pricing.ts`: catalogo usado pela funcao de salvar IA.
+
+Ao trocar modelo:
+
+1. Conferir pricing oficial do provedor.
+2. Atualizar catalogo no frontend e no servidor quando necessario.
+3. Salvar modelo em Configuracoes.
+4. Verificar se `ai_settings.pricing_source` aponta para a fonte correta.
+5. Fazer uma chamada pequena e conferir `ai_usage_logs`.
 
 ## Arquivos locais sensiveis
 
@@ -241,5 +292,5 @@ pnpm run build
 - `.env` nao versionado.
 - Netlify com apenas variaveis publicas do frontend.
 - Supabase com service role apenas em secrets server-side.
-- Chaves de IA apenas em `private.ai_model_keys`.
+- Chaves de IA apenas em `public.ai_model_keys`, sem acesso para `anon`/`authenticated`.
 - `pnpm run lint` e `pnpm run build` passando.

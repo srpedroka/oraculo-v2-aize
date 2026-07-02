@@ -133,8 +133,45 @@ Verifique:
 
 - `public.ai_settings.has_key`;
 - `public.ai_settings.key_preview`;
-- existencia de linha em `private.ai_model_keys`;
+- existencia de linha em `public.ai_model_keys`;
 - logs da Edge Function `oracle-chat`.
+
+Para consumo:
+
+1. Envie uma mensagem pequena para o Oraculo.
+2. Confira `public.ai_usage_logs` filtrando por `org_id`.
+3. Se houver resposta mas nao houver log, verifique `recordAiUsage` e o retorno de `usage` do provider.
+4. Se nao houver resposta, consulte logs da Edge Function e veja se a chamada ao modelo falhou.
+
+## Problema: WhatsApp recebeu mensagem mas nao respondeu
+
+Diagnostico rapido:
+
+1. Verifique `public.chat_messages` filtrando por `channel = 'whatsapp'`.
+2. Se a mensagem `user` apareceu e nao existe resposta `oracle` logo depois, a falha ocorreu dentro do `whatsapp-webhook` antes do envio da resposta.
+3. Confira `public.ai_usage_logs` para saber se a chamada de IA chegou a acontecer.
+4. Se nao houver uso de IA, verifique provider/modelo, chave em `public.ai_model_keys` e logs da Edge Function.
+5. Se houver resposta `oracle` no banco mas ela nao chegou no celular, verifique Evolution API/Evo Go, instancia conectada, endpoint de envio e chave da Evolution.
+6. Se a mensagem nem apareceu em `chat_messages`, verifique webhook configurado na Evolution, segredo `x-oraculo-webhook-secret`, URL publica e instancia conectada.
+
+Consultas uteis no Supabase SQL editor:
+
+```sql
+select author, channel, left(text, 300) as text, created_at
+from public.chat_messages
+where org_id = '<ORG_ID>'
+  and channel = 'whatsapp'
+order by created_at desc
+limit 20;
+```
+
+```sql
+select provider, model, channel, prompt_tokens, completion_tokens, total_tokens, total_cost_usd, created_at
+from public.ai_usage_logs
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
 
 ## Configurar WhatsApp real
 
@@ -156,6 +193,17 @@ Convites seguem esta regra:
 
 Sem a Evolution API hospedada e sem QR pareado, o painel do sistema continua funcionando, mas o WhatsApp real nao recebe mensagens.
 
+Configuracao atual de producao:
+
+```text
+URL Evolution/Evo Go: https://143-95-217-64.sslip.io
+Instancia: oraculo
+Numero conectado: +554691228197
+Webhook: https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=66fee6c9-df10-4f86-924c-103a25778d7d
+```
+
+Nao registrar aqui chave da Evolution nem segredo do webhook. Eles ficam salvos pelo app e aparecem apenas mascarados.
+
 ## Problema: convite por WhatsApp nao chega
 
 Verifique:
@@ -176,7 +224,7 @@ Possiveis causas:
 
 - usuario nao e `owner`;
 - secrets das Edge Functions ausentes;
-- tabela `private.ai_model_keys` nao existe;
+- tabela `public.ai_model_keys` nao existe ou esta sem grant para `service_role`;
 - service role invalida.
 
 Verifique secrets no Supabase:
@@ -236,6 +284,30 @@ supabase functions deploy whatsapp-webhook --no-verify-jwt
 ```
 
 Se a CLI pedir login ou link do projeto, conecte ao projeto correto antes de publicar.
+
+Observacao operacional: no ambiente atual, o deploy via CLI nova aceitou o formato:
+
+```bash
+supabase functions deploy whatsapp-webhook oracle-chat --project-ref bkswkfazkjilwfzwzthz --use-api
+```
+
+Use `--use-api` quando Docker local nao estiver disponivel.
+
+## Calibrar tom do Oraculo
+
+O tom e o roteiro empacotado das Edge Functions ficam em:
+
+```text
+supabase/functions/_shared/prompt-guides.ts
+```
+
+Para deixar a IA mais natural:
+
+1. Ajuste `CONVERSATION_STYLE`.
+2. Evite instrucoes contraditorias, como "seja curto" e "explique tudo".
+3. Publique `whatsapp-webhook` e `oracle-chat`.
+4. Teste pelo WhatsApp com pergunta ambigua, por exemplo "Como esta o sistema?".
+5. Confira se ela pede esclarecimento antes de despejar numeros.
 
 ## Recuperacao de segredo exposto
 

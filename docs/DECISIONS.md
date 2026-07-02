@@ -36,6 +36,56 @@ Motivo: o schema privado acessado somente por Edge Function reduz risco de expos
 
 Consequencias: chamadas ao modelo precisam passar por Edge Functions e usar validacao server-side.
 
+Nota de evolucao: em 2026-07-02 o caminho operacional foi ajustado para `public.ai_model_keys` com RLS/revokes e acesso apenas por `service_role`. A decisao de seguranca permaneceu a mesma: segredo nunca chega ao frontend.
+
+## 2026-07-02 - Tabelas de segredo acessiveis apenas por service role
+
+Decisao: migrar o caminho operacional das chaves para `public.ai_model_keys` e `public.whatsapp_instance_keys`, mantendo RLS habilitado, acesso revogado para `anon` e `authenticated`, e grants apenas para `service_role`.
+
+Contexto: as Edge Functions precisavam acessar chaves de IA e Evolution API de forma previsivel no ambiente hospedado. O desenho inicial usava schema `private`, mas o caminho com tabelas publicas bloqueadas por RLS/revokes ficou mais simples de operar com service role.
+
+Alternativas: manter apenas schema `private`, salvar secrets como environment variables fixas, ou salvar no frontend.
+
+Motivo: preservar a regra de seguranca principal, sem expor segredo ao navegador, e facilitar operacao por Edge Functions.
+
+Consequencias: documentacao e runbook devem citar `public.*_keys` como estado atual. Migrations antigas ainda podem mencionar `private.*_keys` por historico.
+
+## 2026-07-02 - Consumo e pricing de IA rastreaveis
+
+Decisao: adicionar `ai_usage_logs` e pricing por provider/modelo em `ai_settings`.
+
+Contexto: o usuario pediu que o sistema calculasse tokens e valor gasto automaticamente sempre que um modelo fosse usado.
+
+Alternativas: estimar manualmente, deixar custo fora do produto, ou depender apenas do painel do provedor de IA.
+
+Motivo: o dono da empresa precisa ver consumo no proprio Oraculo e entender o impacto financeiro do uso por WhatsApp e web.
+
+Consequencias: toda chamada de IA bem-sucedida deve registrar tokens, custo estimado, canal e modelo. Mudancas de provider/modelo precisam atualizar catalogo de pricing no frontend e na Edge Function.
+
+## 2026-07-02 - WhatsApp salva mensagem antes de chamar IA
+
+Decisao: no `whatsapp-webhook`, salvar a mensagem recebida em `chat_messages` antes da chamada ao modelo.
+
+Contexto: em testes reais, mensagens chegavam mas nao havia resposta quando a funcao quebrava antes de gravar a resposta do Oraculo.
+
+Alternativas: salvar somente depois da resposta, ou confiar apenas nos logs da Evolution/Supabase.
+
+Motivo: diagnostico operacional fica claro: mensagem `user` sem mensagem `oracle` logo depois indica falha em IA, fallback ou envio.
+
+Consequencias: o runbook deve orientar a comparar `chat_messages` e `ai_usage_logs` quando o WhatsApp nao responder.
+
+## 2026-07-02 - Guias do Oraculo empacotados em codigo
+
+Decisao: usar `supabase/functions/_shared/prompt-guides.ts` como fonte empacotada dos guias e do tom do Oraculo nas Edge Functions.
+
+Contexto: a funcao tentava ler arquivos `.md` em runtime, mas esses arquivos nao eram enviados no bundle do deploy.
+
+Alternativas: configurar empacotamento dos `.md`, duplicar prompts em cada funcao, ou manter guias no banco.
+
+Motivo: modulo TypeScript compartilhado e enviado automaticamente no deploy das funcoes, reduzindo risco de quebra.
+
+Consequencias: ajustes de personalidade, roteiro e calibragem da IA devem ser feitos em `prompt-guides.ts` e publicados nas Edge Functions.
+
 ## 2026-06-29 - React Query com Context para estado
 
 Decisao: usar React Query para dados remotos e Context/reducer para UI local.

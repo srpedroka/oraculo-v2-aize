@@ -31,8 +31,10 @@ Secrets das Edge Functions:
 
 Segredos operacionais salvos pelo app:
 
-- chaves de IA ficam em `private.ai_model_keys`;
-- chave da Evolution API e segredo do webhook ficam em `private.whatsapp_instance_keys`.
+- chaves de IA ficam em `public.ai_model_keys`, com RLS habilitado, acesso revogado para `anon`/`authenticated` e permissao apenas para `service_role`;
+- chave da Evolution API e segredo do webhook ficam em `public.whatsapp_instance_keys`, com o mesmo modelo de acesso exclusivo por `service_role`.
+
+Historico: a V2 criou primeiro tabelas equivalentes no schema `private`. Em 2026-07-02 os segredos foram migrados para tabelas publicas bloqueadas por RLS/revokes porque as Edge Functions do ambiente atual acessam essas tabelas via service role com mais previsibilidade operacional. A regra de seguranca continua a mesma: o navegador nunca le esses valores.
 
 ## Chaves de IA
 
@@ -40,10 +42,30 @@ O usuario configura a chave pela tela de configuracoes. O frontend envia a chave
 
 1. valida sessao;
 2. exige papel `owner`;
-3. salva a chave real em `private.ai_model_keys`;
-4. salva apenas `has_key` e `key_preview` em `public.ai_settings`.
+3. salva a chave real em `public.ai_model_keys`, acessivel apenas por service role;
+4. salva apenas `has_key`, `key_preview`, provider, modelo e pricing em `public.ai_settings`.
 
-O schema `private` tem acesso revogado para `anon` e `authenticated`.
+A tabela de chave real tem RLS habilitado, acesso revogado para `anon` e `authenticated`, e permissao apenas para `service_role`.
+
+## Uso, pricing e custo de IA
+
+O app registra consumo de IA em `public.ai_usage_logs`:
+
+- provider e modelo;
+- canal (`web`, `whatsapp` ou `system`);
+- tokens de entrada e saida;
+- preco salvo no momento da chamada;
+- custo estimado em dolar;
+- metadata operacional sem segredos.
+
+A tela de Configuracoes mostra o consumo para membros da empresa. A insercao e feita por Edge Functions com service role depois da resposta do modelo.
+
+Precos conhecidos ficam no codigo em:
+
+- `src/lib/aiPricing.ts`, para preencher a UI;
+- `supabase/functions/_shared/pricing.ts`, para resolver pricing no servidor ao salvar IA.
+
+Ao trocar modelo/provedor, verificar fonte oficial de pricing e registrar a fonte em `pricing_source`. Nao inserir chave de API no codigo nem em migrations.
 
 ## Senhas
 
@@ -54,6 +76,8 @@ Senhas nao sao salvas no frontend, na documentacao ou no banco em texto puro. A 
 O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
 
 Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usando service role no servidor. O frontend nunca recebe a chave da Evolution API e tambem nao monta a chamada direta para a VPS. O link de convite do Supabase e entregue ao celular informado no cadastro do convidado.
+
+Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chamada de IA. Isso facilita diagnostico quando a IA falha: se houver mensagem `user` sem resposta `oracle`, investigar logs da Edge Function, provider/modelo, chave de IA e envio pela Evolution.
 
 ## RLS
 

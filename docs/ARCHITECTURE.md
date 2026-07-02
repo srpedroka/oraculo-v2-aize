@@ -22,6 +22,11 @@ Migrations principais:
 - `20260629150100_initial_schema.sql`: tabelas do dominio.
 - `20260629150200_auth_rls.sql`: triggers, funcoes auxiliares e politicas RLS.
 - `20260629150300_v2_runtime_support.sql`: schema privado para chaves de IA, realtime e suporte de runtime.
+- `20260630130000_whatsapp_integration.sql`: configuracao inicial de WhatsApp, segredo de webhook e canal em `chat_messages`.
+- `20260702121500_service_role_secret_tables.sql`: tabelas de segredo acessiveis apenas por service role.
+- `20260702152000_ai_pricing_usage.sql`: pricing por modelo/provedor e logs de consumo de IA.
+- `20260702153000_ai_usage_realtime.sql`: realtime para logs de uso de IA.
+- `20260702154500_update_openai_gpt54_pricing.sql`: pricing inicial do `gpt-5.4` salvo no ambiente.
 
 Tabelas publicas principais:
 
@@ -38,20 +43,23 @@ Tabelas publicas principais:
 - `chat_messages`
 - `check_ins`
 - `ai_settings`
+- `ai_usage_logs`
 - `whatsapp_settings`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
-Schema privado:
+Tabelas de segredo com acesso apenas por service role:
 
-- `private.ai_model_keys`: guarda chaves de provedores de IA. Nao deve ser acessivel por `anon` nem por `authenticated`.
-- `private.whatsapp_instance_keys`: guarda chave da Evolution API e segredo do webhook. Nao deve ser acessivel por `anon` nem por `authenticated`.
+- `public.ai_model_keys`: guarda chaves de provedores de IA. Tem RLS habilitado, acesso revogado para `anon` e `authenticated`, e grant para `service_role`.
+- `public.whatsapp_instance_keys`: guarda chave da Evolution API e segredo do webhook. Tem o mesmo padrao de acesso exclusivo por `service_role`.
+
+O schema `private` existiu como desenho inicial e pode aparecer em migrations antigas. O caminho operacional atual das Edge Functions usa as tabelas publicas bloqueadas por RLS/revokes.
 
 ### Edge Functions
 
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
-- `save-ai-settings`: salva provider, modelo, preview de chave e a chave real no schema privado.
-- `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API no schema privado.
+- `save-ai-settings`: salva provider, modelo, preview, pricing e a chave real em tabela acessivel apenas por service role.
+- `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `oracle-chat`: consulta contexto da empresa e responde com fallback deterministico ou modelo configurado.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
 - `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, responde e grava historico com canal `whatsapp`.
@@ -61,8 +69,37 @@ Funcoes compartilhadas:
 - `_shared/auth.ts`: valida sessao, acesso a empresa, owner e escrita por area.
 - `_shared/cors.ts`: respostas CORS e JSON.
 - `_shared/model.ts`: chamada aos provedores de IA.
+- `_shared/pricing.ts`: resolucao de pricing conhecido/automatico no servidor.
+- `_shared/usage.ts`: calculo e gravacao de consumo de IA.
 - `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
-- `_shared/oraculo-roteiro-*.md`: roteiros usados como contexto do Oraculo.
+- `_shared/prompt-guides.ts`: guias de comportamento, roteiro e tom do Oraculo empacotados junto das Edge Functions.
+
+Arquivos `.md` de roteiro continuam no repositorio como referencia, mas Edge Functions publicadas nao dependem de leitura desses arquivos em runtime.
+
+### IA
+
+O owner configura provider, modelo e chave em Configuracoes. O frontend chama `save-ai-settings`; a funcao valida owner, salva a chave real em `public.ai_model_keys` e grava em `ai_settings` apenas status, preview e pricing.
+
+O Oraculo usa:
+
+- OpenAI via Responses API;
+- Moonshot/Kimi via Chat Completions compativel;
+- Anthropic via Messages API.
+
+Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto.
+
+### WhatsApp
+
+O WhatsApp real passa por Evolution API/Evo Go hospedada fora do app. O fluxo e:
+
+1. Usuario envia mensagem para o numero pareado.
+2. Evolution chama `whatsapp-webhook` com segredo.
+3. O webhook identifica a empresa e o perfil pelo celular cadastrado.
+4. A mensagem do usuario e salva em `chat_messages`.
+5. O Oraculo responde por IA real ou fallback seguro.
+6. A resposta e salva e enviada de volta pela Evolution.
+
+Esse desenho foi ajustado em 2026-07-02 para salvar a mensagem antes da IA, permitindo diagnosticar casos em que a chamada ao modelo ou o envio falham.
 
 ## Fluxo de dados
 
