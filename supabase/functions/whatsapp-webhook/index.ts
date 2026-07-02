@@ -440,6 +440,7 @@ async function transcribeIncomingAudio(
 ) {
   const audioFile = await resolveAudioFile(whatsappSettings, whatsappKeyRow, payload, diagnostics);
   if (!audioFile) return "";
+  diagnostics.push(`file:${audioFile.mimeType || "no-type"}:${audioFile.bytes.length}`);
 
   const [{ data: settings }, { data: keyRow }] = await Promise.all([
     client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
@@ -450,8 +451,13 @@ async function transcribeIncomingAudio(
     throw new Error("Transcrição de áudio exige uma chave OpenAI ativa.");
   }
 
-  const result = await transcribeAudioWithOpenAi(keyRow.api_key, audioFile);
-  return result.text;
+  try {
+    const result = await transcribeAudioWithOpenAi(keyRow.api_key, audioFile);
+    return result.text;
+  } catch (error) {
+    diagnostics.push(error instanceof Error ? error.message.slice(0, 120) : "openai:unknown");
+    throw error;
+  }
 }
 
 function extractInstanceName(payload: any) {

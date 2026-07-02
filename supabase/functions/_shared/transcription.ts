@@ -8,6 +8,17 @@ export interface TranscriptionResult {
   text: string;
 }
 
+export class TranscriptionRequestError extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string) {
+    super(`openai:${status}:${code}`);
+    this.status = status;
+    this.code = code;
+  }
+}
+
 function extensionFromMimeType(mimeType: string) {
   if (mimeType.includes("ogg")) return "ogg";
   if (mimeType.includes("mpeg") || mimeType.includes("mp3")) return "mp3";
@@ -32,9 +43,9 @@ export function decodeBase64Audio(base64: string, mimeType = "audio/ogg") {
   };
 }
 
-export async function transcribeAudioWithOpenAi(apiKey: string, audio: AudioFile): Promise<TranscriptionResult> {
+async function callTranscriptionModel(apiKey: string, audio: AudioFile, model: string): Promise<TranscriptionResult> {
   const formData = new FormData();
-  formData.append("model", "gpt-4o-mini-transcribe");
+  formData.append("model", model);
   formData.append("language", "pt");
   formData.append("response_format", "json");
   formData.append("file", new Blob([audio.bytes], { type: audio.mimeType }), audio.fileName);
@@ -48,10 +59,22 @@ export async function transcribeAudioWithOpenAi(apiKey: string, audio: AudioFile
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenAI não transcreveu o áudio: ${errorText}`);
+    const payload = await response.json().catch(() => null);
+    const code = String(payload?.error?.code ?? payload?.error?.type ?? "request_failed").slice(0, 80);
+    throw new TranscriptionRequestError(response.status, code);
   }
 
   const data = await response.json();
   return { text: String(data.text ?? "").trim() };
+}
+
+export async function transcribeAudioWithOpenAi(apiKey: string, audio: AudioFile): Promise<TranscriptionResult> {
+  try {
+    return await callTranscriptionModel(apiKey, audio, "gpt-4o-mini-transcribe");
+  } catch (error) {
+    if (error instanceof TranscriptionRequestError && [400, 404].includes(error.status)) {
+      return await callTranscriptionModel(apiKey, audio, "whisper-1");
+    }
+    throw error;
+  }
 }
