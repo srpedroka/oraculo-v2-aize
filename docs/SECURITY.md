@@ -79,7 +79,9 @@ Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usand
 
 Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chamada de IA. Isso facilita diagnostico quando a IA falha: se houver mensagem `user` sem resposta `oracle`, investigar logs da Edge Function, provider/modelo, chave de IA e envio pela Evolution.
 
-Áudios recebidos pelo WhatsApp sao processados pela Edge Function: o arquivo e baixado da Evolution quando possivel, transcrito pela OpenAI e salvo no historico apenas como texto transcrito. O áudio bruto nao deve ser salvo no banco nem versionado no repositorio.
+Áudios recebidos pelo WhatsApp sao processados pela Edge Function: o arquivo e baixado da Evolution quando possivel, descriptografado em memoria quando vier como mídia criptografada do WhatsApp, transcrito pela OpenAI e salvo no historico apenas como texto transcrito. O áudio bruto, a mídia criptografada, URLs temporarias e `mediaKey` nao devem ser salvos no banco, impressos em logs, enviados ao frontend ou versionados no repositorio.
+
+Quando a transcrição falhar, o sistema pode exibir um codigo tecnico seguro com etapa, status HTTP, tipo de arquivo, tamanho e assinatura curta dos primeiros bytes. Esse codigo existe para diagnostico sem abrir logs brutos de producao. Ele nao deve incluir conteudo da fala, chave da Evolution, chave OpenAI, segredo de webhook, URL temporaria completa ou payload completo.
 
 ## RLS
 

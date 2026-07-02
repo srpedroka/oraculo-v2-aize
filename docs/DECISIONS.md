@@ -74,6 +74,18 @@ Motivo: diagnostico operacional fica claro: mensagem `user` sem mensagem `oracle
 
 Consequencias: o runbook deve orientar a comparar `chat_messages` e `ai_usage_logs` quando o WhatsApp nao responder.
 
+## 2026-07-02 - Áudio do WhatsApp descriptografado no webhook
+
+Decisao: descriptografar mídia de áudio do WhatsApp dentro do `whatsapp-webhook` quando o Evo Go entregar bytes criptografados em vez de áudio pronto.
+
+Contexto: em teste real, o áudio chegava ao webhook, mas a OpenAI recusava a transcrição com `invalid_request_error`. O codigo tecnico mostrava `application/octet-stream` e assinatura inicial `62f2c82b...`, nao `OggS`, indicando que o arquivo baixado era mídia criptografada do WhatsApp.
+
+Alternativas: exigir que a Evolution devolvesse base64 ja descriptografado, salvar o arquivo para analise manual, consultar logs brutos, ou pedir ao usuario sempre mandar texto.
+
+Motivo: descriptografar em memoria com `mediaKey` evita salvar áudio bruto, reduz dependencia de logs privados e permite que a experiência por WhatsApp aceite áudio de forma natural.
+
+Consequencias: o webhook precisa manter a logica de download da mídia, normalizacao de MIME, descriptografia por HKDF/SHA-256 com info `WhatsApp Audio Keys`, AES-CBC e fallback de transcrição OpenAI. Diagnosticos devem continuar seguros e sem conteudo do áudio.
+
 ## 2026-07-02 - Guias do Oraculo empacotados em codigo
 
 Decisao: usar `supabase/functions/_shared/prompt-guides.ts` como fonte empacotada dos guias e do tom do Oraculo nas Edge Functions.

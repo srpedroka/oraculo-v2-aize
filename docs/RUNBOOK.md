@@ -159,18 +159,48 @@ Diagnostico rapido:
 Fluxo esperado:
 
 1. Evolution envia mensagem com `audioMessage` para `whatsapp-webhook`.
-2. O webhook tenta obter o arquivo por base64 no payload, URL direta ou endpoint de mídia da Evolution.
-3. O áudio e enviado para OpenAI `gpt-4o-mini-transcribe`.
-4. O texto final e salvo em `chat_messages` como `[Áudio transcrito] ...`.
-5. O texto transcrito entra no mesmo fluxo de resposta do Oraculo.
+2. O webhook tenta obter o arquivo por base64 no payload, URL direta ou endpoint de mídia da Evolution/Evo Go.
+3. Se a mídia vier criptografada pelo WhatsApp, o webhook usa a `mediaKey` do `audioMessage` para descriptografar.
+4. O arquivo e normalizado para um MIME real de áudio, por exemplo `audio/ogg`, `audio/mpeg`, `audio/mp4`, `audio/wav` ou `audio/webm`.
+5. O áudio e enviado para OpenAI `gpt-4o-mini-transcribe`; se o modelo recusar por formato/modelo, tenta `whisper-1` como fallback.
+6. O texto final e salvo em `chat_messages` como `[Áudio transcrito] ...`.
+7. O texto transcrito entra no mesmo fluxo de resposta do Oraculo.
+
+Historico da correcao de 2026-07-02:
+
+- Sintoma inicial: o usuario recebia "Recebi seu áudio, mas ainda não consegui transcrever por aqui".
+- Primeiro diagnostico: o áudio chegava no webhook, mas a mídia nao era baixada da Evolution.
+- Ajuste feito: o webhook passou a tentar a rota real do Evo Go `/message/downloadimage` e a aceitar retorno como JSON, base64, URL ou binario.
+- Segundo diagnostico: a OpenAI recusava o arquivo com `invalid_request_error`.
+- Codigo tecnico observado: `file:application/octet-stream>audio/ogg:...`.
+- Ajuste feito: o arquivo baixado passou a ser normalizado por assinatura de bytes, pois o Evo pode devolver `application/octet-stream`.
+- Terceiro diagnostico: a assinatura vinha como `62f2c82b...`, nao como `OggS`. Isso indicava mídia criptografada do WhatsApp, nao áudio pronto.
+- Ajuste final: o webhook passou a descriptografar mídia de áudio usando HKDF/SHA-256 com info `WhatsApp Audio Keys`, AES-CBC, `mediaKey` do payload e remoção do MAC final de 10 bytes. Depois disso, o arquivo descriptografado segue para a OpenAI.
+
+Codigos tecnicos de falha:
+
+- `no-audio-info`: o payload nao foi reconhecido como áudio.
+- `url:<status>`: a URL direta de mídia nao baixou.
+- `/message/downloadimage:<status>:<content-type>`: a rota do Evo Go nao retornou mídia.
+- `json:<shape>` ou `binary-json:<shape>`: o Evo retornou JSON sem campo reconhecido de arquivo, base64 ou URL.
+- `binary-base64`: o webhook detectou base64 disfarçado de binario e tentou decodificar.
+- `decrypt:no-media-key`: a mídia parecia criptografada, mas o payload nao trouxe `mediaKey`.
+- `decrypt:error:<tipo>`: falha ao descriptografar a mídia do WhatsApp.
+- `decrypt:ok:<ascii>:<hex>`: descriptografia funcionou; o começo esperado para OGG e `OggS` / `4f676753`.
+- `file:<tipo_original>><tipo_normalizado>:<bytes>:sig:<ascii>:<hex>`: mostra o tipo antes/depois da normalizacao e a assinatura curta do arquivo. Nao contem conteúdo do áudio.
+- `openai:<status>:<code>`: a OpenAI recusou a transcrição.
+- `transcription-error`: falha final na etapa de transcrição.
 
 Verifique:
 
 - se a mensagem aparece como `[Áudio transcrito]` em `chat_messages`;
 - se existe chave OpenAI ativa em `public.ai_model_keys`;
-- se a instancia da Evolution permite baixar mídia/base64;
-- logs da Edge Function `whatsapp-webhook` para erros de transcrição;
+- se a instancia da Evolution permite baixar mídia/base64 pela rota `/message/downloadimage`;
+- se o payload de áudio traz `mediaKey`, `mimetype` e dados de mídia suficientes;
+- se o codigo tecnico mostra `decrypt:ok` antes da chamada OpenAI;
 - se a pessoa consegue reenviar o áudio ou mandar em texto quando aparecer a resposta de falha.
+
+Evite consultar logs brutos de producao quando houver alternativa. Logs crus podem conter conteudo privado de mensagens ou URLs temporarias. Prefira usar os codigos tecnicos seguros exibidos na resposta de falha.
 
 Observacao: o custo da resposta textual entra em `ai_usage_logs`. O custo específico da transcrição de áudio ainda não entra no cálculo tokenizado, porque o provedor precifica áudio por duração/modelo, não pelos mesmos campos de tokens de texto.
 
