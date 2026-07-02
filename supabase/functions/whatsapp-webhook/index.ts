@@ -2,12 +2,9 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
+import { STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
-
-async function readGuide() {
-  return await Deno.readTextFile(new URL("../_shared/oraculo-roteiro-estrategico.md", import.meta.url));
-}
 
 function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
@@ -229,7 +226,6 @@ async function buildAnswer(
   if (isOpeningMessage(message)) return openingAnswer(profile, organization);
   if (!settings?.has_key || !keyRow?.api_key) return contextualFallback(profile, organization, objectives ?? [], message);
 
-  const guide = await readGuide();
   const systemPrompt = [
     "Você é o Oráculo, a IA estratégica da empresa. Responda em português do Brasil.",
     "Você está conversando por WhatsApp: seja curto, direto e cobre evidência.",
@@ -242,7 +238,7 @@ async function buildAnswer(
     "- Se citar status, cite objetivos concretos do plano. Se pedir evidência, diga qual evidência falta.",
     "- Responda em 2 a 5 linhas no WhatsApp. Termine com uma próxima pergunta objetiva.",
     "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
-    guide,
+    STRATEGIC_GUIDE,
     "Contexto atual do plano:",
     JSON.stringify({ organization, strategicPlan, areaPlans, areas, objectives, areaId, currentContact: { profile, membership, area: currentArea } }, null, 2),
   ].join("\n\n");

@@ -2,17 +2,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOrgMember, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
+import { guideForContext } from "../_shared/prompt-guides.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
-
-async function readGuide(context: string) {
-  const fileName = context.includes("mensal")
-    ? "oraculo-roteiro-mensal.md"
-    : context.includes("trimestral") || context.includes("planos-trimestrais")
-      ? "oraculo-roteiro-trimestral.md"
-      : "oraculo-roteiro-estrategico.md";
-
-  return await Deno.readTextFile(new URL(`../_shared/${fileName}`, import.meta.url));
-}
 
 function fallbackReview(objectives: any[]) {
   const risk = objectives.filter((objective) => ["at_risk", "late"].includes(objective.status));
@@ -51,7 +42,7 @@ serve(async (req) => {
     if (!settings?.has_key || !keyRow?.api_key) {
       answer = fallbackReview(objectives ?? []);
     } else {
-      const guide = await readGuide(String(context));
+      const guide = guideForContext(String(context));
       const systemPrompt = [
         "Você é o Oráculo, a IA Estratégica da empresa. Responda em português do Brasil.",
         "Conduza o usuário com perguntas curtas, cobre evidência e mantenha a lógica de Resultado e Evolução.",
@@ -71,18 +62,23 @@ serve(async (req) => {
         { role: "user" as const, content: String(message) },
       ];
 
-      const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
-      answer = result.text;
-      await recordAiUsage({
-        client,
-        orgId,
-        provider: settings.provider as Provider,
-        model: settings.model,
-        channel: "web",
-        usage: result.usage,
-        settings,
-        metadata: { context, areaId },
-      });
+      try {
+        const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+        answer = result.text;
+        await recordAiUsage({
+          client,
+          orgId,
+          provider: settings.provider as Provider,
+          model: settings.model,
+          channel: "web",
+          usage: result.usage,
+          settings,
+          metadata: { context, areaId },
+        });
+      } catch (modelError) {
+        console.error("Erro ao chamar IA no chat web", modelError instanceof Error ? modelError.message : String(modelError));
+        answer = fallbackReview(objectives ?? []);
+      }
     }
 
     const { error } = await client.from("chat_messages").insert({
