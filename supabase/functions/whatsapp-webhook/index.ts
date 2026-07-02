@@ -194,7 +194,15 @@ function contextualFallback(profile: any, organization: any, objectives: any[], 
   return `${greeting} O plano não tem ponto crítico aparente agora. Você quer revisar Resultado, Evolução, planos trimestrais ou registrar uma evidência?`;
 }
 
-async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: string, areaId: string | null, message: string, profile: any, membership: any) {
+async function buildAnswer(
+  client: ReturnType<typeof serviceClient>,
+  orgId: string,
+  areaId: string | null,
+  message: string,
+  profile: any,
+  membership: any,
+  currentMessageId: string | null,
+) {
   const [
     { data: settings },
     { data: keyRow },
@@ -213,7 +221,7 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
       client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
       client.from("area_plans").select("*").eq("org_id", orgId),
-      client.from("chat_messages").select("author, text").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
+      client.from("chat_messages").select("id, author, text").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
     ]);
 
   const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
@@ -241,6 +249,7 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
 
   const modelMessages = [
     ...(history ?? [])
+      .filter((item: { id?: string }) => item.id !== currentMessageId)
       .reverse()
       .map((item: { author: "oracle" | "user"; text: string }) => ({
         role: item.author === "oracle" ? "assistant" as const : "user" as const,
@@ -263,6 +272,7 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
     });
     return result.text;
   } catch (_error) {
+    console.error("Erro ao chamar IA no WhatsApp", _error instanceof Error ? _error.message : String(_error));
     return contextualFallback(profile, organization, objectives ?? [], message);
   }
 }
@@ -323,15 +333,16 @@ serve(async (req) => {
     const { data: area } = await client.from("areas").select("id").eq("org_id", orgId).eq("coordinator_id", membership.id).maybeSingle();
     const areaId = area?.id ?? null;
 
-    const answer = await buildAnswer(client, orgId, areaId, text, profile, membership);
-
-    await client.from("chat_messages").insert({
+    const { data: savedUserMessage, error: userMessageError } = await client.from("chat_messages").insert({
       org_id: orgId,
       area_id: areaId,
       author: "user",
       text,
       channel: "whatsapp",
-    });
+    }).select("id").single();
+    if (userMessageError) throw userMessageError;
+
+    const answer = await buildAnswer(client, orgId, areaId, text, profile, membership, savedUserMessage?.id ?? null);
 
     await client.from("chat_messages").insert({
       org_id: orgId,

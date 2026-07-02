@@ -21,10 +21,35 @@ function emptyUsage(): ModelUsage {
 }
 
 function normalizeOpenAiUsage(usage: any): ModelUsage {
-  const promptTokens = Number(usage?.prompt_tokens ?? 0);
-  const completionTokens = Number(usage?.completion_tokens ?? 0);
+  const promptTokens = Number(usage?.prompt_tokens ?? usage?.input_tokens ?? 0);
+  const completionTokens = Number(usage?.completion_tokens ?? usage?.output_tokens ?? 0);
   const totalTokens = Number(usage?.total_tokens ?? promptTokens + completionTokens);
   return { promptTokens, completionTokens, totalTokens };
+}
+
+function responseText(data: any) {
+  if (typeof data?.output_text === "string" && data.output_text.trim()) return data.output_text.trim();
+
+  const parts = Array.isArray(data?.output) ? data.output : [];
+  const text = parts
+    .flatMap((item: any) => item?.content ?? [])
+    .map((content: any) => content?.text ?? content?.value ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+  return text || "Não consegui gerar uma resposta agora.";
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("Tempo limite da IA atingido"), timeoutMs);
+
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function callModel(
@@ -36,22 +61,45 @@ export async function callModel(
 ): Promise<ModelCallResult> {
   if (provider === "openai" || provider === "moonshot") {
     const baseUrl = provider === "moonshot" ? "https://api.moonshot.ai/v1" : "https://api.openai.com/v1";
-    const body: Record<string, unknown> = {
-      model,
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-    };
 
     if (provider === "openai") {
-      body.temperature = 0.4;
+      const response = await fetchWithTimeout(`${baseUrl}/responses`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          instructions: systemPrompt,
+          input: messages,
+          max_output_tokens: 700,
+          store: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI não respondeu corretamente: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return {
+        text: responseText(data),
+        usage: normalizeOpenAiUsage(data.usage),
+      };
     }
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetchWithTimeout(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
+      }),
     });
 
     if (!response.ok) {
@@ -67,7 +115,7 @@ export async function callModel(
   }
 
   if (provider === "anthropic") {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
