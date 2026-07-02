@@ -2,18 +2,18 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOrgMember, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
-import { guideForContext } from "../_shared/prompt-guides.ts";
+import { CONVERSATION_STYLE, guideForContext } from "../_shared/prompt-guides.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 
 function fallbackReview(objectives: any[]) {
   const risk = objectives.filter((objective) => ["at_risk", "late"].includes(objective.status));
   if (!objectives.length) {
-    return "Vamos começar pelo Plano Estratégico. Primeiro defina um resultado observável, um prazo e quem responde por ele.";
+    return "Ainda não encontrei um plano estruturado por aqui. Quer começar pelo Plano Estratégico ou por um plano trimestral?";
   }
   if (risk.length) {
-    return `Eu olharia primeiro para ${risk[0].title}. Qual evidência prova que isso avançou desde a última revisão?`;
+    return `Tem um ponto que merece atenção: ${risk[0].title}. Quer que eu abra esse assunto com calma ou prefere um resumo geral?`;
   }
-  return "O plano está sem pontos críticos aparentes. Agora registre evidências para manter Resultado e Evolução rastreáveis.";
+  return "No geral, não vejo ponto crítico agora. Quer um resumo rápido ou quer olhar uma área específica?";
 }
 
 serve(async (req) => {
@@ -45,8 +45,10 @@ serve(async (req) => {
       const guide = guideForContext(String(context));
       const systemPrompt = [
         "Você é o Oráculo, a IA Estratégica da empresa. Responda em português do Brasil.",
-        "Conduza o usuário com perguntas curtas, cobre evidência e mantenha a lógica de Resultado e Evolução.",
+        "Conduza o usuário com perguntas curtas e mantenha a lógica de Resultado e Evolução sem soar mecânico.",
+        "Se a pergunta for ambígua, peça esclarecimento antes de analisar dados.",
         "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
+        CONVERSATION_STYLE,
         guide,
         "Contexto atual do plano:",
         JSON.stringify({ strategicPlan, areaPlans, areas, objectives, areaId }, null, 2),

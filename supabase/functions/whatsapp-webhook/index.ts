@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
-import { STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
+import { CONVERSATION_STYLE, STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 
@@ -170,9 +170,15 @@ function contextualFallback(profile: any, organization: any, objectives: any[], 
   const stats = objectiveStats(objectives);
   const risk = objectives.filter((objective) => ["late", "at_risk"].includes(objective.status));
   const firstRisk = risk.sort((a, b) => (a.status === "late" ? -1 : 1) - (b.status === "late" ? -1 : 1))[0];
+  const asksSystemOperation = /(sistema|oraculo|whatsapp|zap|app|software|plataforma|funcionando|rodando)/.test(normalized);
+  const asksPlanStatus = /(plano|objetivo|meta|resultado|evolucao|estrateg|trimestral|mensal|indicador|empresa|negocio|gaam)/.test(normalized);
 
   if (!objectives.length) {
     return `${greeting} Ainda não encontrei objetivos no Oráculo da ${organization?.name ?? "empresa"}. Quer começar pelo Plano Estratégico anual ou por um plano trimestral?`;
+  }
+
+  if (asksSystemOperation && !asksPlanStatus) {
+    return `${greeting} Por aqui eu recebi sua mensagem. Você quer saber se o Oráculo/WhatsApp está funcionando ou quer um resumo dos planos da empresa?`;
   }
 
   if (/(evidencia|prova|comprov|registr)/.test(normalized)) {
@@ -234,10 +240,12 @@ async function buildAnswer(
     `- Área vinculada ao contato: ${currentArea?.name ?? "sem área específica"}.`,
     `- Horário local do atendimento: ${localTimestamp()}.`,
     "- Se a mensagem for apenas saudação, teste ou abertura sem pedido claro, cumprimente pelo horário, chame pelo primeiro nome e pergunte o que a pessoa deseja. Não faça análise do plano nesse caso.",
+    "- Se a pessoa perguntar 'como está o sistema?', 'está funcionando?' ou algo parecido, trate como pergunta ambígua sobre o software/WhatsApp. Responda que recebeu a mensagem e pergunte se ela quer falar do funcionamento do Oráculo ou do status dos planos.",
     "- Se a mensagem trouxer pedido, evidência, dúvida ou contexto, use exatamente o que foi dito e o histórico para conduzir a resposta. Não pare só na saudação.",
-    "- Se citar status, cite objetivos concretos do plano. Se pedir evidência, diga qual evidência falta.",
-    "- Responda em 2 a 5 linhas no WhatsApp. Termine com uma próxima pergunta objetiva.",
+    "- Se citar claramente status do plano, objetivos, metas ou indicadores, cite objetivos concretos do plano. Se pedir evidência, diga qual evidência falta.",
+    "- Responda em 1 a 3 frases curtas no WhatsApp. Termine com uma pergunta só quando ela ajudar a conversa.",
     "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
+    CONVERSATION_STYLE,
     STRATEGIC_GUIDE,
     "Contexto atual do plano:",
     JSON.stringify({ organization, strategicPlan, areaPlans, areas, objectives, areaId, currentContact: { profile, membership, area: currentArea } }, null, 2),
