@@ -83,6 +83,8 @@ Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chama
 
 Quando a transcrição falhar, o sistema pode exibir um codigo tecnico seguro com etapa, status HTTP, tipo de arquivo, tamanho e assinatura curta dos primeiros bytes. Esse codigo existe para diagnostico sem abrir logs brutos de producao. Ele nao deve incluir conteudo da fala, chave da Evolution, chave OpenAI, segredo de webhook, URL temporaria completa ou payload completo.
 
+Arquivos enviados pelo WhatsApp sao processados em memoria para extração de texto e classificação do plano correto. O arquivo bruto nao deve ser salvo no banco, versionado no repositorio nem enviado ao frontend. O historico pode guardar um resumo curto do arquivo e parte limitada do texto extraido para rastreabilidade da conversa; documentos sensiveis devem ser tratados como dados privados da empresa.
+
 ## RLS
 
 Todas as tabelas publicas com dados do produto tem RLS habilitado.

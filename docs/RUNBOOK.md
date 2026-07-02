@@ -204,6 +204,31 @@ Evite consultar logs brutos de producao quando houver alternativa. Logs crus pod
 
 Observacao: o custo da resposta textual entra em `ai_usage_logs`. O custo específico da transcrição de áudio ainda não entra no cálculo tokenizado, porque o provedor precifica áudio por duração/modelo, não pelos mesmos campos de tokens de texto.
 
+## Problema: arquivo enviado pelo WhatsApp nao direciona o plano
+
+Fluxo esperado:
+
+1. Evolution envia uma mensagem com `documentMessage` para `whatsapp-webhook`.
+2. O webhook baixa o arquivo por base64, URL direta ou rota `/message/downloadimage`.
+3. Se o arquivo vier como mídia criptografada do WhatsApp, o webhook descriptografa em memoria com `mediaKey` e info `WhatsApp Document Keys`.
+4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel.
+5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown`.
+6. O Oraculo responde no WhatsApp dizendo para qual tela/plano o arquivo pertence e faz uma pergunta de confirmação.
+
+Limite atual:
+
+- O WhatsApp ainda nao sobrescreve nem cria planos estruturados automaticamente a partir do arquivo.
+- A importacao automática com salvamento estruturado deve ser feita em uma etapa posterior, com confirmação explícita do usuario e validação dos campos do plano.
+- PDF escaneado ou PDF muito comprimido pode nao ter texto extraível; nesse caso, orientar a enviar uma versao com texto selecionavel ou importar pela tela do Plano Estratégico.
+
+Verifique:
+
+- se a mensagem aparece em `chat_messages` como `[Arquivo recebido]`;
+- se a resposta informa `Plano Estratégico`, `Planos Trimestrais`, `Plano Mensal` ou `Evidência`;
+- se existe registro em `ai_usage_logs` com `metadata.action = document_classification`;
+- se o arquivo tem extensao e MIME compatíveis: PDF, PPTX, DOCX ou TXT;
+- se a rota `/message/downloadimage` da Evo continua baixando documentos.
+
 Consultas uteis no Supabase SQL editor:
 
 ```sql

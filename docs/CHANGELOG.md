@@ -19,6 +19,7 @@
 - Adicionado suporte inicial a áudio no WhatsApp: o webhook detecta áudio, tenta baixar a mídia pela Evolution, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA.
 - Corrigido suporte a áudio para Evo Go: o webhook passou a tentar a rota `/message/downloadimage`, aceitar retorno binário além de base64 e testar mais formatos de corpo antes de desistir da transcrição.
 - Finalizada a correção de áudio no WhatsApp: normalizacao de MIME, fallback de transcrição OpenAI, diagnosticos seguros e descriptografia em memoria de mídia criptografada do WhatsApp com `mediaKey`.
+- Adicionado recebimento de arquivos pelo WhatsApp: PDF, PPTX, DOCX e TXT sao baixados da Evo, descriptografados quando necessario, têm texto extraido e sao classificados por IA para direcionar para Plano Estratégico, Planos Trimestrais, Plano Mensal ou Evidência.
 
 ## 2026-06-30
 

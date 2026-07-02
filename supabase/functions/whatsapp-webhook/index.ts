@@ -152,6 +152,65 @@ function extractAudioInfo(payload: any) {
   return audioMessage || base64 || url ? { audioMessage, base64, url, mimeType, messageId, key: messageKey, rawMessage: message, rawData: data } : null;
 }
 
+function extractDocumentInfo(payload: any) {
+  const { data, message, info, key } = messageParts(payload);
+  const documentMessage =
+    message?.documentMessage ??
+    message?.DocumentMessage ??
+    data?.documentMessage ??
+    data?.DocumentMessage ??
+    payload?.documentMessage ??
+    payload?.DocumentMessage ??
+    null;
+
+  const base64 = firstText(
+    documentMessage?.base64,
+    documentMessage?.Base64,
+    documentMessage?.media,
+    documentMessage?.Media,
+    data?.base64,
+    data?.Base64,
+    data?.media,
+    data?.Media,
+    payload?.base64,
+    payload?.Base64,
+  );
+
+  const url = firstText(
+    documentMessage?.url,
+    documentMessage?.URL,
+    documentMessage?.mediaUrl,
+    documentMessage?.MediaUrl,
+    documentMessage?.media_url,
+    data?.mediaUrl,
+    data?.MediaUrl,
+    payload?.mediaUrl,
+    payload?.MediaUrl,
+  );
+
+  const mimeType =
+    firstText(documentMessage?.mimetype, documentMessage?.mimeType, documentMessage?.MimeType, data?.mimetype, payload?.mimetype) ||
+    "application/octet-stream";
+  const fileName =
+    firstText(
+      documentMessage?.fileName,
+      documentMessage?.filename,
+      documentMessage?.FileName,
+      documentMessage?.title,
+      documentMessage?.Title,
+      data?.fileName,
+      data?.filename,
+      payload?.fileName,
+      payload?.filename,
+    ) || `arquivo-${Date.now()}`;
+  const messageId = firstText(info?.ID, info?.Id, info?.id, key?.id, key?.Id, key?.ID, data?.messageId, payload?.messageId);
+  const messageKey = buildEvolutionMessageKey(data, info, key, messageId);
+
+  return documentMessage || base64 || url
+    ? { documentMessage, base64, url, mimeType, fileName, messageId, key: messageKey, rawMessage: message, rawData: data }
+    : null;
+}
+
 function extractRemote(payload: any) {
   const data = payload?.Data ?? payload?.data ?? payload;
   const info = data?.Info ?? data?.info ?? payload?.Info ?? payload?.info;
@@ -191,6 +250,16 @@ function audioFileFromBase64(base64: string, mimeType: string) {
   }
 }
 
+function mediaFileFromBase64(base64: string, mimeType: string, fileName: string) {
+  const clean = base64.includes(",") ? base64.split(",").pop() ?? "" : base64;
+  const binary = atob(clean.replace(/\s/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return { bytes, mimeType, fileName };
+}
+
 async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, diagnostics?: string[]): Promise<AudioFile | null> {
   if (!url.startsWith("http")) return null;
   const response = await fetch(url, {
@@ -207,6 +276,23 @@ async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, 
     bytes,
     mimeType: contentType || mimeType,
     fileName: contentType.includes("mpeg") ? "whatsapp-audio.mp3" : "whatsapp-audio.ogg",
+  };
+}
+
+async function downloadMediaFromUrl(url: string, keyRow: any, mimeType: string, fileName: string, diagnostics?: string[]): Promise<AudioFile | null> {
+  if (!url.startsWith("http")) return null;
+  const response = await fetch(url, {
+    headers: keyRow?.api_key ? { apikey: keyRow.api_key } : undefined,
+  }).catch(() => null);
+  if (!response?.ok) {
+    diagnostics?.push(`doc-url:${response?.status ?? "no-response"}`);
+    return null;
+  }
+
+  return {
+    bytes: new Uint8Array(await response.arrayBuffer()),
+    mimeType: response.headers.get("content-type") ?? mimeType,
+    fileName,
   };
 }
 
@@ -281,6 +367,31 @@ function asciiSignature(bytes: Uint8Array) {
     .join("");
 }
 
+function fileExtension(fileName: string) {
+  return fileName.toLowerCase().match(/\.[^.]+$/)?.[0] ?? "";
+}
+
+function looksLikeZip(bytes: Uint8Array) {
+  return bytes[0] === 0x50 && bytes[1] === 0x4b;
+}
+
+function looksLikePdf(bytes: Uint8Array) {
+  return asciiSignature(bytes).startsWith("%PDF");
+}
+
+function looksLikeDocumentBytes(bytes: Uint8Array, fileName: string, mimeType: string) {
+  const extension = fileExtension(fileName);
+  return (
+    looksLikePdf(bytes) ||
+    looksLikeZip(bytes) ||
+    extension === ".txt" ||
+    mimeType.includes("text/") ||
+    mimeType.includes("pdf") ||
+    mimeType.includes("presentation") ||
+    mimeType.includes("wordprocessing")
+  );
+}
+
 function base64ToBytes(value: string) {
   const clean = value
     .replace(/^data:[^,]+,/, "")
@@ -311,7 +422,7 @@ function looksLikeAudioBytes(bytes: Uint8Array) {
   );
 }
 
-async function decryptWhatsAppAudio(bytes: Uint8Array, mediaKey: string) {
+async function decryptWhatsAppMedia(bytes: Uint8Array, mediaKey: string, info: string) {
   const mediaKeyBytes = base64ToBytes(mediaKey);
   const salt = new Uint8Array(32);
   const baseKey = await crypto.subtle.importKey("raw", mediaKeyBytes, "HKDF", false, ["deriveBits"]);
@@ -320,7 +431,7 @@ async function decryptWhatsAppAudio(bytes: Uint8Array, mediaKey: string) {
       name: "HKDF",
       hash: "SHA-256",
       salt,
-      info: new TextEncoder().encode("WhatsApp Audio Keys"),
+      info: new TextEncoder().encode(info),
     },
     baseKey,
     112 * 8,
@@ -337,6 +448,14 @@ async function decryptWhatsAppAudio(bytes: Uint8Array, mediaKey: string) {
     return decrypted.slice(0, -padding);
   }
   return decrypted;
+}
+
+async function decryptWhatsAppAudio(bytes: Uint8Array, mediaKey: string) {
+  return await decryptWhatsAppMedia(bytes, mediaKey, "WhatsApp Audio Keys");
+}
+
+async function decryptWhatsAppDocument(bytes: Uint8Array, mediaKey: string) {
+  return await decryptWhatsAppMedia(bytes, mediaKey, "WhatsApp Document Keys");
 }
 
 async function maybeDecryptWhatsAppAudio(file: AudioFile, audioInfo: NonNullable<ReturnType<typeof extractAudioInfo>>, diagnostics: string[]) {
@@ -358,6 +477,24 @@ async function maybeDecryptWhatsAppAudio(file: AudioFile, audioInfo: NonNullable
     };
   } catch (error) {
     diagnostics.push(`decrypt:error:${error instanceof Error ? error.name : "unknown"}`);
+    return file;
+  }
+}
+
+async function maybeDecryptWhatsAppDocument(file: AudioFile, documentInfo: NonNullable<ReturnType<typeof extractDocumentInfo>>, diagnostics: string[]) {
+  const mediaKey = firstText(documentInfo.documentMessage?.mediaKey, documentInfo.documentMessage?.MediaKey);
+  if (!mediaKey || looksLikeDocumentBytes(file.bytes, file.fileName, file.mimeType)) return file;
+
+  try {
+    const decryptedBytes = await decryptWhatsAppDocument(file.bytes, mediaKey);
+    diagnostics.push(`doc-decrypt:ok:${asciiSignature(decryptedBytes)}:${byteSignature(decryptedBytes)}`);
+    return {
+      bytes: decryptedBytes,
+      mimeType: documentInfo.mimeType,
+      fileName: documentInfo.fileName,
+    };
+  } catch (error) {
+    diagnostics.push(`doc-decrypt:error:${error instanceof Error ? error.name : "unknown"}`);
     return file;
   }
 }
@@ -420,6 +557,131 @@ async function audioFileFromMediaResponse(response: Response, mimeType: string, 
     mimeType: contentType || mimeType,
     fileName: contentType.includes("mpeg") ? "whatsapp-audio.mp3" : "whatsapp-audio.ogg",
   };
+}
+
+async function mediaFileFromMediaResponse(
+  response: Response,
+  mimeType: string,
+  fileName: string,
+  keyRow: any,
+  diagnostics?: string[],
+): Promise<AudioFile | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json") || contentType.includes("text/")) {
+    const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : null;
+    const base64 = extractBase64FromMediaResponse(payload);
+    if (base64) return mediaFileFromBase64(base64, mimeType, fileName);
+
+    const mediaUrl = extractUrlFromMediaResponse(payload);
+    if (mediaUrl) return await downloadMediaFromUrl(mediaUrl, keyRow, mimeType, fileName, diagnostics);
+
+    const text = payload ? "" : await response.text().catch(() => "");
+    if (looksLikeBase64(text)) return mediaFileFromBase64(text, mimeType, fileName);
+
+    diagnostics?.push(`doc-json:${jsonShape(payload)}`);
+    return null;
+  }
+
+  return {
+    bytes: new Uint8Array(await response.arrayBuffer()),
+    mimeType: contentType || mimeType,
+    fileName,
+  };
+}
+
+function normalizeImportedText(text: string) {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function ensureImportedText(text: string, message: string) {
+  const normalized = normalizeImportedText(text);
+  if (!normalized || normalized.length < 20) throw new Error(message);
+  return normalized;
+}
+
+function decodeXmlText(text: string) {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+async function extractPptxTextFromBytes(bytes: Uint8Array) {
+  // @ts-ignore Remote import is resolved by Supabase Edge/Deno at deploy/runtime.
+  const { default: JSZip } = await import("https://esm.sh/jszip@3.10.1");
+  const zip = await JSZip.loadAsync(bytes);
+  const slidePaths = Object.keys(zip.files)
+    .filter((path) => /^ppt\/slides\/slide\d+\.xml$/i.test(path))
+    .sort((a, b) => Number(a.match(/slide(\d+)\.xml/i)?.[1] ?? 0) - Number(b.match(/slide(\d+)\.xml/i)?.[1] ?? 0));
+  const slides: string[] = [];
+
+  for (const path of slidePaths) {
+    const entry = zip.file(path);
+    if (!entry) continue;
+    const xml = await entry.async("text");
+    const matches = Array.from(xml.matchAll(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g)).map((match) => decodeXmlText(match[1]).trim()).filter(Boolean);
+    if (matches.length) slides.push(matches.join("\n"));
+  }
+
+  return ensureImportedText(slides.join("\n\n"), "Não encontrei texto editável no PPTX.");
+}
+
+async function extractDocxTextFromBytes(bytes: Uint8Array) {
+  // @ts-ignore Remote import is resolved by Supabase Edge/Deno at deploy/runtime.
+  const { default: JSZip } = await import("https://esm.sh/jszip@3.10.1");
+  const zip = await JSZip.loadAsync(bytes);
+  const documentXml = await zip.file("word/document.xml")?.async("text");
+  if (!documentXml) throw new Error("Não encontrei o conteúdo principal do DOCX.");
+
+  const paragraphs = Array.from(documentXml.matchAll(/<w:p[\s\S]*?<\/w:p>/g)).map((paragraph) => {
+    return Array.from(paragraph[0].matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g))
+      .map((match) => decodeXmlText(match[1]))
+      .join("");
+  });
+
+  return ensureImportedText(paragraphs.join("\n"), "Não encontrei texto editável no DOCX.");
+}
+
+function extractPdfTextFromBytes(bytes: Uint8Array) {
+  const raw = new TextDecoder("latin1").decode(bytes);
+  const pieces: string[] = [];
+  const literalMatches = raw.matchAll(/\(([^()]|\\[()\\nrtbf]){1,500}\)\s*Tj/g);
+  for (const match of literalMatches) {
+    const text = match[0].replace(/\)\s*Tj$/, "").slice(1);
+    pieces.push(text.replace(/\\n/g, "\n").replace(/\\r/g, "\n").replace(/\\t/g, " ").replace(/\\([()\\])/g, "$1"));
+  }
+  const arrayMatches = raw.matchAll(/\[([\s\S]{1,4000}?)\]\s*TJ/g);
+  for (const match of arrayMatches) {
+    const text = Array.from(match[1].matchAll(/\(([^()]|\\[()\\nrtbf]){1,500}\)/g))
+      .map((item) => item[0].slice(1, -1))
+      .join("");
+    if (text) pieces.push(text);
+  }
+
+  return ensureImportedText(
+    pieces.join("\n"),
+    "O PDF parece escaneado ou comprimido de um jeito que o WhatsApp ainda não extrai. Envie um PDF com texto selecionável ou use a importação pela tela do Plano Estratégico.",
+  );
+}
+
+async function extractDocumentText(file: AudioFile) {
+  const extension = fileExtension(file.fileName);
+  if (extension === ".txt" || file.mimeType.includes("text/")) {
+    return ensureImportedText(new TextDecoder().decode(file.bytes), "O TXT está vazio.");
+  }
+  if (extension === ".pptx" || file.mimeType.includes("presentation")) return await extractPptxTextFromBytes(file.bytes);
+  if (extension === ".docx" || file.mimeType.includes("wordprocessing")) return await extractDocxTextFromBytes(file.bytes);
+  if (extension === ".pdf" || file.mimeType.includes("pdf") || looksLikePdf(file.bytes)) return extractPdfTextFromBytes(file.bytes);
+  throw new Error("Formato não suportado pelo WhatsApp. Envie PDF, PPTX, DOCX ou TXT.");
 }
 
 async function downloadAudioFromEvolution(
@@ -538,6 +800,69 @@ async function downloadAudioFromEvolution(
   return null;
 }
 
+async function downloadDocumentFromEvolution(
+  settings: any,
+  keyRow: any,
+  documentInfo: NonNullable<ReturnType<typeof extractDocumentInfo>>,
+  diagnostics: string[],
+) {
+  const baseUrl = String(settings?.instance_url ?? "").replace(/\/+$/, "");
+  const instanceName = String(settings?.instance_name ?? "").trim();
+  if (!baseUrl || !instanceName || !keyRow?.api_key) return null;
+
+  const endpoints = [
+    `${baseUrl}/message/downloadimage`,
+    `${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
+    `${baseUrl}/message/getBase64FromMediaMessage/${instanceName}`,
+    `${baseUrl}/chat/getBase64FromMediaMessage`,
+  ];
+
+  const bodies = [
+    { message: documentInfo.rawMessage },
+    { instance: instanceName, message: documentInfo.rawData, messageId: documentInfo.messageId || documentInfo.key.id, key: documentInfo.key },
+    { message: { key: documentInfo.key, message: documentInfo.rawMessage } },
+    { message: { key: documentInfo.key } },
+    { messageId: documentInfo.messageId, key: documentInfo.key },
+    { key: documentInfo.key },
+    { message: documentInfo.rawData },
+    {
+      instance: instanceName,
+      mediaKey: firstText(documentInfo.documentMessage?.mediaKey, documentInfo.documentMessage?.MediaKey),
+      directPath: firstText(documentInfo.documentMessage?.directPath, documentInfo.documentMessage?.DirectPath),
+      url: firstText(documentInfo.documentMessage?.url, documentInfo.documentMessage?.URL),
+      mimetype: documentInfo.mimeType,
+      type: "document",
+    },
+  ];
+
+  for (const endpoint of endpoints) {
+    for (const body of bodies) {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: keyRow.api_key,
+        },
+        body: JSON.stringify(body),
+      }).catch(() => null);
+
+      if (!response?.ok) {
+        if (response) {
+          await response.body?.cancel().catch(() => undefined);
+          diagnostics.push(`doc:${endpoint.replace(baseUrl, "")}:${response.status}:${response.headers.get("content-type") ?? "no-type"}`);
+        }
+        continue;
+      }
+
+      const file = await mediaFileFromMediaResponse(response, documentInfo.mimeType, documentInfo.fileName, keyRow, diagnostics);
+      if (file) return file;
+      diagnostics.push(`doc:${endpoint.replace(baseUrl, "")}:ok-no-file`);
+    }
+  }
+
+  return null;
+}
+
 async function resolveAudioFile(settings: any, keyRow: any, payload: any, diagnostics: string[]) {
   const audioInfo = extractAudioInfo(payload);
   if (!audioInfo) {
@@ -558,6 +883,22 @@ async function resolveAudioFile(settings: any, keyRow: any, payload: any, diagno
   const file = await downloadAudioFromEvolution(settings, keyRow, audioInfo, diagnostics);
   if (file) return await maybeDecryptWhatsAppAudio(file, audioInfo, diagnostics);
   return null;
+}
+
+async function resolveDocumentFile(settings: any, keyRow: any, payload: any, diagnostics: string[]) {
+  const documentInfo = extractDocumentInfo(payload);
+  if (!documentInfo) {
+    diagnostics.push("no-document-info");
+    return null;
+  }
+
+  let file: AudioFile | null = null;
+  if (documentInfo.base64) file = mediaFileFromBase64(documentInfo.base64, documentInfo.mimeType, documentInfo.fileName);
+  if (!file && documentInfo.url) file = await downloadMediaFromUrl(documentInfo.url, keyRow, documentInfo.mimeType, documentInfo.fileName, diagnostics);
+  if (!file) file = await downloadDocumentFromEvolution(settings, keyRow, documentInfo, diagnostics);
+
+  if (!file) return null;
+  return await maybeDecryptWhatsAppDocument(file, documentInfo, diagnostics);
 }
 
 async function transcribeIncomingAudio(
@@ -797,6 +1138,165 @@ async function buildAnswer(
   }
 }
 
+type DocumentTarget = "strategic" | "quarterly" | "monthly" | "evidence" | "unknown";
+
+function parseJsonObject(text: string) {
+  const trimmed = text.trim();
+  const match = trimmed.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function classifyDocumentFallback(text: string): { target: DocumentTarget; confidence: number; reason: string } {
+  const normalized = normalizeText(text);
+  if (/swot|missao|visao|valores|proposito|tema do ano|objetivos estrategicos|planejamento estrategico/.test(normalized)) {
+    return { target: "strategic", confidence: 0.72, reason: "Contém sinais de planejamento estratégico anual." };
+  }
+  if (/trimestral|q1|q2|q3|q4|trimestre|entregas do trimestre|objetivo anual da area/.test(normalized)) {
+    return { target: "quarterly", confidence: 0.68, reason: "Contém sinais de plano trimestral." };
+  }
+  if (/mensal|mes|semana|acao-chave|acoes-chave|checklist|ate dia/.test(normalized)) {
+    return { target: "monthly", confidence: 0.66, reason: "Contém sinais de plano mensal ou execução do mês." };
+  }
+  if (/evidencia|comprovante|relatorio|foto|laudo|contrato assinado|nota fiscal/.test(normalized)) {
+    return { target: "evidence", confidence: 0.62, reason: "Parece comprovação ou evidência de avanço." };
+  }
+  return { target: "unknown", confidence: 0.35, reason: "Não encontrei sinais suficientes para classificar com segurança." };
+}
+
+function targetLabel(target: DocumentTarget) {
+  const labels: Record<DocumentTarget, string> = {
+    strategic: "Plano Estratégico",
+    quarterly: "Planos Trimestrais",
+    monthly: "Plano Mensal",
+    evidence: "Evidência",
+    unknown: "classificação indefinida",
+  };
+  return labels[target];
+}
+
+function targetRoute(target: DocumentTarget) {
+  const routes: Record<DocumentTarget, string> = {
+    strategic: "/estrategico",
+    quarterly: "/planos-trimestrais",
+    monthly: "/execucao",
+    evidence: "/",
+    unknown: "/configuracoes",
+  };
+  return routes[target];
+}
+
+async function classifyImportedDocument(
+  client: ReturnType<typeof serviceClient>,
+  orgId: string,
+  areaId: string | null,
+  fileName: string,
+  extractedText: string,
+  profile: any,
+) {
+  const [{ data: settings }, { data: keyRow }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: objectives }] =
+    await Promise.all([
+      client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
+      client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
+      client.from("areas").select("id, name").eq("org_id", orgId).order("created_at"),
+      client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
+      client.from("area_plans").select("*").eq("org_id", orgId),
+      client.from("objectives").select("id, title, level, area_id, period").eq("org_id", orgId).order("created_at"),
+    ]);
+
+  if (!settings?.has_key || !keyRow?.api_key) return classifyDocumentFallback(extractedText);
+
+  const systemPrompt = [
+    "Você classifica documentos enviados por WhatsApp para o sistema Oráculo.",
+    "Responda somente JSON válido, sem markdown.",
+    "Targets possíveis: strategic, quarterly, monthly, evidence, unknown.",
+    "Use strategic para planejamento anual da empresa, SWOT, propósito, visão, temas do ano, objetivos estratégicos e projetos prioritários.",
+    "Use quarterly para plano de área/departamento, objetivos trimestrais, Q1/Q2/Q3/Q4, entregas trimestrais ou desdobramento do anual.",
+    "Use monthly para objetivos do mês, ações-chave, execução mensal, prazos dentro do mês ou check-in mensal.",
+    "Use evidence para comprovantes de avanço: laudo, contrato, relatório, foto descrita, medição, nota, resultado entregue.",
+    "Se não houver segurança, use unknown.",
+    "Formato obrigatório: {\"target\":\"strategic|quarterly|monthly|evidence|unknown\",\"confidence\":0.0,\"reason\":\"curto\",\"areaName\":\"ou null\",\"period\":\"ou null\",\"nextQuestion\":\"uma pergunta curta\"}",
+    "Contexto atual:",
+    JSON.stringify({ areas, strategicPlan, areaPlans, objectives, currentAreaId: areaId, contact: profile?.full_name ?? null }, null, 2),
+  ].join("\n\n");
+
+  const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, [
+    {
+      role: "user",
+      content: [`Arquivo: ${fileName}`, "Texto extraído:", extractedText.slice(0, 30000)].join("\n\n"),
+    },
+  ]);
+
+  await recordAiUsage({
+    client,
+    orgId,
+    provider: settings.provider as Provider,
+    model: settings.model,
+    channel: "whatsapp",
+    usage: result.usage,
+    settings,
+    metadata: { areaId, fileName, action: "document_classification" },
+  });
+
+  const parsed = parseJsonObject(result.text) as any;
+  const target = ["strategic", "quarterly", "monthly", "evidence", "unknown"].includes(parsed?.target) ? parsed.target as DocumentTarget : "unknown";
+  return {
+    target,
+    confidence: Number(parsed?.confidence ?? 0.5),
+    reason: String(parsed?.reason ?? "Classificação feita pela IA."),
+    areaName: parsed?.areaName ? String(parsed.areaName) : null,
+    period: parsed?.period ? String(parsed.period) : null,
+    nextQuestion: parsed?.nextQuestion ? String(parsed.nextQuestion) : null,
+  };
+}
+
+async function processIncomingDocument(
+  client: ReturnType<typeof serviceClient>,
+  orgId: string,
+  areaId: string | null,
+  whatsappSettings: any,
+  whatsappKeyRow: any,
+  payload: any,
+  profile: any,
+) {
+  const diagnostics: string[] = [];
+  const file = await resolveDocumentFile(whatsappSettings, whatsappKeyRow, payload, diagnostics);
+  if (!file) {
+    return {
+      userText: "[Arquivo recebido sem leitura]",
+      answer: `Recebi o arquivo, mas ainda não consegui baixar ou ler por aqui.\n\nCódigo técnico: ${diagnostics.slice(-6).join(" | ") || "sem-diagnostico"}`,
+    };
+  }
+
+  try {
+    const extractedText = await extractDocumentText(file);
+    const classification = await classifyImportedDocument(client, orgId, areaId, file.fileName, extractedText, profile);
+    const route = targetRoute(classification.target);
+    const confidence = Math.round((classification.confidence || 0) * 100);
+    const areaText = classification.areaName ? `\nDepartamento provável: ${classification.areaName}.` : "";
+    const periodText = classification.period ? `\nPeríodo provável: ${classification.period}.` : "";
+    const nextQuestion = classification.nextQuestion || "Você quer que eu use esse arquivo como base para revisar esse plano?";
+    const answer =
+      classification.target === "unknown"
+        ? `Recebi e li o arquivo "${file.fileName}", mas ainda não consegui definir se ele é estratégico, trimestral, mensal ou evidência. ${nextQuestion}`
+        : `Recebi e li o arquivo "${file.fileName}". Ele parece pertencer a: ${targetLabel(classification.target)} (${confidence}% de confiança).${areaText}${periodText}\nCaminho no Oráculo: ${route}.\n${nextQuestion}`;
+
+    return {
+      userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+      answer,
+    };
+  } catch (error) {
+    return {
+      userText: `[Arquivo recebido sem extração] ${file.fileName}`,
+      answer: `Recebi o arquivo "${file.fileName}", mas não consegui extrair texto suficiente. ${error instanceof Error ? error.message : "Tente enviar uma versão com texto selecionável."}`,
+    };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -830,8 +1330,9 @@ serve(async (req) => {
 
     const extractedText = extractText(payload);
     const hasAudio = Boolean(extractAudioInfo(payload));
+    const hasDocument = Boolean(extractDocumentInfo(payload));
     const phone = normalizePhone(extractRemote(payload));
-    if ((!extractedText && !hasAudio) || !phone) return jsonResponse({ ok: true, ignored: true });
+    if ((!extractedText && !hasAudio && !hasDocument) || !phone) return jsonResponse({ ok: true, ignored: true });
 
     const orgId = whatsappSettings.org_id as string;
     const { data: profile } = await client.from("profiles").select("id, full_name, phone").eq("phone", phone).maybeSingle();
@@ -853,6 +1354,30 @@ serve(async (req) => {
 
     const { data: area } = await client.from("areas").select("id").eq("org_id", orgId).eq("coordinator_id", membership.id).maybeSingle();
     const areaId = area?.id ?? null;
+
+    if (hasDocument) {
+      const result = await processIncomingDocument(client, orgId, areaId, whatsappSettings, whatsappKeyRow, payload, profile);
+
+      await client.from("chat_messages").insert({
+        org_id: orgId,
+        area_id: areaId,
+        author: "user",
+        text: result.userText,
+        channel: "whatsapp",
+      });
+
+      await client.from("chat_messages").insert({
+        org_id: orgId,
+        area_id: areaId,
+        author: "oracle",
+        text: result.answer,
+        channel: "whatsapp",
+      });
+
+      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, result.answer);
+      return jsonResponse({ ok: true, document: "processed" });
+    }
+
     let text = extractedText;
     let wasTranscribedAudio = false;
     const audioDiagnostics: string[] = [];
