@@ -18,6 +18,7 @@
 - Transformado o painel real do Oraculo em interface estilo WhatsApp e removida a tela estatica de previa.
 - Adicionada base do WhatsApp real com Evolution API: configuracao, segredos privados, webhook seguro e historico por canal.
 - Adicionado convite operacional por WhatsApp quando Evolution API/Evo Go estiver ativo e o convidado tiver celular cadastrado.
+- Adicionada visualizacao de senha no login e recuperacao de senha por email com tela de redefinicao.
 
 ## 2026-06-28
 

@@ -71,6 +71,26 @@ O app usa a Edge Function `invite-member`, que chama `inviteUserByEmail` no Supa
 
 Sem SMTP, o vinculo pode ser criado no banco, mas o email de convite pode nao ser entregue.
 
+## Recuperacao de senha
+
+A tela de entrada tem o link "Esqueci minha senha".
+
+Fluxo esperado:
+
+1. A pessoa informa o email.
+2. O Supabase envia o link de redefinicao para o email.
+3. O link abre `/redefinir-senha`.
+4. A pessoa informa e confirma a nova senha.
+
+Se o email nao chegar, verifique a configuracao SMTP do Supabase Auth. Sem SMTP transacional configurado, o pedido pode ser aceito pelo app, mas o email pode nao ser entregue.
+
+Troca administrativa emergencial:
+
+1. Confirme o email correto em `auth.users` e o papel em `memberships`.
+2. Altere a senha no Supabase Auth ou por consulta administrativa controlada.
+3. Nao registre a senha em arquivos, docs, Git, prints ou historico de runbook.
+4. Oriente a pessoa a entrar e trocar para uma senha propria depois.
+
 ## Problema: acesso negado em escrita
 
 Possiveis causas:

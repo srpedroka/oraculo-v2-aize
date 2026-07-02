@@ -7,6 +7,7 @@ import { Auth } from "./pages/Auth";
 import { Dashboard } from "./pages/Dashboard";
 import { Execution } from "./pages/Execution";
 import { Onboarding } from "./pages/Onboarding";
+import { PasswordRecovery } from "./pages/PasswordRecovery";
 import { QuarterlyPlans } from "./pages/QuarterlyPlans";
 import { Settings } from "./pages/Settings";
 import { Strategic } from "./pages/Strategic";
@@ -41,11 +42,19 @@ VITE_SUPABASE_ANON_KEY=sua_anon_key`}
 }
 
 function AppRoutes() {
-  const { state, session } = useAppState();
+  const { state, session, passwordRecoveryActive } = useAppState();
 
   if (!isSupabaseConfigured) return <MissingConfig />;
   if (state.loading && !session) return <LoadingScreen />;
-  if (!session) return <Auth />;
+  if (!session) {
+    return (
+      <Routes>
+        <Route path="/redefinir-senha" element={<PasswordRecovery />} />
+        <Route path="*" element={<Auth />} />
+      </Routes>
+    );
+  }
+  if (passwordRecoveryActive || window.location.pathname === "/redefinir-senha") return <PasswordRecovery />;
   if (state.loading && !state.organization) return <LoadingScreen />;
   if (!state.organization) return <Onboarding />;
 

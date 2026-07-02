@@ -66,6 +66,9 @@ interface AppContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  passwordRecoveryActive: boolean;
   updateProfile: (profile: { fullName: string; phone: string | null }) => Promise<void>;
   refresh: () => void;
 }
@@ -375,6 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ui, uiDispatch] = useReducer(uiReducer, INITIAL_UI);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(Boolean(supabase));
+  const [passwordRecoveryActive, setPasswordRecoveryActive] = useState(false);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(() => window.localStorage.getItem("oraculo.activeOrgId"));
   const queryClient = useQueryClient();
 
@@ -389,7 +393,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAuthLoading(false);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecoveryActive(true);
+        window.history.replaceState(null, "", "/redefinir-senha");
+      }
       setSession(nextSession);
       queryClient.clear();
     });
@@ -1003,6 +1011,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const resetPasswordForEmail = useCallback(async (email: string) => {
+    const client = requireClient();
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    if (error) throw error;
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const client = requireClient();
+    const { error } = await client.auth.updateUser({ password });
+    if (error) throw error;
+    setPasswordRecoveryActive(false);
+  }, []);
+
   const signOut = useCallback(async () => {
     const client = requireClient();
     await client.auth.signOut();
@@ -1036,8 +1059,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [invalidateOrg]);
 
   const value = useMemo(
-    () => ({ state, dispatch, session, signIn, signUp, signOut, updateProfile, refresh }),
-    [dispatch, refresh, session, signIn, signOut, signUp, state, updateProfile],
+    () => ({
+      state,
+      dispatch,
+      session,
+      signIn,
+      signUp,
+      signOut,
+      resetPasswordForEmail,
+      updatePassword,
+      passwordRecoveryActive,
+      updateProfile,
+      refresh,
+    }),
+    [dispatch, passwordRecoveryActive, refresh, resetPasswordForEmail, session, signIn, signOut, signUp, state, updatePassword, updateProfile],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

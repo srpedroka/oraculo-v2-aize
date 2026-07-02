@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
-import { LogIn, UserPlus } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAppState } from "../state/store";
@@ -12,6 +13,7 @@ export function Auth() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -73,15 +75,33 @@ export function Auth() {
 
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-text">Senha</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
-              minLength={6}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 pr-11 text-sm"
+                minLength={6}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[10px] text-text-secondary hover:bg-[#F0F0F2]"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </label>
+
+          {mode === "signin" ? (
+            <div className="flex justify-end">
+              <Link to="/redefinir-senha" className="text-sm font-medium text-accent">
+                Esqueci minha senha
+              </Link>
+            </div>
+          ) : null}
 
           {message ? (
             <p className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">

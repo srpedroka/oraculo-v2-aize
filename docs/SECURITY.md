@@ -45,6 +45,10 @@ O usuario configura a chave pela tela de configuracoes. O frontend envia a chave
 
 O schema `private` tem acesso revogado para `anon` e `authenticated`.
 
+## Senhas
+
+Senhas nao sao salvas no frontend, na documentacao ou no banco em texto puro. A recuperacao usa o fluxo nativo do Supabase Auth: o app solicita o email de redefinicao e, depois do link, chama `updateUser` para gravar a nova senha.
+
 ## WhatsApp
 
 O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
