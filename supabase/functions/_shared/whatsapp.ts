@@ -7,8 +7,8 @@ function buildSendUrls(settings: any) {
   const instanceName = String(settings.instance_name ?? "").trim();
   if (!baseUrl) return [];
 
-  const urls = [`${baseUrl}/message/sendText/${instanceName}`];
-  urls.push(`${baseUrl}/send/text`);
+  const urls = [`${baseUrl}/send/text`];
+  if (instanceName) urls.push(`${baseUrl}/message/sendText/${instanceName}`);
   return [...new Set(urls.filter(Boolean))];
 }
 
@@ -17,7 +17,6 @@ export async function sendWhatsAppText(settings: any, keyRow: any, phone: string
 
   const urls = buildSendUrls(settings);
   if (!urls.length) throw new Error("URL do WhatsApp não configurada");
-  const instanceName = String(settings.instance_name ?? "").trim();
 
   let lastError = "";
   for (const url of urls) {
@@ -28,9 +27,9 @@ export async function sendWhatsAppText(settings: any, keyRow: any, phone: string
         apikey: keyRow.api_key,
       },
       body: JSON.stringify({
-        id: instanceName,
         number: normalizeWhatsAppNumber(phone),
         text,
+        formatJid: true,
       }),
     });
 
