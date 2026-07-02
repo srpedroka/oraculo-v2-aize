@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
+import { recordAiUsage } from "../_shared/usage.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 
 async function readGuide() {
@@ -249,7 +250,18 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
   ];
 
   try {
-    return await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+    const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+    await recordAiUsage({
+      client,
+      orgId,
+      provider: settings.provider as Provider,
+      model: settings.model,
+      channel: "whatsapp",
+      usage: result.usage,
+      settings,
+      metadata: { areaId, phone: profile?.phone ?? null },
+    });
+    return result.text;
   } catch (_error) {
     return contextualFallback(profile, organization, objectives ?? [], message);
   }

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOrgMember, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
+import { recordAiUsage } from "../_shared/usage.ts";
 
 async function readGuide(context: string) {
   const fileName = context.includes("mensal")
@@ -70,7 +71,18 @@ serve(async (req) => {
         { role: "user" as const, content: String(message) },
       ];
 
-      answer = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+      const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+      answer = result.text;
+      await recordAiUsage({
+        client,
+        orgId,
+        provider: settings.provider as Provider,
+        model: settings.model,
+        channel: "web",
+        usage: result.usage,
+        settings,
+        metadata: { context, areaId },
+      });
     }
 
     const { error } = await client.from("chat_messages").insert({

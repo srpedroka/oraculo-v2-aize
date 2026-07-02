@@ -7,13 +7,23 @@ serve(async (req) => {
 
   try {
     const user = await getUser(req);
-    const { orgId, provider = "openai", model = "gpt-5.4", apiKey = "" } = await req.json();
+    const {
+      orgId,
+      provider = "openai",
+      model = "gpt-5.4",
+      apiKey = "",
+      inputTokenPriceUsdPerMillion = 0,
+      outputTokenPriceUsdPerMillion = 0,
+      pricingSource = "",
+    } = await req.json();
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
 
     await assertOwner(user.id, orgId);
     const client = serviceClient();
     const cleanKey = String(apiKey).trim();
     const keyPreview = cleanKey ? `****${cleanKey.slice(-4)}` : undefined;
+    const inputPrice = Math.max(0, Number(inputTokenPriceUsdPerMillion) || 0);
+    const outputPrice = Math.max(0, Number(outputTokenPriceUsdPerMillion) || 0);
 
     if (cleanKey) {
       const { error: keyError } = await client.from("ai_model_keys").upsert({
@@ -31,6 +41,9 @@ serve(async (req) => {
       model,
       has_key: cleanKey ? true : undefined,
       key_preview: keyPreview,
+      input_token_price_usd_per_million: inputPrice,
+      output_token_price_usd_per_million: outputPrice,
+      pricing_source: String(pricingSource ?? "").trim() || null,
       updated_at: new Date().toISOString(),
     });
 

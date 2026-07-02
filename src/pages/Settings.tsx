@@ -1,9 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Bot, Building2, LogOut, MessageCircle, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { Activity, Bot, Building2, DollarSign, LogOut, MessageCircle, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAppState } from "../state/store";
 import type { AiSettings } from "../types";
+
+const DEFAULT_MODEL_BY_PROVIDER: Record<AiSettings["provider"], string> = {
+  openai: "gpt-5.4",
+  anthropic: "claude-3-5-sonnet-latest",
+  moonshot: "kimi-k2.7-code",
+};
 
 function normalizePhone(value: string) {
   const startsWithPlus = value.trim().startsWith("+");
@@ -13,6 +19,24 @@ function normalizePhone(value: string) {
 
 function isValidInternationalPhone(value: string) {
   return /^\+[1-9][0-9]{7,14}$/.test(value);
+}
+
+function parsePrice(value: string) {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: value < 1 ? 4 : 2,
+    maximumFractionDigits: value < 1 ? 6 : 2,
+  }).format(value);
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value);
 }
 
 export function Settings() {
@@ -26,6 +50,9 @@ export function Settings() {
   const [provider, setProvider] = useState<AiSettings["provider"]>(state.aiSettings?.provider ?? "openai");
   const [model, setModel] = useState(state.aiSettings?.model ?? "gpt-5.4");
   const [apiKey, setApiKey] = useState("");
+  const [inputTokenPrice, setInputTokenPrice] = useState(String(state.aiSettings?.inputTokenPriceUsdPerMillion ?? 0));
+  const [outputTokenPrice, setOutputTokenPrice] = useState(String(state.aiSettings?.outputTokenPriceUsdPerMillion ?? 0));
+  const [pricingSource, setPricingSource] = useState(state.aiSettings?.pricingSource ?? "");
   const [whatsappInstanceUrl, setWhatsappInstanceUrl] = useState(state.whatsappSettings?.instanceUrl ?? "");
   const [whatsappInstanceName, setWhatsappInstanceName] = useState(state.whatsappSettings?.instanceName ?? "");
   const [whatsappConnectedNumber, setWhatsappConnectedNumber] = useState(state.whatsappSettings?.connectedNumber ?? "");
@@ -42,6 +69,32 @@ export function Settings() {
     () => state.memberships.filter((membership) => membership.role === "coordinator"),
     [state.memberships],
   );
+
+  const usageSummary = useMemo(
+    () =>
+      state.aiUsageLogs.reduce(
+        (summary, log) => ({
+          totalTokens: summary.totalTokens + log.totalTokens,
+          promptTokens: summary.promptTokens + log.promptTokens,
+          completionTokens: summary.completionTokens + log.completionTokens,
+          totalCostUsd: summary.totalCostUsd + log.totalCostUsd,
+          calls: summary.calls + 1,
+        }),
+        { totalTokens: 0, promptTokens: 0, completionTokens: 0, totalCostUsd: 0, calls: 0 },
+      ),
+    [state.aiUsageLogs],
+  );
+
+  const recentUsage = state.aiUsageLogs.slice(0, 5);
+
+  useEffect(() => {
+    if (!state.aiSettings) return;
+    setProvider(state.aiSettings.provider);
+    setModel(state.aiSettings.model);
+    setInputTokenPrice(String(state.aiSettings.inputTokenPriceUsdPerMillion ?? 0));
+    setOutputTokenPrice(String(state.aiSettings.outputTokenPriceUsdPerMillion ?? 0));
+    setPricingSource(state.aiSettings.pricingSource ?? "");
+  }, [state.aiSettings]);
 
   useEffect(() => {
     setWhatsappInstanceUrl(state.whatsappSettings?.instanceUrl ?? "");
@@ -83,7 +136,15 @@ export function Settings() {
 
   function saveAi(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    dispatch({ type: "upsert_ai_settings", provider, model: model.trim() || "gpt-5.4", apiKey: apiKey.trim() || undefined });
+    dispatch({
+      type: "upsert_ai_settings",
+      provider,
+      model: model.trim() || DEFAULT_MODEL_BY_PROVIDER[provider],
+      apiKey: apiKey.trim() || undefined,
+      inputTokenPriceUsdPerMillion: parsePrice(inputTokenPrice),
+      outputTokenPriceUsdPerMillion: parsePrice(outputTokenPrice),
+      pricingSource: pricingSource.trim(),
+    });
     setApiKey("");
   }
 
@@ -310,16 +371,52 @@ export function Settings() {
           <form onSubmit={saveAi} className="grid gap-3">
             <select
               value={provider}
-              onChange={(event) => setProvider(event.target.value as AiSettings["provider"])}
+              onChange={(event) => {
+                const nextProvider = event.target.value as AiSettings["provider"];
+                const currentDefault = DEFAULT_MODEL_BY_PROVIDER[provider];
+                setProvider(nextProvider);
+                if (!model.trim() || model === currentDefault) {
+                  setModel(DEFAULT_MODEL_BY_PROVIDER[nextProvider]);
+                }
+              }}
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             >
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic</option>
+              <option value="moonshot">Kimi / Moonshot</option>
             </select>
             <input
               value={model}
               onChange={(event) => setModel(event.target.value)}
               placeholder="Modelo"
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-text-secondary">Entrada USD / 1M tokens</span>
+                <input
+                  inputMode="decimal"
+                  value={inputTokenPrice}
+                  onChange={(event) => setInputTokenPrice(event.target.value)}
+                  placeholder="0.00"
+                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-text-secondary">Saída USD / 1M tokens</span>
+                <input
+                  inputMode="decimal"
+                  value={outputTokenPrice}
+                  onChange={(event) => setOutputTokenPrice(event.target.value)}
+                  placeholder="0.00"
+                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                />
+              </label>
+            </div>
+            <input
+              value={pricingSource}
+              onChange={(event) => setPricingSource(event.target.value)}
+              placeholder="Fonte do pricing, ex: URL da tabela oficial"
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
             <input
@@ -330,9 +427,53 @@ export function Settings() {
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
             <Button type="submit" icon={Bot}>
-              Salvar IA
+              Salvar modelo e pricing
             </Button>
           </form>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-text-secondary" />
+                <p className="text-sm font-semibold text-text">Consumo</p>
+              </div>
+              <p className="text-2xl font-semibold text-text">{formatNumber(usageSummary.totalTokens)}</p>
+              <p className="mt-1 text-xs text-text-secondary">
+                {formatNumber(usageSummary.promptTokens)} entrada · {formatNumber(usageSummary.completionTokens)} saída
+              </p>
+              <p className="mt-1 text-xs text-text-tertiary">{usageSummary.calls} chamadas registradas</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-text-secondary" />
+                <p className="text-sm font-semibold text-text">Custo estimado</p>
+              </div>
+              <p className="text-2xl font-semibold text-text">{formatUsd(usageSummary.totalCostUsd)}</p>
+              <p className="mt-1 text-xs text-text-secondary">
+                Modelo atual: {state.aiSettings?.model ?? "não configurado"}
+              </p>
+              <p className="mt-1 text-xs text-text-tertiary">Calculado pelo preço salvo acima</p>
+            </div>
+          </div>
+          {recentUsage.length ? (
+            <div className="mt-4 space-y-2">
+              {recentUsage.map((log) => (
+                <div key={log.id} className="rounded-2xl border border-border bg-white p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-text">{log.model}</p>
+                      <p className="text-xs text-text-secondary">
+                        {log.channel === "whatsapp" ? "WhatsApp" : "Web"} · {new Date(log.createdAt).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-text">{formatUsd(log.totalCostUsd)}</p>
+                      <p className="text-xs text-text-secondary">{formatNumber(log.totalTokens)} tokens</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </Card>
 
         <Card>

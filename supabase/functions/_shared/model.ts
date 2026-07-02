@@ -1,8 +1,30 @@
-export type Provider = "openai" | "anthropic";
+export type Provider = "openai" | "anthropic" | "moonshot";
 
 interface ModelMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface ModelUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+export interface ModelCallResult {
+  text: string;
+  usage: ModelUsage;
+}
+
+function emptyUsage(): ModelUsage {
+  return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+}
+
+function normalizeOpenAiUsage(usage: any): ModelUsage {
+  const promptTokens = Number(usage?.prompt_tokens ?? 0);
+  const completionTokens = Number(usage?.completion_tokens ?? 0);
+  const totalTokens = Number(usage?.total_tokens ?? promptTokens + completionTokens);
+  return { promptTokens, completionTokens, totalTokens };
 }
 
 export async function callModel(
@@ -11,28 +33,37 @@ export async function callModel(
   apiKey: string,
   systemPrompt: string,
   messages: ModelMessage[],
-): Promise<string> {
-  if (provider === "openai") {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+): Promise<ModelCallResult> {
+  if (provider === "openai" || provider === "moonshot") {
+    const baseUrl = provider === "moonshot" ? "https://api.moonshot.ai/v1" : "https://api.openai.com/v1";
+    const body: Record<string, unknown> = {
+      model,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+    };
+
+    if (provider === "openai") {
+      body.temperature = 0.4;
+    }
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        temperature: 0.4,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI não respondeu corretamente: ${errorText}`);
+      throw new Error(`${provider === "moonshot" ? "Kimi/Moonshot" : "OpenAI"} não respondeu corretamente: ${errorText}`);
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content ?? "Não consegui gerar uma resposta agora.";
+    return {
+      text: data.choices?.[0]?.message?.content ?? "Não consegui gerar uma resposta agora.",
+      usage: normalizeOpenAiUsage(data.usage),
+    };
   }
 
   if (provider === "anthropic") {
@@ -58,8 +89,28 @@ export async function callModel(
     }
 
     const data = await response.json();
-    return data.content?.map((block: { text?: string }) => block.text ?? "").join("\n").trim() || "Não consegui gerar uma resposta agora.";
+    const promptTokens = Number(data.usage?.input_tokens ?? 0);
+    const completionTokens = Number(data.usage?.output_tokens ?? 0);
+    return {
+      text: data.content?.map((block: { text?: string }) => block.text ?? "").join("\n").trim() || "Não consegui gerar uma resposta agora.",
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+      },
+    };
   }
 
   throw new Error("Provedor não suportado");
+}
+
+export async function callModelText(
+  provider: Provider,
+  model: string,
+  apiKey: string,
+  systemPrompt: string,
+  messages: ModelMessage[],
+): Promise<string> {
+  const result = await callModel(provider, model, apiKey, systemPrompt, messages);
+  return result.text;
 }

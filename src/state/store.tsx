@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import type {
   AiSettings,
+  AiUsageLog,
   AppState,
   Area,
   AreaPlan,
@@ -41,7 +42,15 @@ type AppAction =
   | { type: "update_key_action"; keyAction: KeyAction }
   | { type: "update_strategic_plan"; plan: StrategicPlan }
   | { type: "upsert_area_plan"; plan: AreaPlan }
-  | { type: "upsert_ai_settings"; provider: AiSettings["provider"]; model: string; apiKey?: string }
+  | {
+      type: "upsert_ai_settings";
+      provider: AiSettings["provider"];
+      model: string;
+      apiKey?: string;
+      inputTokenPriceUsdPerMillion: number;
+      outputTokenPriceUsdPerMillion: number;
+      pricingSource?: string;
+    }
   | {
       type: "upsert_whatsapp_settings";
       instanceUrl: string;
@@ -90,6 +99,7 @@ const EMPTY_STATE: AppState = {
   currentMembership: null,
   currentProfile: null,
   aiSettings: null,
+  aiUsageLogs: [],
   whatsappSettings: null,
   areas: [],
   strategicPlan: null,
@@ -301,6 +311,28 @@ function mapAiSettings(row: any): AiSettings {
     model: row.model,
     hasKey: row.has_key,
     keyPreview: row.key_preview ?? null,
+    inputTokenPriceUsdPerMillion: Number(row.input_token_price_usd_per_million ?? 0),
+    outputTokenPriceUsdPerMillion: Number(row.output_token_price_usd_per_million ?? 0),
+    pricingSource: row.pricing_source ?? null,
+  };
+}
+
+function mapAiUsageLog(row: any): AiUsageLog {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    provider: row.provider,
+    model: row.model,
+    channel: row.channel ?? "web",
+    promptTokens: Number(row.prompt_tokens ?? 0),
+    completionTokens: Number(row.completion_tokens ?? 0),
+    totalTokens: Number(row.total_tokens ?? 0),
+    inputTokenPriceUsdPerMillion: Number(row.input_token_price_usd_per_million ?? 0),
+    outputTokenPriceUsdPerMillion: Number(row.output_token_price_usd_per_million ?? 0),
+    inputCostUsd: Number(row.input_cost_usd ?? 0),
+    outputCostUsd: Number(row.output_cost_usd ?? 0),
+    totalCostUsd: Number(row.total_cost_usd ?? 0),
+    createdAt: row.created_at,
   };
 }
 
@@ -597,6 +629,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const aiUsageLogsQuery = useQuery({
+    queryKey: ["ai_usage_logs", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client
+        .from("ai_usage_logs")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []).map(mapAiUsageLog);
+    },
+  });
+
   const whatsappSettingsQuery = useQuery({
     queryKey: ["whatsapp_settings", orgId],
     enabled: Boolean(supabase && orgId),
@@ -644,6 +692,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["evidences", orgId] });
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
     queryClient.invalidateQueries({ queryKey: ["whatsapp_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["check_ins", orgId] });
   }, [orgId, queryClient, userId]);
@@ -658,6 +707,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "key_actions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "evidences", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "check_ins", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
 
     return () => {
@@ -681,6 +731,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evidencesQuery.isLoading ||
       chatMessagesQuery.isLoading ||
       aiSettingsQuery.isLoading ||
+      aiUsageLogsQuery.isLoading ||
       whatsappSettingsQuery.isLoading ||
       checkInsQuery.isLoading;
 
@@ -694,6 +745,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentMembership,
       currentProfile: currentProfileQuery.data ?? currentMembership?.profile ?? null,
       aiSettings: aiSettingsQuery.data ?? null,
+      aiUsageLogs: aiUsageLogsQuery.data ?? [],
       whatsappSettings: whatsappSettingsQuery.data ?? null,
       areas,
       strategicPlan,
@@ -710,6 +762,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [
     aiSettingsQuery.data,
     aiSettingsQuery.isLoading,
+    aiUsageLogsQuery.data,
+    aiUsageLogsQuery.isLoading,
     areaPlansQuery.data,
     areaPlansQuery.isLoading,
     areas,
@@ -855,7 +909,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           areaId: action.areaId ?? null,
           message: action.text,
           context: action.context ?? "chat",
-        }).then(() => queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] }));
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+        });
         return;
       }
 
@@ -967,6 +1024,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           provider: action.provider,
           model: action.model,
           apiKey: action.apiKey ?? "",
+          inputTokenPriceUsdPerMillion: action.inputTokenPriceUsdPerMillion,
+          outputTokenPriceUsdPerMillion: action.outputTokenPriceUsdPerMillion,
+          pricingSource: action.pricingSource ?? "",
         }).then(invalidateOrg);
         return;
       }
