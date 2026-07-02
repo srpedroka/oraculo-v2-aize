@@ -11,6 +11,30 @@ export interface ModelPricing {
 
 export const MODEL_PRICING_CATALOG: ModelPricing[] = [
   {
+    provider: "openai",
+    model: "gpt-5.4",
+    inputTokenPriceUsdPerMillion: 2.5,
+    outputTokenPriceUsdPerMillion: 15,
+    source: "https://platform.openai.com/docs/pricing",
+    note: "Preço standard de short context. Cached input e long context podem ter valores diferentes na tabela oficial.",
+  },
+  {
+    provider: "openai",
+    model: "gpt-5.4-mini",
+    inputTokenPriceUsdPerMillion: 0.75,
+    outputTokenPriceUsdPerMillion: 4.5,
+    source: "https://platform.openai.com/docs/pricing",
+    note: "Preço standard de short context.",
+  },
+  {
+    provider: "openai",
+    model: "gpt-5.4-nano",
+    inputTokenPriceUsdPerMillion: 0.2,
+    outputTokenPriceUsdPerMillion: 1.25,
+    source: "https://platform.openai.com/docs/pricing",
+    note: "Preço standard de short context.",
+  },
+  {
     provider: "moonshot",
     model: "kimi-k2.7-code",
     inputTokenPriceUsdPerMillion: 0.95,
