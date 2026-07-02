@@ -9,40 +9,87 @@ async function readGuide() {
 }
 
 function normalizePhone(value: unknown) {
-  const raw = String(value ?? "").split("@")[0];
+  const source = String(value ?? "").trim();
+  if (!source || source.includes("@lid")) return null;
+
+  const raw = source.split("@")[0];
   const digits = raw.replace(/\D/g, "");
   return digits.length >= 8 ? `+${digits}` : null;
 }
 
-function extractText(payload: any) {
-  const data = payload?.data ?? payload;
-  return (
-    data?.message?.conversation ??
-    data?.message?.extendedTextMessage?.text ??
-    data?.message?.text ??
-    data?.text ??
-    payload?.message?.text ??
-    payload?.message ??
-    ""
-  ).toString().trim();
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" || typeof value === "number") {
+      const text = String(value).trim();
+      if (text) return text;
+    }
+  }
+
+  return "";
 }
 
-function extractRemote(payload: any) {
-  const data = payload?.data ?? payload;
-  return (
-    data?.key?.remoteJid ??
-    data?.remoteJid ??
-    data?.from ??
-    data?.sender ??
-    payload?.sender ??
-    payload?.from ??
-    payload?.phone ??
-    ""
+function extractText(payload: any) {
+  const data = payload?.Data ?? payload?.data ?? payload;
+  const message = data?.Message ?? data?.message ?? payload?.Message ?? payload?.message;
+
+  return firstText(
+    message?.conversation,
+    message?.extendedTextMessage?.text,
+    message?.imageMessage?.caption,
+    message?.videoMessage?.caption,
+    message?.documentMessage?.caption,
+    message?.text,
+    data?.message?.conversation,
+    data?.message?.extendedTextMessage?.text,
+    data?.message?.text,
+    data?.Text,
+    data?.text,
+    payload?.Text,
+    payload?.text,
+    typeof payload?.message === "string" ? payload.message : "",
   );
 }
 
+function extractRemote(payload: any) {
+  const data = payload?.Data ?? payload?.data ?? payload;
+  const info = data?.Info ?? data?.info ?? payload?.Info ?? payload?.info;
+  const key = data?.key ?? data?.Key ?? payload?.key ?? payload?.Key;
+  const candidates = [
+    info?.Chat,
+    info?.Sender,
+    info?.SenderAlt,
+    info?.ChatAlt,
+    info?.RemoteJid,
+    info?.remoteJid,
+    key?.remoteJid,
+    key?.RemoteJid,
+    data?.remoteJid,
+    data?.RemoteJid,
+    data?.from,
+    data?.From,
+    data?.sender,
+    data?.Sender,
+    payload?.sender,
+    payload?.Sender,
+    payload?.from,
+    payload?.From,
+    payload?.phone,
+    payload?.Phone,
+  ];
+
+  return candidates.find((candidate) => normalizePhone(candidate)) ?? "";
+}
+
 function extractInstanceName(payload: any) {
-  return String(payload?.instance ?? payload?.instanceName ?? payload?.data?.instance ?? "").trim();
+  return String(
+    payload?.instance ??
+      payload?.Instance ??
+      payload?.instanceName ??
+      payload?.InstanceName ??
+      payload?.data?.instance ??
+      payload?.Data?.Instance ??
+      "",
+  ).trim();
 }
 
 function fallbackReview(objectives: any[]) {
