@@ -28,6 +28,29 @@ function extensionFromMimeType(mimeType: string) {
   return "ogg";
 }
 
+function sniffMimeType(bytes: Uint8Array, fallbackMimeType: string) {
+  const header = Array.from(bytes.slice(0, 16))
+    .map((byte) => String.fromCharCode(byte))
+    .join("");
+
+  if (header.startsWith("OggS")) return "audio/ogg";
+  if (header.startsWith("ID3") || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)) return "audio/mpeg";
+  if (header.startsWith("RIFF")) return "audio/wav";
+  if (header.includes("ftyp")) return "audio/mp4";
+  if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) return "audio/webm";
+
+  return fallbackMimeType.includes("application/octet-stream") ? "audio/ogg" : fallbackMimeType;
+}
+
+export function normalizeAudioFile(audio: AudioFile) {
+  const mimeType = sniffMimeType(audio.bytes, audio.mimeType || "audio/ogg");
+  return {
+    ...audio,
+    mimeType,
+    fileName: `whatsapp-audio.${extensionFromMimeType(mimeType)}`,
+  };
+}
+
 export function decodeBase64Audio(base64: string, mimeType = "audio/ogg") {
   const cleanBase64 = base64.includes(",") ? base64.split(",").pop() ?? "" : base64;
   const binary = atob(cleanBase64.replace(/\s/g, ""));
@@ -38,17 +61,18 @@ export function decodeBase64Audio(base64: string, mimeType = "audio/ogg") {
 
   return {
     bytes,
-    mimeType,
-    fileName: `whatsapp-audio.${extensionFromMimeType(mimeType)}`,
+    mimeType: sniffMimeType(bytes, mimeType),
+    fileName: `whatsapp-audio.${extensionFromMimeType(sniffMimeType(bytes, mimeType))}`,
   };
 }
 
 async function callTranscriptionModel(apiKey: string, audio: AudioFile, model: string): Promise<TranscriptionResult> {
+  const normalizedAudio = normalizeAudioFile(audio);
   const formData = new FormData();
   formData.append("model", model);
   formData.append("language", "pt");
   formData.append("response_format", "json");
-  formData.append("file", new Blob([audio.bytes], { type: audio.mimeType }), audio.fileName);
+  formData.append("file", new Blob([normalizedAudio.bytes], { type: normalizedAudio.mimeType }), normalizedAudio.fileName);
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",

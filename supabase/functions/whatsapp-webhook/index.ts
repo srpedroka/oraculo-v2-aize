@@ -3,7 +3,7 @@ import { serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel, type Provider } from "../_shared/model.ts";
 import { CONVERSATION_STYLE, STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
-import { decodeBase64Audio, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
+import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 
@@ -440,7 +440,8 @@ async function transcribeIncomingAudio(
 ) {
   const audioFile = await resolveAudioFile(whatsappSettings, whatsappKeyRow, payload, diagnostics);
   if (!audioFile) return "";
-  diagnostics.push(`file:${audioFile.mimeType || "no-type"}:${audioFile.bytes.length}`);
+  const normalizedAudioFile = normalizeAudioFile(audioFile);
+  diagnostics.push(`file:${audioFile.mimeType || "no-type"}>${normalizedAudioFile.mimeType}:${audioFile.bytes.length}`);
 
   const [{ data: settings }, { data: keyRow }] = await Promise.all([
     client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
