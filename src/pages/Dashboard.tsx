@@ -7,16 +7,22 @@ import { useAppState } from "../state/store";
 
 export function Dashboard() {
   const { state } = useAppState();
-  const revenue = state.objectives.find((objective) => objective.id === "e1");
+  const revenue =
+    state.objectives.find((objective) => objective.id === "e1") ??
+    state.objectives.find((objective) => objective.metric?.toLowerCase().includes("faturamento")) ??
+    state.objectives.find((objective) => objective.title.toLowerCase().includes("faturamento"));
   const margin = state.objectives.find((objective) => objective.id === "e2") ?? state.objectives.find((objective) => objective.metric?.toLowerCase().includes("margem"));
   const leadership = state.objectives.find((objective) => objective.id === "e4") ?? state.objectives.find((objective) => objective.title.toLowerCase().includes("líder"));
   const productDelay = state.objectives.find((objective) => objective.id === "q-inov-1") ?? state.objectives.find((objective) => objective.type === "seed" && objective.status === "late");
   const hasData = state.objectives.length > 0;
   const seedObjectives = state.objectives.filter((objective) => objective.type === "seed");
-  const activeSeeds = seedObjectives.filter((objective) => objective.status !== "done");
+  const executiveSeeds = seedObjectives.filter((objective) => objective.level === "strategic");
+  const activeSeeds = (executiveSeeds.length ? executiveSeeds : seedObjectives).filter((objective) => objective.status !== "done");
   const onTrackSeeds = activeSeeds.filter((objective) => objective.status === "on_track").length;
   const attentionSeeds = activeSeeds.filter((objective) => ["at_risk", "late"].includes(objective.status)).length;
-  const productProjectCount = seedObjectives.filter((objective) => /produto|pipeline|protótipo|inova/i.test(objective.title)).length;
+  const productProjectCount = state.objectives.filter(
+    (objective) => ["strategic", "quarterly"].includes(objective.level) && /produto|pipeline|protótipo|inova/i.test(objective.title),
+  ).length;
   const donutData = activeSeeds.length
     ? [
         { name: "No Prazo", value: onTrackSeeds, color: "#DDE7F3" },
