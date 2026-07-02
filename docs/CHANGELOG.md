@@ -16,6 +16,7 @@
 - Corrigido empacotamento dos roteiros do Oraculo em Edge Functions com `_shared/prompt-guides.ts`, evitando falha por leitura de arquivos `.md` nao enviados no deploy.
 - Calibrado tom do Oraculo para conversa mais natural: respostas curtas, amigaveis, sem despejar numeros quando a pergunta for ambigua, e pedindo esclarecimento quando necessario.
 - Ajustado WhatsApp para enviar tambem saudacoes, testes e aberturas simples para a IA quando houver chave configurada; respostas programadas ficam apenas como fallback.
+- Adicionado suporte inicial a áudio no WhatsApp: o webhook detecta áudio, tenta baixar a mídia pela Evolution, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA.
 
 ## 2026-06-30
 

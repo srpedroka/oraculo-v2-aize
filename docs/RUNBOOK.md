@@ -154,6 +154,26 @@ Diagnostico rapido:
 5. Se houver resposta `oracle` no banco mas ela nao chegou no celular, verifique Evolution API/Evo Go, instancia conectada, endpoint de envio e chave da Evolution.
 6. Se a mensagem nem apareceu em `chat_messages`, verifique webhook configurado na Evolution, segredo `x-oraculo-webhook-secret`, URL publica e instancia conectada.
 
+## Problema: áudio do WhatsApp nao transcreve
+
+Fluxo esperado:
+
+1. Evolution envia mensagem com `audioMessage` para `whatsapp-webhook`.
+2. O webhook tenta obter o arquivo por base64 no payload, URL direta ou endpoint de mídia da Evolution.
+3. O áudio e enviado para OpenAI `gpt-4o-mini-transcribe`.
+4. O texto final e salvo em `chat_messages` como `[Áudio transcrito] ...`.
+5. O texto transcrito entra no mesmo fluxo de resposta do Oraculo.
+
+Verifique:
+
+- se a mensagem aparece como `[Áudio transcrito]` em `chat_messages`;
+- se existe chave OpenAI ativa em `public.ai_model_keys`;
+- se a instancia da Evolution permite baixar mídia/base64;
+- logs da Edge Function `whatsapp-webhook` para erros de transcrição;
+- se a pessoa consegue reenviar o áudio ou mandar em texto quando aparecer a resposta de falha.
+
+Observacao: o custo da resposta textual entra em `ai_usage_logs`. O custo específico da transcrição de áudio ainda não entra no cálculo tokenizado, porque o provedor precifica áudio por duração/modelo, não pelos mesmos campos de tokens de texto.
+
 Consultas uteis no Supabase SQL editor:
 
 ```sql
