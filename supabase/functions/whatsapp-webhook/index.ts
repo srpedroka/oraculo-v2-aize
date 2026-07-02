@@ -258,6 +258,29 @@ function jsonShape(value: any) {
   return `${keys}${dataKeys}`;
 }
 
+function bytesToAscii(bytes: Uint8Array) {
+  const sample = bytes.slice(0, Math.min(bytes.length, 12000));
+  if (sample.some((byte) => byte === 0 || byte > 127)) return "";
+  return new TextDecoder().decode(sample).trim();
+}
+
+function looksLikeBase64(text: string) {
+  const clean = text.includes(",") ? text.split(",").pop() ?? "" : text;
+  return clean.length > 120 && /^[A-Za-z0-9+/=\s]+$/.test(clean);
+}
+
+function byteSignature(bytes: Uint8Array) {
+  return Array.from(bytes.slice(0, 8))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function asciiSignature(bytes: Uint8Array) {
+  return Array.from(bytes.slice(0, 4))
+    .map((byte) => (byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : "."))
+    .join("");
+}
+
 async function audioFileFromMediaResponse(response: Response, mimeType: string, keyRow: any, diagnostics?: string[]) {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json") || contentType.includes("text/")) {
@@ -285,6 +308,30 @@ async function audioFileFromMediaResponse(response: Response, mimeType: string, 
   if (!bytes.length) {
     diagnostics?.push(`binary-empty:${contentType || "no-type"}`);
     return null;
+  }
+
+  const ascii = bytesToAscii(bytes);
+  if (ascii.startsWith("{")) {
+    const payload = JSON.parse(ascii);
+    const base64 = extractBase64FromMediaResponse(payload);
+    if (base64) {
+      diagnostics?.push("binary-json-base64");
+      return audioFileFromBase64(base64, mimeType);
+    }
+
+    const mediaUrl = extractUrlFromMediaResponse(payload);
+    if (mediaUrl) {
+      diagnostics?.push("binary-json-url");
+      return await downloadAudioFromUrl(mediaUrl, keyRow, mimeType, diagnostics);
+    }
+
+    diagnostics?.push(`binary-json:${jsonShape(payload)}`);
+    return null;
+  }
+
+  if (looksLikeBase64(ascii)) {
+    diagnostics?.push("binary-base64");
+    return audioFileFromBase64(ascii, mimeType);
   }
 
   return {
@@ -441,7 +488,9 @@ async function transcribeIncomingAudio(
   const audioFile = await resolveAudioFile(whatsappSettings, whatsappKeyRow, payload, diagnostics);
   if (!audioFile) return "";
   const normalizedAudioFile = normalizeAudioFile(audioFile);
-  diagnostics.push(`file:${audioFile.mimeType || "no-type"}>${normalizedAudioFile.mimeType}:${audioFile.bytes.length}`);
+  diagnostics.push(
+    `file:${audioFile.mimeType || "no-type"}>${normalizedAudioFile.mimeType}:${audioFile.bytes.length}:sig:${asciiSignature(audioFile.bytes)}:${byteSignature(audioFile.bytes)}`,
+  );
 
   const [{ data: settings }, { data: keyRow }] = await Promise.all([
     client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
