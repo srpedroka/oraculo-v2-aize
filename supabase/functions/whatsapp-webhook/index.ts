@@ -92,18 +92,122 @@ function extractInstanceName(payload: any) {
   ).trim();
 }
 
-function fallbackReview(objectives: any[]) {
-  const risk = objectives.filter((objective) => ["at_risk", "late"].includes(objective.status));
-  if (!objectives.length) return "Ainda não encontrei objetivos no Oráculo. Abra o sistema e crie o primeiro plano para eu acompanhar por aqui.";
-  if (risk.length) return `Eu olharia primeiro para ${risk[0].title}. Qual evidência prova avanço real hoje?`;
-  return "O plano não tem ponto crítico aparente agora. Registre uma evidência nova para manter a execução rastreável.";
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: string, areaId: string | null, message: string) {
-  const [{ data: settings }, { data: keyRow }, { data: objectives }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: history }] =
+function firstName(profile: any) {
+  return String(profile?.full_name ?? "").trim().split(/\s+/)[0] || "Gui";
+}
+
+function localGreeting() {
+  const hour = Number(
+    new Intl.DateTimeFormat("pt-BR", {
+      hour: "2-digit",
+      hour12: false,
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date()),
+  );
+
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function localTimestamp() {
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
+
+function isOpeningMessage(message: string) {
+  const normalized = normalizeText(message);
+  if (!normalized) return true;
+
+  const openingOnly = new Set([
+    "oi",
+    "ola",
+    "alo",
+    "bom dia",
+    "boa tarde",
+    "boa noite",
+    "tudo bem",
+    "e ai",
+    "teste",
+    "testando",
+  ]);
+
+  if (openingOnly.has(normalized)) return true;
+  if (normalized.length > 42) return false;
+
+  return /^(oi|ola|alo|bom dia|boa tarde|boa noite|e ai|teste)\b/.test(normalized) &&
+    !/(plano|objetivo|meta|resultado|evolucao|evidencia|status|como esta|revis|criar|registrar|trimestral|mensal)/.test(normalized);
+}
+
+function openingAnswer(profile: any, organization: any) {
+  const orgName = [organization?.name, organization?.subtitle].filter(Boolean).join(" / ") || "sua empresa";
+  return `${localGreeting()}, ${firstName(profile)}. Sou o Oráculo da ${orgName}. O que você deseja fazer agora? Posso revisar Resultado, Evolução, planos trimestrais ou registrar uma evidência.`;
+}
+
+function objectiveStats(objectives: any[]) {
+  return {
+    total: objectives.length,
+    onTrack: objectives.filter((objective) => objective.status === "on_track").length,
+    atRisk: objectives.filter((objective) => objective.status === "at_risk").length,
+    late: objectives.filter((objective) => objective.status === "late").length,
+  };
+}
+
+function contextualFallback(profile: any, organization: any, objectives: any[], message: string) {
+  const greeting = `${localGreeting()}, ${firstName(profile)}.`;
+  const normalized = normalizeText(message);
+  const stats = objectiveStats(objectives);
+  const risk = objectives.filter((objective) => ["late", "at_risk"].includes(objective.status));
+  const firstRisk = risk.sort((a, b) => (a.status === "late" ? -1 : 1) - (b.status === "late" ? -1 : 1))[0];
+
+  if (!objectives.length) {
+    return `${greeting} Ainda não encontrei objetivos no Oráculo da ${organization?.name ?? "empresa"}. Quer começar pelo Plano Estratégico anual ou por um plano trimestral?`;
+  }
+
+  if (/(evidencia|prova|comprov|registr)/.test(normalized)) {
+    return `${greeting} Me diga qual objetivo recebeu a evidência e qual fato comprova o avanço. Exemplo: "Evidência para Validar 2 protótipos: laudo A aprovado hoje".`;
+  }
+
+  if (/(status|resumo|revis|como esta|andamento|situacao)/.test(normalized)) {
+    const attention = firstRisk ? ` O ponto de maior atenção é "${firstRisk.title}" (${firstRisk.status === "late" ? "atrasado" : "em risco"}).` : "";
+    return `${greeting} Hoje vejo ${stats.total} objetivos: ${stats.onTrack} no prazo, ${stats.atRisk} em risco e ${stats.late} atrasado.${attention} Quer revisar esse ponto ou registrar uma evidência?`;
+  }
+
+  if (firstRisk) {
+    return `${greeting} Pelo contexto do plano, eu começaria por "${firstRisk.title}". Qual evidência concreta prova avanço nesse objetivo desde a última revisão?`;
+  }
+
+  return `${greeting} O plano não tem ponto crítico aparente agora. Você quer revisar Resultado, Evolução, planos trimestrais ou registrar uma evidência?`;
+}
+
+async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: string, areaId: string | null, message: string, profile: any, membership: any) {
+  const [
+    { data: settings },
+    { data: keyRow },
+    { data: organization },
+    { data: objectives },
+    { data: areas },
+    { data: strategicPlan },
+    { data: areaPlans },
+    { data: history },
+  ] =
     await Promise.all([
       client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
       client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
+      client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
       client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
       client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
@@ -111,16 +215,27 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
       client.from("chat_messages").select("author, text").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
     ]);
 
-  if (!settings?.has_key || !keyRow?.api_key) return fallbackReview(objectives ?? []);
+  const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
+
+  if (isOpeningMessage(message)) return openingAnswer(profile, organization);
+  if (!settings?.has_key || !keyRow?.api_key) return contextualFallback(profile, organization, objectives ?? [], message);
 
   const guide = await readGuide();
   const systemPrompt = [
     "Você é o Oráculo, a IA estratégica da empresa. Responda em português do Brasil.",
     "Você está conversando por WhatsApp: seja curto, direto e cobre evidência.",
+    "Comportamento obrigatório:",
+    `- O contato atual é ${profile?.full_name ?? "usuário sem nome"} (${membership?.role ?? "sem papel"}).`,
+    `- Área vinculada ao contato: ${currentArea?.name ?? "sem área específica"}.`,
+    `- Horário local do atendimento: ${localTimestamp()}.`,
+    "- Se a mensagem for apenas saudação, teste ou abertura sem pedido claro, cumprimente pelo horário, chame pelo primeiro nome e pergunte o que a pessoa deseja. Não faça análise do plano nesse caso.",
+    "- Se a mensagem trouxer pedido, evidência, dúvida ou contexto, use exatamente o que foi dito e o histórico para conduzir a resposta. Não pare só na saudação.",
+    "- Se citar status, cite objetivos concretos do plano. Se pedir evidência, diga qual evidência falta.",
+    "- Responda em 2 a 5 linhas no WhatsApp. Termine com uma próxima pergunta objetiva.",
     "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
     guide,
     "Contexto atual do plano:",
-    JSON.stringify({ strategicPlan, areaPlans, areas, objectives, areaId }, null, 2),
+    JSON.stringify({ organization, strategicPlan, areaPlans, areas, objectives, areaId, currentContact: { profile, membership, area: currentArea } }, null, 2),
   ].join("\n\n");
 
   const modelMessages = [
@@ -133,7 +248,11 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
     { role: "user" as const, content: message },
   ];
 
-  return await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+  try {
+    return await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+  } catch (_error) {
+    return contextualFallback(profile, organization, objectives ?? [], message);
+  }
 }
 
 serve(async (req) => {
@@ -192,6 +311,8 @@ serve(async (req) => {
     const { data: area } = await client.from("areas").select("id").eq("org_id", orgId).eq("coordinator_id", membership.id).maybeSingle();
     const areaId = area?.id ?? null;
 
+    const answer = await buildAnswer(client, orgId, areaId, text, profile, membership);
+
     await client.from("chat_messages").insert({
       org_id: orgId,
       area_id: areaId,
@@ -199,8 +320,6 @@ serve(async (req) => {
       text,
       channel: "whatsapp",
     });
-
-    const answer = await buildAnswer(client, orgId, areaId, text);
 
     await client.from("chat_messages").insert({
       org_id: orgId,
