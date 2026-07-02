@@ -58,6 +58,41 @@ function messageParts(payload: any) {
   return { data, message, info, key };
 }
 
+function toBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return ["true", "1", "yes", "sim"].includes(normalized);
+}
+
+function firstValue(...values: unknown[]) {
+  return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "");
+}
+
+function buildEvolutionMessageKey(data: any, info: any, key: any, messageId: string) {
+  const remoteJid = firstText(
+    key?.remoteJid,
+    key?.RemoteJid,
+    key?.RemoteJID,
+    info?.Chat,
+    info?.chat,
+    info?.RemoteJid,
+    info?.remoteJid,
+    data?.remoteJid,
+    data?.RemoteJid,
+  );
+  const id = firstText(key?.id, key?.Id, key?.ID, info?.ID, info?.Id, info?.id, messageId);
+  const participant = firstText(key?.participant, key?.Participant, info?.Sender, info?.sender);
+  const fromMeValue = firstValue(key?.fromMe, key?.FromMe, info?.IsFromMe, info?.isFromMe);
+  const fromMe = toBoolean(fromMeValue);
+
+  return {
+    ...(remoteJid ? { remoteJid } : {}),
+    fromMe,
+    ...(id ? { id } : {}),
+    ...(participant ? { participant } : {}),
+  };
+}
+
 function extractAudioInfo(payload: any) {
   const { data, message, info, key } = messageParts(payload);
   const audioMessage =
@@ -112,8 +147,9 @@ function extractAudioInfo(payload: any) {
     data?.messageId,
     payload?.messageId,
   );
+  const messageKey = buildEvolutionMessageKey(data, info, key, messageId);
 
-  return audioMessage || base64 || url ? { audioMessage, base64, url, mimeType, messageId, key, rawMessage: message } : null;
+  return audioMessage || base64 || url ? { audioMessage, base64, url, mimeType, messageId, key: messageKey, rawMessage: message, rawData: data } : null;
 }
 
 function extractRemote(payload: any) {
@@ -177,10 +213,15 @@ function extractBase64FromMediaResponse(value: any) {
     value?.Base64,
     value?.media,
     value?.Media,
+    value?.file,
+    value?.File,
     value?.data?.base64,
     value?.data?.Base64,
     value?.data?.media,
     value?.data?.Media,
+    value?.data?.file,
+    value?.data?.File,
+    value?.data?.data,
     value?.data?.message?.base64,
     value?.data?.message?.Base64,
   );
@@ -206,8 +247,29 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
       convertToMp4: false,
     },
     {
+      message: {
+        key: audioInfo.key,
+      },
+      convertToMp4: false,
+    },
+    {
       messageId: audioInfo.messageId,
       key: audioInfo.key,
+      convertToMp4: false,
+    },
+    {
+      key: audioInfo.key,
+      convertToMp4: false,
+    },
+    {
+      remoteJid: audioInfo.key.remoteJid,
+      messageId: audioInfo.messageId || audioInfo.key.id,
+      id: audioInfo.messageId || audioInfo.key.id,
+      fromMe: audioInfo.key.fromMe,
+      convertToMp4: false,
+    },
+    {
+      message: audioInfo.rawData,
       convertToMp4: false,
     },
   ];
@@ -223,10 +285,17 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
         body: JSON.stringify(body),
       }).catch(() => null);
 
-      if (!response?.ok) continue;
+      if (!response?.ok) {
+        if (response) {
+          const errorText = await response.text().catch(() => "");
+          console.error("Evolution não retornou mídia", response.status, endpoint, errorText.slice(0, 180));
+        }
+        continue;
+      }
       const payload = await response.json().catch(() => null);
       const base64 = extractBase64FromMediaResponse(payload);
       if (base64) return audioFileFromBase64(base64, audioInfo.mimeType);
+      console.error("Evolution retornou mídia sem base64 reconhecido", endpoint);
     }
   }
 
