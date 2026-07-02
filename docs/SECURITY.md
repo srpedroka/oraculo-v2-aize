@@ -49,6 +49,8 @@ O schema `private` tem acesso revogado para `anon` e `authenticated`.
 
 O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
 
+Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usando service role no servidor. O frontend nunca recebe a chave da Evolution API e tambem nao monta a chamada direta para a VPS. O link de convite do Supabase e entregue ao celular informado no cadastro do convidado.
+
 ## RLS
 
 Todas as tabelas publicas com dados do produto tem RLS habilitado.

@@ -49,7 +49,7 @@ Schema privado:
 
 ### Edge Functions
 
-- `invite-member`: cria ou registra membros convidados.
+- `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
 - `save-ai-settings`: salva provider, modelo, preview de chave e a chave real no schema privado.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API no schema privado.
 - `oracle-chat`: consulta contexto da empresa e responde com fallback deterministico ou modelo configurado.
@@ -61,6 +61,7 @@ Funcoes compartilhadas:
 - `_shared/auth.ts`: valida sessao, acesso a empresa, owner e escrita por area.
 - `_shared/cors.ts`: respostas CORS e JSON.
 - `_shared/model.ts`: chamada aos provedores de IA.
+- `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
 - `_shared/oraculo-roteiro-*.md`: roteiros usados como contexto do Oraculo.
 
 ## Fluxo de dados

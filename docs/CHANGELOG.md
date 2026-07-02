@@ -17,6 +17,7 @@
 - Melhorada administracao de convites: email no perfil, celular opcional no convite, listagem de vinculos e remocao pelo dono.
 - Transformado o painel real do Oraculo em interface estilo WhatsApp e removida a tela estatica de previa.
 - Adicionada base do WhatsApp real com Evolution API: configuracao, segredos privados, webhook seguro e historico por canal.
+- Adicionado convite operacional por WhatsApp quando Evolution API/Evo Go estiver ativo e o convidado tiver celular cadastrado.
 
 ## 2026-06-28
 

@@ -78,7 +78,7 @@ export function Settings() {
     setMemberName("");
     setMemberPhone("");
     setMemberAreaId("");
-    setMemberMessage("Convite solicitado. Se o envio de email estiver configurado, a pessoa receberá o convite.");
+    setMemberMessage("Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp. Caso contrário, o envio segue por email.");
   }
 
   function saveAi(event: FormEvent<HTMLFormElement>) {
@@ -340,6 +340,9 @@ export function Settings() {
             <MessageCircle className="h-5 w-5 text-text-secondary" />
             <h2 className="text-base font-semibold text-text">WhatsApp</h2>
           </div>
+          <p className="mb-4 text-sm leading-6 text-text-secondary">
+            Use a URL pública da sua VPS/Evo Go. O segredo do webhook deve ser o mesmo salvo aqui e configurado no painel da Evolution.
+          </p>
           <form onSubmit={saveWhatsApp} className="grid gap-3">
             <label className="flex items-center gap-2 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm text-text-secondary">
               <input

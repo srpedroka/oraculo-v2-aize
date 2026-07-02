@@ -806,6 +806,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           phone: action.phone ?? null,
           role: action.role,
           areaId: action.areaId ?? null,
+          redirectTo: window.location.origin,
         }).then(invalidateOrg);
         return;
       }

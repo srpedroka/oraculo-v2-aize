@@ -118,7 +118,7 @@ Verifique:
 
 ## Configurar WhatsApp real
 
-O app ja tem a base para Evolution API, mas a hospedagem e o pareamento do numero sao manuais.
+O app envia e recebe WhatsApp pela Evolution API/Evo Go hospedada fora do Oraculo. A hospedagem e o pareamento do numero sao manuais.
 
 1. Hospede a Evolution API em ambiente proprio.
 2. Crie uma instancia e escaneie o QR Code com o aparelho que sera usado.
@@ -129,7 +129,26 @@ O app ja tem a base para Evolution API, mas a hospedagem e o pareamento do numer
 7. Envie no webhook o cabecalho `x-oraculo-webhook-secret` com o mesmo segredo salvo.
 8. Cadastre o celular da pessoa na conta dela ou no convite.
 
+Convites seguem esta regra:
+
+- se WhatsApp estiver ativo e o convite tiver celular, o Oraculo gera um link de convite do Supabase e envia pelo WhatsApp;
+- se WhatsApp nao estiver ativo ou o convite nao tiver celular, o Oraculo usa o convite por email do Supabase.
+
 Sem a Evolution API hospedada e sem QR pareado, o painel do sistema continua funcionando, mas o WhatsApp real nao recebe mensagens.
+
+## Problema: convite por WhatsApp nao chega
+
+Verifique:
+
+1. Configuracoes > WhatsApp esta ativo.
+2. URL da VPS/Evo Go esta publica e acessivel por HTTPS ou HTTP.
+3. Instancia esta conectada no QR Code.
+4. Chave da Evolution API foi salva novamente se tiver sido trocada.
+5. Celular do convidado esta em formato internacional, exemplo `+5546999990000`.
+6. Logs da Edge Function `invite-member`.
+7. Logs da Evolution API/Evo Go.
+
+O envio tenta o endpoint padrao da Evolution API e, se a instalacao responder 404 ou 405, tenta tambem o caminho curto usado por algumas distribuicoes Evo Go.
 
 ## Problema: salvar chave de IA falha
 
@@ -192,6 +211,8 @@ supabase functions deploy invite-member
 supabase functions deploy save-ai-settings
 supabase functions deploy oracle-chat
 supabase functions deploy monthly-check-in
+supabase functions deploy save-whatsapp-settings
+supabase functions deploy whatsapp-webhook --no-verify-jwt
 ```
 
 Se a CLI pedir login ou link do projeto, conecte ao projeto correto antes de publicar.
