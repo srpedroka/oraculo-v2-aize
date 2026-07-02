@@ -191,12 +191,15 @@ function audioFileFromBase64(base64: string, mimeType: string) {
   }
 }
 
-async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string): Promise<AudioFile | null> {
+async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, diagnostics?: string[]): Promise<AudioFile | null> {
   if (!url.startsWith("http")) return null;
   const response = await fetch(url, {
     headers: keyRow?.api_key ? { apikey: keyRow.api_key } : undefined,
   }).catch(() => null);
-  if (!response?.ok) return null;
+  if (!response?.ok) {
+    diagnostics?.push(`url:${response?.status ?? "no-response"}`);
+    return null;
+  }
 
   const contentType = response.headers.get("content-type") ?? mimeType;
   const bytes = new Uint8Array(await response.arrayBuffer());
@@ -227,23 +230,62 @@ function extractBase64FromMediaResponse(value: any) {
   );
 }
 
-async function audioFileFromMediaResponse(response: Response, mimeType: string) {
+function extractUrlFromMediaResponse(value: any) {
+  return firstText(
+    value?.url,
+    value?.URL,
+    value?.mediaUrl,
+    value?.MediaUrl,
+    value?.downloadUrl,
+    value?.DownloadUrl,
+    value?.downloadURL,
+    value?.data?.url,
+    value?.data?.URL,
+    value?.data?.mediaUrl,
+    value?.data?.MediaUrl,
+    value?.data?.downloadUrl,
+    value?.data?.DownloadUrl,
+    value?.data?.downloadURL,
+    value?.data?.message?.url,
+    value?.data?.message?.URL,
+  );
+}
+
+function jsonShape(value: any) {
+  if (!value || typeof value !== "object") return typeof value;
+  const keys = Object.keys(value).slice(0, 8).join(",");
+  const dataKeys = value.data && typeof value.data === "object" ? `;data:${Object.keys(value.data).slice(0, 8).join(",")}` : "";
+  return `${keys}${dataKeys}`;
+}
+
+async function audioFileFromMediaResponse(response: Response, mimeType: string, keyRow: any, diagnostics?: string[]) {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json") || contentType.includes("text/")) {
     const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : null;
     const base64 = extractBase64FromMediaResponse(payload);
     if (base64) return audioFileFromBase64(base64, mimeType);
 
+    const mediaUrl = extractUrlFromMediaResponse(payload);
+    if (mediaUrl) return await downloadAudioFromUrl(mediaUrl, keyRow, mimeType, diagnostics);
+
     const text = payload ? "" : await response.text().catch(() => "");
     const textBase64 = firstText(text);
     if (textBase64 && /^[A-Za-z0-9+/=\s]+$/.test(textBase64) && textBase64.length > 120) {
       return audioFileFromBase64(textBase64, mimeType);
     }
+    console.error("Evolution retornou JSON de mídia sem arquivo reconhecido", {
+      contentType,
+      shape: jsonShape(payload),
+    });
+    diagnostics?.push(`json:${jsonShape(payload)}`);
     return null;
   }
 
   const bytes = new Uint8Array(await response.arrayBuffer());
-  if (!bytes.length) return null;
+  if (!bytes.length) {
+    diagnostics?.push(`binary-empty:${contentType || "no-type"}`);
+    return null;
+  }
 
   return {
     bytes,
@@ -252,7 +294,12 @@ async function audioFileFromMediaResponse(response: Response, mimeType: string) 
   };
 }
 
-async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo: NonNullable<ReturnType<typeof extractAudioInfo>>) {
+async function downloadAudioFromEvolution(
+  settings: any,
+  keyRow: any,
+  audioInfo: NonNullable<ReturnType<typeof extractAudioInfo>>,
+  diagnostics: string[],
+) {
   const baseUrl = String(settings?.instance_url ?? "").replace(/\/+$/, "");
   const instanceName = String(settings?.instance_name ?? "").trim();
   if (!baseUrl || !instanceName || !keyRow?.api_key) return null;
@@ -349,21 +396,26 @@ async function downloadAudioFromEvolution(settings: any, keyRow: any, audioInfo:
             endpoint: endpoint.replace(baseUrl, ""),
             contentType: response.headers.get("content-type") ?? "",
           });
+          diagnostics.push(`${endpoint.replace(baseUrl, "")}:${response.status}:${response.headers.get("content-type") ?? "no-type"}`);
         }
         continue;
       }
-      const file = await audioFileFromMediaResponse(response, audioInfo.mimeType);
+      const file = await audioFileFromMediaResponse(response, audioInfo.mimeType, keyRow, diagnostics);
       if (file) return file;
       console.error("Evolution retornou mídia sem base64 reconhecido", endpoint);
+      diagnostics.push(`${endpoint.replace(baseUrl, "")}:ok-no-file`);
     }
   }
 
   return null;
 }
 
-async function resolveAudioFile(settings: any, keyRow: any, payload: any) {
+async function resolveAudioFile(settings: any, keyRow: any, payload: any, diagnostics: string[]) {
   const audioInfo = extractAudioInfo(payload);
-  if (!audioInfo) return null;
+  if (!audioInfo) {
+    diagnostics.push("no-audio-info");
+    return null;
+  }
 
   if (audioInfo.base64) {
     const file = audioFileFromBase64(audioInfo.base64, audioInfo.mimeType);
@@ -371,15 +423,22 @@ async function resolveAudioFile(settings: any, keyRow: any, payload: any) {
   }
 
   if (audioInfo.url) {
-    const file = await downloadAudioFromUrl(audioInfo.url, keyRow, audioInfo.mimeType);
+    const file = await downloadAudioFromUrl(audioInfo.url, keyRow, audioInfo.mimeType, diagnostics);
     if (file) return file;
   }
 
-  return await downloadAudioFromEvolution(settings, keyRow, audioInfo);
+  return await downloadAudioFromEvolution(settings, keyRow, audioInfo, diagnostics);
 }
 
-async function transcribeIncomingAudio(client: ReturnType<typeof serviceClient>, orgId: string, whatsappSettings: any, whatsappKeyRow: any, payload: any) {
-  const audioFile = await resolveAudioFile(whatsappSettings, whatsappKeyRow, payload);
+async function transcribeIncomingAudio(
+  client: ReturnType<typeof serviceClient>,
+  orgId: string,
+  whatsappSettings: any,
+  whatsappKeyRow: any,
+  payload: any,
+  diagnostics: string[],
+) {
+  const audioFile = await resolveAudioFile(whatsappSettings, whatsappKeyRow, payload, diagnostics);
   if (!audioFile) return "";
 
   const [{ data: settings }, { data: keyRow }] = await Promise.all([
@@ -657,19 +716,22 @@ serve(async (req) => {
     const areaId = area?.id ?? null;
     let text = extractedText;
     let wasTranscribedAudio = false;
+    const audioDiagnostics: string[] = [];
 
     if (!text && hasAudio) {
       try {
-        text = await transcribeIncomingAudio(client, orgId, whatsappSettings, whatsappKeyRow, payload);
+        text = await transcribeIncomingAudio(client, orgId, whatsappSettings, whatsappKeyRow, payload, audioDiagnostics);
         wasTranscribedAudio = Boolean(text);
       } catch (error) {
         console.error("Erro ao transcrever áudio do WhatsApp", error instanceof Error ? error.message : String(error));
+        audioDiagnostics.push("transcription-error");
       }
     }
 
     if (!text) {
       const audioFailureText = "[Áudio recebido sem transcrição]";
-      const answer = "Recebi seu áudio, mas ainda não consegui transcrever por aqui. Pode me mandar em texto por enquanto?";
+      const diagnosticCode = audioDiagnostics.slice(-6).join(" | ") || "sem-diagnostico";
+      const answer = `Recebi seu áudio, mas ainda não consegui transcrever por aqui. Pode me mandar em texto por enquanto?\n\nCódigo técnico: ${diagnosticCode}`;
 
       await client.from("chat_messages").insert({
         org_id: orgId,
