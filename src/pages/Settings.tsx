@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Activity, Bot, Building2, DollarSign, LogOut, MessageCircle, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
 import type { AiSettings } from "../types";
 
@@ -86,6 +87,8 @@ export function Settings() {
   );
 
   const recentUsage = state.aiUsageLogs.slice(0, 5);
+  const automaticPricing = useMemo(() => findModelPricing(provider, model), [model, provider]);
+  const modelOptions = useMemo(() => modelOptionsForProvider(provider), [provider]);
 
   useEffect(() => {
     if (!state.aiSettings) return;
@@ -95,6 +98,13 @@ export function Settings() {
     setOutputTokenPrice(String(state.aiSettings.outputTokenPriceUsdPerMillion ?? 0));
     setPricingSource(state.aiSettings.pricingSource ?? "");
   }, [state.aiSettings]);
+
+  useEffect(() => {
+    if (!automaticPricing) return;
+    setInputTokenPrice(String(automaticPricing.inputTokenPriceUsdPerMillion));
+    setOutputTokenPrice(String(automaticPricing.outputTokenPriceUsdPerMillion));
+    setPricingSource(automaticPricing.source);
+  }, [automaticPricing]);
 
   useEffect(() => {
     setWhatsappInstanceUrl(state.whatsappSettings?.instanceUrl ?? "");
@@ -386,20 +396,26 @@ export function Settings() {
               <option value="moonshot">Kimi / Moonshot</option>
             </select>
             <input
+              list="ai-model-options"
               value={model}
               onChange={(event) => setModel(event.target.value)}
               placeholder="Modelo"
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
+            <datalist id="ai-model-options">
+              {modelOptions.map((option) => (
+                <option key={option.model} value={option.model} />
+              ))}
+            </datalist>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-2 block text-xs font-medium text-text-secondary">Entrada USD / 1M tokens</span>
                 <input
                   inputMode="decimal"
                   value={inputTokenPrice}
-                  onChange={(event) => setInputTokenPrice(event.target.value)}
+                  readOnly
                   placeholder="0.00"
-                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
                 />
               </label>
               <label className="block">
@@ -407,18 +423,23 @@ export function Settings() {
                 <input
                   inputMode="decimal"
                   value={outputTokenPrice}
-                  onChange={(event) => setOutputTokenPrice(event.target.value)}
+                  readOnly
                   placeholder="0.00"
-                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
                 />
               </label>
             </div>
             <input
               value={pricingSource}
-              onChange={(event) => setPricingSource(event.target.value)}
+              readOnly
               placeholder="Fonte do pricing, ex: URL da tabela oficial"
-              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+              className="h-10 rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
             />
+            <p className="text-xs leading-5 text-text-secondary">
+              {automaticPricing
+                ? `Pricing encontrado automaticamente. Ao salvar, o servidor reconsulta a fonte oficial quando disponível. ${automaticPricing.note ?? ""}`
+                : "Pricing automático ainda não cadastrado para este modelo. Escolha um modelo conhecido ou aguarde atualização do catálogo."}
+            </p>
             <input
               type="password"
               value={apiKey}

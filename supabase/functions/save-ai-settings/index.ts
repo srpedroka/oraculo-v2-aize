@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { resolveModelPricing } from "../_shared/pricing.ts";
+import type { Provider } from "../_shared/model.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -22,8 +24,10 @@ serve(async (req) => {
     const client = serviceClient();
     const cleanKey = String(apiKey).trim();
     const keyPreview = cleanKey ? `****${cleanKey.slice(-4)}` : undefined;
-    const inputPrice = Math.max(0, Number(inputTokenPriceUsdPerMillion) || 0);
-    const outputPrice = Math.max(0, Number(outputTokenPriceUsdPerMillion) || 0);
+    const knownPricing = await resolveModelPricing(provider as Provider, String(model));
+    const inputPrice = knownPricing?.inputTokenPriceUsdPerMillion ?? Math.max(0, Number(inputTokenPriceUsdPerMillion) || 0);
+    const outputPrice = knownPricing?.outputTokenPriceUsdPerMillion ?? Math.max(0, Number(outputTokenPriceUsdPerMillion) || 0);
+    const source = knownPricing?.source ?? (String(pricingSource ?? "").trim() || null);
 
     if (cleanKey) {
       const { error: keyError } = await client.from("ai_model_keys").upsert({
@@ -43,7 +47,7 @@ serve(async (req) => {
       key_preview: keyPreview,
       input_token_price_usd_per_million: inputPrice,
       output_token_price_usd_per_million: outputPrice,
-      pricing_source: String(pricingSource ?? "").trim() || null,
+      pricing_source: source,
       updated_at: new Date().toISOString(),
     });
 

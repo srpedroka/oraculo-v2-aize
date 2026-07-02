@@ -1,0 +1,38 @@
+import type { AiSettings } from "../types";
+
+export interface ModelPricing {
+  provider: AiSettings["provider"];
+  model: string;
+  inputTokenPriceUsdPerMillion: number;
+  outputTokenPriceUsdPerMillion: number;
+  source: string;
+  note?: string;
+}
+
+export const MODEL_PRICING_CATALOG: ModelPricing[] = [
+  {
+    provider: "moonshot",
+    model: "kimi-k2.7-code",
+    inputTokenPriceUsdPerMillion: 0.95,
+    outputTokenPriceUsdPerMillion: 4,
+    source: "https://platform.kimi.ai/docs/pricing/chat-k27-code",
+    note: "Entrada calculada com preço de cache miss. Cache hit oficial: US$ 0.19 / 1M tokens.",
+  },
+  {
+    provider: "moonshot",
+    model: "kimi-k2.7-code-highspeed",
+    inputTokenPriceUsdPerMillion: 1.9,
+    outputTokenPriceUsdPerMillion: 8,
+    source: "https://platform.kimi.ai/docs/pricing/chat-k27-code",
+    note: "Entrada calculada com preço de cache miss. Cache hit oficial: US$ 0.38 / 1M tokens.",
+  },
+];
+
+export function findModelPricing(provider: AiSettings["provider"], model: string) {
+  const normalizedModel = model.trim().toLowerCase();
+  return MODEL_PRICING_CATALOG.find((item) => item.provider === provider && item.model.toLowerCase() === normalizedModel) ?? null;
+}
+
+export function modelOptionsForProvider(provider: AiSettings["provider"]) {
+  return MODEL_PRICING_CATALOG.filter((item) => item.provider === provider);
+}
