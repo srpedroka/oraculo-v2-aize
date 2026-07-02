@@ -281,6 +281,87 @@ function asciiSignature(bytes: Uint8Array) {
     .join("");
 }
 
+function base64ToBytes(value: string) {
+  const clean = value
+    .replace(/^data:[^,]+,/, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .replace(/\s/g, "");
+  const padded = clean.padEnd(Math.ceil(clean.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function looksLikeAudioBytes(bytes: Uint8Array) {
+  const header = Array.from(bytes.slice(0, 16))
+    .map((byte) => String.fromCharCode(byte))
+    .join("");
+
+  return (
+    header.startsWith("OggS") ||
+    header.startsWith("ID3") ||
+    header.startsWith("RIFF") ||
+    header.includes("ftyp") ||
+    (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) ||
+    (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3)
+  );
+}
+
+async function decryptWhatsAppAudio(bytes: Uint8Array, mediaKey: string) {
+  const mediaKeyBytes = base64ToBytes(mediaKey);
+  const salt = new Uint8Array(32);
+  const baseKey = await crypto.subtle.importKey("raw", mediaKeyBytes, "HKDF", false, ["deriveBits"]);
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt,
+      info: new TextEncoder().encode("WhatsApp Audio Keys"),
+    },
+    baseKey,
+    112 * 8,
+  );
+  const derived = new Uint8Array(derivedBits);
+  const iv = derived.slice(0, 16);
+  const cipherKey = derived.slice(16, 48);
+  const encrypted = bytes.length > 10 ? bytes.slice(0, -10) : bytes;
+  const cryptoKey = await crypto.subtle.importKey("raw", cipherKey, { name: "AES-CBC" }, false, ["decrypt"]);
+  const decrypted = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, encrypted));
+  const padding = decrypted[decrypted.length - 1];
+
+  if (padding > 0 && padding <= 16) {
+    return decrypted.slice(0, -padding);
+  }
+  return decrypted;
+}
+
+async function maybeDecryptWhatsAppAudio(file: AudioFile, audioInfo: NonNullable<ReturnType<typeof extractAudioInfo>>, diagnostics: string[]) {
+  if (looksLikeAudioBytes(file.bytes)) return file;
+
+  const mediaKey = firstText(audioInfo.audioMessage?.mediaKey, audioInfo.audioMessage?.MediaKey);
+  if (!mediaKey) {
+    diagnostics.push("decrypt:no-media-key");
+    return file;
+  }
+
+  try {
+    const decryptedBytes = await decryptWhatsAppAudio(file.bytes, mediaKey);
+    diagnostics.push(`decrypt:ok:${asciiSignature(decryptedBytes)}:${byteSignature(decryptedBytes)}`);
+    return {
+      bytes: decryptedBytes,
+      mimeType: audioInfo.mimeType || "audio/ogg",
+      fileName: "whatsapp-audio.ogg",
+    };
+  } catch (error) {
+    diagnostics.push(`decrypt:error:${error instanceof Error ? error.name : "unknown"}`);
+    return file;
+  }
+}
+
 async function audioFileFromMediaResponse(response: Response, mimeType: string, keyRow: any, diagnostics?: string[]) {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json") || contentType.includes("text/")) {
@@ -466,15 +547,17 @@ async function resolveAudioFile(settings: any, keyRow: any, payload: any, diagno
 
   if (audioInfo.base64) {
     const file = audioFileFromBase64(audioInfo.base64, audioInfo.mimeType);
-    if (file) return file;
+    if (file) return await maybeDecryptWhatsAppAudio(file, audioInfo, diagnostics);
   }
 
   if (audioInfo.url) {
     const file = await downloadAudioFromUrl(audioInfo.url, keyRow, audioInfo.mimeType, diagnostics);
-    if (file) return file;
+    if (file) return await maybeDecryptWhatsAppAudio(file, audioInfo, diagnostics);
   }
 
-  return await downloadAudioFromEvolution(settings, keyRow, audioInfo, diagnostics);
+  const file = await downloadAudioFromEvolution(settings, keyRow, audioInfo, diagnostics);
+  if (file) return await maybeDecryptWhatsAppAudio(file, audioInfo, diagnostics);
+  return null;
 }
 
 async function transcribeIncomingAudio(
