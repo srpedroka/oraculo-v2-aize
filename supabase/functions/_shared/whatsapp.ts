@@ -17,6 +17,7 @@ export async function sendWhatsAppText(settings: any, keyRow: any, phone: string
 
   const urls = buildSendUrls(settings);
   if (!urls.length) throw new Error("URL do WhatsApp não configurada");
+  const instanceName = String(settings.instance_name ?? "").trim();
 
   let lastError = "";
   for (const url of urls) {
@@ -27,6 +28,7 @@ export async function sendWhatsAppText(settings: any, keyRow: any, phone: string
         apikey: keyRow.api_key,
       },
       body: JSON.stringify({
+        id: instanceName,
         number: normalizeWhatsAppNumber(phone),
         text,
       }),

@@ -33,7 +33,6 @@ async function getWhatsAppConfig(client: ReturnType<typeof serviceClient>, orgId
   if (!settings) return null;
 
   const { data: keyRow, error: keyError } = await client
-    .schema("private")
     .from("whatsapp_instance_keys")
     .select("*")
     .eq("org_id", orgId)

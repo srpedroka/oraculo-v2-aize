@@ -16,7 +16,7 @@ serve(async (req) => {
     const keyPreview = cleanKey ? `****${cleanKey.slice(-4)}` : undefined;
 
     if (cleanKey) {
-      const { error: keyError } = await client.schema("private").from("ai_model_keys").upsert({
+      const { error: keyError } = await client.from("ai_model_keys").upsert({
         org_id: orgId,
         provider,
         api_key: cleanKey,

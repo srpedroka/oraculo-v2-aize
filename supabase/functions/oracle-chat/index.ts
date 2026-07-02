@@ -38,7 +38,7 @@ serve(async (req) => {
     const [{ data: settings }, { data: keyRow }, { data: objectives }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: history }] =
       await Promise.all([
         client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
-        client.schema("private").from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
+        client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
         client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
         client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
         client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),

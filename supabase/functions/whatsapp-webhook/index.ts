@@ -56,7 +56,7 @@ async function buildAnswer(client: ReturnType<typeof serviceClient>, orgId: stri
   const [{ data: settings }, { data: keyRow }, { data: objectives }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: history }] =
     await Promise.all([
       client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
-      client.schema("private").from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
+      client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
       client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
       client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
@@ -106,14 +106,16 @@ serve(async (req) => {
     if (!whatsappSettings) return jsonResponse({ error: "WhatsApp não configurado para esta empresa" }, 404);
 
     const { data: whatsappKeyRow, error: whatsappKeyError } = await client
-      .schema("private")
       .from("whatsapp_instance_keys")
       .select("*")
       .eq("org_id", whatsappSettings.org_id)
       .maybeSingle();
     if (whatsappKeyError) throw whatsappKeyError;
 
-    const receivedSecret = req.headers.get("x-oraculo-webhook-secret") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    const receivedSecret =
+      req.headers.get("x-oraculo-webhook-secret") ??
+      req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
+      url.searchParams.get("secret");
     if (!whatsappKeyRow?.webhook_secret || receivedSecret !== whatsappKeyRow.webhook_secret) {
       return jsonResponse({ error: "Webhook não autorizado" }, 401);
     }
