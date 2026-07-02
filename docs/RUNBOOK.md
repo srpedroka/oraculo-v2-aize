@@ -305,9 +305,10 @@ Para deixar a IA mais natural:
 
 1. Ajuste `CONVERSATION_STYLE`.
 2. Evite instrucoes contraditorias, como "seja curto" e "explique tudo".
-3. Publique `whatsapp-webhook` e `oracle-chat`.
-4. Teste pelo WhatsApp com pergunta ambigua, por exemplo "Como esta o sistema?".
-5. Confira se ela pede esclarecimento antes de despejar numeros.
+3. Lembre que saudacoes simples tambem passam pela IA quando houver chave configurada; respostas fixas devem ficar apenas como fallback.
+4. Publique `whatsapp-webhook` e `oracle-chat`.
+5. Teste pelo WhatsApp com pergunta ambigua, por exemplo "Como esta o sistema?".
+6. Confira se ela pede esclarecimento antes de despejar numeros.
 
 ## Recuperacao de segredo exposto
 
