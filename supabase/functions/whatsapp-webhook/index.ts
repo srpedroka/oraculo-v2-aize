@@ -16,6 +16,30 @@ function normalizePhone(value: unknown) {
   return digits.length >= 8 ? `+${digits}` : null;
 }
 
+function phoneCandidates(value: unknown) {
+  const normalized = normalizePhone(value);
+  if (!normalized) return [];
+
+  const candidates = new Set<string>();
+  const add = (digits: string) => {
+    const clean = digits.replace(/\D/g, "");
+    if (clean.length >= 8) candidates.add(`+${clean}`);
+  };
+
+  const digits = normalized.replace(/\D/g, "");
+  add(digits);
+  add(digits.replace(/^0+/, ""));
+
+  const national = digits.startsWith("55") ? digits.slice(2).replace(/^0+/, "") : digits.replace(/^0+/, "");
+  if (national.length >= 10 && national.length <= 11) add(`55${national}`);
+
+  // Brazil mobile numbers can arrive with or without the ninth digit after the DDD.
+  if (national.length === 10) add(`55${national.slice(0, 2)}9${national.slice(2)}`);
+  if (national.length === 11 && national[2] === "9") add(`55${national.slice(0, 2)}${national.slice(3)}`);
+
+  return [...candidates];
+}
+
 function firstText(...values: unknown[]) {
   for (const value of values) {
     if (typeof value === "string" || typeof value === "number") {
@@ -1335,11 +1359,13 @@ serve(async (req) => {
     if ((!extractedText && !hasAudio && !hasDocument) || !phone) return jsonResponse({ ok: true, ignored: true });
 
     const orgId = whatsappSettings.org_id as string;
-    const { data: profile } = await client.from("profiles").select("id, full_name, phone").eq("phone", phone).maybeSingle();
+    const phoneOptions = phoneCandidates(phone);
+    const { data: profile } = await client.from("profiles").select("id, full_name, phone").in("phone", phoneOptions).maybeSingle();
     if (!profile) {
       await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, "Este número não está cadastrado no Oráculo. Peça ao dono da empresa para vincular seu celular.");
       return jsonResponse({ ok: true, rejected: "unknown_phone" });
     }
+    const replyPhone = profile.phone ?? phone;
 
     const { data: membership } = await client
       .from("memberships")
@@ -1348,7 +1374,7 @@ serve(async (req) => {
       .eq("user_id", profile.id)
       .maybeSingle();
     if (!membership) {
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, "Seu número existe, mas não tem acesso a esta empresa no Oráculo.");
+      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, "Seu número existe, mas não tem acesso a esta empresa no Oráculo.");
       return jsonResponse({ ok: true, rejected: "no_membership" });
     }
 
@@ -1374,7 +1400,7 @@ serve(async (req) => {
         channel: "whatsapp",
       });
 
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, result.answer);
+      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, result.answer);
       return jsonResponse({ ok: true, document: "processed" });
     }
 
@@ -1413,7 +1439,7 @@ serve(async (req) => {
         channel: "whatsapp",
       });
 
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, answer);
+      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, answer);
       return jsonResponse({ ok: true, audio: "transcription_failed" });
     }
 
@@ -1438,7 +1464,7 @@ serve(async (req) => {
       channel: "whatsapp",
     });
 
-    await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, answer);
+    await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, answer);
     return jsonResponse({ ok: true });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro no webhook do WhatsApp" }, 400);
