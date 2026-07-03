@@ -82,6 +82,41 @@ function messageParts(payload: any) {
   return { data, message, info, key };
 }
 
+function extractWebhookMessageId(payload: any) {
+  const { data, info, key } = messageParts(payload);
+  return firstText(
+    key?.id,
+    key?.Id,
+    key?.ID,
+    info?.ID,
+    info?.Id,
+    info?.id,
+    info?.MessageID,
+    info?.messageId,
+    info?.message_id,
+    data?.ID,
+    data?.Id,
+    data?.id,
+    data?.messageId,
+    data?.message_id,
+    payload?.ID,
+    payload?.Id,
+    payload?.id,
+    payload?.messageId,
+    payload?.message_id,
+  );
+}
+
+function buildWebhookEventKey(payload: any, phone: string, text: string, hasAudio: boolean, hasDocument: boolean) {
+  const messageId = extractWebhookMessageId(payload);
+  if (messageId) return `message:${phone}:${messageId}`;
+
+  const kind = hasDocument ? "document" : hasAudio ? "audio" : "text";
+  const minute = new Date().toISOString().slice(0, 16);
+  const normalizedText = normalizeText(text).slice(0, 160) || "media";
+  return `fallback:${phone}:${kind}:${normalizedText}:${minute}`;
+}
+
 function toBoolean(value: unknown) {
   if (typeof value === "boolean") return value;
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -1324,6 +1359,10 @@ async function processIncomingDocument(
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  let dedupeClient: ReturnType<typeof serviceClient> | null = null;
+  let dedupeOrgId = "";
+  let dedupeEventKey = "";
+
   try {
     const url = new URL(req.url);
     const payload = await req.json();
@@ -1359,6 +1398,16 @@ serve(async (req) => {
     if ((!extractedText && !hasAudio && !hasDocument) || !phone) return jsonResponse({ ok: true, ignored: true });
 
     const orgId = whatsappSettings.org_id as string;
+    const eventKey = buildWebhookEventKey(payload, phone, extractedText, hasAudio, hasDocument);
+    const { error: dedupeError } = await client.from("whatsapp_processed_events").insert({ org_id: orgId, event_key: eventKey });
+    if (dedupeError) {
+      if (dedupeError.code === "23505") return jsonResponse({ ok: true, duplicate: true });
+      throw dedupeError;
+    }
+    dedupeClient = client;
+    dedupeOrgId = orgId;
+    dedupeEventKey = eventKey;
+
     const phoneOptions = phoneCandidates(phone);
     const { data: profile } = await client.from("profiles").select("id, full_name, phone").in("phone", phoneOptions).maybeSingle();
     if (!profile) {
@@ -1467,6 +1516,9 @@ serve(async (req) => {
     await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, answer);
     return jsonResponse({ ok: true });
   } catch (error) {
+    if (dedupeClient && dedupeOrgId && dedupeEventKey) {
+      await dedupeClient.from("whatsapp_processed_events").delete().eq("org_id", dedupeOrgId).eq("event_key", dedupeEventKey);
+    }
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro no webhook do WhatsApp" }, 400);
   }
 });
