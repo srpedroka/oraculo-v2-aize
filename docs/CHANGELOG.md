@@ -2,6 +2,7 @@
 
 ## 2026-07-02
 
+- Adicionado formulário em Configurações para criar nova empresa e alternar a empresa ativa.
 - Corrigido parsing de payloads da Evolution API/Evo Go no `whatsapp-webhook`, incluindo campos `Data/Info/Message` e filtros para ignorar remetentes `@lid`.
 - Corrigido envio de WhatsApp para deixar a Evolution gerar ids unicos de mensagem e reduzir duplicidade/travamento de envio.
 - Seedados dados reais de demonstracao da GAAM/Aize no Supabase de producao para painel, planos e objetivos.

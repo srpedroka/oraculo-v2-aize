@@ -42,6 +42,9 @@ function formatNumber(value: number) {
 
 export function Settings() {
   const { state, dispatch, signOut } = useAppState();
+  const [organizationName, setOrganizationName] = useState("");
+  const [organizationSubtitle, setOrganizationSubtitle] = useState("");
+  const [organizationMessage, setOrganizationMessage] = useState("");
   const [areaName, setAreaName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberName, setMemberName] = useState("");
@@ -112,6 +115,20 @@ export function Settings() {
     setWhatsappConnectedNumber(state.whatsappSettings?.connectedNumber ?? "");
     setWhatsappEnabled(state.whatsappSettings?.enabled ?? false);
   }, [state.whatsappSettings]);
+
+  function createOrganization(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!organizationName.trim()) return;
+
+    dispatch({
+      type: "create_organization",
+      name: organizationName.trim(),
+      subtitle: organizationSubtitle.trim() || undefined,
+    });
+    setOrganizationName("");
+    setOrganizationSubtitle("");
+    setOrganizationMessage("Empresa criada. Ela será selecionada automaticamente em instantes.");
+  }
 
   function createArea(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -231,6 +248,30 @@ export function Settings() {
                 Seu papel: {state.currentMembership?.role === "owner" ? "Dono" : "Coordenador"}
               </p>
             </div>
+            <form onSubmit={createOrganization} className="rounded-2xl border border-border bg-white p-4">
+              <p className="text-sm font-semibold text-text">Adicionar nova empresa</p>
+              <div className="mt-3 grid gap-3">
+                <input
+                  value={organizationName}
+                  onChange={(event) => {
+                    setOrganizationName(event.target.value);
+                    setOrganizationMessage("");
+                  }}
+                  placeholder="Nome da empresa"
+                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+                />
+                <input
+                  value={organizationSubtitle}
+                  onChange={(event) => setOrganizationSubtitle(event.target.value)}
+                  placeholder="Subtítulo ou marca, opcional"
+                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+                />
+                <Button type="submit" icon={Plus} disabled={!organizationName.trim()}>
+                  Criar empresa
+                </Button>
+              </div>
+              {organizationMessage ? <p className="mt-3 text-xs leading-5 text-text-secondary">{organizationMessage}</p> : null}
+            </form>
           </div>
         </Card>
 
