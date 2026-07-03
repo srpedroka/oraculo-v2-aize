@@ -41,7 +41,7 @@ serve(async (req) => {
     const client = serviceClient();
     const [{ data: existingSettings }, { data: existingPrivate }] = await Promise.all([
       client.from("whatsapp_settings").select("*").eq("org_id", orgId).maybeSingle(),
-      client.schema("private").from("whatsapp_instance_keys").select("*").eq("org_id", orgId).maybeSingle(),
+      client.from("whatsapp_instance_keys").select("*").eq("org_id", orgId).maybeSingle(),
     ]);
     const hasApiKey = Boolean(cleanApiKey || existingPrivate?.api_key);
     const hasWebhookSecret = Boolean(cleanWebhookSecret || existingPrivate?.webhook_secret);
@@ -58,7 +58,7 @@ serve(async (req) => {
       if (cleanApiKey) privatePayload.api_key = cleanApiKey;
       if (cleanWebhookSecret) privatePayload.webhook_secret = cleanWebhookSecret;
 
-      const { error: privateError } = await client.schema("private").from("whatsapp_instance_keys").upsert(privatePayload);
+      const { error: privateError } = await client.from("whatsapp_instance_keys").upsert(privatePayload);
       if (privateError) throw privateError;
     }
 

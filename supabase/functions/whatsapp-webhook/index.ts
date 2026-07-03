@@ -1314,7 +1314,6 @@ serve(async (req) => {
     if (!whatsappSettings) return jsonResponse({ error: "WhatsApp não configurado para esta empresa" }, 404);
 
     const { data: whatsappKeyRow, error: whatsappKeyError } = await client
-      .schema("private")
       .from("whatsapp_instance_keys")
       .select("*")
       .eq("org_id", whatsappSettings.org_id)
