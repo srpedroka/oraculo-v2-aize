@@ -14,7 +14,7 @@
   --text: #1d1d1f;
   --text-secondary: #6e6e73;
   --text-tertiary: #a1a1a6;
-  --accent: #0071e3;
+  --accent: #2e2e33;
   color: var(--text);
   background: var(--bg);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
