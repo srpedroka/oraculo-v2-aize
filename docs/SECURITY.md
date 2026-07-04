@@ -84,7 +84,7 @@ O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cab
 
 Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usando service role no servidor. O frontend nunca recebe a chave da Evolution API e tambem nao monta a chamada direta para a VPS. O link de convite do Supabase e entregue ao celular informado no cadastro do convidado.
 
-Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chamada de IA. Isso facilita diagnostico quando a IA falha: se houver mensagem `user` sem resposta `oracle`, investigar logs da Edge Function, provider/modelo, chave de IA e envio pela Evolution.
+Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chamada de IA, com `user_id` e `conversation_id`. Isso facilita diagnostico quando a IA falha: se houver mensagem `user` sem resposta `oracle` na mesma conversa, investigar logs da Edge Function, provider/modelo, chave de IA e envio pela Evolution.
 
 Áudios recebidos pelo WhatsApp sao processados pela Edge Function: o arquivo e baixado da Evolution quando possivel, descriptografado em memoria quando vier como mídia criptografada do WhatsApp, transcrito pela OpenAI e salvo no historico apenas como texto transcrito. O áudio bruto, a mídia criptografada, URLs temporarias e `mediaKey` nao devem ser salvos no banco, impressos em logs, enviados ao frontend ou versionados no repositorio.
 
@@ -129,6 +129,10 @@ Regras de seguranca:
 - `plan_documents`: membros leem documentos da empresa; owner grava documentos gerais e coordenadores gravam documentos da propria area.
 
 Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios. Documentos estruturados ficam como dados privados da empresa e dependem de RLS para isolamento por organizacao.
+
+Na Fase 3, `conversations.summary` guarda um resumo de conversa gerado por IA. Esse resumo pode conter decisoes, numeros e pendencias da empresa, portanto deve ser tratado como dado privado da organizacao. Ele nunca deve guardar chave de API, segredo de webhook, senha, URL temporaria de mídia, audio bruto ou arquivo bruto.
+
+O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. Segredos continuam fora desse contexto.
 
 ## Sessoes e propostas da V3
 

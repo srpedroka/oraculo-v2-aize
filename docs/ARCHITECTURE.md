@@ -74,17 +74,17 @@ Fundacao V3:
 - `ai_provider_key_status`: guarda apenas `has_key` e `key_preview` por provedor para a tela de Configuracoes. A chave real continua em `public.ai_model_keys`, acessivel apenas por service role.
 - `plan_documents`: guarda o conteudo estruturado dos documentos canonicos de plano e fechamento que serao renderizados em tela, PDF e WhatsApp nas fases seguintes.
 
-Essas tabelas foram criadas na Fase 0 da V3 sem alterar comportamento de runtime. As Edge Functions ainda continuam usando os fluxos da V2 ate as fases seguintes conectarem a nova fundacao.
+Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations` passa a ser usada em runtime por `oracle-chat`, `oracle-session` e `whatsapp-webhook`: cada pessoa tem uma conversa ativa por canal (`web` ou `whatsapp`), `chat_messages` recebe `user_id` e `conversation_id`, e conversas longas ganham resumo em `conversations.summary`.
 
 ### Edge Functions
 
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
-- `oracle-chat`: consulta contexto da empresa e responde com fallback deterministico ou modelo configurado.
+- `oracle-chat`: usa a conversa web da pessoa, grava pergunta e resposta com `user_id`/`conversation_id`, monta contexto legivel do plano e responde com fallback deterministico ou modelo configurado.
 - `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, persiste fase/estado/proposta pendente e grava planos apenas depois de confirmacao.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
-- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, responde e grava historico com canal `whatsapp`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico usam o mesmo importador server-side do app e geram proposta pendente; documentos trimestrais, mensais e evidencias ainda recebem direcionamento sem gravacao automatica.
+- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico usam o mesmo importador server-side do app e geram proposta pendente; documentos trimestrais, mensais e evidencias ainda recebem direcionamento sem gravacao automatica.
 
 Funcoes compartilhadas:
 
@@ -96,6 +96,8 @@ Funcoes compartilhadas:
 - `_shared/usage.ts`: calculo e gravacao de consumo de IA.
 - `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
 - `_shared/prompt-guides.ts`: guias de comportamento, roteiro e tom do Oraculo empacotados junto das Edge Functions.
+- `_shared/conversations.ts`: cria/retoma conversa por pessoa e canal, grava mensagens com dono, carrega historico da conversa e resume historico longo com a funcao `background`.
+- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre vigente, mes vigente, acoes-chave, evidencias e pendencias.
 - `_shared/session-engine.ts`: orquestra sessoes de planejamento, historico, prompts, estado e chamadas ao modelo.
 - `_shared/proposals.ts`: aplica propostas confirmadas no banco com validacao server-side de permissao.
 - `_shared/conductors/`: persona e condutores de Planejamento Estrategico, Plano Trimestral da Area e Plano Mensal.
@@ -123,6 +125,10 @@ O helper `_shared/ai-router.ts` resolve provider/modelo/chave por funcao. Se uma
 
 Na Fase 2, `oracle-session` usa `planning` para conduzir sessoes. O modelo responde em envelope JSON com `reply`, `state_patch`, `next_phase`, `proposal` e `done`. O sistema persiste `state`, `phase` e `pending_proposal` em `planning_sessions`.
 
+Na Fase 3, as chamadas de conversa deixam de usar historico geral da empresa. `oracle-chat` e `whatsapp-webhook` carregam apenas a conversa ativa daquele usuario e canal. Quando existem mais de 40 mensagens novas desde o ultimo resumo, `_shared/conversations.ts` usa a funcao `background` para gerar um resumo curto em `conversations.summary`; depois disso, o modelo recebe o resumo e as ultimas mensagens, reduzindo custo e evitando perda de contexto.
+
+O contexto do plano tambem deixa de ser JSON cru. `_shared/plan-context.ts` devolve texto estruturado para a IA, incluindo objetivos, progresso, donos, prazos, entregas e acoes-chave. Isso permite que perguntas como "como está o mês da minha área?" enxerguem tambem as ações-chave, não só os objetivos.
+
 Modo misto de gravacao:
 
 - criar plano, objetivo e acao exige `proposal` + confirmacao;
@@ -140,9 +146,10 @@ O WhatsApp real passa por Evolution API/Evo Go hospedada fora do app. O fluxo e:
 1. Usuario envia mensagem para o numero pareado.
 2. Evolution chama `whatsapp-webhook` com segredo.
 3. O webhook identifica a empresa e o perfil pelo celular cadastrado.
-4. A mensagem do usuario e salva em `chat_messages`.
-5. O Oraculo responde por IA real ou fallback seguro.
-6. A resposta e salva e enviada de volta pela Evolution.
+4. O webhook cria ou retoma a conversa `whatsapp` daquela pessoa.
+5. A mensagem do usuario e salva em `chat_messages` com `user_id` e `conversation_id`.
+6. O Oraculo responde por IA real ou fallback seguro, usando apenas o historico daquela conversa.
+7. A resposta e salva e enviada de volta pela Evolution.
 
 Esse desenho foi ajustado em 2026-07-02 para salvar a mensagem antes da IA, permitindo diagnosticar casos em que a chamada ao modelo ou o envio falham.
 

@@ -29,6 +29,10 @@
 - Liberada criacao de areas/departamentos diretamente na tela Areas e na tela Planos Trimestrais quando nao houver areas cadastradas.
 - Liberada criacao manual de objetivos trimestrais pela tela Planos Trimestrais e de objetivos por nivel no detalhe da area.
 - Renomeada a regua visual "Direcional" para "Direcao inicial" na UI, deixando claro que ela mede clareza do objetivo, nao progresso.
+- Executada a Fase 3 da V3: adicionada memoria por conversa em `_shared/conversations.ts`, com conversa separada por pessoa/canal, resumo automatico via funcao `background` e gravacao de `user_id`/`conversation_id`.
+- Adicionado `_shared/plan-context.ts`, que entrega contexto textual do plano para IA com objetivos, areas, trimestre vigente, mes vigente, acoes-chave, evidencias e pendencias.
+- Atualizados `oracle-chat`, `oracle-session` e `whatsapp-webhook` para usar historico da conversa correta e contexto textual, reduzindo contaminacao entre usuarios/canais.
+- Ajustado painel web do Oraculo para carregar mensagens web do usuario atual e deixar o servidor registrar a conversa principal com rastreabilidade.
 
 ## 2026-07-02
 

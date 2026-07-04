@@ -2,7 +2,16 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOrgMember, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { resolveAiFunction } from "../_shared/ai-router.ts";
+import {
+  conversationMessagesForModel,
+  formatConversationMemory,
+  getOrCreateConversation,
+  insertConversationMessage,
+  loadConversationHistory,
+  maybeSummarize,
+} from "../_shared/conversations.ts";
 import { callModel } from "../_shared/model.ts";
+import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context.ts";
 import { CONVERSATION_STYLE, guideForContext } from "../_shared/prompt-guides.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 
@@ -17,6 +26,14 @@ function fallbackReview(objectives: any[]) {
   return "No geral, não vejo ponto crítico agora. Quer um resumo rápido ou quer olhar uma área específica?";
 }
 
+function focusForContext(context: string, areaId: string | null): PlanContextFocus {
+  const normalized = context.toLowerCase();
+  if (normalized.includes("execucao") || normalized.includes("mensal")) return "monthly";
+  if (normalized.includes("planos-trimestrais") || normalized.includes("trimestral")) return "quarterly";
+  if (areaId || normalized.includes("areas")) return "area";
+  return "org";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -27,15 +44,29 @@ serve(async (req) => {
 
     await assertOrgMember(user.id, orgId);
     const client = serviceClient();
+    const conversation = await getOrCreateConversation(client, {
+      orgId,
+      userId: user.id,
+      channel: "web",
+      areaId,
+    });
+    await insertConversationMessage(client, {
+      orgId,
+      areaId,
+      userId: user.id,
+      conversationId: conversation.id,
+      author: "user",
+      text: String(message),
+      channel: "web",
+    });
+    await maybeSummarize(client, orgId, conversation);
 
     const aiRoute = await resolveAiFunction(client, orgId, "daily");
-    const [{ data: objectives }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: history }] =
+    const [{ data: objectives }, history, planContext] =
       await Promise.all([
         client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
-        client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
-        client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
-        client.from("area_plans").select("*").eq("org_id", orgId),
-        client.from("chat_messages").select("author, text").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
+        loadConversationHistory(client, conversation.id),
+        buildPlanContext(client, orgId, { areaId, focus: focusForContext(String(context), areaId) }),
     ]);
 
     let answer = "";
@@ -50,22 +81,13 @@ serve(async (req) => {
         "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
         CONVERSATION_STYLE,
         guide,
+        formatConversationMemory(history),
         "Contexto atual do plano:",
-        JSON.stringify({ strategicPlan, areaPlans, areas, objectives, areaId }, null, 2),
-      ].join("\n\n");
-
-      const modelMessages = [
-        ...(history ?? [])
-          .reverse()
-          .map((item: { author: "oracle" | "user"; text: string }) => ({
-            role: item.author === "oracle" ? "assistant" as const : "user" as const,
-            content: item.text,
-          })),
-        { role: "user" as const, content: String(message) },
-      ];
+        planContext,
+      ].filter(Boolean).join("\n\n");
 
       try {
-        const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, modelMessages, aiRoute.limits);
+        const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
         answer = result.text;
         await recordAiUsage({
           client,
@@ -75,7 +97,7 @@ serve(async (req) => {
           channel: "web",
           usage: result.usage,
           settings: aiRoute.legacySettings,
-          metadata: { context, areaId, aiFunction: "daily" },
+          metadata: { context, areaId, conversationId: conversation.id, aiFunction: "daily" },
         });
       } catch (modelError) {
         console.error("Erro ao chamar IA no chat web", modelError instanceof Error ? modelError.message : String(modelError));
@@ -83,15 +105,17 @@ serve(async (req) => {
       }
     }
 
-    const { error } = await client.from("chat_messages").insert({
-      org_id: orgId,
-      area_id: areaId,
+    await insertConversationMessage(client, {
+      orgId,
+      areaId,
+      userId: user.id,
+      conversationId: conversation.id,
       author: "oracle",
       text: answer,
+      channel: "web",
     });
-    if (error) throw error;
 
-    return jsonResponse({ answer });
+    return jsonResponse({ answer, conversationId: conversation.id });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro no Oráculo" }, 400);
   }

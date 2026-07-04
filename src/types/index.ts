@@ -128,6 +128,8 @@ export interface ChatMessage {
   id: string;
   orgId?: string;
   areaId?: string | null;
+  userId?: string | null;
+  conversationId?: string | null;
   author: "oracle" | "user";
   text: string;
   channel?: "web" | "whatsapp";

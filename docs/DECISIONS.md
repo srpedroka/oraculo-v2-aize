@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-04 - Memoria por conversa e contexto textual do plano
+
+Decisao: ligar a Fase 3 da V3 ao runtime, usando `conversations` como fio de historico por pessoa/canal e `_shared/plan-context.ts` como fonte textual do plano para a IA.
+
+Contexto: o chat web e o WhatsApp ainda podiam buscar mensagens pelo `org_id`, misturando assuntos de pessoas e canais diferentes. O modelo tambem recebia JSON tecnico de objetivos e planos, sem uma leitura humana clara e com risco de ignorar `key_actions`.
+
+Alternativas: manter historico por empresa, filtrar apenas por canal, guardar contexto todo no frontend, ou criar um prompt diferente por tela sem helper central.
+
+Motivo: conversa por pessoa/canal evita contaminacao; resumo automatico reduz custo e preserva decisoes antigas; contexto textual deixa o modelo entender plano, area, trimestre, mes, donos, prazos, evidencias e acoes-chave sem depender de interpretar schema de banco.
+
+Consequencias: `oracle-chat`, `oracle-session` e `whatsapp-webhook` devem gravar mensagens com `user_id` e `conversation_id`; o painel web passa a carregar as mensagens web do usuario atual; `conversations.summary` e dados de plano devem ser tratados como dados privados da empresa. Quando novas chamadas de IA forem adicionadas, elas devem reutilizar `_shared/conversations.ts` e `_shared/plan-context.ts` em vez de buscar historico geral.
+
 ## 2026-07-04 - Fundacao de inteligencia da V3
 
 Decisao: criar uma camada de dados para memoria por conversa, sessoes de planejamento com estado, funcoes de IA por uso e documentos canonicos de plano.

@@ -1,7 +1,7 @@
 import { Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { createMessageId, generateWeeklyReview, respondToUserMessage } from "../lib/oracle";
+import { createMessageId, generateWeeklyReview } from "../lib/oracle";
 import { useAppState } from "../state/store";
 import { Button } from "./ui/Button";
 
@@ -281,18 +281,7 @@ export function OraclePanel() {
       setMessage("");
       return;
     }
-    dispatch({
-      type: "add_chat_message",
-      message: { id: createMessageId("user"), author: "user", text },
-    });
-    if (state.aiSettings?.hasKey) {
-      dispatch({ type: "send_oracle_message", text, context: location.pathname });
-    } else {
-      dispatch({
-        type: "add_chat_message",
-        message: { id: createMessageId("oracle"), author: "oracle", text: respondToUserMessage(text, state) },
-      });
-    }
+    dispatch({ type: "send_oracle_message", text, context: location.pathname });
     setMessage("");
   }
 

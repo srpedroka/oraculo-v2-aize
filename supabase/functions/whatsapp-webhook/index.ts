@@ -1,8 +1,18 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { resolveAiFunction } from "../_shared/ai-router.ts";
+import {
+  conversationMessagesForModel,
+  formatConversationMemory,
+  getOrCreateConversation,
+  insertConversationMessage,
+  loadConversationHistory,
+  maybeSummarize,
+  type ConversationRecord,
+} from "../_shared/conversations.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel } from "../_shared/model.ts";
+import { buildPlanContext } from "../_shared/plan-context.ts";
 import { CONVERSATION_STYLE, STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
@@ -1128,24 +1138,22 @@ async function buildAnswer(
   message: string,
   profile: any,
   membership: any,
-  currentMessageId: string | null,
+  conversation: ConversationRecord,
 ) {
   const aiRoute = await resolveAiFunction(client, orgId, "daily");
   const [
     { data: organization },
     { data: objectives },
     { data: areas },
-    { data: strategicPlan },
-    { data: areaPlans },
-    { data: history },
+    history,
+    planContext,
   ] =
     await Promise.all([
       client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
       client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
-      client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
-      client.from("area_plans").select("*").eq("org_id", orgId),
-      client.from("chat_messages").select("id, author, text").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
+      loadConversationHistory(client, conversation.id),
+      buildPlanContext(client, orgId, { areaId, focus: areaId ? "monthly" : "org" }),
     ]);
 
   const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
@@ -1169,23 +1177,13 @@ async function buildAnswer(
     "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
     CONVERSATION_STYLE,
     STRATEGIC_GUIDE,
+    formatConversationMemory(history),
     "Contexto atual do plano:",
-    JSON.stringify({ organization, strategicPlan, areaPlans, areas, objectives, areaId, currentContact: { profile, membership, area: currentArea } }, null, 2),
-  ].join("\n\n");
-
-  const modelMessages = [
-    ...(history ?? [])
-      .filter((item: { id?: string }) => item.id !== currentMessageId)
-      .reverse()
-      .map((item: { author: "oracle" | "user"; text: string }) => ({
-        role: item.author === "oracle" ? "assistant" as const : "user" as const,
-        content: item.text,
-      })),
-    { role: "user" as const, content: message },
-  ];
+    planContext,
+  ].filter(Boolean).join("\n\n");
 
   try {
-    const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, modelMessages, aiRoute.limits);
+    const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
     await recordAiUsage({
       client,
       orgId,
@@ -1194,7 +1192,7 @@ async function buildAnswer(
       channel: "whatsapp",
       usage: result.usage,
       settings: aiRoute.legacySettings,
-      metadata: { areaId, phone: profile?.phone ?? null, aiFunction: "daily" },
+      metadata: { areaId, phone: profile?.phone ?? null, conversationId: conversation.id, aiFunction: "daily" },
     });
     return result.text;
   } catch (_error) {
@@ -1461,24 +1459,32 @@ serve(async (req) => {
 
     const { data: area } = await client.from("areas").select("id").eq("org_id", orgId).eq("coordinator_id", membership.id).maybeSingle();
     const areaId = area?.id ?? null;
+    const conversation = await getOrCreateConversation(client, {
+      orgId,
+      userId: profile.id,
+      channel: "whatsapp",
+      areaId,
+    });
 
     if (hasDocument) {
       const result = await processIncomingDocument(client, orgId, areaId, whatsappSettings, whatsappKeyRow, payload, profile);
 
       if (!result.skipHistory) {
-        await client.from("chat_messages").insert({
-          org_id: orgId,
-          area_id: areaId,
-          user_id: profile.id,
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
           author: "user",
           text: result.userText,
           channel: "whatsapp",
         });
 
-        await client.from("chat_messages").insert({
-          org_id: orgId,
-          area_id: areaId,
-          user_id: profile.id,
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
           author: "oracle",
           text: result.answer,
           channel: "whatsapp",
@@ -1508,17 +1514,21 @@ serve(async (req) => {
       const diagnosticCode = audioDiagnostics.slice(-6).join(" | ") || "sem-diagnostico";
       const answer = `Recebi seu áudio, mas ainda não consegui transcrever por aqui. Pode me mandar em texto por enquanto?\n\nCódigo técnico: ${diagnosticCode}`;
 
-      await client.from("chat_messages").insert({
-        org_id: orgId,
-        area_id: areaId,
+      await insertConversationMessage(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
         author: "user",
         text: audioFailureText,
         channel: "whatsapp",
       });
 
-      await client.from("chat_messages").insert({
-        org_id: orgId,
-        area_id: areaId,
+      await insertConversationMessage(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
         author: "oracle",
         text: answer,
         channel: "whatsapp",
@@ -1547,28 +1557,30 @@ serve(async (req) => {
 
     if (activeSession) {
       const sessionResult = activeSession.pending_proposal && confirmationMessage
-        ? await confirmPlanningProposal(client, { sessionId: activeSession.id, userId: profile.id, channel: "whatsapp" })
+        ? await confirmPlanningProposal(client, { sessionId: activeSession.id, userId: profile.id, channel: "whatsapp", confirmationText: storedUserText })
         : await processPlanningMessage(client, { sessionId: activeSession.id, message: storedUserText, userId: profile.id, channel: "whatsapp" });
       await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
       return jsonResponse({ ok: true, session: "processed" });
     }
 
-    const { data: savedUserMessage, error: userMessageError } = await client.from("chat_messages").insert({
-      org_id: orgId,
-      area_id: areaId,
-      user_id: profile.id,
+    await insertConversationMessage(client, {
+      orgId,
+      areaId,
+      userId: profile.id,
+      conversationId: conversation.id,
       author: "user",
       text: storedUserText,
       channel: "whatsapp",
-    }).select("id").single();
-    if (userMessageError) throw userMessageError;
+    });
+    await maybeSummarize(client, orgId, conversation);
 
-    const answer = await buildAnswer(client, orgId, areaId, text, profile, membership, savedUserMessage?.id ?? null);
+    const answer = await buildAnswer(client, orgId, areaId, text, profile, membership, conversation);
 
-    await client.from("chat_messages").insert({
-      org_id: orgId,
-      area_id: areaId,
-      user_id: profile.id,
+    await insertConversationMessage(client, {
+      orgId,
+      areaId,
+      userId: profile.id,
+      conversationId: conversation.id,
       author: "oracle",
       text: answer,
       channel: "whatsapp",

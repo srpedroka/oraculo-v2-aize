@@ -145,6 +145,61 @@ Para consumo:
 3. Se houver resposta mas nao houver log, verifique `recordAiUsage` e o retorno de `usage` do provider.
 4. Se nao houver resposta, consulte logs da Edge Function e veja se a chamada ao modelo falhou.
 
+## Problema: Oraculo mistura assuntos ou esquece contexto recente
+
+Fluxo esperado da Fase 3:
+
+1. `oracle-chat` cria ou retoma uma conversa `web` para o usuario logado.
+2. `whatsapp-webhook` cria ou retoma uma conversa `whatsapp` para o perfil identificado pelo celular.
+3. Toda mensagem principal de chat recebe `user_id` e `conversation_id`.
+4. A IA recebe somente o historico daquela conversa, mais `conversations.summary` quando a conversa ficou longa.
+
+Verifique:
+
+```sql
+select id, user_id, channel, summary is not null as has_summary, summary_upto, last_message_at
+from public.conversations
+where org_id = '<ORG_ID>'
+order by last_message_at desc
+limit 20;
+```
+
+```sql
+select author, channel, user_id, conversation_id, left(text, 120) as text, created_at
+from public.chat_messages
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 40;
+```
+
+Se duas pessoas se contaminarem, confira se as mensagens estão com `user_id` diferente e `conversation_id` diferente. Se web e WhatsApp da mesma pessoa se misturarem, confira se `channel` está separado em `conversations`. Se a conversa passar de 40 mensagens novas e `summary` continuar vazio, confira `public.ai_function_settings` da função `background`, chave do provedor e logs de `ai_usage_logs.metadata.action = 'conversation_summary'`.
+
+## Problema: Oraculo nao enxerga ações-chave do mês
+
+Fluxo esperado da Fase 3:
+
+1. `_shared/plan-context.ts` monta o contexto textual do plano.
+2. Para foco mensal, o contexto inclui objetivos mensais do período vigente e suas `key_actions`.
+3. Cada ação aparece com status, dono, prazo e critério de conclusão.
+
+Verifique se existem objetivos mensais e ações no período vigente:
+
+```sql
+select id, title, period, area_id
+from public.objectives
+where org_id = '<ORG_ID>' and level = 'monthly'
+order by created_at desc;
+```
+
+```sql
+select objective_id, description, owner, deadline, status
+from public.key_actions
+where org_id = '<ORG_ID>'
+order by created_at desc;
+```
+
+Se os dados existem mas a IA não cita ações, revisar `_shared/plan-context.ts`, o `areaId` enviado pelo canal e o foco usado: `monthly` para execução mensal, `quarterly` para trimestre e `org` para visão geral.
+
 ## Configurar funcoes de IA da V3
 
 1. Abra Configuracoes > IA do Oraculo.

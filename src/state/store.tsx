@@ -314,6 +314,8 @@ function mapChatMessage(row: any): ChatMessage {
     id: row.id,
     orgId: row.org_id,
     areaId: row.area_id ?? null,
+    userId: row.user_id ?? null,
+    conversationId: row.conversation_id ?? null,
     author: row.author,
     text: row.text,
     channel: row.channel ?? "web",
@@ -665,10 +667,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const chatMessagesQuery = useQuery({
     queryKey: ["chat_messages", orgId],
-    enabled: Boolean(supabase && orgId),
+    enabled: Boolean(supabase && orgId && userId),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("chat_messages").select("*").eq("org_id", orgId).order("created_at");
+      const { data, error } = await client
+        .from("chat_messages")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("user_id", userId)
+        .eq("channel", "web")
+        .order("created_at");
       if (error) throw error;
       return (data ?? []).map(mapChatMessage);
     },
@@ -1006,6 +1014,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .insert({
             org_id: orgId,
             area_id: action.message.areaId ?? null,
+            user_id: userId,
             author: action.message.author,
             text: action.message.text,
             channel: action.message.channel ?? "web",

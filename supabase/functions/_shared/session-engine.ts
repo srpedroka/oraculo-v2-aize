@@ -1,10 +1,20 @@
 import { resolveAiFunction } from "./ai-router.ts";
 import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
+import {
+  conversationMessagesForModel,
+  formatConversationMemory,
+  getConversationById,
+  getOrCreateConversation,
+  insertConversationMessage,
+  loadConversationHistory,
+  maybeSummarize,
+} from "./conversations.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
 import { callModel } from "./model.ts";
+import { buildPlanContext } from "./plan-context.ts";
 import { applyProposal } from "./proposals.ts";
 import { recordAiUsage } from "./usage.ts";
 
@@ -225,74 +235,6 @@ async function assertCanStartSession(client: Client, orgId: string, areaId: stri
   return membership;
 }
 
-async function getOrCreateConversation(client: Client, orgId: string, userId: string, channel: "web" | "whatsapp", areaId: string | null) {
-  const { data: existing, error } = await client
-    .from("conversations")
-    .select("*")
-    .eq("org_id", orgId)
-    .eq("user_id", userId)
-    .eq("channel", channel)
-    .eq("status", "active")
-    .order("last_message_at", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  if (existing) return existing;
-
-  const { data, error: insertError } = await client
-    .from("conversations")
-    .insert({ org_id: orgId, user_id: userId, area_id: areaId, channel })
-    .select("*")
-    .single();
-  if (insertError) throw insertError;
-  return data;
-}
-
-async function loadHistory(client: Client, conversationId: string) {
-  const { data, error } = await client
-    .from("chat_messages")
-    .select("author, text")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: false })
-    .limit(30);
-  if (error) throw error;
-  return (data ?? []).reverse();
-}
-
-async function buildPlanContext(client: Client, orgId: string, areaId: string | null) {
-  const [{ data: organization }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: objectives }, { data: keyActions }] =
-    await Promise.all([
-      client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
-      client.from("areas").select("id, name, coordinator_id").eq("org_id", orgId).order("created_at"),
-      client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
-      client.from("area_plans").select("*").eq("org_id", orgId),
-      client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
-      client.from("key_actions").select("*").eq("org_id", orgId).order("created_at"),
-    ]);
-
-  const area = areaId ? (areas ?? []).find((item: any) => item.id === areaId) : null;
-  const relevantObjectives = areaId ? (objectives ?? []).filter((objective: any) => !objective.area_id || objective.area_id === areaId) : objectives ?? [];
-  const lines = [
-    `EMPRESA: ${organization?.name ?? "Empresa"}${organization?.subtitle ? ` (${organization.subtitle})` : ""}`,
-    `PLANO ESTRATÉGICO: ${strategicPlan ? `ano ${strategicPlan.year}; temas ${JSON.stringify(strategicPlan.themes ?? [])}` : "ainda não cadastrado"}`,
-    area ? `ÁREA EM FOCO: ${area.name}` : "ÁREA EM FOCO: organização inteira",
-    "OBJETIVOS:",
-    ...relevantObjectives.map((objective: any) => {
-      const actions = (keyActions ?? []).filter((action: any) => action.objective_id === objective.id);
-      const actionText = actions.length
-        ? ` | ações: ${actions.map((action: any) => `[${action.status}] ${action.description} (${action.owner || "sem dono"}; ${action.deadline || "sem prazo"})`).join("; ")}`
-        : "";
-      return `- [${objective.level}/${objective.status}/${objective.progress}%] ${objective.title} | período ${objective.period} | dono ${objective.owner || "sem dono"} | meta ${objective.target || "sem meta"}${actionText}`;
-    }),
-    "PLANOS DA ÁREA:",
-    ...((areaId ? (areaPlans ?? []).filter((plan: any) => plan.area_id === areaId) : areaPlans ?? []).map((plan: any) =>
-      `- ano ${plan.year}; missão ${plan.role?.mission ?? ""}; foco ${JSON.stringify(plan.learning_focus ?? {})}`,
-    )),
-  ];
-  return lines.join("\n");
-}
-
 function conductorPrompt(type: string, phase: string) {
   const conductor = CONDUCTORS[type];
   return [
@@ -303,21 +245,45 @@ function conductorPrompt(type: string, phase: string) {
   ].join("\n\n");
 }
 
+function planFocusForSession(type: string) {
+  if (type === "monthly" || type === "month_close") return "monthly" as const;
+  if (type === "quarterly" || type === "quarter_close") return "quarterly" as const;
+  return "org" as const;
+}
+
 async function insertMessage(client: Client, session: any, author: "user" | "oracle", text: string, channel: "web" | "whatsapp") {
-  const { error } = await client.from("chat_messages").insert({
-    org_id: session.org_id,
-    area_id: session.area_id,
-    user_id: session.user_id,
-    conversation_id: session.conversation_id,
+  if (!session.conversation_id) throw new Error("Sessão sem conversa vinculada");
+  await insertConversationMessage(client, {
+    orgId: session.org_id,
+    areaId: session.area_id,
+    userId: session.user_id,
+    conversationId: session.conversation_id,
     author,
     text,
     channel,
   });
-  if (error) throw error;
+}
 
+async function ensureSessionConversation(client: Client, session: any, channel: "web" | "whatsapp") {
   if (session.conversation_id) {
-    await client.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", session.conversation_id);
+    const existing = await getConversationById(client, session.conversation_id);
+    if (existing) return { session, conversation: existing };
   }
+
+  const conversation = await getOrCreateConversation(client, {
+    orgId: session.org_id,
+    userId: session.user_id,
+    channel,
+    areaId: session.area_id,
+  });
+  const { data: updated, error } = await client
+    .from("planning_sessions")
+    .update({ conversation_id: conversation.id })
+    .eq("id", session.id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return { session: updated, conversation };
 }
 
 export async function startPlanningSession(
@@ -342,7 +308,12 @@ export async function startPlanningSession(
   if (existingError) throw existingError;
   if (existing) return { session: existing, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
 
-  const conversation = await getOrCreateConversation(client, params.orgId, params.userId, params.channel ?? "web", params.areaId);
+  const conversation = await getOrCreateConversation(client, {
+    orgId: params.orgId,
+    userId: params.userId,
+    channel: params.channel ?? "web",
+    areaId: params.areaId,
+  });
   const { data: session, error } = await client
     .from("planning_sessions")
     .insert({
@@ -376,11 +347,15 @@ export async function processPlanningMessage(
   const aiRoute = await resolveAiFunction(client, session.org_id, "planning");
   if (!aiRoute) throw new Error("IA de planejamento não configurada");
 
-  await insertMessage(client, session, "user", params.message, params.channel ?? "web");
+  const channel = params.channel ?? "web";
+  const ensured = await ensureSessionConversation(client, session, channel);
+  await insertMessage(client, ensured.session, "user", params.message, channel);
+  const conversation = await maybeSummarize(client, ensured.session.org_id, ensured.conversation);
   const [history, context] = await Promise.all([
-    loadHistory(client, session.conversation_id),
-    buildPlanContext(client, session.org_id, session.area_id),
+    loadConversationHistory(client, ensured.session.conversation_id),
+    buildPlanContext(client, ensured.session.org_id, { areaId: ensured.session.area_id, focus: planFocusForSession(ensured.session.type) }),
   ]);
+  const conversationMemory = formatConversationMemory(history);
 
   const systemPrompt = [
     PERSONA_ORACULO,
@@ -388,16 +363,17 @@ export async function processPlanningMessage(
     conductorPrompt(session.type, session.phase),
     "Estado já coletado:",
     JSON.stringify(session.state ?? {}, null, 2),
+    conversationMemory,
     "Contexto atual do plano:",
     context,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 
   const result = await callModel(
     aiRoute.provider,
     aiRoute.model,
     aiRoute.apiKey,
     systemPrompt,
-    history.map((item: any) => ({ role: item.author === "oracle" ? "assistant" : "user", content: item.text })),
+    conversationMessagesForModel(history),
     aiRoute.limits,
   );
 
@@ -409,7 +385,7 @@ export async function processPlanningMessage(
     channel: params.channel ?? "web",
     usage: result.usage,
     settings: aiRoute.legacySettings,
-    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: session.type, phase: session.phase },
+    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: session.type, phase: session.phase, conversationId: conversation?.id ?? ensured.session.conversation_id },
   });
 
   const parsed = parseJsonObject(result.text) as any;
@@ -428,7 +404,7 @@ export async function processPlanningMessage(
       status: parsed?.done === true ? "completed" : "active",
       completed_at: parsed?.done === true ? new Date().toISOString() : null,
     })
-    .eq("id", session.id)
+    .eq("id", ensured.session.id)
     .select("*")
     .single();
   if (updateError) throw updateError;
@@ -457,7 +433,12 @@ export async function prepareReadyStrategicPlanProposal(
   const aiRoute = await resolveAiFunction(client, params.orgId, "planning");
   if (!aiRoute) throw new Error("IA de planejamento não configurada");
 
-  const conversation = await getOrCreateConversation(client, params.orgId, params.userId, channel, params.areaId ?? null);
+  const conversation = await getOrCreateConversation(client, {
+    orgId: params.orgId,
+    userId: params.userId,
+    channel,
+    areaId: params.areaId ?? null,
+  });
   const { data: existing, error: existingError } = await client
     .from("planning_sessions")
     .select("*")
@@ -491,7 +472,7 @@ export async function prepareReadyStrategicPlanProposal(
     session = data;
   }
 
-  const context = await buildPlanContext(client, params.orgId, params.areaId ?? null);
+  const context = await buildPlanContext(client, params.orgId, { areaId: params.areaId ?? null, focus: "org" });
   const importedText = planText.length > READY_PLAN_TEXT_LIMIT
     ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
     : planText;
@@ -557,14 +538,20 @@ export async function prepareReadyStrategicPlanProposal(
   return { session: updated, reply, pendingProposal: proposal };
 }
 
-export async function confirmPlanningProposal(client: Client, params: { sessionId: string; userId: string; channel?: "web" | "whatsapp" }) {
+export async function confirmPlanningProposal(client: Client, params: { sessionId: string; userId: string; channel?: "web" | "whatsapp"; confirmationText?: string | null }) {
   const { data: session, error } = await client.from("planning_sessions").select("*").eq("id", params.sessionId).maybeSingle();
   if (error) throw error;
   if (!session) throw new Error("Sessão não encontrada");
   if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
   if (!session.pending_proposal) throw new Error("Não há proposta pendente para confirmar");
 
-  const summary = await applyProposal(client, session, session.pending_proposal, params.userId);
+  const channel = params.channel ?? "web";
+  const ensured = await ensureSessionConversation(client, session, channel);
+  if (params.confirmationText) {
+    await insertMessage(client, ensured.session, "user", params.confirmationText, channel);
+  }
+
+  const summary = await applyProposal(client, ensured.session, ensured.session.pending_proposal, params.userId);
   const reply = `${summary} O plano já está salvo no sistema.`;
   const { data: updated, error: updateError } = await client
     .from("planning_sessions")
@@ -573,7 +560,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
       status: "completed",
       completed_at: new Date().toISOString(),
     })
-    .eq("id", session.id)
+    .eq("id", ensured.session.id)
     .select("*")
     .single();
   if (updateError) throw updateError;
