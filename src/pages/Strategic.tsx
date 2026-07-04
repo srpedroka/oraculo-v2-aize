@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileText, Loader2, Plus, Upload } from "lucide-react";
+import { ClipboardCheck, FileText, Loader2, Plus, Send, Upload } from "lucide-react";
 import { useMemo, useState, type ChangeEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -75,6 +75,7 @@ export function Strategic() {
   const [importedFileName, setImportedFileName] = useState<string | null>(null);
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [sentToOracle, setSentToOracle] = useState(false);
   const plan = state.strategicPlan;
   const strategicObjectives = useMemo(
     () => state.objectives.filter((objective) => objective.level === "strategic"),
@@ -86,12 +87,42 @@ export function Strategic() {
     dispatch({ type: "start_session", sessionType: "strategic", period: String(currentYear) });
   }
 
+  function openReadyPlanImport() {
+    setTab("paste");
+  }
+
   function updatePastedPlan(value: string) {
     setPastedPlan(value);
     setReview(null);
     setImportedFileName(null);
     setImportFeedback(null);
     setImportError(null);
+    setSentToOracle(false);
+  }
+
+  function sendReadyPlanToOracle() {
+    const planText = pastedPlan.trim();
+    if (!planText) return;
+
+    const contextLimit = 24000;
+    const safePlanText =
+      planText.length > contextLimit
+        ? `${planText.slice(0, contextLimit)}\n\n[O texto enviado foi cortado pelo limite de contexto. Se precisar, peça o restante do plano ao usuário antes de gravar.]`
+        : planText;
+
+    dispatch({
+      type: "start_session_with_message",
+      sessionType: "strategic",
+      period: String(currentYear),
+      text: [
+        "Já tenho um plano estratégico pronto e quero importar para o Oráculo.",
+        "Use o conteúdo abaixo como insumo principal. Primeiro revise se há lacunas importantes; depois conduza somente o que faltar.",
+        "Quando estiver fiel e completo, monte uma proposta de Plano Estratégico para eu confirmar antes de gravar.",
+        "",
+        safePlanText,
+      ].join("\n"),
+    });
+    setSentToOracle(true);
   }
 
   async function handlePlanFileImport(event: ChangeEvent<HTMLInputElement>) {
@@ -103,6 +134,7 @@ export function Strategic() {
     setReview(null);
     setImportError(null);
     setImportFeedback(null);
+    setSentToOracle(false);
 
     try {
       const imported = await importStrategicPlanFile(file);
@@ -117,38 +149,23 @@ export function Strategic() {
     }
   }
 
-  if (!plan) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <p className="text-sm font-medium text-text-tertiary">Planejamento anual da empresa</p>
-          <h1 className="text-2xl font-semibold text-text">Plano Estratégico</h1>
-        </div>
-        <Card>
-          <p className="text-base font-semibold text-text">Nenhum Plano Estratégico ainda.</p>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">
-            Crie a estrutura anual para começar a desdobrar objetivos por área, trimestre e mês.
-          </p>
-          <div className="mt-4">
-            <Button icon={Plus} onClick={startStrategicSession}>
-              Planejar o ano com o Oráculo
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-text-tertiary">Planejamento anual da empresa · {plan.year}</p>
+          <p className="text-sm font-medium text-text-tertiary">
+            Planejamento anual da empresa{plan ? ` · ${plan.year}` : ""}
+          </p>
           <h1 className="text-2xl font-semibold text-text">Plano Estratégico</h1>
         </div>
-        <Button icon={Plus} onClick={startStrategicSession}>
-          Planejar o ano com o Oráculo
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button icon={Plus} onClick={startStrategicSession}>
+            Planejar o ano com o Oráculo
+          </Button>
+          <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>
+            Importar plano pronto
+          </Button>
+        </div>
       </div>
 
       <div className="inline-flex rounded-xl border border-border bg-surface p-1 shadow-card">
@@ -226,17 +243,47 @@ export function Strategic() {
             {importFeedback ? <p className="mt-2 text-xs leading-5 text-[#1D7A3E]">{importFeedback}</p> : null}
             {importError ? <p className="mt-2 text-xs leading-5 text-[#B42318]">{importError}</p> : null}
             <div className="mt-4">
-              <Button
-                icon={ClipboardCheck}
-                disabled={!pastedPlan.trim() || importingPlan}
-                onClick={() => setReview(reviewPastedPlan(pastedPlan))}
-              >
-                Pedir revisão ao Oráculo
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="ghost"
+                  icon={ClipboardCheck}
+                  disabled={!pastedPlan.trim() || importingPlan}
+                  onClick={() => setReview(reviewPastedPlan(pastedPlan))}
+                >
+                  Revisar antes
+                </Button>
+                <Button
+                  icon={Send}
+                  disabled={!pastedPlan.trim() || importingPlan}
+                  onClick={sendReadyPlanToOracle}
+                >
+                  Preparar proposta com o Oráculo
+                </Button>
+              </div>
             </div>
+            {sentToOracle ? (
+              <p className="mt-3 text-xs leading-5 text-[#1D7A3E]">
+                Plano enviado ao Oráculo. A proposta aparecerá no painel lateral para confirmação antes de gravar.
+              </p>
+            ) : null}
           </Card>
           {review ? <ReviewResult review={review} /> : null}
         </div>
+      ) : !plan ? (
+        <Card>
+          <p className="text-base font-semibold text-text">Nenhum Plano Estratégico ainda.</p>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">
+            Crie a estrutura anual para começar a desdobrar objetivos por área, trimestre e mês.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button icon={Plus} onClick={startStrategicSession}>
+              Planejar o ano com o Oráculo
+            </Button>
+            <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>
+              Importar plano pronto
+            </Button>
+          </div>
+        </Card>
       ) : (
         <div className="space-y-6">
           <div className="grid gap-4 xl:grid-cols-2">

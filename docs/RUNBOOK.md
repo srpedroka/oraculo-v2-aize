@@ -194,6 +194,44 @@ Se a conversa responde mas nao grava:
 
 Se a IA devolver texto solto em vez de JSON, o sistema mostra a resposta, mas nao avanca fase nem grava proposta. Nesse caso, revisar prompt/condutor da fase ou pedir ao usuario para responder de forma mais objetiva.
 
+## Problema: importacao de plano pronto nao vira proposta
+
+Fluxo esperado pela tela Plano Estrategico:
+
+1. Usuario abre Plano Estrategico.
+2. Mesmo sem plano cadastrado, a tela mostra "Importar plano pronto".
+3. Usuario cola texto ou importa PDF, PPTX, DOCX ou TXT.
+4. O navegador extrai texto e preenche o campo "Plano existente".
+5. Usuario clica em "Preparar proposta com o Oraculo".
+6. O frontend chama `oracle-session` com `action = start` e depois `action = message`, usando o texto do plano como primeira mensagem da sessao estrategica.
+7. O Oraculo revisa lacunas, conduz o que faltar e, quando estiver pronto, mostra o cartao "Pronto para gravar".
+8. Somente "Confirmar e gravar" aplica a proposta no banco.
+
+Verifique:
+
+- se o arquivo tem formato suportado: PDF com texto selecionavel, PPTX, DOCX ou TXT;
+- se o texto aparece no campo antes de enviar ao Oraculo;
+- se existe uma sessao ativa em `public.planning_sessions` com `type = 'strategic'`;
+- se `public.chat_messages` recebeu a mensagem grande do usuario com `conversation_id`;
+- se `public.ai_usage_logs.metadata.aiFunction = 'planning'` apareceu depois do envio;
+- se `pending_proposal` fica preenchido antes de confirmar.
+
+Consulta util:
+
+```sql
+select type, period, phase, pending_proposal is not null as has_proposal, status, created_at
+from public.planning_sessions
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 10;
+```
+
+Limites atuais:
+
+- arquivo escaneado ou imagem dentro de PDF pode nao ter texto extraivel;
+- textos muito longos sao cortados pelo frontend antes de entrar na sessao para proteger o contexto da IA;
+- o fluxo importa Plano Estrategico. Trimestral e Mensal por arquivo entram nas fases futuras de documentos/WhatsApp.
+
 ## Problema: WhatsApp recebeu mensagem mas nao respondeu
 
 Diagnostico rapido:

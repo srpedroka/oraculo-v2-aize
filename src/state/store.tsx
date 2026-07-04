@@ -43,6 +43,7 @@ type AppAction =
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
   | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
+  | { type: "start_session_with_message"; sessionType: PlanningSessionType; areaId?: string | null; period: string; text: string }
   | { type: "send_session_message"; sessionId: string; text: string }
   | { type: "confirm_session_proposal"; sessionId: string }
   | { type: "abandon_session"; sessionId: string }
@@ -1042,6 +1043,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
           queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
         });
+        return;
+      }
+
+      if (action.type === "start_session_with_message") {
+        uiDispatch({ type: "set_oracle_mode", mode: "normal" });
+        void (async () => {
+          const result = await callEdgeFunction("oracle-session", {
+            action: "start",
+            orgId,
+            areaId: action.areaId ?? null,
+            type: action.sessionType,
+            period: action.period,
+            channel: "web",
+          });
+          const sessionId = (result as { session?: { id?: string } } | null)?.session?.id;
+          if (!sessionId) throw new Error("Sessão do Oráculo não foi criada");
+          await callEdgeFunction("oracle-session", {
+            action: "message",
+            sessionId,
+            message: action.text,
+            channel: "web",
+          });
+          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
+          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+        })();
         return;
       }
 

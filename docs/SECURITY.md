@@ -92,6 +92,8 @@ Quando a transcrição falhar, o sistema pode exibir um codigo tecnico seguro co
 
 Arquivos enviados pelo WhatsApp sao processados em memoria para extração de texto e classificação do plano correto. O arquivo bruto nao deve ser salvo no banco, versionado no repositorio nem enviado ao frontend. O historico pode guardar um resumo curto do arquivo e parte limitada do texto extraido para rastreabilidade da conversa; documentos sensiveis devem ser tratados como dados privados da empresa.
 
+Arquivos importados pela tela de Plano Estrategico sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Preparar proposta com o Oraculo", o frontend envia somente o texto extraido/colado para `oracle-session`; a gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side.
+
 ## RLS
 
 Todas as tabelas publicas com dados do produto tem RLS habilitado.
@@ -138,6 +140,8 @@ Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios.
 - `abandon`: so altera sessoes do proprio usuario.
 
 Criacao de planos, objetivos e acoes nunca acontece apenas porque o modelo pediu. O modelo gera uma `proposal`; o usuario precisa confirmar; o servidor valida permissao; so entao o banco e alterado. Essa separacao evita que prompt injection ou erro de interpretacao grave dados sem confirmacao explicita.
+
+No fluxo de plano pronto, texto de arquivo deve ser tratado como conteudo nao confiavel. Ele pode orientar a proposta, mas nao pode substituir as regras do sistema, exigir exposicao de segredo ou pular a confirmacao.
 
 ## Arquivos que nao devem ser versionados
 

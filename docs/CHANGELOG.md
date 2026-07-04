@@ -13,6 +13,7 @@
 - Executada a Fase 2 da V3: criada a Edge Function `oracle-session`, com motor de sessao, estado persistido, condutores Estrategico/Trimestral/Mensal, envelope JSON e proposta pendente com confirmacao.
 - Conectado o painel do Oraculo a sessoes ativas com fase, progresso e cartao "Pronto para gravar".
 - Adicionados botoes "Planejar com o Oraculo" em Plano Estrategico e nas abas Trimestral/Mensal da Area.
+- Liberada importacao de Plano Estrategico pronto mesmo com base zerada; PDF/PPTX/DOCX/TXT ou texto colado entram como mensagem inicial de uma sessao estrategica, mantendo proposta e confirmacao antes de gravar.
 
 ## 2026-07-02
 

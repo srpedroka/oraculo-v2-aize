@@ -15,6 +15,8 @@ O Oraculo V2 e um app web de execucao estrategica. O frontend roda em React/Vite
 - `src/components/`: layout, sidebar, painel do Oraculo e componentes de UI.
 - `src/features/objective/`: componentes de objetivo e builder.
 
+Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entradas: condução do zero pelo Oraculo ou importacao de plano pronto. A importacao aceita PDF, PPTX, DOCX e TXT no navegador, extrai texto com `src/lib/fileImport.ts` e envia esse texto para a sessao `oracle-session` via `start_session_with_message`. O arquivo bruto nao e enviado ao banco; a gravacao do plano continua dependendo de proposta pendente e confirmacao.
+
 ### Supabase
 
 Migrations principais:
@@ -124,6 +126,8 @@ Modo misto de gravacao:
 - criar plano, objetivo e acao exige `proposal` + confirmacao;
 - ao confirmar, `proposals.ts` valida permissao de owner/coordenador e grava em `strategic_plans`, `area_plans`, `objectives`, `key_actions` e `strategic_projects` conforme o tipo;
 - a resposta final so diz que salvou depois da gravacao retornar sem erro.
+
+Plano pronto importado pela tela segue a mesma regra. O frontend apenas transforma arquivo/texto em mensagem inicial da sessao estrategica; o modelo deve revisar, perguntar o que faltar e gerar `proposal`. Sem clique em "Confirmar e gravar", nada e persistido como plano estruturado.
 
 Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto.
 

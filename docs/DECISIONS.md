@@ -36,6 +36,18 @@ Motivo: estado server-side permite retomar sessoes e cruzar canais no futuro; en
 
 Consequencias: `planning_sessions` vira tabela critica; prompts de condutores ficam empacotados em TypeScript; `proposals.ts` deve manter validacao server-side de permissao sempre que um novo tipo de proposta for criado.
 
+## 2026-07-04 - Plano pronto entra pela sessao do Oraculo
+
+Decisao: permitir importar ou colar um Plano Estrategico pronto mesmo quando a empresa ainda nao tem plano cadastrado, mas rotear esse conteudo para `oracle-session` em vez de gravar direto.
+
+Contexto: o usuario quer testar o sistema do zero e tambem aproveitar planos existentes em PDF, PPTX, DOCX, TXT ou texto colado.
+
+Alternativas: manter a importacao escondida ate existir um plano, criar gravacao direta a partir do arquivo, ou tratar o plano pronto apenas como revisao local sem persistencia.
+
+Motivo: reaproveita o motor seguro da Fase 2. O arquivo/texto vira insumo da condução; o Oraculo revisa lacunas, monta proposta e o usuario confirma antes de qualquer escrita estruturada.
+
+Consequencias: o frontend precisa manter a aba "Colar plano pronto" visivel na base zerada. Arquivos brutos continuam fora do banco; apenas texto extraido/colado entra na conversa da sessao.
+
 ## 2026-06-29 - Supabase como backend da V2
 
 Decisao: usar Supabase para autenticacao, banco PostgreSQL, RLS, realtime e Edge Functions.
