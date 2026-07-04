@@ -45,6 +45,7 @@
 - Corrigido o tom fora de escopo para impedir que o Oraculo misture exemplos nao citados, como Copa, guerra e fofoca, e para evitar parafrases muito parecidas com respostas recentes.
 - Executada a Fase 5 da V3: adicionados condutores de fechamento mensal e trimestral, propostas `month_close`/`quarter_close`, gravacao de check-ins/evidencias/status e rolagem de pendencias confirmadas.
 - Adicionado cartao de fechamento pendente no Dashboard/Execucao e Edge Function `month-turn` para convite de virada por WhatsApp.
+- Configurado `MONTH_TURN_SECRET` no Supabase e agendado o cron mensal `oraculo-month-turn` para rodar no dia 1 as 11:00 UTC.
 
 ## 2026-07-02
 

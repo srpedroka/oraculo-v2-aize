@@ -324,6 +324,8 @@ select cron.schedule(
 
 Nao registrar o valor real do segredo no Git, docs ou chat.
 
+Estado operacional em 2026-07-04: o segredo `MONTH_TURN_SECRET` foi salvo no Supabase e o cron `oraculo-month-turn` foi agendado para o dia 1 de cada mes, 11:00 UTC.
+
 ## Problema: WhatsApp responde ou nao responde assuntos fora do Oraculo
 
 Comportamento esperado:

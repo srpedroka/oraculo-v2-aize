@@ -136,6 +136,8 @@ Por que assim: Edge Functions rodam no servidor e podem usar service role com se
 
 `oracle-session` usa esses mesmos secrets server-side para conduzir planejamento e aplicar propostas confirmadas. Ela nao cria novo segredo; apenas grava estado em `planning_sessions` e dados confirmados nas tabelas de plano.
 
+Estado operacional em 2026-07-04: `MONTH_TURN_SECRET` foi configurado no Supabase para a funcao `month-turn`. O valor real nao fica neste repositorio.
+
 ### Banco de dados
 
 Migrations versionadas:
