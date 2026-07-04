@@ -27,6 +27,7 @@ Migrations principais:
 - `20260702152000_ai_pricing_usage.sql`: pricing por modelo/provedor e logs de consumo de IA.
 - `20260702153000_ai_usage_realtime.sql`: realtime para logs de uso de IA.
 - `20260702154500_update_openai_gpt54_pricing.sql`: pricing inicial do `gpt-5.4` salvo no ambiente.
+- `20260704110000_v3_intelligence_foundation.sql`: fundacao da V3 com conversas por pessoa/canal, sessoes de planejamento, funcoes de IA por uso e documentos canonicos de plano.
 
 Tabelas publicas principais:
 
@@ -43,8 +44,12 @@ Tabelas publicas principais:
 - `chat_messages`
 - `check_ins`
 - `ai_settings`
+- `ai_function_settings`
 - `ai_usage_logs`
 - `whatsapp_settings`
+- `conversations`
+- `planning_sessions`
+- `plan_documents`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
@@ -54,6 +59,15 @@ Tabelas de segredo com acesso apenas por service role:
 - `public.whatsapp_instance_keys`: guarda chave da Evolution API e segredo do webhook. Tem o mesmo padrao de acesso exclusivo por `service_role`.
 
 O schema `private` existiu como desenho inicial e pode aparecer em migrations antigas. O caminho operacional atual das Edge Functions usa as tabelas publicas bloqueadas por RLS/revokes.
+
+Fundacao V3:
+
+- `conversations`: separa o historico por pessoa e canal (`web` ou `whatsapp`) e guarda um resumo rolante para memoria futura.
+- `planning_sessions`: guarda o estado das sessoes conduzidas pelo Oraculo, incluindo tipo, periodo, fase atual, dados coletados e proposta pendente de confirmacao.
+- `ai_function_settings`: permite configurar modelos diferentes para planejamento, conversa do dia a dia e bastidores, sem duplicar chaves no frontend.
+- `plan_documents`: guarda o conteudo estruturado dos documentos canonicos de plano e fechamento que serao renderizados em tela, PDF e WhatsApp nas fases seguintes.
+
+Essas tabelas foram criadas na Fase 0 da V3 sem alterar comportamento de runtime. As Edge Functions ainda continuam usando os fluxos da V2 ate as fases seguintes conectarem a nova fundacao.
 
 ### Edge Functions
 

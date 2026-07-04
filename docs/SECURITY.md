@@ -34,6 +34,8 @@ Segredos operacionais salvos pelo app:
 - chaves de IA ficam em `public.ai_model_keys`, com RLS habilitado, acesso revogado para `anon`/`authenticated` e permissao apenas para `service_role`;
 - chave da Evolution API e segredo do webhook ficam em `public.whatsapp_instance_keys`, com o mesmo modelo de acesso exclusivo por `service_role`.
 
+A partir da fundacao V3, `public.ai_model_keys` passa a aceitar uma chave por provedor e empresa (`org_id`, `provider`). Isso prepara OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok sem expor nenhum segredo novo ao navegador. A configuracao visivel de qual modelo usar por funcao fica em `public.ai_function_settings`, que nao guarda chave real e segue RLS de leitura para membros e escrita apenas para owner.
+
 Historico: a V2 criou primeiro tabelas equivalentes no schema `private`. Em 2026-07-02 os segredos foram migrados para tabelas publicas bloqueadas por RLS/revokes porque as Edge Functions do ambiente atual acessam essas tabelas via service role com mais previsibilidade operacional. A regra de seguranca continua a mesma: o navegador nunca le esses valores.
 
 ## Chaves de IA
@@ -107,6 +109,19 @@ Ao criar nova tabela:
 3. adicione indices por `org_id` quando aplicavel;
 4. documente a tabela em `ARCHITECTURE.md`;
 5. rode build e teste manual do fluxo.
+
+## Fundacao V3
+
+As tabelas `conversations`, `planning_sessions`, `ai_function_settings` e `plan_documents` foram criadas para suportar memoria, condução estruturada e documentos padronizados.
+
+Regras de seguranca:
+
+- `conversations`: cada usuario autenticado le e atualiza apenas as proprias conversas; owners podem ler todas as conversas da empresa para supervisao. Edge Functions usam service role para gravacoes de canais externos.
+- `planning_sessions`: cada usuario le e atualiza as proprias sessoes; owner tambem pode ler. Quando a sessao envolve uma area, escrita exige permissao pela mesma regra de coordenador da area.
+- `ai_function_settings`: membros leem a configuracao de modelo; apenas owner altera.
+- `plan_documents`: membros leem documentos da empresa; owner grava documentos gerais e coordenadores gravam documentos da propria area.
+
+Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios. Documentos estruturados ficam como dados privados da empresa e dependem de RLS para isolamento por organizacao.
 
 ## Arquivos que nao devem ser versionados
 

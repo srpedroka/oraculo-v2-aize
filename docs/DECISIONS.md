@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-04 - Fundacao de inteligencia da V3
+
+Decisao: criar uma camada de dados para memoria por conversa, sessoes de planejamento com estado, funcoes de IA por uso e documentos canonicos de plano.
+
+Contexto: a V2 respondia mensagens de forma isolada e usava um unico modelo para todos os usos. O plano da V3 exige que o Oraculo conduza planejamento fase a fase, preserve contexto por pessoa/canal e gere documentos consistentes sem depender de improviso do modelo.
+
+Alternativas: manter historico unico por empresa, guardar estado apenas no frontend, ou criar tabelas separadas somente quando cada tela fosse implementada.
+
+Motivo: preparar a base de forma testavel e sem mudar comportamento visivel. A separacao por conversas evita contaminacao de historico; sessoes persistidas permitem retomar planejamento; funcoes de IA separam modelo caro de planejamento e modelo leve de rotina; documentos canonicos garantem renderizacao deterministica depois.
+
+Consequencias: novas tabelas publicas precisam de RLS e documentacao. As chaves seguem fora do frontend em `public.ai_model_keys`, agora por provedor, preservando a configuracao OpenAI existente.
+
 ## 2026-06-29 - Supabase como backend da V2
 
 Decisao: usar Supabase para autenticacao, banco PostgreSQL, RLS, realtime e Edge Functions.

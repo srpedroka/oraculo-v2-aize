@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-04
+
+- Iniciada a V3 com a Fase 0: fundacao de dados para conversas por pessoa/canal, sessoes de planejamento com estado, funcoes de IA por uso e documentos canonicos de plano.
+- Preparada `public.ai_model_keys` para guardar chaves por provedor sem expor segredos ao frontend, preservando a configuracao OpenAI existente.
+- Adicionadas policies RLS para `conversations`, `planning_sessions`, `ai_function_settings` e `plan_documents`.
+- Habilitado realtime para `planning_sessions` e `plan_documents`, preparando a interface de sessoes das fases seguintes.
+- Atualizada a documentacao de arquitetura, seguranca, acessos e decisoes para explicar a fundacao V3.
+
 ## 2026-07-02
 
 - Adicionado formulário em Configurações para criar nova empresa e alternar a empresa ativa.

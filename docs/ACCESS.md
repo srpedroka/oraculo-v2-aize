@@ -171,9 +171,25 @@ Fluxo:
 5. A chave real e salva em `public.ai_model_keys`, acessivel apenas por service role.
 6. A tabela publica `ai_settings` guarda apenas `has_key`, `key_preview`, provider, modelo, pricing e fonte do pricing.
 
-Estado atual: a chave real fica em `public.ai_model_keys`, protegida por RLS/revokes e acessivel apenas por service role. O desenho inicial usava `private.ai_model_keys`; migrations antigas podem citar esse caminho por historico.
+Estado atual: a chave real fica em `public.ai_model_keys`, protegida por RLS/revokes e acessivel apenas por service role. Na V3, a chave passa a ser guardada por empresa e provedor (`org_id`, `provider`), permitindo usar modelos diferentes para planejamento, conversa do dia a dia e bastidores sem expor credenciais ao frontend. O desenho inicial usava `private.ai_model_keys`; migrations antigas podem citar esse caminho por historico.
 
 Por que assim: a chave de IA nunca fica exposta no cliente ou no GitHub. O app mostra apenas que existe uma chave e os ultimos caracteres para conferencia.
+
+### Funcoes de IA da V3
+
+Tabela operacional:
+
+```text
+public.ai_function_settings
+```
+
+Ela guarda qual provider/modelo cada funcao usa:
+
+- `planning`: planejamento e fechamentos;
+- `daily`: conversa do dia a dia;
+- `background`: bastidores, classificacoes e resumos.
+
+Essa tabela nao guarda chave. As chaves continuam em `public.ai_model_keys` e so a service role acessa o valor real.
 
 ## Evolution API / WhatsApp
 
