@@ -15,7 +15,7 @@ O Oraculo V2 e um app web de execucao estrategica. O frontend roda em React/Vite
 - `src/components/`: layout, sidebar, painel do Oraculo e componentes de UI.
 - `src/features/objective/`: componentes de objetivo e builder.
 
-Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entradas: condução do zero pelo Oraculo ou importacao de plano pronto. A importacao aceita PDF, PPTX, DOCX e TXT no navegador, extrai texto com `src/lib/fileImport.ts` e permite dois caminhos independentes: "Só revisar texto", que roda uma revisão local sem gravar, e "Gerar proposta e carregar no módulo", que chama `oracle-session` com `action = import_ready_plan`. O arquivo bruto nao e enviado ao banco; o texto extraido/colado vira insumo para uma proposta estruturada e a gravacao continua dependendo de confirmacao.
+Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entradas: condução do zero pelo Oraculo ou importacao de plano pronto. A importacao aceita PDF, PPTX, DOCX e TXT no navegador, extrai texto com `src/lib/fileImport.ts` e permite dois caminhos independentes: "Só revisar texto", que roda uma revisão local sem gravar, e "Gerar proposta e carregar no módulo", que chama `oracle-session` com `action = import_ready_plan`. O arquivo bruto nao e enviado ao banco; o texto extraido/colado vira insumo para uma proposta estruturada e a gravacao continua dependendo de confirmacao. Quando a importacao nasce no app, o painel lateral mostra uma previa estruturada do que sera gravado, com objetivos, projetos, vinculos e lacunas, sem mandar a pessoa para WhatsApp.
 
 ### Supabase
 
@@ -127,7 +127,7 @@ Modo misto de gravacao:
 - ao confirmar, `proposals.ts` valida permissao de owner/coordenador e grava em `strategic_plans`, `area_plans`, `objectives`, `key_actions` e `strategic_projects` conforme o tipo;
 - a resposta final so diz que salvou depois da gravacao retornar sem erro.
 
-Plano pronto importado pela tela ou por documento estrategico no WhatsApp segue a mesma regra. O texto extraido/colado entra em `prepareReadyStrategicPlanProposal`, que obriga o modelo a devolver `proposal.type = save_strategic_plan`. Sem clique em "Confirmar e gravar" no app, ou resposta "confirmar" no WhatsApp, nada e persistido como plano estruturado.
+Plano pronto importado pela tela ou por documento estrategico no WhatsApp segue a mesma regra. O texto extraido/colado entra em `prepareReadyStrategicPlanProposal`, que obriga o modelo a devolver `proposal.type = save_strategic_plan`. Sem clique em "Confirmar e gravar" no app, ou resposta "confirmar" no WhatsApp, nada e persistido como plano estruturado. Os canais permanecem independentes: no app a confirmacao acontece no cartao visual de aprovacao; no WhatsApp a previa vem em texto e a confirmacao acontece por mensagem.
 
 Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto.
 

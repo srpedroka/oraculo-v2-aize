@@ -109,6 +109,79 @@ function normalizeReadyStrategicProposal(rawProposal: any, period: string) {
   };
 }
 
+function numberedPreview(items: string[], limit = 5) {
+  const visible = items.slice(0, limit);
+  const extra = Math.max(0, items.length - visible.length);
+  return [
+    ...visible.map((item, index) => `${index + 1}. ${item}`),
+    extra ? `+${extra} item(ns) adicionais na proposta.` : "",
+  ].filter(Boolean);
+}
+
+function missingReadyPlanFields(proposal: ReturnType<typeof normalizeReadyStrategicProposal>) {
+  const missing: string[] = [];
+  if (!asText(proposal.drivers.purpose)) missing.push("propósito");
+  if (!asText(proposal.drivers.vision)) missing.push("visão");
+
+  const objectivesWithoutMetric = proposal.objectives.filter((objective) => !asText(objective.metric)).length;
+  const objectivesWithoutTarget = proposal.objectives.filter((objective) => !asText(objective.target)).length;
+  const objectivesWithoutOwner = proposal.objectives.filter((objective) => !asText(objective.owner)).length;
+  const projectsWithoutOwner = proposal.projects.filter((project) => !asText(project.owner)).length;
+  const projectsWithoutDeadline = proposal.projects.filter((project) => !asText(project.deadline)).length;
+
+  if (objectivesWithoutMetric) missing.push(`${objectivesWithoutMetric} objetivo(s) sem indicador`);
+  if (objectivesWithoutTarget) missing.push(`${objectivesWithoutTarget} objetivo(s) sem meta`);
+  if (objectivesWithoutOwner) missing.push(`${objectivesWithoutOwner} objetivo(s) sem responsável`);
+  if (projectsWithoutOwner) missing.push(`${projectsWithoutOwner} projeto(s) sem responsável`);
+  if (projectsWithoutDeadline) missing.push(`${projectsWithoutDeadline} projeto(s) sem prazo`);
+
+  return missing;
+}
+
+function formatReadyStrategicPlanReply(
+  proposal: ReturnType<typeof normalizeReadyStrategicProposal>,
+  channel: "web" | "whatsapp",
+) {
+  const year = proposal.year || currentYearFromPeriod(String(proposal.objectives[0]?.period ?? ""));
+  const objectiveLines = proposal.objectives.map((objective) => {
+    const details = [
+      objective.result,
+      objective.metric ? `Indicador: ${objective.metric}` : "",
+      objective.target ? `Meta: ${objective.target}` : "",
+      objective.owner ? `Dono: ${objective.owner}` : "",
+    ].filter(Boolean).join(" | ");
+    return details ? `${objective.title} - ${details}` : objective.title;
+  });
+  const projectLines = proposal.projects.map((project) => {
+    const details = [
+      project.owner ? `Dono: ${project.owner}` : "",
+      project.deadline ? `Prazo: ${project.deadline}` : "",
+      project.linkedObjectiveTitle ? `Ligado a: ${project.linkedObjectiveTitle}` : "",
+    ].filter(Boolean).join(" | ");
+    return details ? `${project.name} - ${details}` : project.name;
+  });
+  const missing = missingReadyPlanFields(proposal);
+
+  if (channel === "web") {
+    return [
+      `Estruturei uma prévia do Plano Estratégico ${year} com ${proposal.objectives.length} objetivo(s) e ${proposal.projects.length} projeto(s).`,
+      "Ainda não gravei nada. Confira o cartão de aprovação no painel lateral: ele mostra a estrutura que será salva, os vínculos principais e os campos que ficaram em branco por não estarem explícitos no arquivo.",
+    ].join(" ");
+  }
+
+  return [
+    `Estruturei uma prévia do Plano Estratégico ${year} com ${proposal.objectives.length} objetivo(s) e ${proposal.projects.length} projeto(s).`,
+    "",
+    objectiveLines.length ? "Objetivos:" : "",
+    ...numberedPreview(objectiveLines),
+    "",
+    projectLines.length ? "Projetos prioritários:" : "",
+    ...numberedPreview(projectLines),
+    "",
+    missing.length ? `Campos que deixei em branco porque não estavam explícitos: ${missing.join("; ")}.` : "Não identifiquei lacunas importantes nos campos principais.",
+  ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
+}
+
 function readyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
   return [
     PERSONA_ORACULO,
@@ -122,7 +195,7 @@ function readyPlanSystemPrompt(context: string, period: string, channel: "web" |
     "Agrupe objetivos parecidos. Prefira 3 a 6 objetivos estratégicos e até 7 projetos prioritários.",
     "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se não houver prazo, use string vazia.",
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
-    '{"reply":"resumo curto do que foi estruturado e aviso de confirmação","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026"}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026"}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
     `Ano/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
@@ -458,10 +531,7 @@ export async function prepareReadyStrategicPlanProposal(
     throw new Error("O Oráculo não conseguiu identificar objetivos estratégicos no plano importado");
   }
 
-  const reply =
-    typeof parsed?.reply === "string" && parsed.reply.trim()
-      ? parsed.reply
-      : `Estruturei o plano em ${proposal.objectives.length} objetivo(s) estratégico(s) e ${proposal.projects.length} projeto(s). Confira o cartão de proposta e confirme para gravar no módulo.`;
+  const reply = formatReadyStrategicPlanReply(proposal, channel);
   const nextState = shallowMergeState(session.state ?? {}, {
     ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
     importacao_plano_pronto: true,

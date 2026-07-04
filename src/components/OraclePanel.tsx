@@ -50,6 +50,177 @@ function proposalTitle(proposal: Record<string, unknown> | null) {
   return "Proposta";
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function asText(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function asTextArray(value: unknown) {
+  if (Array.isArray(value)) return value.map((item) => asText(item)).filter(Boolean);
+  const text = asText(value);
+  return text ? [text] : [];
+}
+
+function asRecordArray(value: unknown) {
+  return Array.isArray(value) ? value.map(asRecord).filter((item) => Object.keys(item).length) : [];
+}
+
+function DetailLine({ label, value }: { label: string; value: unknown }) {
+  const text = asText(value);
+  if (!text) return null;
+  return (
+    <p>
+      <span className="font-medium text-[#1D1D1F]">{label}: </span>
+      <span>{text}</span>
+    </p>
+  );
+}
+
+function ChipList({ items }: { items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.slice(0, 6).map((item) => (
+        <span key={item} className="rounded-full bg-[#F0F0F2] px-2 py-1 text-[11px] font-medium text-[#5F6368]">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MissingInfoSummary({ proposal }: { proposal: Record<string, unknown> }) {
+  const drivers = asRecord(proposal.drivers);
+  const objectives = asRecordArray(proposal.objectives);
+  const projects = asRecordArray(proposal.projects);
+  const missing: string[] = [];
+
+  if (!asText(drivers.purpose)) missing.push("propósito");
+  if (!asText(drivers.vision)) missing.push("visão");
+
+  const objectivesWithoutMetric = objectives.filter((objective) => !asText(objective.metric)).length;
+  const objectivesWithoutTarget = objectives.filter((objective) => !asText(objective.target)).length;
+  const objectivesWithoutOwner = objectives.filter((objective) => !asText(objective.owner)).length;
+  const projectsWithoutDeadline = projects.filter((project) => !asText(project.deadline)).length;
+
+  if (objectivesWithoutMetric) missing.push(`${objectivesWithoutMetric} objetivo(s) sem indicador explícito`);
+  if (objectivesWithoutTarget) missing.push(`${objectivesWithoutTarget} objetivo(s) sem meta explícita`);
+  if (objectivesWithoutOwner) missing.push(`${objectivesWithoutOwner} objetivo(s) sem responsável explícito`);
+  if (projectsWithoutDeadline) missing.push(`${projectsWithoutDeadline} projeto(s) sem prazo explícito`);
+
+  if (!missing.length) return null;
+
+  return (
+    <div className="rounded-xl bg-[#FFF8E8] px-3 py-2 text-[12px] leading-5 text-[#7A4E12]">
+      <span className="font-semibold">Campos em branco por não estarem explícitos: </span>
+      {missing.join("; ")}.
+    </div>
+  );
+}
+
+function StrategicProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  if (asText(proposal.type) !== "save_strategic_plan") return null;
+
+  const drivers = asRecord(proposal.drivers);
+  const swot = asRecord(proposal.swot);
+  const profile = asRecord(proposal.profile);
+  const themes = asTextArray(proposal.themes);
+  const values = asTextArray(drivers.values);
+  const objectives = asRecordArray(proposal.objectives);
+  const projects = asRecordArray(proposal.projects);
+  const rituals = asTextArray(proposal.rituals);
+
+  return (
+    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será gravado</p>
+        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Plano Estratégico {asText(proposal.year)}</p>
+        <p className="text-[12px] text-[#7A7D82]">
+          Será salvo como plano anual, objetivos estratégicos e projetos prioritários depois da sua confirmação.
+        </p>
+      </div>
+
+      {themes.length ? (
+        <div className="rounded-xl bg-[#F7F7F8] p-3">
+          <p className="mb-2 font-semibold text-[#1D1D1F]">Tema do ano</p>
+          <ChipList items={themes} />
+        </div>
+      ) : null}
+
+      <div className="grid gap-2">
+        <DetailLine label="Setor" value={profile.sector} />
+        <DetailLine label="Dor principal" value={profile.mainPain ?? profile.main_pain} />
+        <DetailLine label="Propósito" value={drivers.purpose} />
+        <DetailLine label="Visão" value={drivers.vision} />
+        <ChipList items={values} />
+      </div>
+
+      {objectives.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Objetivos estratégicos ({objectives.length})</p>
+          {objectives.map((objective, index) => {
+            const meta = [
+              asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
+              asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
+              asText(objective.owner) ? `Dono: ${asText(objective.owner)}` : "",
+            ].filter(Boolean);
+            return (
+              <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
+                <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo ${index + 1}`}</p>
+                {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
+                {meta.length ? <p className="mt-1 text-[11px] text-[#7A7D82]">{meta.join(" · ")}</p> : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {projects.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Projetos prioritários ({projects.length})</p>
+          {projects.map((project, index) => (
+            <div key={`${asText(project.name)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
+              <p className="font-semibold text-[#1D1D1F]">{asText(project.name) || `Projeto ${index + 1}`}</p>
+              <p className="mt-1 text-[11px] text-[#7A7D82]">
+                {[
+                  asText(project.owner) ? `Dono: ${asText(project.owner)}` : "",
+                  asText(project.deadline) ? `Prazo: ${asText(project.deadline)}` : "",
+                  asText(project.linkedObjectiveTitle) ? `Ligado a: ${asText(project.linkedObjectiveTitle)}` : "",
+                ].filter(Boolean).join(" · ") || "Sem dono, prazo ou vínculo explícitos no arquivo."}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="grid gap-2">
+        {asTextArray(swot.strengths).length || asTextArray(swot.weaknesses).length ? (
+          <p>
+            <span className="font-medium text-[#1D1D1F]">SWOT: </span>
+            {[
+              asTextArray(swot.strengths).length ? `${asTextArray(swot.strengths).length} força(s)` : "",
+              asTextArray(swot.weaknesses).length ? `${asTextArray(swot.weaknesses).length} fraqueza(s)` : "",
+              asTextArray(swot.opportunities).length ? `${asTextArray(swot.opportunities).length} oportunidade(s)` : "",
+              asTextArray(swot.threats).length ? `${asTextArray(swot.threats).length} ameaça(s)` : "",
+            ].filter(Boolean).join(" · ")}
+          </p>
+        ) : null}
+        {rituals.length ? (
+          <p>
+            <span className="font-medium text-[#1D1D1F]">Rituais: </span>
+            {rituals.join("; ")}
+          </p>
+        ) : null}
+      </div>
+
+      <MissingInfoSummary proposal={proposal} />
+    </div>
+  );
+}
+
 export function OraclePanel() {
   const { state, dispatch } = useAppState();
   const location = useLocation();
@@ -255,6 +426,7 @@ export function OraclePanel() {
                 <p className="mt-1 text-xs leading-5 text-[#5F6368]">
                   {proposalTitle(activeSession.pendingProposal)} preparado. Confirme para salvar no sistema ou peça ajustes na conversa.
                 </p>
+                <StrategicProposalPreview proposal={activeSession.pendingProposal} />
                 <div className="mt-3 grid gap-2">
                   <Button
                     type="button"

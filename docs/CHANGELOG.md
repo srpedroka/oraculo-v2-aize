@@ -23,6 +23,8 @@
 - Adicionado "Descartar" no cartao de proposta pendente para abandonar testes ou propostas incorretas sem gravar dados.
 - Ajustada a confirmação por WhatsApp para priorizar sessoes com proposta pendente quando a pessoa responder "confirmar".
 - Aumentado o limite de importacao de plano pronto no app de 12 MB para 80 MB, com aviso para arquivos acima de 30 MB.
+- Melhorado o cartao de aprovacao de plano pronto no app para mostrar a previa estruturada antes da gravacao, incluindo objetivos, projetos, lacunas e rastreabilidade basica.
+- Separada a resposta de importacao por canal: o app continua no painel lateral com cartao visual; o WhatsApp recebe previa textual e confirma por mensagem.
 
 ## 2026-07-02
 

@@ -207,7 +207,7 @@ Fluxo esperado pela tela Plano Estrategico:
    - "Gerar proposta e carregar no módulo": envia o texto para o Oraculo estruturar.
 6. O frontend chama `oracle-session` com `action = import_ready_plan`, enviando `orgId`, `period`, `planText`, `fileName` e `channel = web`.
 7. A Edge Function usa a funcao de IA `planning`, monta uma proposta `save_strategic_plan` e salva em `public.planning_sessions.pending_proposal`.
-8. O painel lateral mostra o cartao "Pronto para gravar".
+8. O painel lateral mostra o cartao "Pronto para gravar" com previa estruturada: ano, tema, direcionadores, objetivos, projetos, contagem de SWOT/rituais e campos que ficaram em branco por nao estarem explicitos.
 9. Somente "Confirmar e gravar" aplica a proposta no banco. "Descartar" abandona a sessao sem gravar; "Ajustar" deixa a pessoa pedir mudanças por conversa.
 
 Verifique:
@@ -219,6 +219,7 @@ Verifique:
 - se `public.ai_usage_logs.metadata.aiFunction = 'planning'` e `metadata.action = 'ready_plan_import'` apareceram depois do envio;
 - se `pending_proposal` fica preenchido antes de confirmar.
 - se um teste gerou proposta ficticia, use "Descartar" no cartao antes de encerrar.
+- se o fluxo nasceu no app, ele deve continuar no app. Qualquer resposta mandando a pessoa para WhatsApp ou para outra tela indica regressao em `prepareReadyStrategicPlanProposal` ou no prompt de importacao.
 
 Consulta util:
 
@@ -309,7 +310,7 @@ Fluxo esperado:
 3. Se o arquivo vier como mídia criptografada do WhatsApp, o webhook descriptografa em memoria com `mediaKey` e info `WhatsApp Document Keys`.
 4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel.
 5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown`.
-6. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com resumo da proposta. A pessoa confirma respondendo `confirmar`.
+6. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com previa textual dos objetivos, projetos e lacunas. A pessoa confirma respondendo `confirmar`.
 7. Se for `quarterly`, `monthly`, `evidence` ou `unknown`, o Oraculo ainda responde no WhatsApp dizendo para qual tela/plano o arquivo pertence e faz uma pergunta de confirmação/direcionamento.
 
 Limite atual:
