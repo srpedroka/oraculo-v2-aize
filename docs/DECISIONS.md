@@ -8,9 +8,9 @@ Contexto: o WhatsApp pode ser usado como conversa livre, mas o produto nao deve 
 
 Alternativas: deixar o modelo responder qualquer assunto, confiar apenas no prompt, ou bloquear tudo que mencione temas externos.
 
-Motivo: uma trava deterministica antes da IA evita custo e reduz desvio de proposito. Ao mesmo tempo, a regra permite temas externos quando eles estao claramente conectados ao negocio, como risco de mercado, fornecedores, custos ou estrategia.
+Motivo: uma trava deterministica antes da IA evita desvio de proposito. Ao mesmo tempo, a resposta nao pode soar padronizada: quando o assunto e claramente fora de escopo, o webhook usa a funcao `daily` para gerar uma recusa contextual, citando o tema sem responder o conteudo factual externo, e puxa a conversa de volta para gestao/planejamento. A regra permite temas externos quando eles estao claramente conectados ao negocio, como risco de mercado, fornecedores, custos ou estrategia.
 
-Consequencias: `whatsapp-webhook` passa a ter funcoes locais de escopo (`isBusinessOrOracleTopic`, `isClearlyGeneralTopic`, `outOfScopeReply`) e o prompt diario tambem reforca a regra. Ajustes futuros de tom ou palavras-chave devem atualizar o runbook e redeployar o webhook.
+Consequencias: `whatsapp-webhook` passa a ter funcoes locais de escopo (`isBusinessOrOracleTopic`, `isClearlyGeneralTopic`, `buildOutOfScopeReply`, `fallbackOutOfScopeReply`) e o prompt diario tambem reforca a regra. Ajustes futuros de tom ou palavras-chave devem atualizar o runbook e redeployar o webhook.
 
 ## 2026-07-04 - WhatsApp operacional com intencao e atualizacoes rapidas
 

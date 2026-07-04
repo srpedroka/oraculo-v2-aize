@@ -40,6 +40,7 @@
 - Melhorada a formatacao de respostas do WhatsApp com negrito nativo, conversao de tabelas simples e divisao de respostas longas em ate tres blocos.
 - Documentado que fechamento guiado e documentos padronizados continuam como pendencia segura para fases seguintes, sem promessa de gravacao automatica.
 - Adicionado limite de escopo no WhatsApp: curiosidades gerais fora do Oraculo recebem resposta curta, com humor leve, e sao conduzidas de volta para negocio, gestao, estrategia, planejamento e execucao.
+- Ajustado o limite de escopo para gerar respostas contextuais por IA, evitando repeticao robotizada quando o usuario pergunta assuntos externos diferentes.
 
 ## 2026-07-02
 

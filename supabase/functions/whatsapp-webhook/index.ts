@@ -1052,12 +1052,92 @@ function isClearlyGeneralTopic(message: string) {
   return /\b(guerra|ucrania|russia|israel|palestina|politica|presidente|eleicao|copa|copa do mundo|world cup|futebol|jogo|campeonato|olimpiada|filme|serie|novela|musica|celebridade|fofoca|receita|culinaria|viagem|turismo|previsao do tempo|horoscopo|astrologia|historia geral|geografia|matematica|fisica|quimica|biologia|poema|piada aleatoria|noticias)\b/.test(normalized);
 }
 
-function outOfScopeReply(profile: any) {
-  return [
-    `${localGreeting()}, ${firstName(profile)}. Essa eu vou deixar para outro assistente: se eu começar a comentar Copa, guerra e fofoca, daqui a pouco estou escalando o time do trimestre.`,
-    "Meu jogo é o Oráculo: negócio, gestão, estratégia, metas, áreas, planos e execução.",
-    "Quer seguir com o planejamento, revisar objetivos ou olhar alguma área da empresa?",
-  ].join("\n");
+function outOfScopeTopicLabel(message: string) {
+  const normalized = normalizeText(message);
+  if (/(ucrania|russia|guerra)/.test(normalized)) return "esse tema geopolítico";
+  if (/(copa|world cup|futebol|jogo|campeonato)/.test(normalized)) return "esse assunto de futebol";
+  if (/(politica|presidente|eleicao)/.test(normalized)) return "esse assunto político";
+  if (/(filme|serie|novela|musica|celebridade|fofoca)/.test(normalized)) return "esse assunto de entretenimento";
+  if (/(receita|culinaria)/.test(normalized)) return "essa pauta culinária";
+  if (/(previsao do tempo|viagem|turismo)/.test(normalized)) return "essa curiosidade fora da operação";
+  return "esse assunto";
+}
+
+function fallbackOutOfScopeReply(profile: any, message: string) {
+  const topic = outOfScopeTopicLabel(message);
+  const options = [
+    [
+      `${localGreeting()}, ${firstName(profile)}. ${topic} eu vou deixar fora do nosso radar por aqui.`,
+      "Meu papel é ajudar no jogo da empresa: estratégia, metas, áreas, execução e evidências.",
+      "Quer que eu olhe algum objetivo ou plano agora?",
+    ],
+    [
+      `${firstName(profile)}, eu entendi o tema, mas ${topic} não é o campo do Oráculo.`,
+      "Se eu sair para esse lado, o planejamento fica esperando na sala de reunião.",
+      "Vamos voltar para metas, execução ou alguma área da empresa?",
+    ],
+    [
+      `Boa pergunta, mas ${topic} mora fora do Oráculo.`,
+      "Por aqui eu rendo melhor quando a conversa é sobre negócio, gestão, estratégia e o que precisa andar na empresa.",
+      "Quer revisar o plano ou registrar algum avanço?",
+    ],
+  ];
+  const index = Math.abs([...normalizeText(message)].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % options.length;
+  return options[index].join("\n");
+}
+
+async function buildOutOfScopeReply(
+  client: ReturnType<typeof serviceClient>,
+  orgId: string,
+  profile: any,
+  conversation: ConversationRecord,
+  message: string,
+) {
+  const aiRoute = await resolveAiFunction(client, orgId, "daily");
+  if (!aiRoute) return fallbackOutOfScopeReply(profile, message);
+
+  const history = await loadConversationHistory(client, conversation.id, 12);
+  const systemPrompt = [
+    PERSONA_ORACULO,
+    "A mensagem mais recente do usuário está fora do escopo do Oráculo.",
+    "Escopo do Oráculo: negócio, gestão, administração, estratégia, planejamento, objetivos, áreas, execução, evidências e funcionamento do próprio Oráculo.",
+    "Tarefa: responda de modo contextual e natural, em português do Brasil, sem parecer resposta padrão.",
+    "Regras obrigatórias:",
+    "- Reconheça o assunto específico que a pessoa trouxe.",
+    "- NÃO responda o conteúdo factual externo. Não explique guerra, Copa, política, celebridade, clima, entretenimento ou curiosidades gerais.",
+    "- Use no máximo 3 frases curtas.",
+    "- Pode usar humor leve e elegante se couber.",
+    "- Conduza de volta com uma pergunta prática sobre planejamento, objetivo, área, execução ou gestão.",
+    "- Não repita literalmente respostas anteriores do histórico.",
+    formatConversationMemory(history),
+  ].filter(Boolean).join("\n\n");
+
+  try {
+    const result = await callModel(
+      aiRoute.provider,
+      aiRoute.model,
+      aiRoute.apiKey,
+      systemPrompt,
+      conversationMessagesForModel(history),
+      { ...aiRoute.limits, maxTokens: Math.min(aiRoute.limits.maxTokens, 320), temperature: 0.8 },
+    );
+    await recordAiUsage({
+      client,
+      orgId,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
+      channel: "whatsapp",
+      usage: result.usage,
+      settings: aiRoute.legacySettings,
+      metadata: { aiFunction: "daily", action: "out_of_scope_redirect", phone: profile?.phone ?? null, conversationId: conversation.id },
+    });
+    const answer = result.text.trim();
+    if (!answer || answer.length > 900) return fallbackOutOfScopeReply(profile, message);
+    return answer;
+  } catch (error) {
+    console.error("Erro ao gerar resposta fora de escopo", error instanceof Error ? error.message : String(error));
+    return fallbackOutOfScopeReply(profile, message);
+  }
 }
 
 function firstName(profile: any) {
@@ -1579,7 +1659,6 @@ serve(async (req) => {
 
     const confirmationMessage = isConfirmationMessage(text);
     if (!confirmationMessage && isClearlyGeneralTopic(text)) {
-      const answer = outOfScopeReply(profile);
       await insertConversationMessage(client, {
         orgId,
         areaId,
@@ -1589,6 +1668,9 @@ serve(async (req) => {
         text: storedUserText,
         channel: "whatsapp",
       });
+      await maybeSummarize(client, orgId, conversation);
+
+      const answer = await buildOutOfScopeReply(client, orgId, profile, conversation, text);
 
       await insertConversationMessage(client, {
         orgId,

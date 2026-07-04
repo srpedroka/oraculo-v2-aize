@@ -267,16 +267,16 @@ Limites atuais:
 
 Comportamento esperado:
 
-- Perguntas claramente fora do escopo, como Copa do Mundo, guerra sem relacao com a empresa, politica ampla, entretenimento ou noticias gerais, recebem uma resposta curta e educada dizendo que esse nao e o papel do Oraculo.
-- A resposta pode ter uma piada leve, mas deve puxar a conversa de volta para planejamento, objetivos, areas, execucao, gestao ou estrategia.
+- Perguntas claramente fora do escopo, como Copa do Mundo, guerra sem relacao com a empresa, politica ampla, entretenimento ou noticias gerais, recebem uma resposta curta e contextual. O Oraculo deve reconhecer o assunto citado, mas nao responder o conteudo factual externo.
+- A resposta pode ter uma piada leve, deve variar conforme a mensagem e deve puxar a conversa de volta para planejamento, objetivos, areas, execucao, gestao ou estrategia.
 - Temas externos com relacao clara ao negocio continuam permitidos. Exemplo: "como a guerra impacta meus custos de fornecedor?" deve ser tratado como risco/estrategia, nao como curiosidade geral.
 
 Onde revisar:
 
-- `supabase/functions/whatsapp-webhook/index.ts`, funcoes `isBusinessOrOracleTopic`, `isClearlyGeneralTopic` e `outOfScopeReply`.
+- `supabase/functions/whatsapp-webhook/index.ts`, funcoes `isBusinessOrOracleTopic`, `isClearlyGeneralTopic`, `buildOutOfScopeReply` e `fallbackOutOfScopeReply`.
 - `WHATSAPP_DAILY_FORM_RULES`, que tambem orienta a IA diaria a manter o escopo.
 
-Se bloquear demais, adicione termos de negocio em `isBusinessOrOracleTopic`. Se deixar passar curiosidade geral demais, adicione termos em `isClearlyGeneralTopic`. Depois publique `whatsapp-webhook` novamente.
+Se bloquear demais, adicione termos de negocio em `isBusinessOrOracleTopic`. Se deixar passar curiosidade geral demais, adicione termos em `isClearlyGeneralTopic`. Se a resposta estiver repetitiva, revisar o prompt de `buildOutOfScopeReply`; ela usa a funcao `daily`, grava uso em `ai_usage_logs.metadata.action = 'out_of_scope_redirect'` e tem fallback variado quando a IA falha. Depois publique `whatsapp-webhook` novamente.
 
 ## Configurar funcoes de IA da V3
 
