@@ -1,5 +1,5 @@
 import { Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { createMessageId, generateWeeklyReview, respondToUserMessage } from "../lib/oracle";
 import { useAppState } from "../state/store";
@@ -57,6 +57,7 @@ export function OraclePanel() {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [selectedObjectiveId, setSelectedObjectiveId] = useState(state.objectives[0]?.id ?? "");
   const [evidenceText, setEvidenceText] = useState("");
+  const messagesListRef = useRef<HTMLDivElement | null>(null);
   const mode = state.ui.oracleMode;
   const isDashboard = location.pathname === "/";
   const activeSession = state.activeSession;
@@ -86,6 +87,15 @@ export function OraclePanel() {
     window.addEventListener("resize", syncNarrowMode);
     return () => window.removeEventListener("resize", syncNarrowMode);
   }, [dispatch, state.ui.oracleMode]);
+
+  useEffect(() => {
+    if (mode === "minimized") return;
+    const frame = window.requestAnimationFrame(() => {
+      const messagesList = messagesListRef.current;
+      if (messagesList) messagesList.scrollTop = messagesList.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeSession?.id, activeSession?.phase, mode, state.chatMessages.length]);
 
   function setMode(nextMode: typeof mode) {
     dispatch({ type: "set_oracle_mode", mode: nextMode });
@@ -186,11 +196,11 @@ export function OraclePanel() {
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#075E54] bg-[#25D366]" />
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">
-                  {activeSession ? SESSION_TYPE_LABEL[activeSession.type] : "Oráculo"}
-                </h2>
+                <h2 className="truncate text-sm font-semibold">Oráculo</h2>
                 <p className="truncate text-xs text-white/75">
-                  {activeSession ? `${PHASE_LABEL[activeSession.phase] ?? activeSession.phase} · ${activeSession.period}` : `IA Estratégica · ${state.organization?.name}`}
+                  {activeSession
+                    ? `Conduzindo ${SESSION_TYPE_LABEL[activeSession.type]} · ${PHASE_LABEL[activeSession.phase] ?? activeSession.phase} · ${activeSession.period}`
+                    : `IA Estratégica · ${state.organization?.name}`}
                 </p>
               </div>
             </div>
@@ -222,7 +232,7 @@ export function OraclePanel() {
             </div>
           ) : null}
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
+          <div ref={messagesListRef} className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
             {state.chatMessages.map((chatMessage) => (
               <div
                 key={chatMessage.id}
