@@ -164,6 +164,8 @@ O WhatsApp real passa por Evolution API/Evo Go hospedada fora do app. O fluxo e:
 7. O Oraculo responde por IA real ou fallback seguro, usando apenas o historico daquela conversa.
 8. A resposta e salva, formatada para WhatsApp e enviada de volta pela Evolution. Respostas longas podem ser divididas em ate tres mensagens separadas por pausa curta.
 
+O WhatsApp tem limite de escopo de produto. Antes de chamar sessoes ou IA diaria, o webhook detecta curiosidades gerais claramente fora do Oraculo, como esporte, guerra, politica ampla, entretenimento ou noticias sem relacao com a empresa. Nesses casos, responde com humor leve, explica que o Oraculo atua em negocio, gestao, estrategia, planejamento, areas, objetivos e execucao, e conduz a pessoa de volta ao planejamento. Se o tema externo estiver conectado ao negocio, por exemplo risco de mercado, custo, fornecedor ou estrategia da empresa, a conversa continua normalmente.
+
 Esse desenho foi ajustado em 2026-07-02 para salvar a mensagem antes da IA, permitindo diagnosticar casos em que a chamada ao modelo ou o envio falham.
 
 ## Fluxo de dados

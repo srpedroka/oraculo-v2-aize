@@ -263,6 +263,21 @@ Limites atuais:
 - perguntas sobre documentos ainda nao geram documento padronizado automaticamente;
 - atualizacao rapida grava apenas status/progresso/evidencia em objetivo/acao existente, nao cria plano novo.
 
+## Problema: WhatsApp responde ou nao responde assuntos fora do Oraculo
+
+Comportamento esperado:
+
+- Perguntas claramente fora do escopo, como Copa do Mundo, guerra sem relacao com a empresa, politica ampla, entretenimento ou noticias gerais, recebem uma resposta curta e educada dizendo que esse nao e o papel do Oraculo.
+- A resposta pode ter uma piada leve, mas deve puxar a conversa de volta para planejamento, objetivos, areas, execucao, gestao ou estrategia.
+- Temas externos com relacao clara ao negocio continuam permitidos. Exemplo: "como a guerra impacta meus custos de fornecedor?" deve ser tratado como risco/estrategia, nao como curiosidade geral.
+
+Onde revisar:
+
+- `supabase/functions/whatsapp-webhook/index.ts`, funcoes `isBusinessOrOracleTopic`, `isClearlyGeneralTopic` e `outOfScopeReply`.
+- `WHATSAPP_DAILY_FORM_RULES`, que tambem orienta a IA diaria a manter o escopo.
+
+Se bloquear demais, adicione termos de negocio em `isBusinessOrOracleTopic`. Se deixar passar curiosidade geral demais, adicione termos em `isClearlyGeneralTopic`. Depois publique `whatsapp-webhook` novamente.
+
 ## Configurar funcoes de IA da V3
 
 1. Abra Configuracoes > IA do Oraculo.

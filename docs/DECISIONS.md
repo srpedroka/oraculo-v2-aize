@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-04 - Escopo de conversa do WhatsApp
+
+Decisao: limitar o WhatsApp do Oraculo a temas de negocio, gestao, administracao, estrategia, planejamento, objetivos, areas, execucao e funcionamento do proprio Oraculo.
+
+Contexto: o WhatsApp pode ser usado como conversa livre, mas o produto nao deve virar assistente geral para Copa do Mundo, guerra, politica ampla, entretenimento ou curiosidades sem relacao com a empresa. Isso desviaria o uso e poderia gerar respostas longas fora do proposito do sistema.
+
+Alternativas: deixar o modelo responder qualquer assunto, confiar apenas no prompt, ou bloquear tudo que mencione temas externos.
+
+Motivo: uma trava deterministica antes da IA evita custo e reduz desvio de proposito. Ao mesmo tempo, a regra permite temas externos quando eles estao claramente conectados ao negocio, como risco de mercado, fornecedores, custos ou estrategia.
+
+Consequencias: `whatsapp-webhook` passa a ter funcoes locais de escopo (`isBusinessOrOracleTopic`, `isClearlyGeneralTopic`, `outOfScopeReply`) e o prompt diario tambem reforca a regra. Ajustes futuros de tom ou palavras-chave devem atualizar o runbook e redeployar o webhook.
+
 ## 2026-07-04 - WhatsApp operacional com intencao e atualizacoes rapidas
 
 Decisao: executar a Fase 4 da V3 criando uma camada de roteamento de intencao antes da resposta diaria do Oraculo, com suporte a iniciar sessoes de planejamento pelo WhatsApp/app e aplicar atualizacoes operacionais pequenas pelo WhatsApp.

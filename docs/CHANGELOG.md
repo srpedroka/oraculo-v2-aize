@@ -39,6 +39,7 @@
 - Adicionadas atualizacoes rapidas por WhatsApp em `_shared/quick-updates.ts`, com registro de conclusao, progresso, status e evidencia curta em objetivos/acoes existentes, validando permissao antes de gravar.
 - Melhorada a formatacao de respostas do WhatsApp com negrito nativo, conversao de tabelas simples e divisao de respostas longas em ate tres blocos.
 - Documentado que fechamento guiado e documentos padronizados continuam como pendencia segura para fases seguintes, sem promessa de gravacao automatica.
+- Adicionado limite de escopo no WhatsApp: curiosidades gerais fora do Oraculo recebem resposta curta, com humor leve, e sao conduzidas de volta para negocio, gestao, estrategia, planejamento e execucao.
 
 ## 2026-07-02
 

@@ -1037,6 +1037,29 @@ function normalizeText(value: string) {
     .trim();
 }
 
+function isBusinessOrOracleTopic(message: string) {
+  const normalized = normalizeText(message);
+  if (!normalized) return true;
+  if (isOpeningMessage(message) || isConfirmationMessage(message)) return true;
+
+  return /\b(oraculo|sistema|app|software|whatsapp|zap|empresa|negocio|gestao|administracao|estrategia|planejamento|plano|objetivo|meta|resultado|evolucao|indicador|kpi|okr|area|departamento|coordenador|time|equipe|lideranca|cliente|venda|comercial|marketing|financeiro|faturamento|lucro|margem|custo|caixa|orcamento|producao|operacao|processo|estoque|compra|fornecedor|mercado|concorrencia|risco|prioridade|execucao|evidencia|acao|trimestre|mensal|anual|reuniao|projeto|produto|servico|contrato|prazo|entrega|performance|produtividade)\b/.test(normalized);
+}
+
+function isClearlyGeneralTopic(message: string) {
+  const normalized = normalizeText(message);
+  if (!normalized || isBusinessOrOracleTopic(message)) return false;
+
+  return /\b(guerra|ucrania|russia|israel|palestina|politica|presidente|eleicao|copa|copa do mundo|world cup|futebol|jogo|campeonato|olimpiada|filme|serie|novela|musica|celebridade|fofoca|receita|culinaria|viagem|turismo|previsao do tempo|horoscopo|astrologia|historia geral|geografia|matematica|fisica|quimica|biologia|poema|piada aleatoria|noticias)\b/.test(normalized);
+}
+
+function outOfScopeReply(profile: any) {
+  return [
+    `${localGreeting()}, ${firstName(profile)}. Essa eu vou deixar para outro assistente: se eu começar a comentar Copa, guerra e fofoca, daqui a pouco estou escalando o time do trimestre.`,
+    "Meu jogo é o Oráculo: negócio, gestão, estratégia, metas, áreas, planos e execução.",
+    "Quer seguir com o planejamento, revisar objetivos ou olhar alguma área da empresa?",
+  ].join("\n");
+}
+
 function firstName(profile: any) {
   return String(profile?.full_name ?? "").trim().split(/\s+/)[0] || "Gui";
 }
@@ -1137,6 +1160,8 @@ function contextualFallback(profile: any, organization: any, objectives: any[], 
 const WHATSAPP_DAILY_FORM_RULES = [
   "Você está no WhatsApp. Regras de forma:",
   "- Converse como gente: caloroso, direto, zero robótico. Chame pelo primeiro nome quando natural.",
+  "- Escopo: fale sobre Oráculo, negócio, gestão, administração, estratégia, planejamento, objetivos, áreas, execução, evidências e temas claramente conectados à empresa.",
+  "- Se a pessoa pedir curiosidade geral fora desse escopo (esporte, guerra, política ampla, celebridades, entretenimento etc.), responda com elegância, uma piadinha leve e puxe de volta para planejamento/gestão. Não dê a resposta factual externa.",
   "- Em papo leve ou pergunta simples, responda curto (1 a 3 frases).",
   "- Quando apresentar status, plano ou lista, ESTRUTURE: *títulos em negrito*, itens com hífen, uma informação por linha. Nada de parágrafo corrido com números misturados.",
   "- Resposta longa: divida em blocos separados por uma linha contendo apenas --- (no máximo 3 blocos). Cada bloco deve fazer sentido sozinho.",
@@ -1553,6 +1578,32 @@ serve(async (req) => {
     const storedUserText = wasTranscribedAudio ? `[Áudio transcrito] ${text}` : text;
 
     const confirmationMessage = isConfirmationMessage(text);
+    if (!confirmationMessage && isClearlyGeneralTopic(text)) {
+      const answer = outOfScopeReply(profile);
+      await insertConversationMessage(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
+        author: "user",
+        text: storedUserText,
+        channel: "whatsapp",
+      });
+
+      await insertConversationMessage(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
+        author: "oracle",
+        text: answer,
+        channel: "whatsapp",
+      });
+
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, answer);
+      return jsonResponse({ ok: true, scope: "redirected" });
+    }
+
     const { data: activeSessions, error: activeSessionError } = await client
       .from("planning_sessions")
       .select("id, pending_proposal")
