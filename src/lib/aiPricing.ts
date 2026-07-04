@@ -1,7 +1,7 @@
-import type { AiSettings } from "../types";
+import type { AiProvider } from "../types";
 
 export interface ModelPricing {
-  provider: AiSettings["provider"];
+  provider: AiProvider;
   model: string;
   inputTokenPriceUsdPerMillion: number;
   outputTokenPriceUsdPerMillion: number;
@@ -50,13 +50,69 @@ export const MODEL_PRICING_CATALOG: ModelPricing[] = [
     source: "https://platform.kimi.ai/docs/pricing/chat-k27-code",
     note: "Entrada calculada com preço de cache miss. Cache hit oficial: US$ 0.38 / 1M tokens.",
   },
+  {
+    provider: "xai",
+    model: "grok-4.3",
+    inputTokenPriceUsdPerMillion: 1.25,
+    outputTokenPriceUsdPerMillion: 2.5,
+    source: "https://docs.x.ai/developers/models",
+    note: "Preço oficial do modelo Grok 4.3 em julho de 2026.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 25,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Preço base do Claude Opus 4.8. Cache e inferência com residência podem alterar o valor final.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-7",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 25,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Preço base do Claude Opus 4.7.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-6",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 25,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Preço base do Claude Opus 4.6.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    inputTokenPriceUsdPerMillion: 3,
+    outputTokenPriceUsdPerMillion: 15,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Preço base do Claude Sonnet 4.6.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4-5",
+    inputTokenPriceUsdPerMillion: 3,
+    outputTokenPriceUsdPerMillion: 15,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Preço base do Claude Sonnet 4.5.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-haiku-4-5",
+    inputTokenPriceUsdPerMillion: 1,
+    outputTokenPriceUsdPerMillion: 5,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Preço base do Claude Haiku 4.5.",
+  },
 ];
 
-export function findModelPricing(provider: AiSettings["provider"], model: string) {
+export function findModelPricing(provider: AiProvider, model: string) {
   const normalizedModel = model.trim().toLowerCase();
   return MODEL_PRICING_CATALOG.find((item) => item.provider === provider && item.model.toLowerCase() === normalizedModel) ?? null;
 }
 
-export function modelOptionsForProvider(provider: AiSettings["provider"]) {
+export function modelOptionsForProvider(provider: AiProvider) {
   return MODEL_PRICING_CATALOG.filter((item) => item.provider === provider);
 }

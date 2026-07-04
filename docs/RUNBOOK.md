@@ -123,7 +123,7 @@ Possiveis causas:
 
 - empresa sem chave configurada;
 - chave invalida;
-- provider/modelo incorreto;
+- provider/modelo incorreto na funcao usada (`daily`, `planning` ou `background`);
 - erro em Edge Function;
 - usuario sem membership.
 
@@ -133,7 +133,9 @@ Verifique:
 
 - `public.ai_settings.has_key`;
 - `public.ai_settings.key_preview`;
-- existencia de linha em `public.ai_model_keys`;
+- existencia de linha em `public.ai_model_keys` para o provider da funcao;
+- `public.ai_function_settings` para saber qual provider/modelo a funcao usa;
+- `public.ai_provider_key_status` para conferir preview sem abrir a chave real;
 - logs da Edge Function `oracle-chat`.
 
 Para consumo:
@@ -142,6 +144,24 @@ Para consumo:
 2. Confira `public.ai_usage_logs` filtrando por `org_id`.
 3. Se houver resposta mas nao houver log, verifique `recordAiUsage` e o retorno de `usage` do provider.
 4. Se nao houver resposta, consulte logs da Edge Function e veja se a chamada ao modelo falhou.
+
+## Configurar funcoes de IA da V3
+
+1. Abra Configuracoes > IA do Oraculo.
+2. Em Chaves por provedor, salve a chave do provedor desejado.
+3. Em Funcoes de IA, escolha:
+   - Planejamento e fechamentos: modelo mais forte.
+   - Conversa do dia a dia: modelo rapido e com bom custo.
+   - Bastidores: modelo economico para classificacao e resumos.
+4. Salve cada funcao separadamente.
+5. Envie uma mensagem curta no painel ou WhatsApp.
+6. Confira `public.ai_usage_logs.metadata.aiFunction` ou o painel de consumo para confirmar qual funcao foi usada.
+
+Observacoes:
+
+- OpenAI/gpt-5.4 existente foi preservado como default das tres funcoes ao iniciar a V3.
+- xAI/Grok usa endpoint compativel com Chat Completions.
+- A transcricao de audio do WhatsApp continua usando chave OpenAI cadastrada, mesmo que a conversa diaria use outro provedor.
 
 ## Problema: WhatsApp recebeu mensagem mas nao respondeu
 
@@ -242,6 +262,16 @@ limit 20;
 
 ```sql
 select provider, model, channel, prompt_tokens, completion_tokens, total_tokens, total_cost_usd, created_at
+from public.ai_usage_logs
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
+
+Para incluir a funcao de IA:
+
+```sql
+select provider, model, metadata ->> 'aiFunction' as ai_function, channel, total_tokens, total_cost_usd, created_at
 from public.ai_usage_logs
 where org_id = '<ORG_ID>'
 order by created_at desc

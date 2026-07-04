@@ -539,6 +539,8 @@ export const initialState: AppState = {
     phone: null,
   },
   aiSettings: null,
+  aiFunctionSettings: [],
+  aiProviderKeyStatuses: [],
   aiUsageLogs: [],
   whatsappSettings: null,
   areas,

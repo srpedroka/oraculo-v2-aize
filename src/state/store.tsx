@@ -5,6 +5,10 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import type {
   AiSettings,
+  AiFunction,
+  AiFunctionSetting,
+  AiProvider,
+  AiProviderKeyStatus,
   AiUsageLog,
   AppState,
   Area,
@@ -44,13 +48,15 @@ type AppAction =
   | { type: "upsert_area_plan"; plan: AreaPlan }
   | {
       type: "upsert_ai_settings";
-      provider: AiSettings["provider"];
+      provider: AiProvider;
       model: string;
       apiKey?: string;
       inputTokenPriceUsdPerMillion: number;
       outputTokenPriceUsdPerMillion: number;
       pricingSource?: string;
     }
+  | { type: "upsert_ai_provider_key"; provider: AiProvider; apiKey: string }
+  | { type: "upsert_ai_function_settings"; function: AiFunction; provider: AiProvider; model: string }
   | {
       type: "upsert_whatsapp_settings";
       instanceUrl: string;
@@ -99,6 +105,8 @@ const EMPTY_STATE: AppState = {
   currentMembership: null,
   currentProfile: null,
   aiSettings: null,
+  aiFunctionSettings: [],
+  aiProviderKeyStatuses: [],
   aiUsageLogs: [],
   whatsappSettings: null,
   areas: [],
@@ -317,6 +325,26 @@ function mapAiSettings(row: any): AiSettings {
   };
 }
 
+function mapAiFunctionSetting(row: any): AiFunctionSetting {
+  return {
+    orgId: row.org_id,
+    function: row.function,
+    provider: row.provider,
+    model: row.model,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapAiProviderKeyStatus(row: any): AiProviderKeyStatus {
+  return {
+    orgId: row.org_id,
+    provider: row.provider,
+    hasKey: row.has_key ?? false,
+    keyPreview: row.key_preview ?? null,
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapAiUsageLog(row: any): AiUsageLog {
   return {
     id: row.id,
@@ -332,6 +360,7 @@ function mapAiUsageLog(row: any): AiUsageLog {
     inputCostUsd: Number(row.input_cost_usd ?? 0),
     outputCostUsd: Number(row.output_cost_usd ?? 0),
     totalCostUsd: Number(row.total_cost_usd ?? 0),
+    metadata: row.metadata ?? {},
     createdAt: row.created_at,
   };
 }
@@ -629,6 +658,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const aiFunctionSettingsQuery = useQuery({
+    queryKey: ["ai_function_settings", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("ai_function_settings").select("*").eq("org_id", orgId).order("function");
+      if (error) throw error;
+      return (data ?? []).map(mapAiFunctionSetting);
+    },
+  });
+
+  const aiProviderKeyStatusesQuery = useQuery({
+    queryKey: ["ai_provider_key_status", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("ai_provider_key_status").select("*").eq("org_id", orgId).order("provider");
+      if (error) throw error;
+      return (data ?? []).map(mapAiProviderKeyStatus);
+    },
+  });
+
   const aiUsageLogsQuery = useQuery({
     queryKey: ["ai_usage_logs", orgId],
     enabled: Boolean(supabase && orgId),
@@ -692,6 +743,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["evidences", orgId] });
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
     queryClient.invalidateQueries({ queryKey: ["whatsapp_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["check_ins", orgId] });
@@ -708,6 +761,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "evidences", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "check_ins", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ai_function_settings", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
 
     return () => {
@@ -731,6 +786,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evidencesQuery.isLoading ||
       chatMessagesQuery.isLoading ||
       aiSettingsQuery.isLoading ||
+      aiFunctionSettingsQuery.isLoading ||
+      aiProviderKeyStatusesQuery.isLoading ||
       aiUsageLogsQuery.isLoading ||
       whatsappSettingsQuery.isLoading ||
       checkInsQuery.isLoading;
@@ -745,6 +802,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentMembership,
       currentProfile: currentProfileQuery.data ?? currentMembership?.profile ?? null,
       aiSettings: aiSettingsQuery.data ?? null,
+      aiFunctionSettings: aiFunctionSettingsQuery.data ?? [],
+      aiProviderKeyStatuses: aiProviderKeyStatusesQuery.data ?? [],
       aiUsageLogs: aiUsageLogsQuery.data ?? [],
       whatsappSettings: whatsappSettingsQuery.data ?? null,
       areas,
@@ -760,6 +819,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ui,
     };
   }, [
+    aiFunctionSettingsQuery.data,
+    aiFunctionSettingsQuery.isLoading,
+    aiProviderKeyStatusesQuery.data,
+    aiProviderKeyStatusesQuery.isLoading,
     aiSettingsQuery.data,
     aiSettingsQuery.isLoading,
     aiUsageLogsQuery.data,
@@ -1027,6 +1090,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           inputTokenPriceUsdPerMillion: action.inputTokenPriceUsdPerMillion,
           outputTokenPriceUsdPerMillion: action.outputTokenPriceUsdPerMillion,
           pricingSource: action.pricingSource ?? "",
+        }).then(invalidateOrg);
+        return;
+      }
+
+      if (action.type === "upsert_ai_provider_key") {
+        void callEdgeFunction("save-ai-settings", {
+          orgId,
+          provider: action.provider,
+          apiKey: action.apiKey,
+        }).then(invalidateOrg);
+        return;
+      }
+
+      if (action.type === "upsert_ai_function_settings") {
+        void callEdgeFunction("save-ai-settings", {
+          orgId,
+          function: action.function,
+          provider: action.provider,
+          model: action.model,
         }).then(invalidateOrg);
         return;
       }

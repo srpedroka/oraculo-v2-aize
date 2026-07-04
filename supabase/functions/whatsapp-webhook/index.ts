@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serviceClient } from "../_shared/auth.ts";
+import { resolveAiFunction } from "../_shared/ai-router.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callModel, type Provider } from "../_shared/model.ts";
+import { callModel } from "../_shared/model.ts";
 import { CONVERSATION_STYLE, STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
@@ -975,13 +976,15 @@ async function transcribeIncomingAudio(
     `file:${audioFile.mimeType || "no-type"}>${normalizedAudioFile.mimeType}:${audioFile.bytes.length}:sig:${asciiSignature(audioFile.bytes)}:${byteSignature(audioFile.bytes)}`,
   );
 
-  const [{ data: settings }, { data: keyRow }] = await Promise.all([
-    client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
-    client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
-  ]);
+  const { data: keyRow } = await client
+    .from("ai_model_keys")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("provider", "openai")
+    .maybeSingle();
 
-  if (settings?.provider !== "openai" || keyRow?.provider !== "openai" || !keyRow?.api_key) {
-    throw new Error("Transcrição de áudio exige uma chave OpenAI ativa.");
+  if (!keyRow?.api_key) {
+    throw new Error("Transcrição de áudio exige uma chave OpenAI cadastrada.");
   }
 
   try {
@@ -1121,9 +1124,8 @@ async function buildAnswer(
   membership: any,
   currentMessageId: string | null,
 ) {
+  const aiRoute = await resolveAiFunction(client, orgId, "daily");
   const [
-    { data: settings },
-    { data: keyRow },
     { data: organization },
     { data: objectives },
     { data: areas },
@@ -1132,8 +1134,6 @@ async function buildAnswer(
     { data: history },
   ] =
     await Promise.all([
-      client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
-      client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
       client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
       client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
@@ -1144,7 +1144,7 @@ async function buildAnswer(
 
   const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
 
-  if (!settings?.has_key || !keyRow?.api_key) {
+  if (!aiRoute) {
     return isOpeningMessage(message) ? openingAnswer(profile, organization) : contextualFallback(profile, organization, objectives ?? [], message);
   }
 
@@ -1179,16 +1179,16 @@ async function buildAnswer(
   ];
 
   try {
-    const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+    const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, modelMessages, aiRoute.limits);
     await recordAiUsage({
       client,
       orgId,
-      provider: settings.provider as Provider,
-      model: settings.model,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
       channel: "whatsapp",
       usage: result.usage,
-      settings,
-      metadata: { areaId, phone: profile?.phone ?? null },
+      settings: aiRoute.legacySettings,
+      metadata: { areaId, phone: profile?.phone ?? null, aiFunction: "daily" },
     });
     return result.text;
   } catch (_error) {
@@ -1257,17 +1257,16 @@ async function classifyImportedDocument(
   extractedText: string,
   profile: any,
 ) {
-  const [{ data: settings }, { data: keyRow }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: objectives }] =
+  const aiRoute = await resolveAiFunction(client, orgId, "background");
+  const [{ data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: objectives }] =
     await Promise.all([
-      client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
-      client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
       client.from("areas").select("id, name").eq("org_id", orgId).order("created_at"),
       client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
       client.from("area_plans").select("*").eq("org_id", orgId),
       client.from("objectives").select("id, title, level, area_id, period").eq("org_id", orgId).order("created_at"),
     ]);
 
-  if (!settings?.has_key || !keyRow?.api_key) return classifyDocumentFallback(extractedText);
+  if (!aiRoute) return classifyDocumentFallback(extractedText);
 
   const systemPrompt = [
     "Você classifica documentos enviados por WhatsApp para o sistema Oráculo.",
@@ -1283,22 +1282,29 @@ async function classifyImportedDocument(
     JSON.stringify({ areas, strategicPlan, areaPlans, objectives, currentAreaId: areaId, contact: profile?.full_name ?? null }, null, 2),
   ].join("\n\n");
 
-  const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, [
-    {
-      role: "user",
-      content: [`Arquivo: ${fileName}`, "Texto extraído:", extractedText.slice(0, 30000)].join("\n\n"),
-    },
-  ]);
+  const result = await callModel(
+    aiRoute.provider,
+    aiRoute.model,
+    aiRoute.apiKey,
+    systemPrompt,
+    [
+      {
+        role: "user",
+        content: [`Arquivo: ${fileName}`, "Texto extraído:", extractedText.slice(0, 30000)].join("\n\n"),
+      },
+    ],
+    aiRoute.limits,
+  );
 
   await recordAiUsage({
     client,
     orgId,
-    provider: settings.provider as Provider,
-    model: settings.model,
+    provider: aiRoute.provider,
+    model: aiRoute.model,
     channel: "whatsapp",
     usage: result.usage,
-    settings,
-    metadata: { areaId, fileName, action: "document_classification" },
+    settings: aiRoute.legacySettings,
+    metadata: { areaId, fileName, action: "document_classification", aiFunction: "background" },
   });
 
   const parsed = parseJsonObject(result.text) as any;
@@ -1336,7 +1342,7 @@ async function processIncomingDocument(
     const classification = await classifyImportedDocument(client, orgId, areaId, file.fileName, extractedText, profile);
     const route = targetRoute(classification.target);
     const confidence = Math.round((classification.confidence || 0) * 100);
-    const areaText = classification.areaName ? `\nDepartamento provável: ${classification.areaName}.` : "";
+    const areaText = classification.areaName ? `\nÁrea provável: ${classification.areaName}.` : "";
     const periodText = classification.period ? `\nPeríodo provável: ${classification.period}.` : "";
     const nextQuestion = classification.nextQuestion || "Você quer que eu use esse arquivo como base para revisar esse plano?";
     const answer =

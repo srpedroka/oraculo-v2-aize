@@ -34,7 +34,7 @@ Segredos operacionais salvos pelo app:
 - chaves de IA ficam em `public.ai_model_keys`, com RLS habilitado, acesso revogado para `anon`/`authenticated` e permissao apenas para `service_role`;
 - chave da Evolution API e segredo do webhook ficam em `public.whatsapp_instance_keys`, com o mesmo modelo de acesso exclusivo por `service_role`.
 
-A partir da fundacao V3, `public.ai_model_keys` passa a aceitar uma chave por provedor e empresa (`org_id`, `provider`). Isso prepara OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok sem expor nenhum segredo novo ao navegador. A configuracao visivel de qual modelo usar por funcao fica em `public.ai_function_settings`, que nao guarda chave real e segue RLS de leitura para membros e escrita apenas para owner.
+A partir da fundacao V3, `public.ai_model_keys` passa a aceitar uma chave por provedor e empresa (`org_id`, `provider`). Isso prepara OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok sem expor nenhum segredo novo ao navegador. A configuracao visivel de qual modelo usar por funcao fica em `public.ai_function_settings`, que nao guarda chave real e segue RLS de leitura para membros e escrita apenas para owner. O status visivel das chaves fica em `public.ai_provider_key_status`, com apenas `has_key`, `key_preview` e `updated_at`.
 
 Historico: a V2 criou primeiro tabelas equivalentes no schema `private`. Em 2026-07-02 os segredos foram migrados para tabelas publicas bloqueadas por RLS/revokes porque as Edge Functions do ambiente atual acessam essas tabelas via service role com mais previsibilidade operacional. A regra de seguranca continua a mesma: o navegador nunca le esses valores.
 
@@ -45,9 +45,12 @@ O usuario configura a chave pela tela de configuracoes. O frontend envia a chave
 1. valida sessao;
 2. exige papel `owner`;
 3. salva a chave real em `public.ai_model_keys`, acessivel apenas por service role;
-4. salva apenas `has_key`, `key_preview`, provider, modelo e pricing em `public.ai_settings`.
+4. salva apenas `has_key`, `key_preview` e provider em `public.ai_provider_key_status`;
+5. quando o payload legado e usado, preserva `public.ai_settings` para compatibilidade.
 
 A tabela de chave real tem RLS habilitado, acesso revogado para `anon` e `authenticated`, e permissao apenas para `service_role`.
+
+Os modelos por funcao (`planning`, `daily`, `background`) ficam em `public.ai_function_settings`; essa tabela nao contem segredo e so owners podem alterar.
 
 ## Uso, pricing e custo de IA
 
@@ -68,6 +71,8 @@ Precos conhecidos ficam no codigo em:
 - `supabase/functions/_shared/pricing.ts`, para resolver pricing no servidor ao salvar IA.
 
 Ao trocar modelo/provedor, verificar fonte oficial de pricing e registrar a fonte em `pricing_source`. Nao inserir chave de API no codigo nem em migrations.
+
+Na Fase 1 da V3, o catalogo foi atualizado com xAI/Grok e modelos recentes da Anthropic. O app nao pede preco manual para modelos conhecidos; a tela mostra o valor cadastrado no catalogo e as Edge Functions gravam o custo estimado no momento da chamada. Logs de uso incluem `metadata.aiFunction` para separar planejamento, dia a dia e bastidores.
 
 ## Senhas
 

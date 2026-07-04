@@ -181,6 +181,7 @@ Tabela operacional:
 
 ```text
 public.ai_function_settings
+public.ai_provider_key_status
 ```
 
 Ela guarda qual provider/modelo cada funcao usa:
@@ -189,7 +190,22 @@ Ela guarda qual provider/modelo cada funcao usa:
 - `daily`: conversa do dia a dia;
 - `background`: bastidores, classificacoes e resumos.
 
-Essa tabela nao guarda chave. As chaves continuam em `public.ai_model_keys` e so a service role acessa o valor real.
+`public.ai_function_settings` nao guarda chave. `public.ai_provider_key_status` guarda apenas se existe chave e os ultimos caracteres mascarados. As chaves reais continuam em `public.ai_model_keys` e so a service role acessa o valor real.
+
+Provedores suportados:
+
+- OpenAI;
+- Anthropic / Claude;
+- Moonshot / Kimi;
+- xAI / Grok.
+
+Como trocar um modelo por funcao:
+
+1. Abrir Configuracoes > IA do Oraculo.
+2. Salvar a chave do provedor, se ainda nao estiver guardada.
+3. Em Funcoes de IA, escolher provider e modelo para Planejamento, Dia a dia ou Bastidores.
+4. Salvar a funcao.
+5. Fazer uma chamada pequena e conferir o consumo com a funcao indicada.
 
 ## Evolution API / WhatsApp
 

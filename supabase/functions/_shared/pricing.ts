@@ -44,6 +44,55 @@ const MODEL_PRICING_CATALOG: ModelPricing[] = [
     outputTokenPriceUsdPerMillion: 8,
     source: "https://platform.kimi.ai/docs/pricing/chat-k27-code",
   },
+  {
+    provider: "xai",
+    model: "grok-4.3",
+    inputTokenPriceUsdPerMillion: 1.25,
+    outputTokenPriceUsdPerMillion: 2.5,
+    source: "https://docs.x.ai/developers/models",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 25,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-7",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 25,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-opus-4-6",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 25,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    inputTokenPriceUsdPerMillion: 3,
+    outputTokenPriceUsdPerMillion: 15,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-4-5",
+    inputTokenPriceUsdPerMillion: 3,
+    outputTokenPriceUsdPerMillion: 15,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-haiku-4-5",
+    inputTokenPriceUsdPerMillion: 1,
+    outputTokenPriceUsdPerMillion: 5,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+  },
 ];
 
 export function resolveKnownPricing(provider: Provider, model: string) {

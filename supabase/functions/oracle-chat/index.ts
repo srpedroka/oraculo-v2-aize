@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOrgMember, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callModel, type Provider } from "../_shared/model.ts";
+import { resolveAiFunction } from "../_shared/ai-router.ts";
+import { callModel } from "../_shared/model.ts";
 import { CONVERSATION_STYLE, guideForContext } from "../_shared/prompt-guides.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 
@@ -27,19 +28,18 @@ serve(async (req) => {
     await assertOrgMember(user.id, orgId);
     const client = serviceClient();
 
-    const [{ data: settings }, { data: keyRow }, { data: objectives }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: history }] =
+    const aiRoute = await resolveAiFunction(client, orgId, "daily");
+    const [{ data: objectives }, { data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: history }] =
       await Promise.all([
-        client.from("ai_settings").select("*").eq("org_id", orgId).maybeSingle(),
-        client.from("ai_model_keys").select("*").eq("org_id", orgId).maybeSingle(),
         client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
         client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
         client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
         client.from("area_plans").select("*").eq("org_id", orgId),
         client.from("chat_messages").select("author, text").eq("org_id", orgId).order("created_at", { ascending: false }).limit(20),
-      ]);
+    ]);
 
     let answer = "";
-    if (!settings?.has_key || !keyRow?.api_key) {
+    if (!aiRoute) {
       answer = fallbackReview(objectives ?? []);
     } else {
       const guide = guideForContext(String(context));
@@ -65,17 +65,17 @@ serve(async (req) => {
       ];
 
       try {
-        const result = await callModel(settings.provider as Provider, settings.model, keyRow.api_key, systemPrompt, modelMessages);
+        const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, modelMessages, aiRoute.limits);
         answer = result.text;
         await recordAiUsage({
           client,
           orgId,
-          provider: settings.provider as Provider,
-          model: settings.model,
+          provider: aiRoute.provider,
+          model: aiRoute.model,
           channel: "web",
           usage: result.usage,
-          settings,
-          metadata: { context, areaId },
+          settings: aiRoute.legacySettings,
+          metadata: { context, areaId, aiFunction: "daily" },
         });
       } catch (modelError) {
         console.error("Erro ao chamar IA no chat web", modelError instanceof Error ? modelError.message : String(modelError));

@@ -28,6 +28,7 @@ Migrations principais:
 - `20260702153000_ai_usage_realtime.sql`: realtime para logs de uso de IA.
 - `20260702154500_update_openai_gpt54_pricing.sql`: pricing inicial do `gpt-5.4` salvo no ambiente.
 - `20260704110000_v3_intelligence_foundation.sql`: fundacao da V3 com conversas por pessoa/canal, sessoes de planejamento, funcoes de IA por uso e documentos canonicos de plano.
+- `20260704123000_v3_ai_function_router.sql`: libera xAI/Grok nos checks de provider e adiciona status publico, sem segredo, das chaves por provedor.
 
 Tabelas publicas principais:
 
@@ -45,6 +46,7 @@ Tabelas publicas principais:
 - `check_ins`
 - `ai_settings`
 - `ai_function_settings`
+- `ai_provider_key_status`
 - `ai_usage_logs`
 - `whatsapp_settings`
 - `conversations`
@@ -65,6 +67,7 @@ Fundacao V3:
 - `conversations`: separa o historico por pessoa e canal (`web` ou `whatsapp`) e guarda um resumo rolante para memoria futura.
 - `planning_sessions`: guarda o estado das sessoes conduzidas pelo Oraculo, incluindo tipo, periodo, fase atual, dados coletados e proposta pendente de confirmacao.
 - `ai_function_settings`: permite configurar modelos diferentes para planejamento, conversa do dia a dia e bastidores, sem duplicar chaves no frontend.
+- `ai_provider_key_status`: guarda apenas `has_key` e `key_preview` por provedor para a tela de Configuracoes. A chave real continua em `public.ai_model_keys`, acessivel apenas por service role.
 - `plan_documents`: guarda o conteudo estruturado dos documentos canonicos de plano e fechamento que serao renderizados em tela, PDF e WhatsApp nas fases seguintes.
 
 Essas tabelas foram criadas na Fase 0 da V3 sem alterar comportamento de runtime. As Edge Functions ainda continuam usando os fluxos da V2 ate as fases seguintes conectarem a nova fundacao.
@@ -72,7 +75,7 @@ Essas tabelas foram criadas na Fase 0 da V3 sem alterar comportamento de runtime
 ### Edge Functions
 
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
-- `save-ai-settings`: salva provider, modelo, preview, pricing e a chave real em tabela acessivel apenas por service role.
+- `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `oracle-chat`: consulta contexto da empresa e responde com fallback deterministico ou modelo configurado.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
@@ -93,13 +96,22 @@ Arquivos `.md` de roteiro continuam no repositorio como referencia, mas Edge Fun
 
 ### IA
 
-O owner configura provider, modelo e chave em Configuracoes. O frontend chama `save-ai-settings`; a funcao valida owner, salva a chave real em `public.ai_model_keys` e grava em `ai_settings` apenas status, preview e pricing.
+O owner configura chaves por provedor e modelos por funcao em Configuracoes. O frontend chama `save-ai-settings`; a funcao valida owner, salva a chave real em `public.ai_model_keys` e grava em tabelas publicas apenas status, preview, provider/modelo e pricing.
 
 O Oraculo usa:
 
 - OpenAI via Responses API;
 - Moonshot/Kimi via Chat Completions compativel;
-- Anthropic via Messages API.
+- Anthropic via Messages API;
+- xAI/Grok via Chat Completions compativel em `https://api.x.ai/v1`.
+
+Funcoes de IA:
+
+- `planning`: planejamento e fechamentos, com teto maior de resposta.
+- `daily`: conversa do dia a dia no painel e WhatsApp.
+- `background`: classificacao de documentos, resumos e tarefas auxiliares.
+
+O helper `_shared/ai-router.ts` resolve provider/modelo/chave por funcao. Se uma funcao ainda nao tiver configuracao especifica, ele cai no legado `ai_settings`, preservando o comportamento anterior. Na Fase 1, `oracle-chat` e `whatsapp-webhook` usam `daily`; classificacao de documentos usa `background`. A transcricao de audio continua exigindo uma chave OpenAI cadastrada.
 
 Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto.
 

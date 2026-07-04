@@ -1,4 +1,4 @@
-export type Provider = "openai" | "anthropic" | "moonshot";
+export type Provider = "openai" | "anthropic" | "moonshot" | "xai";
 
 interface ModelMessage {
   role: "user" | "assistant";
@@ -14,6 +14,11 @@ export interface ModelUsage {
 export interface ModelCallResult {
   text: string;
   usage: ModelUsage;
+}
+
+export interface ModelCallOptions {
+  maxTokens?: number;
+  temperature?: number;
 }
 
 function emptyUsage(): ModelUsage {
@@ -58,9 +63,13 @@ export async function callModel(
   apiKey: string,
   systemPrompt: string,
   messages: ModelMessage[],
+  options: ModelCallOptions = {},
 ): Promise<ModelCallResult> {
-  if (provider === "openai" || provider === "moonshot") {
-    const baseUrl = provider === "moonshot" ? "https://api.moonshot.ai/v1" : "https://api.openai.com/v1";
+  const maxTokens = options.maxTokens;
+  const temperature = options.temperature;
+
+  if (provider === "openai" || provider === "moonshot" || provider === "xai") {
+    const baseUrl = provider === "moonshot" ? "https://api.moonshot.ai/v1" : provider === "xai" ? "https://api.x.ai/v1" : "https://api.openai.com/v1";
 
     if (provider === "openai") {
       const response = await fetchWithTimeout(`${baseUrl}/responses`, {
@@ -73,7 +82,8 @@ export async function callModel(
           model,
           instructions: systemPrompt,
           input: messages,
-          max_output_tokens: 700,
+          max_output_tokens: maxTokens ?? 700,
+          ...(typeof temperature === "number" ? { temperature } : {}),
           store: false,
         }),
       });
@@ -99,12 +109,14 @@ export async function callModel(
       body: JSON.stringify({
         model,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
+        max_tokens: maxTokens,
+        temperature,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`${provider === "moonshot" ? "Kimi/Moonshot" : "OpenAI"} não respondeu corretamente: ${errorText}`);
+      throw new Error(`${provider === "moonshot" ? "Kimi/Moonshot" : provider === "xai" ? "xAI/Grok" : "OpenAI"} não respondeu corretamente: ${errorText}`);
     }
 
     const data = await response.json();
@@ -126,8 +138,8 @@ export async function callModel(
         model,
         system: systemPrompt,
         messages,
-        max_tokens: 900,
-        temperature: 0.4,
+        max_tokens: maxTokens ?? 900,
+        temperature: temperature ?? 0.4,
       }),
     });
 

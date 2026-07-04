@@ -1,16 +1,30 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, Bot, Building2, DollarSign, LogOut, MessageCircle, Phone, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { Activity, Bot, Building2, DollarSign, KeyRound, LogOut, MessageCircle, Phone, Plus, Save, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
-import type { AiSettings } from "../types";
+import type { AiFunction, AiProvider } from "../types";
 
-const DEFAULT_MODEL_BY_PROVIDER: Record<AiSettings["provider"], string> = {
+const DEFAULT_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
   openai: "gpt-5.4",
-  anthropic: "claude-3-5-sonnet-latest",
+  anthropic: "claude-sonnet-4-6",
   moonshot: "kimi-k2.7-code",
+  xai: "grok-4.3",
 };
+
+const PROVIDERS: { value: AiProvider; label: string }[] = [
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic / Claude" },
+  { value: "moonshot", label: "Kimi / Moonshot" },
+  { value: "xai", label: "xAI / Grok" },
+];
+
+const AI_FUNCTIONS: { value: AiFunction; title: string; description: string }[] = [
+  { value: "planning", title: "Planejamento e fechamentos", description: "Usa o melhor modelo para conduzir planos, propostas e viradas de período." },
+  { value: "daily", title: "Conversa do dia a dia", description: "Atende WhatsApp e painel com respostas rápidas; pode usar modelo mais leve." },
+  { value: "background", title: "Bastidores", description: "Classifica documentos, prepara resumos e executa tarefas de apoio com custo controlado." },
+];
 
 function normalizePhone(value: string) {
   const startsWithPlus = value.trim().startsWith("+");
@@ -20,11 +34,6 @@ function normalizePhone(value: string) {
 
 function isValidInternationalPhone(value: string) {
   return /^\+[1-9][0-9]{7,14}$/.test(value);
-}
-
-function parsePrice(value: string) {
-  const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
 function formatUsd(value: number) {
@@ -40,6 +49,15 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
+function providerLabel(provider: AiProvider) {
+  return PROVIDERS.find((item) => item.value === provider)?.label ?? provider;
+}
+
+function functionLabel(value: unknown) {
+  const aiFunction = AI_FUNCTIONS.find((item) => item.value === value);
+  return aiFunction?.title ?? "Sem função";
+}
+
 export function Settings() {
   const { state, dispatch, signOut } = useAppState();
   const [organizationName, setOrganizationName] = useState("");
@@ -51,12 +69,18 @@ export function Settings() {
   const [memberPhone, setMemberPhone] = useState("");
   const [memberAreaId, setMemberAreaId] = useState("");
   const [memberMessage, setMemberMessage] = useState("");
-  const [provider, setProvider] = useState<AiSettings["provider"]>(state.aiSettings?.provider ?? "openai");
-  const [model, setModel] = useState(state.aiSettings?.model ?? "gpt-5.4");
-  const [apiKey, setApiKey] = useState("");
-  const [inputTokenPrice, setInputTokenPrice] = useState(String(state.aiSettings?.inputTokenPriceUsdPerMillion ?? 0));
-  const [outputTokenPrice, setOutputTokenPrice] = useState(String(state.aiSettings?.outputTokenPriceUsdPerMillion ?? 0));
-  const [pricingSource, setPricingSource] = useState(state.aiSettings?.pricingSource ?? "");
+  const [providerApiKeys, setProviderApiKeys] = useState<Record<AiProvider, string>>({
+    openai: "",
+    anthropic: "",
+    moonshot: "",
+    xai: "",
+  });
+  const [aiFunctionDrafts, setAiFunctionDrafts] = useState<Record<AiFunction, { provider: AiProvider; model: string }>>({
+    planning: { provider: state.aiSettings?.provider ?? "openai", model: state.aiSettings?.model ?? "gpt-5.4" },
+    daily: { provider: state.aiSettings?.provider ?? "openai", model: state.aiSettings?.model ?? "gpt-5.4" },
+    background: { provider: state.aiSettings?.provider ?? "openai", model: state.aiSettings?.model ?? "gpt-5.4" },
+  });
+  const [aiMessage, setAiMessage] = useState("");
   const [whatsappInstanceUrl, setWhatsappInstanceUrl] = useState(state.whatsappSettings?.instanceUrl ?? "");
   const [whatsappInstanceName, setWhatsappInstanceName] = useState(state.whatsappSettings?.instanceName ?? "");
   const [whatsappConnectedNumber, setWhatsappConnectedNumber] = useState(state.whatsappSettings?.connectedNumber ?? "");
@@ -90,24 +114,25 @@ export function Settings() {
   );
 
   const recentUsage = state.aiUsageLogs.slice(0, 5);
-  const automaticPricing = useMemo(() => findModelPricing(provider, model), [model, provider]);
-  const modelOptions = useMemo(() => modelOptionsForProvider(provider), [provider]);
 
   useEffect(() => {
-    if (!state.aiSettings) return;
-    setProvider(state.aiSettings.provider);
-    setModel(state.aiSettings.model);
-    setInputTokenPrice(String(state.aiSettings.inputTokenPriceUsdPerMillion ?? 0));
-    setOutputTokenPrice(String(state.aiSettings.outputTokenPriceUsdPerMillion ?? 0));
-    setPricingSource(state.aiSettings.pricingSource ?? "");
-  }, [state.aiSettings]);
-
-  useEffect(() => {
-    if (!automaticPricing) return;
-    setInputTokenPrice(String(automaticPricing.inputTokenPriceUsdPerMillion));
-    setOutputTokenPrice(String(automaticPricing.outputTokenPriceUsdPerMillion));
-    setPricingSource(automaticPricing.source);
-  }, [automaticPricing]);
+    const legacyProvider = state.aiSettings?.provider ?? "openai";
+    const legacyModel = state.aiSettings?.model ?? DEFAULT_MODEL_BY_PROVIDER[legacyProvider];
+    setAiFunctionDrafts({
+      planning: {
+        provider: state.aiFunctionSettings.find((item) => item.function === "planning")?.provider ?? legacyProvider,
+        model: state.aiFunctionSettings.find((item) => item.function === "planning")?.model ?? legacyModel,
+      },
+      daily: {
+        provider: state.aiFunctionSettings.find((item) => item.function === "daily")?.provider ?? legacyProvider,
+        model: state.aiFunctionSettings.find((item) => item.function === "daily")?.model ?? legacyModel,
+      },
+      background: {
+        provider: state.aiFunctionSettings.find((item) => item.function === "background")?.provider ?? legacyProvider,
+        model: state.aiFunctionSettings.find((item) => item.function === "background")?.model ?? legacyModel,
+      },
+    });
+  }, [state.aiFunctionSettings, state.aiSettings]);
 
   useEffect(() => {
     setWhatsappInstanceUrl(state.whatsappSettings?.instanceUrl ?? "");
@@ -161,18 +186,31 @@ export function Settings() {
     setMemberMessage("Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp. Caso contrário, o envio segue por email.");
   }
 
-  function saveAi(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function saveProviderKey(providerValue: AiProvider) {
+    const apiKey = providerApiKeys[providerValue].trim();
+    if (!apiKey) {
+      setAiMessage("Cole uma chave antes de salvar.");
+      return;
+    }
     dispatch({
-      type: "upsert_ai_settings",
-      provider,
-      model: model.trim() || DEFAULT_MODEL_BY_PROVIDER[provider],
-      apiKey: apiKey.trim() || undefined,
-      inputTokenPriceUsdPerMillion: parsePrice(inputTokenPrice),
-      outputTokenPriceUsdPerMillion: parsePrice(outputTokenPrice),
-      pricingSource: pricingSource.trim(),
+      type: "upsert_ai_provider_key",
+      provider: providerValue,
+      apiKey,
     });
-    setApiKey("");
+    setProviderApiKeys((current) => ({ ...current, [providerValue]: "" }));
+    setAiMessage(`Chave ${providerLabel(providerValue)} salva com segurança.`);
+  }
+
+  function saveAiFunction(aiFunction: AiFunction) {
+    const draft = aiFunctionDrafts[aiFunction];
+    const modelValue = draft.model.trim() || DEFAULT_MODEL_BY_PROVIDER[draft.provider];
+    dispatch({
+      type: "upsert_ai_function_settings",
+      function: aiFunction,
+      provider: draft.provider,
+      model: modelValue,
+    });
+    setAiMessage(`${functionLabel(aiFunction)} atualizado para ${providerLabel(draft.provider)} / ${modelValue}.`);
   }
 
   function saveWhatsApp(event: FormEvent<HTMLFormElement>) {
@@ -419,79 +457,144 @@ export function Settings() {
             <Bot className="h-5 w-5 text-text-secondary" />
             <h2 className="text-base font-semibold text-text">IA do Oráculo</h2>
           </div>
-          <form onSubmit={saveAi} className="grid gap-3">
-            <select
-              value={provider}
-              onChange={(event) => {
-                const nextProvider = event.target.value as AiSettings["provider"];
-                const currentDefault = DEFAULT_MODEL_BY_PROVIDER[provider];
-                setProvider(nextProvider);
-                if (!model.trim() || model === currentDefault) {
-                  setModel(DEFAULT_MODEL_BY_PROVIDER[nextProvider]);
-                }
-              }}
-              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
-            >
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="moonshot">Kimi / Moonshot</option>
-            </select>
-            <input
-              list="ai-model-options"
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              placeholder="Modelo"
-              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
-            />
-            <datalist id="ai-model-options">
-              {modelOptions.map((option) => (
-                <option key={option.model} value={option.model} />
-              ))}
-            </datalist>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-xs font-medium text-text-secondary">Entrada USD / 1M tokens</span>
-                <input
-                  inputMode="decimal"
-                  value={inputTokenPrice}
-                  readOnly
-                  placeholder="0.00"
-                  className="h-10 w-full rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-xs font-medium text-text-secondary">Saída USD / 1M tokens</span>
-                <input
-                  inputMode="decimal"
-                  value={outputTokenPrice}
-                  readOnly
-                  placeholder="0.00"
-                  className="h-10 w-full rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
-                />
-              </label>
+          <p className="mb-4 text-sm leading-6 text-text-secondary">
+            Planejamento usa o melhor modelo; Dia a dia pode usar um modelo leve e barato; Bastidores cuida de classificação e resumos.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-text-secondary" />
+                <p className="text-sm font-semibold text-text">Chaves por provedor</p>
+              </div>
+              <div className="grid gap-3">
+                {PROVIDERS.map((providerItem) => {
+                  const status =
+                    state.aiProviderKeyStatuses.find((item) => item.provider === providerItem.value) ??
+                    (state.aiSettings?.provider === providerItem.value
+                      ? {
+                          orgId: state.activeOrgId ?? "",
+                          provider: providerItem.value,
+                          hasKey: state.aiSettings.hasKey,
+                          keyPreview: state.aiSettings.keyPreview,
+                        }
+                      : null);
+                  return (
+                    <div key={providerItem.value} className="rounded-2xl border border-border bg-[#FAFAFB] p-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-text">{providerItem.label}</p>
+                          <p className="text-xs text-text-secondary">
+                            {status?.hasKey ? `Chave guardada ${status.keyPreview ?? ""}` : "Nenhuma chave cadastrada"}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          icon={Save}
+                          disabled={!providerApiKeys[providerItem.value].trim()}
+                          onClick={() => saveProviderKey(providerItem.value)}
+                        >
+                          Salvar chave
+                        </Button>
+                      </div>
+                      <input
+                        type="password"
+                        value={providerApiKeys[providerItem.value]}
+                        onChange={(event) => {
+                          setProviderApiKeys((current) => ({ ...current, [providerItem.value]: event.target.value }));
+                          setAiMessage("");
+                        }}
+                        placeholder={status?.hasKey ? "Nova chave, se quiser trocar" : "Cole a chave da API"}
+                        className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <input
-              value={pricingSource}
-              readOnly
-              placeholder="Fonte do pricing, ex: URL da tabela oficial"
-              className="h-10 rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
-            />
-            <p className="text-xs leading-5 text-text-secondary">
-              {automaticPricing
-                ? `Pricing encontrado automaticamente. Ao salvar, o servidor reconsulta a fonte oficial quando disponível. ${automaticPricing.note ?? ""}`
-                : "Pricing automático ainda não cadastrado para este modelo. Escolha um modelo conhecido ou aguarde atualização do catálogo."}
+
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Bot className="h-4 w-4 text-text-secondary" />
+                <p className="text-sm font-semibold text-text">Funções de IA</p>
+              </div>
+              <div className="grid gap-3">
+                {AI_FUNCTIONS.map((item) => {
+                  const draft = aiFunctionDrafts[item.value];
+                  const pricing = findModelPricing(draft.provider, draft.model);
+                  const modelOptions = modelOptionsForProvider(draft.provider);
+                  const datalistId = `ai-model-options-${item.value}`;
+                  return (
+                    <div key={item.value} className="rounded-2xl border border-border bg-white p-4">
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold text-text">{item.title}</p>
+                        <p className="mt-1 text-xs leading-5 text-text-secondary">{item.description}</p>
+                      </div>
+                      <div className="grid gap-3">
+                        <select
+                          value={draft.provider}
+                          onChange={(event) => {
+                            const nextProvider = event.target.value as AiProvider;
+                            setAiFunctionDrafts((current) => ({
+                              ...current,
+                              [item.value]: { provider: nextProvider, model: DEFAULT_MODEL_BY_PROVIDER[nextProvider] },
+                            }));
+                            setAiMessage("");
+                          }}
+                          className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+                        >
+                          {PROVIDERS.map((providerItem) => (
+                            <option key={providerItem.value} value={providerItem.value}>
+                              {providerItem.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          list={datalistId}
+                          value={draft.model}
+                          onChange={(event) => {
+                            setAiFunctionDrafts((current) => ({
+                              ...current,
+                              [item.value]: { ...current[item.value], model: event.target.value },
+                            }));
+                            setAiMessage("");
+                          }}
+                          placeholder="Modelo"
+                          className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+                        />
+                        <datalist id={datalistId}>
+                          {modelOptions.map((option) => (
+                            <option key={option.model} value={option.model} />
+                          ))}
+                        </datalist>
+                        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                          <div className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2">
+                            <p className="text-xs font-medium text-text-secondary">Pricing automático</p>
+                            <p className="mt-1 text-sm text-text">
+                              {pricing
+                                ? `${formatUsd(pricing.inputTokenPriceUsdPerMillion)} entrada · ${formatUsd(pricing.outputTokenPriceUsdPerMillion)} saída / 1M tokens`
+                                : "Modelo sem preço conhecido no catálogo"}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-text-tertiary">{pricing?.source ?? "Escolha um modelo conhecido para contabilizar custo."}</p>
+                          </div>
+                          <Button type="button" icon={Save} onClick={() => saveAiFunction(item.value)}>
+                            Salvar função
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {aiMessage ? (
+            <p className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+              {aiMessage}
             </p>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-              placeholder={state.aiSettings?.hasKey ? `Chave cadastrada ${state.aiSettings.keyPreview ?? ""}` : "Chave da API"}
-              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
-            />
-            <Button type="submit" icon={Bot}>
-              Salvar modelo e pricing
-            </Button>
-          </form>
+          ) : null}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
               <div className="mb-2 flex items-center gap-2">
@@ -511,9 +614,9 @@ export function Settings() {
               </div>
               <p className="text-2xl font-semibold text-text">{formatUsd(usageSummary.totalCostUsd)}</p>
               <p className="mt-1 text-xs text-text-secondary">
-                Modelo atual: {state.aiSettings?.model ?? "não configurado"}
+                Modelo legado: {state.aiSettings?.model ?? "não configurado"}
               </p>
-              <p className="mt-1 text-xs text-text-tertiary">Calculado pelo preço salvo acima</p>
+              <p className="mt-1 text-xs text-text-tertiary">Calculado pelo preço salvo no momento da chamada</p>
             </div>
           </div>
           {recentUsage.length ? (
@@ -524,7 +627,8 @@ export function Settings() {
                     <div>
                       <p className="text-sm font-semibold text-text">{log.model}</p>
                       <p className="text-xs text-text-secondary">
-                        {log.channel === "whatsapp" ? "WhatsApp" : "Web"} · {new Date(log.createdAt).toLocaleString("pt-BR")}
+                        {log.channel === "whatsapp" ? "WhatsApp" : "Web"} · {functionLabel(log.metadata?.aiFunction)} ·{" "}
+                        {new Date(log.createdAt).toLocaleString("pt-BR")}
                       </p>
                     </div>
                     <div className="text-right">

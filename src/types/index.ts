@@ -153,7 +153,7 @@ export interface Membership {
 
 export interface AiSettings {
   orgId: string;
-  provider: "openai" | "anthropic" | "moonshot";
+  provider: AiProvider;
   model: string;
   hasKey: boolean;
   keyPreview?: string | null;
@@ -162,10 +162,29 @@ export interface AiSettings {
   pricingSource?: string | null;
 }
 
+export type AiProvider = "openai" | "anthropic" | "moonshot" | "xai";
+export type AiFunction = "planning" | "daily" | "background";
+
+export interface AiFunctionSetting {
+  orgId: string;
+  function: AiFunction;
+  provider: AiProvider;
+  model: string;
+  updatedAt?: string;
+}
+
+export interface AiProviderKeyStatus {
+  orgId: string;
+  provider: AiProvider;
+  hasKey: boolean;
+  keyPreview?: string | null;
+  updatedAt?: string;
+}
+
 export interface AiUsageLog {
   id: string;
   orgId: string;
-  provider: AiSettings["provider"];
+  provider: AiProvider;
   model: string;
   channel: "web" | "whatsapp" | "system";
   promptTokens: number;
@@ -176,6 +195,7 @@ export interface AiUsageLog {
   inputCostUsd: number;
   outputCostUsd: number;
   totalCostUsd: number;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -210,6 +230,8 @@ export interface AppState {
   currentMembership: Membership | null;
   currentProfile: Profile | null;
   aiSettings: AiSettings | null;
+  aiFunctionSettings: AiFunctionSetting[];
+  aiProviderKeyStatuses: AiProviderKeyStatus[];
   aiUsageLogs: AiUsageLog[];
   whatsappSettings: WhatsAppSettings | null;
   areas: Area[];

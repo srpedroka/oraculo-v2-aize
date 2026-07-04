@@ -12,6 +12,18 @@ Motivo: preparar a base de forma testavel e sem mudar comportamento visivel. A s
 
 Consequencias: novas tabelas publicas precisam de RLS e documentacao. As chaves seguem fora do frontend em `public.ai_model_keys`, agora por provedor, preservando a configuracao OpenAI existente.
 
+## 2026-07-04 - Roteador de IA por funcao
+
+Decisao: separar o uso de IA em tres funcoes configuraveis por empresa: `planning`, `daily` e `background`.
+
+Contexto: a V2 usava um unico provider/modelo para conversas, classificacao de documentos e planejamento. Isso dificultava equilibrar qualidade e custo, porque planejamento pede um modelo mais forte e rotinas de bastidor podem usar modelos economicos.
+
+Alternativas: manter um unico modelo global, criar uma configuracao por tela, ou amarrar cada funcao a um provedor fixo.
+
+Motivo: funcoes explicitas deixam o owner escolher custo e qualidade por tipo de trabalho sem expor chaves no frontend. O roteador preserva fallback para `ai_settings`, entao a configuracao OpenAI/gpt-5.4 existente continua funcionando.
+
+Consequencias: `save-ai-settings` aceita payloads de chave por provedor e modelo por funcao; chamadas de IA gravam `metadata.aiFunction`; a tela de Configuracoes passa a exibir quatro provedores e tres funcoes. Ao adicionar provedor novo, e preciso atualizar checks de banco, catalogos de pricing no frontend/servidor e documentacao.
+
 ## 2026-06-29 - Supabase como backend da V2
 
 Decisao: usar Supabase para autenticacao, banco PostgreSQL, RLS, realtime e Edge Functions.

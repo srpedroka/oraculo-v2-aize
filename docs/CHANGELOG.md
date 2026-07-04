@@ -7,6 +7,9 @@
 - Adicionadas policies RLS para `conversations`, `planning_sessions`, `ai_function_settings` e `plan_documents`.
 - Habilitado realtime para `planning_sessions` e `plan_documents`, preparando a interface de sessoes das fases seguintes.
 - Atualizada a documentacao de arquitetura, seguranca, acessos e decisoes para explicar a fundacao V3.
+- Executada a Fase 1 da V3: adicionado provedor xAI/Grok, modelos recentes da Anthropic no catalogo de pricing e roteador de IA por funcao (`planning`, `daily`, `background`).
+- Reformulada a tela Configuracoes > IA do Oraculo com chaves por provedor, funcoes de IA separadas e consumo exibindo a funcao usada.
+- Atualizadas `oracle-chat` e `whatsapp-webhook` para usar a funcao `daily`; classificacao de documentos passa a usar `background`; transcricao de audio continua usando chave OpenAI cadastrada.
 
 ## 2026-07-02
 
