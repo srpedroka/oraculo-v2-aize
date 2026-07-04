@@ -42,6 +42,7 @@
 - Adicionado limite de escopo no WhatsApp: curiosidades gerais fora do Oraculo recebem resposta curta, com humor leve, e sao conduzidas de volta para negocio, gestao, estrategia, planejamento e execucao.
 - Ajustado o limite de escopo para gerar respostas contextuais por IA, evitando repeticao robotizada quando o usuario pergunta assuntos externos diferentes.
 - Refinado o limite de escopo para usar leveza contextual por assunto e tratar temas sensiveis sem piada sobre sofrimento.
+- Corrigido o tom fora de escopo para impedir que o Oraculo misture exemplos nao citados, como Copa, guerra e fofoca, e para evitar parafrases muito parecidas com respostas recentes.
 
 ## 2026-07-02
 

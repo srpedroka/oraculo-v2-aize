@@ -269,6 +269,7 @@ Comportamento esperado:
 
 - Perguntas claramente fora do escopo, como Copa do Mundo, guerra sem relacao com a empresa, politica ampla, entretenimento ou noticias gerais, recebem uma resposta curta e contextual. O Oraculo deve reconhecer o assunto citado, mas nao responder o conteudo factual externo.
 - A resposta deve variar conforme a mensagem e puxar a conversa de volta para planejamento, objetivos, areas, execucao, gestao ou estrategia. Em temas leves, como futebol, culinaria ou entretenimento, a IA deve usar uma piadinha curta ligada ao proprio assunto. Em temas sensiveis, como guerra, nao deve fazer piada sobre sofrimento; use apenas uma leveza discreta sobre o Oraculo nao ser o canal certo.
+- O Oraculo nao deve misturar assuntos de exemplo do prompt. Se a pessoa falou de receita, a resposta nao pode citar Copa, guerra ou fofoca. Se a pessoa falou de Copa, a resposta nao pode puxar guerra ou entretenimento. A piada deve nascer do assunto atual e nao de uma frase padrao.
 - Temas externos com relacao clara ao negocio continuam permitidos. Exemplo: "como a guerra impacta meus custos de fornecedor?" deve ser tratado como risco/estrategia, nao como curiosidade geral.
 
 Onde revisar:
@@ -276,7 +277,7 @@ Onde revisar:
 - `supabase/functions/whatsapp-webhook/index.ts`, funcoes `isBusinessOrOracleTopic`, `isClearlyGeneralTopic`, `outOfScopeKind`, `outOfScopeHumorGuide`, `buildOutOfScopeReply` e `fallbackOutOfScopeReply`.
 - `WHATSAPP_DAILY_FORM_RULES`, que tambem orienta a IA diaria a manter o escopo.
 
-Se bloquear demais, adicione termos de negocio em `isBusinessOrOracleTopic`. Se deixar passar curiosidade geral demais, adicione termos em `isClearlyGeneralTopic`. Se a resposta estiver repetitiva ou com humor fora de contexto, revise `outOfScopeKind`, `outOfScopeHumorGuide` e o prompt de `buildOutOfScopeReply`; ela usa a funcao `daily`, grava uso em `ai_usage_logs.metadata.action = 'out_of_scope_redirect'` e tem fallback variado quando a IA falha. Depois publique `whatsapp-webhook` novamente.
+Se bloquear demais, adicione termos de negocio em `isBusinessOrOracleTopic`. Se deixar passar curiosidade geral demais, adicione termos em `isClearlyGeneralTopic`. Se a resposta estiver repetitiva ou com humor fora de contexto, revise `detectedOutOfScopeCategories`, `outOfScopeKind`, `outOfScopeHumorGuide`, `answerMentionsUndetectedTopic` e o prompt de `buildOutOfScopeReply`; ela usa a funcao `daily`, grava uso em `ai_usage_logs.metadata.action = 'out_of_scope_redirect'` e tem fallback variado quando a IA falha. Depois publique `whatsapp-webhook` novamente.
 
 ## Configurar funcoes de IA da V3
 

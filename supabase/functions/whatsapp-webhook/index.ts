@@ -8,6 +8,7 @@ import {
   insertConversationMessage,
   loadConversationHistory,
   maybeSummarize,
+  type ConversationHistory,
   type ConversationRecord,
 } from "../_shared/conversations.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
@@ -1052,56 +1053,146 @@ function isClearlyGeneralTopic(message: string) {
   return /\b(guerra|ucrania|russia|israel|palestina|politica|presidente|eleicao|copa|copa do mundo|world cup|futebol|jogo|campeonato|olimpiada|filme|serie|novela|musica|celebridade|fofoca|receita|culinaria|viagem|turismo|previsao do tempo|horoscopo|astrologia|historia geral|geografia|matematica|fisica|quimica|biologia|poema|piada aleatoria|noticias)\b/.test(normalized);
 }
 
-function outOfScopeTopicLabel(message: string) {
+type OutOfScopeKind =
+  | "sensitive_geopolitics"
+  | "sports"
+  | "politics"
+  | "entertainment"
+  | "cooking"
+  | "travel_weather"
+  | "general";
+
+type OutOfScopeCategory = {
+  kind: OutOfScopeKind;
+  label: string;
+  test: RegExp;
+  humorHooks: string[];
+};
+
+const OUT_OF_SCOPE_CATEGORIES: OutOfScopeCategory[] = [
+  {
+    kind: "sensitive_geopolitics",
+    label: "geopolítica",
+    test: /(ucrania|russia|guerra|israel|palestina)/,
+    humorHooks: ["mapa-mundi fora da mesa", "comentarista internacional de plantão", "radar de risco da empresa"],
+  },
+  {
+    kind: "sports",
+    label: "esporte",
+    test: /(copa|world cup|futebol|jogo|campeonato|olimpiada)/,
+    humorHooks: ["placar", "escalação", "banco de reservas", "bola no campo da execução", "camisa 10 das prioridades"],
+  },
+  {
+    kind: "politics",
+    label: "política",
+    test: /(politica|presidente|eleicao)/,
+    humorHooks: ["urna", "palanque", "debate", "promessa de campanha", "voto vencido pelo plano"],
+  },
+  {
+    kind: "entertainment",
+    label: "entretenimento",
+    test: /(filme|serie|novela|musica|celebridade|fofoca)/,
+    humorHooks: ["roteiro", "temporada", "elenco", "crítico de série", "próximo episódio da execução"],
+  },
+  {
+    kind: "cooking",
+    label: "culinária",
+    test: /(receita|culinaria)/,
+    humorHooks: ["receita", "ingredientes", "forno", "tempero", "ponto do plano"],
+  },
+  {
+    kind: "travel_weather",
+    label: "clima ou viagem",
+    test: /(previsao do tempo|viagem|turismo)/,
+    humorHooks: ["previsão", "rota", "embarque", "cartão de embarque", "clima do trimestre"],
+  },
+];
+
+function humanList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} e ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}
+
+function detectedOutOfScopeCategories(message: string) {
   const normalized = normalizeText(message);
-  if (/(ucrania|russia|guerra|israel|palestina)/.test(normalized)) return "esse tema geopolítico";
-  if (/(copa|world cup|futebol|jogo|campeonato|olimpiada)/.test(normalized)) return "esse assunto de esporte";
-  if (/(politica|presidente|eleicao)/.test(normalized)) return "esse assunto político";
-  if (/(filme|serie|novela|musica|celebridade|fofoca)/.test(normalized)) return "esse assunto de entretenimento";
-  if (/(receita|culinaria)/.test(normalized)) return "essa pauta culinária";
-  if (/(previsao do tempo|viagem|turismo)/.test(normalized)) return "essa curiosidade fora da operação";
-  return "esse assunto";
+  const detected = OUT_OF_SCOPE_CATEGORIES.filter((category) => category.test.test(normalized));
+  return detected.length ? detected : [{ kind: "general" as const, label: "curiosidade geral", test: /.*/, humorHooks: ["atalho fora da rota", "mesa do Oráculo", "radar da execução"] }];
+}
+
+function outOfScopeTopicLabel(message: string) {
+  const labels = detectedOutOfScopeCategories(message).map((category) => category.label);
+  return labels.length === 1 ? labels[0] : humanList(labels);
 }
 
 function outOfScopeKind(message: string) {
-  const normalized = normalizeText(message);
-  if (/(ucrania|russia|guerra|israel|palestina)/.test(normalized)) return "sensitive_geopolitics";
-  if (/(copa|world cup|futebol|jogo|campeonato|olimpiada)/.test(normalized)) return "sports";
-  if (/(politica|presidente|eleicao)/.test(normalized)) return "politics";
-  if (/(filme|serie|novela|musica|celebridade|fofoca)/.test(normalized)) return "entertainment";
-  if (/(receita|culinaria)/.test(normalized)) return "cooking";
-  if (/(previsao do tempo|viagem|turismo)/.test(normalized)) return "travel_weather";
-  return "general";
+  return detectedOutOfScopeCategories(message)[0]?.kind ?? "general";
 }
 
 function outOfScopeHumorGuide(message: string) {
-  const kind = outOfScopeKind(message);
-  const guides: Record<string, string> = {
-    sensitive_geopolitics:
-      "Tema sensível: não faça piada sobre guerra, vítimas ou sofrimento. Use apenas leveza sobre o Oráculo não virar comentarista de mapa e ofereça conectar o tema a riscos de negócio, fornecedores ou cenário estratégico se esse for o objetivo.",
-    sports:
-      "Use humor de futebol com elegância: escalação, placar, campo ou campeonato. Exemplo de direção: não escalar seleção, mas ajudar a escalar prioridades do trimestre.",
-    politics:
-      "Use humor discreto de política/processo: urna, palanque ou debate, sem tomar posição. Exemplo de direção: deixar a urna de lado e voltar às decisões do plano.",
-    entertainment:
-      "Use humor de entretenimento: temporada, roteiro, elenco ou maratona. Exemplo de direção: não virar crítico de série, mas organizar o próximo episódio da execução.",
-    cooking:
-      "Use humor culinário: forno, receita, tempero ou ponto. Exemplo de direção: não passar receita, mas ajustar os ingredientes do plano.",
-    travel_weather:
-      "Use humor leve de clima/viagem: previsão, rota ou embarque. Exemplo de direção: a previsão útil aqui é prazo, risco e prioridade.",
-    general:
-      "Use humor leve conectado às palavras do usuário, evitando frase genérica. Sempre volte para planejamento ou gestão.",
-  };
-  return guides[kind] ?? guides.general;
+  const categories = detectedOutOfScopeCategories(message);
+  const hooks = humanList(categories.flatMap((category) => category.humorHooks).slice(0, 8));
+  const hasSensitiveTopic = categories.some((category) => category.kind === "sensitive_geopolitics");
+  const sensitivityRule = hasSensitiveTopic
+    ? "Como ha tema sensivel, nao faca piada sobre guerra, vitimas ou sofrimento. A leveza pode ser apenas sobre o Oraculo nao virar comentarista internacional e sobre trazer o tema para risco/cenario da empresa."
+    : `Crie uma piadinha curta usando uma dessas imagens, sem copiar literalmente: ${hooks}.`;
+
+  return [
+    `Assuntos detectados: ${outOfScopeTopicLabel(message)}.`,
+    "Use somente os assuntos detectados; nao misture Copa, guerra, fofoca, receita, politica ou clima se a pessoa nao citou isso na mensagem atual.",
+    sensitivityRule,
+    "Boa direcao de estilo: leve como 'se eu for por esse caminho, daqui a pouco estou escalando o time do trimestre', mas crie uma versao nova ligada ao assunto atual.",
+  ].join(" ");
 }
 
-function fallbackOutOfScopeReply(profile: any, message: string) {
+function textSimilarity(a: string, b: string) {
+  const wordsA = new Set(normalizeText(a).split(" ").filter((word) => word.length > 4));
+  const wordsB = new Set(normalizeText(b).split(" ").filter((word) => word.length > 4));
+  if (!wordsA.size || !wordsB.size) return 0;
+
+  let overlap = 0;
+  wordsA.forEach((word) => {
+    if (wordsB.has(word)) overlap += 1;
+  });
+
+  return overlap / Math.min(wordsA.size, wordsB.size);
+}
+
+function recentOracleRepliesToAvoid(history: ConversationHistory) {
+  return history.messages
+    .filter((historyMessage) => historyMessage.author === "oracle")
+    .slice(-4)
+    .map((historyMessage) => historyMessage.text.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function answerIsTooSimilarToRecent(answer: string, history: ConversationHistory) {
+  return recentOracleRepliesToAvoid(history).some((previous) => normalizeText(previous) === normalizeText(answer) || textSimilarity(previous, answer) > 0.72);
+}
+
+function answerMentionsUndetectedTopic(answer: string, message: string) {
+  const detectedKinds = new Set(detectedOutOfScopeCategories(message).map((category) => category.kind));
+  const normalizedAnswer = normalizeText(answer);
+  const contamination: Record<Exclude<OutOfScopeKind, "general">, RegExp> = {
+    sensitive_geopolitics: /\b(guerra|ucrania|russia|israel|palestina|mapa mundi|geopolitica)\b/,
+    sports: /\b(copa|futebol|placar|atacante|bola|camisa 10|campeonato|olimpiada)\b/,
+    politics: /\b(politica|urna|palanque|eleicao|presidente|campanha)\b/,
+    entertainment: /\b(fofoca|celebridade|novela|serie|filme|roteiro|temporada)\b/,
+    cooking: /\b(receita|fogao|forno|cozinha|tempero|culinaria)\b/,
+    travel_weather: /\b(previsao do tempo|clima|viagem|turismo|embarque|cartao de embarque)\b/,
+  };
+
+  return (Object.entries(contamination) as [Exclude<OutOfScopeKind, "general">, RegExp][])
+    .some(([kind, pattern]) => !detectedKinds.has(kind) && pattern.test(normalizedAnswer));
+}
+
+function fallbackOutOfScopeReply(profile: any, message: string, history?: ConversationHistory) {
   const topic = outOfScopeTopicLabel(message);
   const common = "Quer trazer isso para planejamento, metas ou alguma área da empresa?";
   const optionsByKind: Record<string, string[][]> = {
     sensitive_geopolitics: [
       [
-        `${firstName(profile)}, ${topic} é sério demais para eu tratar como palpite rápido por aqui.`,
+        `${firstName(profile)}, ${topic} é sério demais para virar palpite rápido no WhatsApp do Oráculo.`,
         "Se for risco para fornecedores, custos ou cenário da empresa, aí eu entro bem.",
         "Quer olhar por esse ângulo estratégico?",
       ],
@@ -1113,7 +1204,7 @@ function fallbackOutOfScopeReply(profile: any, message: string) {
     ],
     sports: [
       [
-        `${firstName(profile)}, placar e Copa eu deixo para a mesa esportiva.`,
+        `${firstName(profile)}, ${topic} eu deixo para a mesa esportiva.`,
         "Aqui eu jogo melhor montando escalação de prioridades, metas e próximos passos.",
         common,
       ],
@@ -1173,15 +1264,22 @@ function fallbackOutOfScopeReply(profile: any, message: string) {
     ],
     general: [
       [
-        `${localGreeting()}, ${firstName(profile)}. ${topic} fica fora da minha mesa por aqui.`,
+        `${localGreeting()}, ${firstName(profile)}. ${topic} ficou um pouco fora da mesa do Oráculo.`,
         "Eu rendo melhor em negócio, gestão, estratégia e execução.",
         common,
       ],
     ],
   };
   const options = optionsByKind[outOfScopeKind(message)] ?? optionsByKind.general;
-  const index = Math.abs([...normalizeText(message)].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % options.length;
-  return options[index].join("\n");
+  const seedSource = `${normalizeText(message)} ${new Date().toISOString().slice(0, 16)}`;
+  const startIndex = Math.abs([...seedSource].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % options.length;
+  const orderedOptions = options.map((_, index) => options[(startIndex + index) % options.length]);
+  const recentReplies = history ? recentOracleRepliesToAvoid(history) : [];
+  const selected = orderedOptions.find((option) => {
+    const candidate = option.join("\n");
+    return !recentReplies.some((previous) => textSimilarity(previous, candidate) > 0.72);
+  }) ?? orderedOptions[0];
+  return selected.join("\n");
 }
 
 async function buildOutOfScopeReply(
@@ -1197,23 +1295,26 @@ async function buildOutOfScopeReply(
   const history = await loadConversationHistory(client, conversation.id, 12);
   const topic = outOfScopeTopicLabel(message);
   const humorGuide = outOfScopeHumorGuide(message);
+  const recentReplies = recentOracleRepliesToAvoid(history);
   const systemPrompt = [
     PERSONA_ORACULO,
     "A mensagem mais recente do usuário está fora do escopo do Oráculo.",
     `Mensagem atual: ${message}`,
     `Assunto detectado: ${topic}`,
     "Escopo do Oráculo: negócio, gestão, administração, estratégia, planejamento, objetivos, áreas, execução, evidências e funcionamento do próprio Oráculo.",
-    "Tarefa: responda de modo contextual e natural, em português do Brasil, sem parecer resposta padrão.",
+    "Tarefa: responda de modo contextual e natural, em português do Brasil, sem parecer resposta padrão. O usuário gosta de leveza parecida com o exemplo de escalar o time do trimestre, mas a piada precisa mudar conforme o assunto atual.",
     `Guia de leveza contextual: ${humorGuide}`,
     "Regras obrigatórias:",
     "- Reconheça o assunto específico que a pessoa trouxe.",
-    "- NÃO responda o conteúdo factual externo. Não explique guerra, Copa, política, celebridade, clima, entretenimento ou curiosidades gerais.",
+    "- NÃO responda o conteúdo factual externo. Não explique o assunto; só reconheça e redirecione.",
+    "- Não cite assunto que a pessoa não citou agora. Se ela falou receita, não mencione Copa; se falou Copa, não mencione guerra ou fofoca; se falou guerra, não mencione esporte.",
     "- Use no máximo 3 frases curtas.",
     "- Quando o tema não for sensível, inclua uma leveza ou piadinha curta que nasça do assunto citado. Não use piada genérica.",
     "- Em tema sensível, não faça piada do sofrimento; use apenas leveza sobre o Oráculo não ser o canal certo.",
     "- Conduza de volta com uma pergunta prática sobre planejamento, objetivo, área, execução ou gestão.",
     "- Não repita literalmente respostas anteriores do histórico.",
     "- Não comece sempre do mesmo jeito e não use a frase 'esse não é o objetivo do Oráculo' de forma crua.",
+    recentReplies.length ? `Frases recentes do Oráculo que NÃO podem ser repetidas nem parafraseadas de perto:\n${recentReplies.map((reply) => `- ${reply.slice(0, 280)}`).join("\n")}` : "",
     formatConversationMemory(history),
   ].filter(Boolean).join("\n\n");
 
@@ -1237,11 +1338,14 @@ async function buildOutOfScopeReply(
       metadata: { aiFunction: "daily", action: "out_of_scope_redirect", phone: profile?.phone ?? null, conversationId: conversation.id },
     });
     const answer = result.text.trim();
-    if (!answer || answer.length > 900) return fallbackOutOfScopeReply(profile, message);
+    if (!answer || answer.length > 900) return fallbackOutOfScopeReply(profile, message, history);
+    if (answerIsTooSimilarToRecent(answer, history) || answerMentionsUndetectedTopic(answer, message)) {
+      return fallbackOutOfScopeReply(profile, message, history);
+    }
     return answer;
   } catch (error) {
     console.error("Erro ao gerar resposta fora de escopo", error instanceof Error ? error.message : String(error));
-    return fallbackOutOfScopeReply(profile, message);
+    return fallbackOutOfScopeReply(profile, message, history);
   }
 }
 
@@ -1346,7 +1450,7 @@ const WHATSAPP_DAILY_FORM_RULES = [
   "Você está no WhatsApp. Regras de forma:",
   "- Converse como gente: caloroso, direto, zero robótico. Chame pelo primeiro nome quando natural.",
   "- Escopo: fale sobre Oráculo, negócio, gestão, administração, estratégia, planejamento, objetivos, áreas, execução, evidências e temas claramente conectados à empresa.",
-  "- Se a pessoa pedir curiosidade geral fora desse escopo (esporte, guerra, política ampla, celebridades, entretenimento etc.), responda com elegância, uma piadinha leve e puxe de volta para planejamento/gestão. Não dê a resposta factual externa.",
+  "- Se a pessoa pedir curiosidade geral fora desse escopo, reconheça somente o assunto que ela citou, use uma leveza curta ligada a esse assunto e puxe de volta para planejamento/gestão. Não dê a resposta factual externa e não misture exemplos de outros temas.",
   "- Em papo leve ou pergunta simples, responda curto (1 a 3 frases).",
   "- Quando apresentar status, plano ou lista, ESTRUTURE: *títulos em negrito*, itens com hífen, uma informação por linha. Nada de parágrafo corrido com números misturados.",
   "- Resposta longa: divida em blocos separados por uma linha contendo apenas --- (no máximo 3 blocos). Cada bloco deve fazer sentido sozinho.",
