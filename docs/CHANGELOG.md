@@ -25,6 +25,10 @@
 - Aumentado o limite de importacao de plano pronto no app de 12 MB para 80 MB, com aviso para arquivos acima de 30 MB.
 - Melhorado o cartao de aprovacao de plano pronto no app para mostrar a previa estruturada antes da gravacao, incluindo objetivos, projetos, lacunas e rastreabilidade basica.
 - Separada a resposta de importacao por canal: o app continua no painel lateral com cartao visual; o WhatsApp recebe previa textual e confirma por mensagem.
+- Adicionada edicao manual de objetivos nos cards, com meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas.
+- Liberada criacao de areas/departamentos diretamente na tela Areas e na tela Planos Trimestrais quando nao houver areas cadastradas.
+- Liberada criacao manual de objetivos trimestrais pela tela Planos Trimestrais e de objetivos por nivel no detalhe da area.
+- Renomeada a regua visual "Direcional" para "Direcao inicial" na UI, deixando claro que ela mede clareza do objetivo, nao progresso.
 
 ## 2026-07-02
 

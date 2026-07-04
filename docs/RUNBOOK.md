@@ -194,6 +194,27 @@ Se a conversa responde mas nao grava:
 
 Se a IA devolver texto solto em vez de JSON, o sistema mostra a resposta, mas nao avanca fase nem grava proposta. Nesse caso, revisar prompt/condutor da fase ou pedir ao usuario para responder de forma mais objetiva.
 
+## Problema: plano existe, mas nao consigo operar objetivos, numeros ou areas
+
+Fluxo esperado depois da importacao ou criacao de objetivos:
+
+1. Em Dashboard, cards de Resultado/Evolucao que tenham objetivo ligado mostram "Editar".
+2. Em Plano Estrategico, cada objetivo estrategico mostra "Editar"; owners tambem veem "Novo objetivo".
+3. Em Planos Trimestrais, o owner ou coordenador da area pode criar objetivo trimestral diretamente no card da area.
+4. Em Areas, o owner cria areas/departamentos e vincula coordenadores. Coordenadores e membros sem permissao veem a tela em modo leitura.
+5. No detalhe da area, a aba aberta define o nivel do novo objetivo: Anual da Area, Trimestral ou Mensal.
+
+Campos principais do editor:
+
+- `Valor atual`: alimenta cards de Resultado, como faturamento ou margem.
+- `Meta`: mostra o alvo do indicador.
+- `Tendencia`: controla Alta, Estavel ou Queda.
+- `Status`: controla No Prazo, Em Risco, Atrasado ou Concluido.
+- `Progresso`: controla o percentual e a barra de avanço.
+- `Evidencia`: descreve o que prova o avanço.
+
+Observacao: "Direcao inicial" e uma regua de clareza/concretude do objetivo, nao o percentual de execucao. O percentual de execucao e o campo `Progresso`.
+
 ## Problema: importacao de plano pronto nao vira proposta
 
 Fluxo esperado pela tela Plano Estrategico:

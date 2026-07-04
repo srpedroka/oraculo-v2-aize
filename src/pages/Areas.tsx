@@ -1,5 +1,7 @@
-import { ArrowRight, CalendarRange } from "lucide-react";
+import { ArrowRight, CalendarRange, Plus, ShieldCheck } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAppState } from "../state/store";
@@ -18,21 +20,74 @@ function levelCount(level: PlanLevel, count: number) {
 }
 
 export function Areas() {
-  const { state } = useAppState();
+  const { state, dispatch } = useAppState();
+  const [areaName, setAreaName] = useState("");
+  const [areaCoordinatorId, setAreaCoordinatorId] = useState("");
+  const isOwner = state.currentMembership?.role === "owner";
+  const coordinators = useMemo(
+    () => state.memberships.filter((membership) => membership.role === "coordinator"),
+    [state.memberships],
+  );
+
+  function createArea(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!areaName.trim() || !isOwner) return;
+    dispatch({ type: "create_area", name: areaName.trim(), coordinatorId: areaCoordinatorId || null });
+    setAreaName("");
+    setAreaCoordinatorId("");
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-medium text-text-tertiary">Áreas da {state.organization?.name}</p>
-        <h1 className="text-2xl font-semibold text-text">Áreas</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-text-tertiary">Áreas da {state.organization?.name}</p>
+          <h1 className="text-2xl font-semibold text-text">Áreas</h1>
+        </div>
+        {!isOwner ? (
+          <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium text-text-secondary shadow-card">
+            <ShieldCheck className="h-4 w-4" />
+            Somente leitura
+          </div>
+        ) : null}
       </div>
+
+      {isOwner ? (
+        <Card>
+          <form onSubmit={createArea} className="grid gap-3 lg:grid-cols-[1fr_260px_auto]">
+            <input
+              value={areaName}
+              onChange={(event) => setAreaName(event.target.value)}
+              placeholder="Nova área ou departamento"
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            />
+            <select
+              value={areaCoordinatorId}
+              onChange={(event) => setAreaCoordinatorId(event.target.value)}
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+            >
+              <option value="">Sem coordenador</option>
+              {coordinators.map((membership) => (
+                <option key={membership.id} value={membership.id}>
+                  {membership.profile?.fullName ?? membership.userId}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" icon={Plus} disabled={!areaName.trim()}>
+              Criar área
+            </Button>
+          </form>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
         {!state.areas.length ? (
           <Card className="xl:col-span-2">
             <p className="text-base font-semibold text-text">Nenhuma área cadastrada.</p>
             <p className="mt-2 text-sm leading-6 text-text-secondary">
-              Vá em Configurações para criar áreas e vincular coordenadores.
+              {isOwner
+                ? "Cadastre a primeira área acima para começar a criar objetivos anuais, trimestrais e mensais."
+                : "O dono da empresa precisa cadastrar as áreas antes dos planos trimestrais aparecerem aqui."}
             </p>
           </Card>
         ) : null}
@@ -69,8 +124,28 @@ export function Areas() {
 
               <div className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
                 <p className="text-xs font-medium text-text-tertiary">Papel da área</p>
-                <p className="mt-1 text-sm leading-6 text-text-secondary">{plan?.role.mission}</p>
+                <p className="mt-1 text-sm leading-6 text-text-secondary">{plan?.role.mission || "Ainda sem papel definido."}</p>
               </div>
+
+              {isOwner ? (
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-text-tertiary">Coordenador</span>
+                  <select
+                    value={area.coordinatorId ?? ""}
+                    onChange={(event) =>
+                      dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: event.target.value || null })
+                    }
+                    className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                  >
+                    <option value="">Sem coordenador</option>
+                    {coordinators.map((membership) => (
+                      <option key={membership.id} value={membership.id}>
+                        {membership.profile?.fullName ?? membership.userId}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
 
               <div>
                 <p className="mb-2 text-xs font-medium text-text-tertiary">Puxa da estratégia</p>
@@ -98,7 +173,7 @@ export function Areas() {
               <div className="mt-auto flex flex-wrap gap-2">
                 <Link
                   to={`/areas/${area.id}`}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-accent bg-accent px-4 text-sm font-medium text-white transition hover:bg-[#0066CC]"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#1D1D1F] bg-[#1D1D1F] px-4 text-sm font-medium text-white transition hover:bg-black"
                 >
                   Abrir área
                   <ArrowRight className="h-4 w-4" />

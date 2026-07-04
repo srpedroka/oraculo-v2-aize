@@ -1,4 +1,5 @@
-import { Sprout, Trophy } from "lucide-react";
+import { Pencil, Sprout, Trophy } from "lucide-react";
+import { useState } from "react";
 import type { KeyAction, Objective } from "../../types";
 import { TYPE_LABEL } from "../../types";
 import { formatDate, shortDate } from "../../lib/format";
@@ -7,6 +8,9 @@ import { ConcretenessMeter } from "../../components/ui/ConcretenessMeter";
 import { LineageTag } from "../../components/ui/LineageTag";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { Button } from "../../components/ui/Button";
+import { useAppState } from "../../state/store";
+import { ObjectiveEditDialog } from "./ObjectiveEditDialog";
 
 interface ObjectiveCardProps {
   objective: Objective;
@@ -16,9 +20,19 @@ interface ObjectiveCardProps {
 }
 
 export function ObjectiveCard({ objective, parent, keyActions = [], highlighted = false }: ObjectiveCardProps) {
+  const { state } = useAppState();
+  const [editOpen, setEditOpen] = useState(false);
   const TypeIcon = objective.type === "harvest" ? Trophy : Sprout;
+  const isOwner = state.currentMembership?.role === "owner";
+  const isAreaCoordinator = Boolean(
+    objective.areaId &&
+      state.currentMembership?.role === "coordinator" &&
+      state.areas.some((area) => area.id === objective.areaId && area.coordinatorId === state.currentMembership?.id),
+  );
+  const canEdit = isOwner || isAreaCoordinator;
 
   return (
+    <>
     <Card className={highlighted ? "border-accent/40 bg-[#F7FBFF]" : ""}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -38,9 +52,16 @@ export function ObjectiveCard({ objective, parent, keyActions = [], highlighted 
             <h3 className="text-[16px] font-semibold leading-snug text-text">{objective.title}</h3>
             <p className="mt-1 text-sm leading-6 text-text-secondary">{objective.result}</p>
           </div>
-          <div className="text-right text-xs text-text-secondary">
-            <p className="font-medium text-text">{objective.owner || "Sem responsável"}</p>
-            <p>{formatDate(objective.deadline)}</p>
+          <div className="flex flex-col items-end gap-2 text-right text-xs text-text-secondary">
+            <div>
+              <p className="font-medium text-text">{objective.owner || "Sem responsável"}</p>
+              <p>{formatDate(objective.deadline)}</p>
+            </div>
+            {canEdit ? (
+              <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditOpen(true)}>
+                Editar
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -89,5 +110,7 @@ export function ObjectiveCard({ objective, parent, keyActions = [], highlighted 
         ) : null}
       </div>
     </Card>
+    {editOpen ? <ObjectiveEditDialog objective={objective} onClose={() => setEditOpen(false)} /> : null}
+    </>
   );
 }

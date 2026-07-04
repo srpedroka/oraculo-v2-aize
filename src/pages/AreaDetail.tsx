@@ -48,6 +48,11 @@ export function AreaDetail() {
   const [builderLevel, setBuilderLevel] = useState<PlanLevel | null>(null);
   const area = state.areas.find((item) => item.id === areaId);
   const plan = state.areaPlans.find((item) => item.areaId === areaId);
+  const canEditArea = Boolean(
+    area &&
+      (state.currentMembership?.role === "owner" ||
+        (state.currentMembership?.role === "coordinator" && area.coordinatorId === state.currentMembership?.id)),
+  );
 
   const objectives = useMemo(
     () =>
@@ -88,12 +93,18 @@ export function AreaDetail() {
           <p className="mt-2 text-sm leading-6 text-text-secondary">
             Crie a base anual para depois desdobrar objetivos trimestrais e mensais.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-2">
+            {canEditArea ? (
+              <Button variant="ghost" icon={Plus} onClick={() => setBuilderLevel("area_annual")}>
+                Criar objetivo anual
+              </Button>
+            ) : null}
             <Button icon={Plus} onClick={startQuarterlySession}>
-              Planejar o trimestre com o Oráculo
+              Planejar com o Oráculo
             </Button>
           </div>
         </Card>
+        {builderLevel ? <ObjectiveBuilder level={builderLevel} areaId={area.id} onClose={() => setBuilderLevel(null)} /> : null}
       </div>
     );
   }
@@ -113,9 +124,18 @@ export function AreaDetail() {
           <p className="text-sm font-medium text-text-tertiary">Coordenador: {area.coordinator}</p>
           <h1 className="text-2xl font-semibold text-text">Área: {area.name}</h1>
         </div>
-        <Button icon={Plus} onClick={startSessionForCurrentTab}>
-          {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canEditArea ? (
+            <Button variant="ghost" icon={Plus} onClick={() => setBuilderLevel(tab)}>
+              Novo objetivo
+            </Button>
+          ) : null}
+          {tab !== "area_annual" ? (
+            <Button icon={Plus} onClick={startSessionForCurrentTab}>
+              {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <Card>
@@ -200,12 +220,21 @@ export function AreaDetail() {
           })
         ) : (
           <Card className="text-center">
-            <p className="text-base font-semibold text-text">Nenhum objetivo mensal ainda.</p>
-            <p className="mt-2 text-sm text-text-secondary">Crie o primeiro com o Oráculo.</p>
+            <p className="text-base font-semibold text-text">Nenhum objetivo {TAB_LABEL[tab].toLowerCase()} ainda.</p>
+            <p className="mt-2 text-sm text-text-secondary">Crie o primeiro manualmente ou com o Oráculo quando a condução estiver disponível para este nível.</p>
             <div className="mt-4">
-              <Button icon={Plus} onClick={tab === "monthly" ? startMonthlySession : startQuarterlySession}>
-                {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                {canEditArea ? (
+                  <Button variant="ghost" icon={Plus} onClick={() => setBuilderLevel(tab)}>
+                    Criar objetivo
+                  </Button>
+                ) : null}
+                {tab !== "area_annual" ? (
+                  <Button icon={Plus} onClick={tab === "monthly" ? startMonthlySession : startQuarterlySession}>
+                    {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </Card>
         )}

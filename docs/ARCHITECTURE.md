@@ -17,6 +17,8 @@ O Oraculo V2 e um app web de execucao estrategica. O frontend roda em React/Vite
 
 Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entradas: condução do zero pelo Oraculo ou importacao de plano pronto. A importacao aceita PDF, PPTX, DOCX e TXT no navegador, extrai texto com `src/lib/fileImport.ts` e permite dois caminhos independentes: "Só revisar texto", que roda uma revisão local sem gravar, e "Gerar proposta e carregar no módulo", que chama `oracle-session` com `action = import_ready_plan`. O arquivo bruto nao e enviado ao banco; o texto extraido/colado vira insumo para uma proposta estruturada e a gravacao continua dependendo de confirmacao. Quando a importacao nasce no app, o painel lateral mostra uma previa estruturada do que sera gravado, com objetivos, projetos, vinculos e lacunas, sem mandar a pessoa para WhatsApp.
 
+Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oraculo. `src/features/objective/ObjectiveEditDialog.tsx` permite editar tipo, resultado, indicador, meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas. O mesmo editor aparece em Plano Estrategico, Dashboard e cards de planos por area. A tela de Areas tambem permite ao owner cadastrar areas e vincular coordenadores no proprio modulo, enquanto coordenadores e demais membros ficam em leitura quando nao tiverem permissao de escrita.
+
 ### Supabase
 
 Migrations principais:

@@ -1,13 +1,34 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Waypoints } from "lucide-react";
+import { ArrowRight, Building2, Plus, Waypoints } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
+import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { useAppState } from "../state/store";
 import type { Status } from "../types";
 
 export function QuarterlyPlans() {
-  const { state } = useAppState();
+  const { state, dispatch } = useAppState();
+  const [areaName, setAreaName] = useState("");
+  const [builderAreaId, setBuilderAreaId] = useState<string | null>(null);
+  const isOwner = state.currentMembership?.role === "owner";
+
+  function createArea(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!areaName.trim() || !isOwner) return;
+    dispatch({ type: "create_area", name: areaName.trim() });
+    setAreaName("");
+  }
+
+  function canPlanArea(areaId: string) {
+    if (isOwner) return true;
+    return Boolean(
+      state.currentMembership?.role === "coordinator" &&
+        state.areas.some((area) => area.id === areaId && area.coordinatorId === state.currentMembership?.id),
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -23,6 +44,36 @@ export function QuarterlyPlans() {
       </div>
 
       <div className="space-y-5">
+        {!state.areas.length ? (
+          <Card>
+            <div className="flex items-start gap-3">
+              <Building2 className="mt-0.5 h-5 w-5 text-text-secondary" />
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-semibold text-text">Nenhuma área cadastrada.</p>
+                <p className="mt-2 text-sm leading-6 text-text-secondary">
+                  Antes de montar planos trimestrais, cadastre os departamentos que vão executar a estratégia.
+                </p>
+                {isOwner ? (
+                  <form onSubmit={createArea} className="mt-4 flex flex-wrap gap-2">
+                    <input
+                      value={areaName}
+                      onChange={(event) => setAreaName(event.target.value)}
+                      placeholder="Nome da área ou departamento"
+                      className="h-10 min-w-[220px] flex-1 rounded-xl border border-border bg-white px-3 text-sm"
+                    />
+                    <Button type="submit" icon={Plus} disabled={!areaName.trim()}>
+                      Criar área
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="mt-4 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm text-text-secondary">
+                    Sua conta pode consultar planos, mas o cadastro de áreas fica com o dono da empresa.
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
+        ) : null}
         {state.areas.map((area) => {
           const plan = state.areaPlans.find((item) => item.areaId === area.id);
           const quarterlyObjectives = state.objectives.filter(
@@ -56,6 +107,11 @@ export function QuarterlyPlans() {
                     <ArrowRight className="h-4 w-4" />
                     Abrir área
                   </Link>
+                  {canPlanArea(area.id) ? (
+                    <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
+                      Criar objetivo
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
@@ -85,8 +141,15 @@ export function QuarterlyPlans() {
                     return <ObjectiveCard key={objective.id} objective={objective} parent={parent} />;
                   })
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-5 text-sm text-text-secondary">
-                    Nenhum objetivo trimestral definido para esta área.
+                  <div className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-5">
+                    <p className="text-sm text-text-secondary">Nenhum objetivo trimestral definido para esta área.</p>
+                    {canPlanArea(area.id) ? (
+                      <div className="mt-3">
+                        <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
+                          Criar objetivo trimestral
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -94,6 +157,7 @@ export function QuarterlyPlans() {
           );
         })}
       </div>
+      {builderAreaId ? <ObjectiveBuilder level="quarterly" areaId={builderAreaId} onClose={() => setBuilderAreaId(null)} /> : null}
     </div>
   );
 }

@@ -18,9 +18,15 @@ const ACTIVE_COLORS = {
   Concreto: "bg-[#1D7A3E]",
 };
 
+const DISPLAY_LABELS = {
+  Direcional: "Direção inicial",
+  "Em forma": "Em estrutura",
+  Concreto: "Concreto",
+};
+
 export function expectedLabel(level: PlanLevel) {
-  if (level === "strategic") return "Direcional";
-  if (level === "area_annual") return "Em forma";
+  if (level === "strategic") return DISPLAY_LABELS.Direcional;
+  if (level === "area_annual") return DISPLAY_LABELS["Em forma"];
   return "Concreto";
 }
 
@@ -46,8 +52,9 @@ export function ConcretenessMeter({ objective, compact = false }: ConcretenessMe
           "rounded-[10px] px-2 py-0.5 text-xs font-medium text-text",
           RANGE_COLORS[result.range],
         ].join(" ")}
+        title="Clareza do objetivo: direção inicial, em estrutura ou concreto."
       >
-        {result.range}
+        {DISPLAY_LABELS[result.range]}
       </span>
       {result.belowRecommended ? (
         <span className="rounded-[10px] bg-[#F0F0F2] px-2 py-0.5 text-xs font-medium text-text-secondary">

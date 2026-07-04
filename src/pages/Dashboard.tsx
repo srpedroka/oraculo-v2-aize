@@ -1,12 +1,29 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { Sprout, Trophy, TrendingUp } from "lucide-react";
+import { Pencil, Plus, Sprout, Trophy, TrendingUp } from "lucide-react";
+import { useState } from "react";
 import { Card } from "../components/ui/Card";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { StatusBadge } from "../components/ui/StatusBadge";
+import { Button } from "../components/ui/Button";
+import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
+import { ObjectiveEditDialog } from "../features/objective/ObjectiveEditDialog";
 import { useAppState } from "../state/store";
+import type { Objective } from "../types";
+
+function canEditObjective(objective: Objective | undefined, state: ReturnType<typeof useAppState>["state"]) {
+  if (!objective) return false;
+  if (state.currentMembership?.role === "owner") return true;
+  return Boolean(
+    objective.areaId &&
+      state.currentMembership?.role === "coordinator" &&
+      state.areas.some((area) => area.id === objective.areaId && area.coordinatorId === state.currentMembership?.id),
+  );
+}
 
 export function Dashboard() {
   const { state } = useAppState();
+  const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const revenue =
     state.objectives.find((objective) => objective.id === "e1") ??
     state.objectives.find((objective) => objective.metric?.toLowerCase().includes("faturamento")) ??
@@ -29,6 +46,7 @@ export function Dashboard() {
         { name: "Em Risco", value: attentionSeeds, color: "#F2C28D" },
       ].filter((item) => item.value > 0)
     : [{ name: "Sem dados", value: 1, color: "#ECECEF" }];
+  const canCreateStrategicObjective = state.currentMembership?.role === "owner";
 
   return (
     <div className="mx-auto max-w-[820px] space-y-7">
@@ -64,14 +82,25 @@ export function Dashboard() {
                   <p className="mt-6 text-[36px] font-semibold leading-none text-text">{revenue?.current ?? "-"}</p>
                   <p className="mt-3 text-[15px] text-text-secondary">Meta: {revenue?.target ?? "A definir"}</p>
                 </div>
-                {revenue ? (
-                  <span className="inline-flex items-center gap-1 rounded-[10px] bg-[#E6F4EA] px-2.5 py-1 text-sm font-medium text-[#1D7A3E]">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    4%
-                  </span>
-                ) : (
-                  <span className="rounded-[10px] bg-[#ECECEF] px-2.5 py-1 text-sm font-medium text-text-secondary">A definir</span>
-                )}
+                <div className="flex flex-col items-end gap-2">
+                  {revenue ? (
+                    <span className="inline-flex items-center gap-1 rounded-[10px] bg-[#E6F4EA] px-2.5 py-1 text-sm font-medium text-[#1D7A3E]">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      {revenue.trend === "down" ? "Queda" : revenue.trend === "flat" ? "Estável" : "Alta"}
+                    </span>
+                  ) : (
+                    <span className="rounded-[10px] bg-[#ECECEF] px-2.5 py-1 text-sm font-medium text-text-secondary">A definir</span>
+                  )}
+                  {canEditObjective(revenue, state) ? (
+                    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(revenue!)}>
+                      Editar
+                    </Button>
+                  ) : !revenue && canCreateStrategicObjective ? (
+                    <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderOpen(true)}>
+                      Criar
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </Card>
 
@@ -82,7 +111,20 @@ export function Dashboard() {
                   <p className="mt-6 text-[36px] font-semibold leading-none text-text">{margin?.current ?? "-"}</p>
                   <p className="mt-3 text-[15px] text-text-secondary">Meta: {margin?.target ?? "A definir"}</p>
                 </div>
-                <span className="rounded-[10px] bg-[#ECECEF] px-2.5 py-1 text-sm font-medium text-text-secondary">Estável</span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="rounded-[10px] bg-[#ECECEF] px-2.5 py-1 text-sm font-medium text-text-secondary">
+                    {margin?.trend === "up" ? "Alta" : margin?.trend === "down" ? "Queda" : "Estável"}
+                  </span>
+                  {canEditObjective(margin, state) ? (
+                    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(margin!)}>
+                      Editar
+                    </Button>
+                  ) : !margin && canCreateStrategicObjective ? (
+                    <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderOpen(true)}>
+                      Criar
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </Card>
           </div>
@@ -116,7 +158,14 @@ export function Dashboard() {
                 <p className="text-[17px] font-medium text-text">Treinamento de Liderança Aize</p>
                 <p className="mt-4 text-[34px] font-semibold leading-none text-text">{leadership?.progress ?? 0}%</p>
               </div>
-              <StatusBadge status="on_track" />
+              <div className="flex flex-col items-end gap-2">
+                <StatusBadge status={leadership?.status ?? "on_track"} />
+                {canEditObjective(leadership, state) ? (
+                  <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(leadership!)}>
+                    Editar
+                  </Button>
+                ) : null}
+              </div>
             </div>
             <ProgressBar value={leadership?.progress ?? 0} />
           </Card>
@@ -155,6 +204,8 @@ export function Dashboard() {
           </Card>
         </div>
       </section>
+      {editingObjective ? <ObjectiveEditDialog objective={editingObjective} onClose={() => setEditingObjective(null)} /> : null}
+      {builderOpen ? <ObjectiveBuilder level="strategic" onClose={() => setBuilderOpen(false)} /> : null}
     </div>
   );
 }

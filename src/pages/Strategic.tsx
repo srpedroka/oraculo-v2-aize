@@ -78,6 +78,7 @@ export function Strategic() {
   const [sentToOracle, setSentToOracle] = useState(false);
   const [isDraggingPlan, setIsDraggingPlan] = useState(false);
   const plan = state.strategicPlan;
+  const isOwner = state.currentMembership?.role === "owner";
   const strategicObjectives = useMemo(
     () => state.objectives.filter((objective) => objective.level === "strategic"),
     [state.objectives],
@@ -379,11 +380,24 @@ export function Strategic() {
           </Card>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-text">Objetivos estratégicos</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-text">Objetivos estratégicos</h2>
+              {isOwner ? (
+                <Button variant="ghost" icon={Plus} onClick={() => setBuilderOpen(true)}>
+                  Novo objetivo
+                </Button>
+              ) : null}
+            </div>
             <div className="grid gap-4">
-              {strategicObjectives.map((objective) => (
-                <ObjectiveCard key={objective.id} objective={objective} />
-              ))}
+              {strategicObjectives.length ? (
+                strategicObjectives.map((objective) => (
+                  <ObjectiveCard key={objective.id} objective={objective} />
+                ))
+              ) : (
+                <Card>
+                  <p className="text-sm text-text-secondary">Nenhum objetivo estratégico salvo ainda.</p>
+                </Card>
+              )}
             </div>
           </section>
 
