@@ -22,6 +22,7 @@
 - Recalibrado o prompt de plano pronto para preservar o documento aprovado e deixar lacunas vazias, sem inventar KPI, meta, prazo, responsavel ou projeto.
 - Adicionado "Descartar" no cartao de proposta pendente para abandonar testes ou propostas incorretas sem gravar dados.
 - Ajustada a confirmação por WhatsApp para priorizar sessoes com proposta pendente quando a pessoa responder "confirmar".
+- Aumentado o limite de importacao de plano pronto no app de 12 MB para 80 MB, com aviso para arquivos acima de 30 MB.
 
 ## 2026-07-02
 

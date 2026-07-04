@@ -1,4 +1,7 @@
-const MAX_FILE_SIZE_BYTES = 12 * 1024 * 1024;
+const MAX_FILE_SIZE_MB = 80;
+const LARGE_FILE_WARNING_MB = 30;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const LARGE_FILE_WARNING_BYTES = LARGE_FILE_WARNING_MB * 1024 * 1024;
 
 export const STRATEGIC_PLAN_FILE_ACCEPT =
   ".pdf,.pptx,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
@@ -25,7 +28,7 @@ function getExtension(fileName: string) {
 
 function assertSupportedFile(file: File) {
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error("O arquivo passa de 12 MB. Envie uma versão menor ou cole o texto do plano no campo.");
+    throw new Error(`O arquivo passa de ${MAX_FILE_SIZE_MB} MB. Compacte o arquivo, exporte uma versão mais leve ou cole o texto do plano no campo.`);
   }
 
   const extension = getExtension(file.name);
@@ -146,13 +149,18 @@ export async function importStrategicPlanFile(file: File): Promise<ImportedPlanT
   };
 
   const text = await textByExtension[extension]();
+  const warnings = [
+    file.size > LARGE_FILE_WARNING_BYTES
+      ? `Arquivo grande importado. A extração pode demorar em computadores mais lentos; se travar, use uma versão compactada ou cole o texto do plano.`
+      : null,
+    text.length > 60000
+      ? "Importei o texto, mas ele veio bem longo. A revisão pode focar nos principais sinais do plano."
+      : null,
+  ].filter(Boolean);
 
   return {
     fileName: file.name,
     text,
-    warning:
-      text.length > 60000
-        ? "Importei o texto, mas ele veio bem longo. A revisão pode focar nos principais sinais do plano."
-        : undefined,
+    warning: warnings.length ? warnings.join(" ") : undefined,
   };
 }

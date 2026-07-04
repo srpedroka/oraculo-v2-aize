@@ -233,6 +233,8 @@ limit 10;
 Limites atuais:
 
 - arquivo escaneado ou imagem dentro de PDF pode nao ter texto extraivel;
+- a importacao pelo app aceita PDF, PPTX, DOCX e TXT ate 80 MB; arquivos maiores devem ser compactados ou convertidos para texto antes de importar;
+- arquivos acima de 30 MB podem demorar porque a extracao roda no navegador da pessoa;
 - textos muito longos sao cortados pelo frontend e pela Edge Function antes de entrar no modelo para proteger o contexto da IA;
 - o fluxo importa Plano Estrategico. Trimestral e Mensal por arquivo entram nas fases futuras de documentos/WhatsApp.
 - plano pronto aprovado deve ser preservado. O Oraculo pode estruturar trechos implicitos como objetivos, mas nao deve inventar KPI, meta, prazo, responsavel, diagnostico ou projeto que o documento nao trouxe.

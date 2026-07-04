@@ -226,7 +226,7 @@ export function Strategic() {
               <div>
                 <p className="text-sm font-semibold text-text">Plano existente</p>
                 <p className="mt-1 text-xs leading-5 text-text-secondary">
-                  Importe ou arraste PDF, PPTX, DOCX ou TXT. O texto extraído entra neste campo.
+                  Importe ou arraste PDF, PPTX, DOCX ou TXT até 80 MB. O texto extraído entra neste campo.
                 </p>
               </div>
               <label
