@@ -13,11 +13,14 @@ import {
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel } from "../_shared/model.ts";
 import { buildPlanContext } from "../_shared/plan-context.ts";
-import { CONVERSATION_STYLE, STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts";
+import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
+import { classifyOracleIntent } from "../_shared/intent-router.ts";
+import { periodForPlanning } from "../_shared/periods.ts";
+import { handleQuickUpdate } from "../_shared/quick-updates.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
-import { sendWhatsAppText } from "../_shared/whatsapp.ts";
-import { confirmPlanningProposal, prepareReadyStrategicPlanProposal, processPlanningMessage } from "../_shared/session-engine.ts";
+import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
+import { confirmPlanningProposal, prepareReadyStrategicPlanProposal, processPlanningMessage, startPlanningSession } from "../_shared/session-engine.ts";
 
 function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
@@ -1131,6 +1134,21 @@ function contextualFallback(profile: any, organization: any, objectives: any[], 
   return `${greeting} O plano não tem ponto crítico aparente agora. Você quer revisar Resultado, Evolução, planos trimestrais ou registrar uma evidência?`;
 }
 
+const WHATSAPP_DAILY_FORM_RULES = [
+  "Você está no WhatsApp. Regras de forma:",
+  "- Converse como gente: caloroso, direto, zero robótico. Chame pelo primeiro nome quando natural.",
+  "- Em papo leve ou pergunta simples, responda curto (1 a 3 frases).",
+  "- Quando apresentar status, plano ou lista, ESTRUTURE: *títulos em negrito*, itens com hífen, uma informação por linha. Nada de parágrafo corrido com números misturados.",
+  "- Resposta longa: divida em blocos separados por uma linha contendo apenas --- (no máximo 3 blocos). Cada bloco deve fazer sentido sozinho.",
+  "- Sempre feche apontando o próximo passo ou com UMA pergunta que ajude a decidir.",
+  "- Não despeje diagnóstico completo sem a pessoa pedir. Se a pergunta for ambígua, pergunte antes.",
+  "- Nunca diga que salvou algo sem confirmação do sistema.",
+].join("\n");
+
+async function sendFormattedWhatsApp(settings: any, keyRow: any, phone: string, text: string) {
+  await sendWhatsAppMessages(settings, keyRow, phone, formatForWhatsApp(text));
+}
+
 async function buildAnswer(
   client: ReturnType<typeof serviceClient>,
   orgId: string,
@@ -1153,7 +1171,7 @@ async function buildAnswer(
       client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
       loadConversationHistory(client, conversation.id),
-      buildPlanContext(client, orgId, { areaId, focus: areaId ? "monthly" : "org" }),
+      buildPlanContext(client, orgId, { areaId, focus: areaId ? (/(mes|mês|mensal|acao|ação|acoes|ações)/i.test(message) ? "monthly" : "area") : "org" }),
     ]);
 
   const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
@@ -1163,20 +1181,14 @@ async function buildAnswer(
   }
 
   const systemPrompt = [
-    "Você é o Oráculo, a IA estratégica da empresa. Responda em português do Brasil.",
-    "Você está conversando por WhatsApp: seja curto, natural, amigável e contextual.",
-    "Comportamento obrigatório:",
+    PERSONA_ORACULO,
+    WHATSAPP_DAILY_FORM_RULES,
+    "Dados do atendimento:",
     `- O contato atual é ${profile?.full_name ?? "usuário sem nome"} (${membership?.role ?? "sem papel"}).`,
     `- Área vinculada ao contato: ${currentArea?.name ?? "sem área específica"}.`,
     `- Horário local do atendimento: ${localTimestamp()}.`,
-    "- Mesmo se a mensagem for apenas saudação, teste ou abertura sem pedido claro, responda pela IA com naturalidade. Cumprimente pelo horário quando fizer sentido, chame pelo primeiro nome e pergunte de forma leve o que a pessoa quer fazer. Não use texto fixo nem faça análise do plano nesse caso.",
-    "- Se a pessoa perguntar 'como está o sistema?', 'está funcionando?' ou algo parecido, trate como pergunta ambígua sobre o software/WhatsApp. Responda que recebeu a mensagem e pergunte se ela quer falar do funcionamento do Oráculo ou do status dos planos.",
-    "- Se a mensagem trouxer pedido, evidência, dúvida ou contexto, use exatamente o que foi dito e o histórico para conduzir a resposta. Não pare só na saudação.",
-    "- Se citar claramente status do plano, objetivos, metas ou indicadores, cite objetivos concretos do plano. Se pedir evidência, diga qual evidência falta.",
-    "- Responda em 1 a 3 frases curtas no WhatsApp. Termine com uma pergunta só quando ela ajudar a conversa.",
-    "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
-    CONVERSATION_STYLE,
-    STRATEGIC_GUIDE,
+    "Se a pessoa perguntar se o sistema está funcionando, responda que recebeu a mensagem e pergunte se ela quer falar do funcionamento do Oráculo/WhatsApp ou do andamento dos planos.",
+    "Se citar status do plano, objetivos, metas ou indicadores, cite itens concretos do contexto. Se pedir evidência, diga qual evidência falta.",
     formatConversationMemory(history),
     "Contexto atual do plano:",
     planContext,
@@ -1441,7 +1453,7 @@ serve(async (req) => {
     const phoneOptions = phoneCandidates(phone);
     const { data: profile } = await client.from("profiles").select("id, full_name, phone").in("phone", phoneOptions).maybeSingle();
     if (!profile) {
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, phone, "Este número não está cadastrado no Oráculo. Peça ao dono da empresa para vincular seu celular.");
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, phone, "Este número não está cadastrado no Oráculo. Peça ao dono da empresa para vincular seu celular.");
       return jsonResponse({ ok: true, rejected: "unknown_phone" });
     }
     const replyPhone = profile.phone ?? phone;
@@ -1453,7 +1465,7 @@ serve(async (req) => {
       .eq("user_id", profile.id)
       .maybeSingle();
     if (!membership) {
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, "Seu número existe, mas não tem acesso a esta empresa no Oráculo.");
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, "Seu número existe, mas não tem acesso a esta empresa no Oráculo.");
       return jsonResponse({ ok: true, rejected: "no_membership" });
     }
 
@@ -1491,7 +1503,7 @@ serve(async (req) => {
         });
       }
 
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, result.answer);
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, result.answer);
       return jsonResponse({ ok: true, document: "processed" });
     }
 
@@ -1534,7 +1546,7 @@ serve(async (req) => {
         channel: "whatsapp",
       });
 
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, answer);
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, answer);
       return jsonResponse({ ok: true, audio: "transcription_failed" });
     }
 
@@ -1559,7 +1571,7 @@ serve(async (req) => {
       const sessionResult = activeSession.pending_proposal && confirmationMessage
         ? await confirmPlanningProposal(client, { sessionId: activeSession.id, userId: profile.id, channel: "whatsapp", confirmationText: storedUserText })
         : await processPlanningMessage(client, { sessionId: activeSession.id, message: storedUserText, userId: profile.id, channel: "whatsapp" });
-      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
       return jsonResponse({ ok: true, session: "processed" });
     }
 
@@ -1574,6 +1586,97 @@ serve(async (req) => {
     });
     await maybeSummarize(client, orgId, conversation);
 
+    const intent = await classifyOracleIntent(client, {
+      orgId,
+      message: text,
+      channel: "whatsapp",
+      areaId,
+      conversationId: conversation.id,
+    });
+
+    if (intent.intent === "start_planning") {
+      if (!intent.planning_type) {
+        const reply = "Claro. Qual plano você quer montar agora: *estratégico anual*, *trimestral* ou *mensal*?";
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "start_planning_missing_type" });
+      }
+
+      const sessionResult = await startPlanningSession(client, {
+        orgId,
+        areaId: intent.planning_type === "strategic" ? null : areaId,
+        type: intent.planning_type,
+        period: periodForPlanning(intent.planning_type, intent.period_hint, text),
+        userId: profile.id,
+        channel: "whatsapp",
+      });
+      const reply = `Vou te conduzir por aqui mesmo; se preferir tela, o app mostra a mesma sessão.\n\n${sessionResult.reply}`;
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+      return jsonResponse({ ok: true, intent: "start_planning", sessionId: sessionResult.session.id });
+    }
+
+    if (intent.intent === "quick_update") {
+      const quickUpdate = await handleQuickUpdate(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
+        message: text,
+        channel: "whatsapp",
+      });
+      if (quickUpdate.handled) {
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: quickUpdate.reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, quickUpdate.reply);
+        return jsonResponse({ ok: true, intent: "quick_update" });
+      }
+    }
+
+    if (intent.intent === "close_period") {
+      const reply = "O fechamento guiado entra na próxima fase do Oráculo. Por enquanto, posso fazer uma revisão estruturada do mês ou do trimestre e apontar pendências. Quer que eu revise agora?";
+      await insertConversationMessage(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
+        author: "oracle",
+        text: reply,
+        channel: "whatsapp",
+      });
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+      return jsonResponse({ ok: true, intent: "close_period_pending_phase" });
+    }
+
+    if (intent.intent === "document_question") {
+      const reply = "Consigo falar sobre o plano que está no Oráculo. A geração e envio de documentos padronizados entra na próxima fase; por agora, me diga se você quer um resumo do estratégico, trimestre ou mês.";
+      await insertConversationMessage(client, {
+        orgId,
+        areaId,
+        userId: profile.id,
+        conversationId: conversation.id,
+        author: "oracle",
+        text: reply,
+        channel: "whatsapp",
+      });
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+      return jsonResponse({ ok: true, intent: "document_question_pending_phase" });
+    }
+
     const answer = await buildAnswer(client, orgId, areaId, text, profile, membership, conversation);
 
     await insertConversationMessage(client, {
@@ -1586,7 +1689,7 @@ serve(async (req) => {
       channel: "whatsapp",
     });
 
-    await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, answer);
+    await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, answer);
     return jsonResponse({ ok: true });
   } catch (error) {
     if (dedupeClient && dedupeOrgId && dedupeEventKey) {

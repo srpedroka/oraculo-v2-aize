@@ -92,6 +92,10 @@ Quando a transcrição falhar, o sistema pode exibir um codigo tecnico seguro co
 
 Arquivos enviados pelo WhatsApp sao processados em memoria para extração de texto e classificação do plano correto. O arquivo bruto nao deve ser salvo no banco, versionado no repositorio nem enviado ao frontend. O historico pode guardar um resumo curto do arquivo e parte limitada do texto extraido para rastreabilidade da conversa; documentos sensiveis devem ser tratados como dados privados da empresa. Quando o documento for classificado como Plano Estrategico, o texto extraido gera uma proposta pendente em `planning_sessions`; a escrita real no banco continua exigindo confirmação explicita do usuario e validação server-side.
 
+Na Fase 4 da V3, o WhatsApp ganhou roteamento de intencao e atualizacoes rapidas de execucao. Esse e o unico fluxo em que o Oraculo pode gravar sem proposta formal, e somente para pequenas alteracoes operacionais: marcar acao como concluida, atualizar percentual de objetivo mensal, alterar status quando a intencao estiver clara ou registrar evidencia curta. Antes de escrever, `_shared/quick-updates.ts` valida membership, papel e escopo da area: owner pode atualizar a empresa; coordenador so atualiza objetivo/acao da propria area. Se houver ambiguidade de alvo ou falta de percentual/evidencia, o Oraculo deve perguntar antes de gravar.
+
+O classificador de intencao usa a funcao de IA `background`, mas a decisao de escrita nao confia apenas no texto do modelo. O servidor cruza a resposta da IA com candidatos reais do banco, calcula similaridade, valida permissao e aplica somente operacoes conhecidas. Criacao de plano, objetivo e acao continua exigindo `proposal` + confirmacao pela sessao de planejamento.
+
 Arquivos importados pela tela de Plano Estrategico sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Gerar proposta e carregar no módulo", o frontend envia somente o texto extraido/colado para `oracle-session` com `action = import_ready_plan`; a gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side. A opção "Só revisar texto" nao chama IA nem grava dados.
 
 ## RLS
@@ -146,6 +150,8 @@ O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-co
 Criacao de planos, objetivos e acoes nunca acontece apenas porque o modelo pediu. O modelo gera uma `proposal`; o usuario precisa confirmar; o servidor valida permissao; so entao o banco e alterado. Essa separacao evita que prompt injection ou erro de interpretacao grave dados sem confirmacao explicita.
 
 No fluxo de plano pronto, texto de arquivo deve ser tratado como conteudo nao confiavel. Ele pode orientar a proposta, mas nao pode substituir as regras do sistema, exigir exposicao de segredo ou pular a confirmacao.
+
+Atualizacoes rapidas por WhatsApp sao deliberadamente menores que uma proposta. Elas nao podem criar planejamento novo, trocar dono da empresa, alterar configuracao, salvar chave, convidar membro ou apagar dados. Se uma mensagem pedir algo fora desse escopo, o fluxo deve responder com orientacao ou iniciar sessao de planejamento, nao gravar direto.
 
 ## Arquivos que nao devem ser versionados
 

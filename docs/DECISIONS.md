@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-04 - WhatsApp operacional com intencao e atualizacoes rapidas
+
+Decisao: executar a Fase 4 da V3 criando uma camada de roteamento de intencao antes da resposta diaria do Oraculo, com suporte a iniciar sessoes de planejamento pelo WhatsApp/app e aplicar atualizacoes operacionais pequenas pelo WhatsApp.
+
+Contexto: depois da memoria por conversa e do contexto textual do plano, o Oraculo ainda respondia como chat. O usuario precisava operar o sistema no dia a dia: pedir para montar plano, avisar que uma acao foi concluida, atualizar progresso ou registrar evidencia sem navegar por telas.
+
+Alternativas: deixar tudo como conversa livre, exigir sempre uso do app, ou permitir que o modelo gravasse qualquer coisa diretamente.
+
+Motivo: classificar intencao antes da resposta deixa o WhatsApp virar canal operacional real sem perder seguranca. Criacao de plano continua passando por sessao e proposta confirmada. Atualizacoes rapidas ficam limitadas a alteracoes pequenas em objetivos/acoes existentes, com validacao server-side de alvo e permissao.
+
+Consequencias: `whatsapp-webhook` e `oracle-chat` agora dependem de `_shared/intent-router.ts`; o WhatsApp tambem usa `_shared/quick-updates.ts` e `_shared/whatsapp.ts` para formatacao e envio em blocos. A funcao `background` passa a ser critica para classificacao e deve ter modelo/chave configurados. Fechamento guiado e documentos padronizados continuam como respostas seguras ate as fases seguintes.
+
 ## 2026-07-04 - Memoria por conversa e contexto textual do plano
 
 Decisao: ligar a Fase 3 da V3 ao runtime, usando `conversations` como fio de historico por pessoa/canal e `_shared/plan-context.ts` como fonte textual do plano para a IA.

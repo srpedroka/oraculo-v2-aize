@@ -200,6 +200,69 @@ order by created_at desc;
 
 Se os dados existem mas a IA não cita ações, revisar `_shared/plan-context.ts`, o `areaId` enviado pelo canal e o foco usado: `monthly` para execução mensal, `quarterly` para trimestre e `org` para visão geral.
 
+## Problema: WhatsApp nao inicia plano ou nao aplica atualizacao rapida
+
+Fluxo esperado da Fase 4:
+
+1. `whatsapp-webhook` salva a mensagem em `chat_messages`.
+2. `_shared/intent-router.ts` usa a funcao de IA `background` para classificar a mensagem.
+3. Se a intencao for `start_planning`, o webhook chama `startPlanningSession` e responde no proprio WhatsApp.
+4. Se a intencao for `quick_update`, `_shared/quick-updates.ts` carrega objetivos/acoes do mes, identifica o alvo, valida permissao e grava a alteracao.
+5. Se houver duvida, o Oraculo pede esclarecimento em vez de gravar.
+
+Verifique se a classificacao esta rodando:
+
+```sql
+select metadata ->> 'action' as action, metadata ->> 'aiFunction' as ai_function,
+       channel, total_tokens, total_cost_usd, created_at
+from public.ai_usage_logs
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 30;
+```
+
+Procure `intent_classification` e, para atualizacao rapida, `quick_update_extract`. Se nao aparecerem, confira a configuracao da funcao `background`, chave do provedor e logs do `whatsapp-webhook`.
+
+Verifique se existe sessao de planejamento criada:
+
+```sql
+select type, period, phase, status, user_id, area_id, created_at
+from public.planning_sessions
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
+
+Verifique candidatos de execucao mensal:
+
+```sql
+select id, title, level, period, area_id, status, progress
+from public.objectives
+where org_id = '<ORG_ID>'
+order by created_at desc;
+```
+
+```sql
+select id, objective_id, description, status, owner, deadline
+from public.key_actions
+where org_id = '<ORG_ID>'
+order by created_at desc;
+```
+
+Se a pessoa responder apenas "1" depois de uma pergunta de ambiguidade:
+
+- para concluir, isso basta;
+- para progresso, ela deve responder com percentual, por exemplo `1 60%`;
+- para evidencia, ela deve responder com a evidencia, por exemplo `1 contrato assinado hoje`.
+
+Se o sistema pedir percentual ou evidencia depois da escolha, isso e comportamento seguro: ele encontrou o alvo, mas faltou dado para gravar.
+
+Limites atuais:
+
+- fechamento mensal/trimestral guiado ainda responde como pendencia de fase futura;
+- perguntas sobre documentos ainda nao geram documento padronizado automaticamente;
+- atualizacao rapida grava apenas status/progresso/evidencia em objetivo/acao existente, nao cria plano novo.
+
 ## Configurar funcoes de IA da V3
 
 1. Abra Configuracoes > IA do Oraculo.

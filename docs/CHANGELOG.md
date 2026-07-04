@@ -33,6 +33,12 @@
 - Adicionado `_shared/plan-context.ts`, que entrega contexto textual do plano para IA com objetivos, areas, trimestre vigente, mes vigente, acoes-chave, evidencias e pendencias.
 - Atualizados `oracle-chat`, `oracle-session` e `whatsapp-webhook` para usar historico da conversa correta e contexto textual, reduzindo contaminacao entre usuarios/canais.
 - Ajustado painel web do Oraculo para carregar mensagens web do usuario atual e deixar o servidor registrar a conversa principal com rastreabilidade.
+- Executada a Fase 4 da V3: adicionado roteador de intencao do Oraculo com `_shared/intent-router.ts`, usando a funcao `background` e fallback deterministico.
+- Atualizado `whatsapp-webhook` para iniciar sessoes de planejamento pelo WhatsApp quando a pessoa pedir plano estrategico, trimestral ou mensal.
+- Atualizado `oracle-chat` para reconhecer pedidos de planejamento no app e iniciar a sessao correspondente sem jogar a pessoa para outro canal.
+- Adicionadas atualizacoes rapidas por WhatsApp em `_shared/quick-updates.ts`, com registro de conclusao, progresso, status e evidencia curta em objetivos/acoes existentes, validando permissao antes de gravar.
+- Melhorada a formatacao de respostas do WhatsApp com negrito nativo, conversao de tabelas simples e divisao de respostas longas em ate tres blocos.
+- Documentado que fechamento guiado e documentos padronizados continuam como pendencia segura para fases seguintes, sem promessa de gravacao automatica.
 
 ## 2026-07-02
 
