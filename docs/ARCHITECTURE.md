@@ -81,9 +81,10 @@ Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations`
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
-- `oracle-chat`: usa a conversa web da pessoa, grava pergunta e resposta com `user_id`/`conversation_id`, monta contexto legivel do plano e responde com fallback deterministico ou modelo configurado. Na Fase 4 da V3, tambem classifica a intencao da mensagem para iniciar planejamento anual/trimestral/mensal pelo app ou avisar que fechamento guiado pertence a fase seguinte.
-- `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, persiste fase/estado/proposta pendente e grava planos apenas depois de confirmacao.
+- `oracle-chat`: usa a conversa web da pessoa, grava pergunta e resposta com `user_id`/`conversation_id`, monta contexto legivel do plano e responde com fallback deterministico ou modelo configurado. Tambem classifica a intencao da mensagem para iniciar planejamento anual/trimestral/mensal ou fechamento mensal/trimestral pelo app.
+- `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, persiste fase/estado/proposta pendente e grava planos ou fechamentos apenas depois de confirmacao.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
+- `month-turn`: funcao de virada de mes. Verifica areas com plano mensal encerrado sem check-in e envia convite por WhatsApp para owner/coordenador quando a integracao estiver ativa.
 - `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico usam o mesmo importador server-side do app e geram proposta pendente; documentos trimestrais, mensais e evidencias ainda recebem direcionamento sem gravacao automatica. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos.
 
 Funcoes compartilhadas:
@@ -100,7 +101,7 @@ Funcoes compartilhadas:
 - `_shared/quick-updates.ts`: identifica atualizacoes curtas do WhatsApp, escolhe objetivo/acao mensal, pede esclarecimento em caso de ambiguidade, valida permissao e grava status, progresso ou evidencia.
 - `_shared/prompt-guides.ts`: guias de comportamento, roteiro e tom do Oraculo empacotados junto das Edge Functions.
 - `_shared/conversations.ts`: cria/retoma conversa por pessoa e canal, grava mensagens com dono, carrega historico da conversa e resume historico longo com a funcao `background`.
-- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre vigente, mes vigente, acoes-chave, evidencias e pendencias.
+- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias e pendencias.
 - `_shared/session-engine.ts`: orquestra sessoes de planejamento, historico, prompts, estado e chamadas ao modelo.
 - `_shared/proposals.ts`: aplica propostas confirmadas no banco com validacao server-side de permissao.
 - `_shared/conductors/`: persona e condutores de Planejamento Estrategico, Plano Trimestral da Area e Plano Mensal.
@@ -146,10 +147,12 @@ Na Fase 4, a funcao `background` tambem virou o classificador operacional do Ora
 
 - `start_planning`: cria ou retoma uma `planning_session` para plano estrategico, trimestral ou mensal, no canal em que a pessoa esta falando;
 - `quick_update`: usa `_shared/quick-updates.ts` para gravar pequenas atualizacoes de execucao mensal, como conclusao de acao, percentual de objetivo ou evidencia curta;
-- `close_period`: responde de forma segura avisando que o fechamento guiado entra na fase seguinte;
+- `close_period`: inicia `month_close` ou `quarter_close` quando existe area em foco; sem area, pergunta qual departamento fechar;
 - `document_question`: direciona perguntas sobre documentos sem prometer geracao automatica ainda.
 
 Essa camada nao substitui proposta e confirmacao para criar planos. Ela so permite gravacao direta para atualizacoes operacionais pequenas, depois de identificar alvo, tipo de alteracao e permissao do usuario.
+
+Na Fase 5, `oracle-session` tambem conduz fechamentos. `month_close` revisa objetivos mensais, acoes, evidencias, aprendizados e pendencias; a proposta `month_close` atualiza objetivos/acoes, registra evidencias, cria `check_ins` e rola pendencias para o mes seguinte quando confirmado. `quarter_close` aplica a mesma logica aos objetivos trimestrais e pode atualizar o foco de aprendizado do proximo trimestre. Depois de gravar, a sessao permanece na ponte para oferecer abrir o proximo ciclo.
 
 ### WhatsApp
 

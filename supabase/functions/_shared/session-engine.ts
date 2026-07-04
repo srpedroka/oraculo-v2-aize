@@ -1,5 +1,6 @@
 import { resolveAiFunction } from "./ai-router.ts";
 import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
+import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
 import {
   conversationMessagesForModel,
@@ -11,11 +12,13 @@ import {
   maybeSummarize,
 } from "./conversations.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
+import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
 import { callModel } from "./model.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { applyProposal } from "./proposals.ts";
+import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
 
 type Client = any;
@@ -37,6 +40,16 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
     phases: MONTHLY_PHASES,
     prompt: MONTHLY_CONDUCTOR,
     opening: "Vamos montar um plano mensal enxuto e executável. Qual é o principal resultado que você quer enxergar, de forma concreta, até o fim deste mês na sua área?",
+  },
+  month_close: {
+    phases: MONTH_CLOSE_PHASES,
+    prompt: MONTH_CLOSE_CONDUCTOR,
+    opening: "Vamos fechar o mês antes de abrir o próximo. Vou olhar objetivos, ações, evidências e aprendizados; começamos pelo que estava planejado para este período.",
+  },
+  quarter_close: {
+    phases: QUARTER_CLOSE_PHASES,
+    prompt: QUARTER_CLOSE_CONDUCTOR,
+    opening: "Vamos fechar o trimestre subindo um andar: resultado dos objetivos, evidências, aprendizados e o que fica para o próximo ciclo.",
   },
 };
 
@@ -288,7 +301,15 @@ async function ensureSessionConversation(client: Client, session: any, channel: 
 
 export async function startPlanningSession(
   client: Client,
-  params: { orgId: string; areaId: string | null; type: PlanningSessionType; period: string; userId: string; channel?: "web" | "whatsapp" },
+  params: {
+    orgId: string;
+    areaId: string | null;
+    type: PlanningSessionType;
+    period: string;
+    userId: string;
+    channel?: "web" | "whatsapp";
+    suppressOpeningMessage?: boolean;
+  },
 ) {
   const conductor = CONDUCTORS[params.type];
   if (!conductor) throw new Error("Tipo de sessão ainda não disponível nesta fase");
@@ -330,8 +351,45 @@ export async function startPlanningSession(
     .single();
   if (error) throw error;
 
-  await insertMessage(client, session, "oracle", conductor.opening, params.channel ?? "web");
+  if (!params.suppressOpeningMessage) {
+    await insertMessage(client, session, "oracle", conductor.opening, params.channel ?? "web");
+  }
   return { session, reply: conductor.opening };
+}
+
+async function createFollowUpSessionAfterClose(
+  client: Client,
+  session: any,
+  state: Record<string, unknown>,
+  channel: "web" | "whatsapp",
+) {
+  if (session.type === "month_close" && state.abrir_planejamento_mensal === true) {
+    const period = nextMonthPeriod(String(state.mes_fechado ?? session.period));
+    return await startPlanningSession(client, {
+      orgId: session.org_id,
+      areaId: session.area_id,
+      type: "monthly",
+      period,
+      userId: session.user_id,
+      channel,
+      suppressOpeningMessage: true,
+    });
+  }
+
+  if (session.type === "quarter_close" && state.abrir_planejamento_trimestral === true) {
+    const period = nextQuarterPeriod(String(state.trimestre_fechado ?? session.period));
+    return await startPlanningSession(client, {
+      orgId: session.org_id,
+      areaId: session.area_id,
+      type: "quarterly",
+      period,
+      userId: session.user_id,
+      channel,
+      suppressOpeningMessage: true,
+    });
+  }
+
+  return null;
 }
 
 export async function processPlanningMessage(
@@ -353,7 +411,11 @@ export async function processPlanningMessage(
   const conversation = await maybeSummarize(client, ensured.session.org_id, ensured.conversation);
   const [history, context] = await Promise.all([
     loadConversationHistory(client, ensured.session.conversation_id),
-    buildPlanContext(client, ensured.session.org_id, { areaId: ensured.session.area_id, focus: planFocusForSession(ensured.session.type) }),
+    buildPlanContext(client, ensured.session.org_id, {
+      areaId: ensured.session.area_id,
+      focus: planFocusForSession(ensured.session.type),
+      period: ensured.session.period,
+    }),
   ]);
   const conversationMemory = formatConversationMemory(history);
 
@@ -394,6 +456,7 @@ export async function processPlanningMessage(
   const nextPhase = validNextPhase(session.type, parsed?.next_phase) ?? session.phase;
   const pendingProposal = parsed?.proposal ?? null;
   const nextState = shallowMergeState(session.state ?? {}, statePatch);
+  const completed = parsed?.done === true && !pendingProposal;
 
   const { data: updated, error: updateError } = await client
     .from("planning_sessions")
@@ -401,16 +464,21 @@ export async function processPlanningMessage(
       phase: nextPhase,
       state: nextState,
       pending_proposal: pendingProposal,
-      status: parsed?.done === true ? "completed" : "active",
-      completed_at: parsed?.done === true ? new Date().toISOString() : null,
+      status: completed ? "completed" : "active",
+      completed_at: completed ? new Date().toISOString() : null,
     })
     .eq("id", ensured.session.id)
     .select("*")
     .single();
   if (updateError) throw updateError;
 
-  await insertMessage(client, updated, "oracle", reply, params.channel ?? "web");
-  return { session: updated, reply, pendingProposal };
+  const followUp = completed ? await createFollowUpSessionAfterClose(client, updated, nextState, channel) : null;
+  const finalReply = followUp
+    ? `${reply}\n\nAbri o próximo ciclo para você.\n\n${followUp.reply}`
+    : reply;
+
+  await insertMessage(client, followUp?.session ?? updated, "oracle", finalReply, params.channel ?? "web");
+  return { session: followUp?.session ?? updated, reply: finalReply, pendingProposal };
 }
 
 export async function prepareReadyStrategicPlanProposal(
@@ -552,13 +620,18 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   }
 
   const summary = await applyProposal(client, ensured.session, ensured.session.pending_proposal, params.userId);
-  const reply = `${summary} O plano já está salvo no sistema.`;
+  const isCloseSession = ensured.session.type === "month_close" || ensured.session.type === "quarter_close";
+  const nextPhase = ensured.session.type === "month_close" ? "ponte" : ensured.session.type === "quarter_close" ? "balanco" : ensured.session.phase;
+  const reply = isCloseSession
+    ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?`
+    : `${summary} O plano já está salvo no sistema.`;
   const { data: updated, error: updateError } = await client
     .from("planning_sessions")
     .update({
       pending_proposal: null,
-      status: "completed",
-      completed_at: new Date().toISOString(),
+      phase: nextPhase,
+      status: isCloseSession ? "active" : "completed",
+      completed_at: isCloseSession ? null : new Date().toISOString(),
     })
     .eq("id", ensured.session.id)
     .select("*")

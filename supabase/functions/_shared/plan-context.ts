@@ -63,6 +63,7 @@ function typeLabel(type: unknown) {
 
 function objectiveLine(objective: any) {
   const details = [
+    objective.id ? `id: ${objective.id}` : "",
     `${levelLabel(objective.level)}`,
     `${typeLabel(objective.type)}`,
     objective.period ? `período: ${objective.period}` : "",
@@ -80,7 +81,7 @@ function objectiveLine(objective: any) {
 }
 
 function keyActionLine(action: any) {
-  return `    - [${statusLabel(action.status)}] ${text(action.description)} (dono: ${text(action.owner)}; prazo: ${text(action.deadline)}; critério: ${text(action.completion_criterion)})`;
+  return `    - [${statusLabel(action.status)}] ${text(action.description)} (id: ${text(action.id)}; dono: ${text(action.owner)}; prazo: ${text(action.deadline)}; critério: ${text(action.completion_criterion)})`;
 }
 
 function dateLabel(value: unknown) {
@@ -106,10 +107,16 @@ function objectiveCounts(objectives: any[], areaId: string) {
 export async function buildPlanContext(
   client: Client,
   orgId: string,
-  options: { areaId?: string | null; focus?: PlanContextFocus } = {},
+  options: { areaId?: string | null; focus?: PlanContextFocus; period?: string | null } = {},
 ) {
   const focus = options.focus ?? (options.areaId ? "area" : "org");
   const periods = currentPeriods();
+  const periodInFocus = String(options.period ?? "").trim();
+  const quarterLabels = periodInFocus && /^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus)
+    ? [periodInFocus.replace(/^Q/i, "T"), periodInFocus.replace(/^T/i, "Q")]
+    : periods.quarterLabels;
+  const quarterDisplay = quarterLabels[0] ?? periods.quarterDisplay;
+  const monthDisplay = periodInFocus && !/^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus) ? periodInFocus : periods.month;
   const [
     { data: organization },
     { data: areas },
@@ -184,10 +191,10 @@ export async function buildPlanContext(
   const areaPlan = (areaPlans ?? []).find((plan: any) => plan.area_id === area.id) ?? null;
   const annualObjectives = scopedObjectives.filter((objective: any) => objective.level === "area_annual");
   const quarterlyObjectives = scopedObjectives.filter((objective: any) =>
-    objective.level === "quarterly" && periodMatches(objective.period, periods.quarterLabels)
+    objective.level === "quarterly" && periodMatches(objective.period, quarterLabels)
   );
   const monthlyObjectives = scopedObjectives.filter((objective: any) =>
-    objective.level === "monthly" && periodMatches(objective.period, [periods.month])
+    objective.level === "monthly" && periodMatches(objective.period, [monthDisplay])
   );
   const relevantObjectiveIds = new Set([
     ...scopedObjectives.map((objective: any) => objective.id),
@@ -217,7 +224,7 @@ export async function buildPlanContext(
   }
 
   if (focus === "quarterly" || focus === "monthly" || focus === "area") {
-    lines.push(`  TRIMESTRE VIGENTE (${periods.quarterDisplay}):`);
+    lines.push(`  TRIMESTRE EM FOCO (${quarterDisplay}):`);
     if (quarterlyObjectives.length) {
       lines.push(...quarterlyObjectives.map(objectiveLine));
     } else {
@@ -226,7 +233,7 @@ export async function buildPlanContext(
   }
 
   if (focus === "monthly") {
-    lines.push(`  MÊS VIGENTE (${periods.month}):`);
+    lines.push(`  MÊS EM FOCO (${monthDisplay}):`);
     if (monthlyObjectives.length) {
       for (const objective of monthlyObjectives) {
         lines.push(objectiveLine(objective));

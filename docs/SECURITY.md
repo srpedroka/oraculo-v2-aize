@@ -28,6 +28,7 @@ Secrets das Edge Functions:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `MONTH_TURN_SECRET` para proteger chamadas agendadas da funcao `month-turn`, quando configurado.
 
 Segredos operacionais salvos pelo app:
 
@@ -95,6 +96,8 @@ Arquivos enviados pelo WhatsApp sao processados em memoria para extração de te
 Na Fase 4 da V3, o WhatsApp ganhou roteamento de intencao e atualizacoes rapidas de execucao. Esse e o unico fluxo em que o Oraculo pode gravar sem proposta formal, e somente para pequenas alteracoes operacionais: marcar acao como concluida, atualizar percentual de objetivo mensal, alterar status quando a intencao estiver clara ou registrar evidencia curta. Antes de escrever, `_shared/quick-updates.ts` valida membership, papel e escopo da area: owner pode atualizar a empresa; coordenador so atualiza objetivo/acao da propria area. Se houver ambiguidade de alvo ou falta de percentual/evidencia, o Oraculo deve perguntar antes de gravar.
 
 O classificador de intencao usa a funcao de IA `background`, mas a decisao de escrita nao confia apenas no texto do modelo. O servidor cruza a resposta da IA com candidatos reais do banco, calcula similaridade, valida permissao e aplica somente operacoes conhecidas. Criacao de plano, objetivo e acao continua exigindo `proposal` + confirmacao pela sessao de planejamento.
+
+Na Fase 5, fechamentos de mes e trimestre tambem seguem `proposal` + confirmacao. O modelo monta `month_close` ou `quarter_close`, mas a escrita so acontece em `proposals.ts` depois de validar membership, area e permissao. A gravacao permitida e limitada a atualizar status/progresso, registrar evidencias, criar check-in, rolar pendencias para o proximo periodo e atualizar foco de aprendizado do trimestre.
 
 Arquivos importados pela tela de Plano Estrategico sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Gerar proposta e carregar no módulo", o frontend envia somente o texto extraido/colado para `oracle-session` com `action = import_ready_plan`; a gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side. A opção "Só revisar texto" nao chama IA nem grava dados.
 

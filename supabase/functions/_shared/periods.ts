@@ -48,6 +48,34 @@ export function currentMonthPeriod(date = new Date()) {
   return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+export function previousMonthPeriod(date = new Date()) {
+  const previous = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  return `${MONTHS[previous.getMonth()]} ${previous.getFullYear()}`;
+}
+
+export function nextMonthPeriod(period: string) {
+  const month = monthFromText(period);
+  const year = yearFromText(period);
+  if (month === null) return currentMonthPeriod();
+  const next = new Date(year, month + 1, 1);
+  return `${MONTHS[next.getMonth()]} ${next.getFullYear()}`;
+}
+
+export function previousQuarterPeriod(date = new Date()) {
+  const currentQuarter = Math.floor(date.getMonth() / 3) + 1;
+  const year = currentQuarter === 1 ? date.getFullYear() - 1 : date.getFullYear();
+  const quarter = currentQuarter === 1 ? 4 : currentQuarter - 1;
+  return `T${quarter} ${year}`;
+}
+
+export function nextQuarterPeriod(period: string) {
+  const quarter = quarterFromText(period) ?? Math.floor(new Date().getMonth() / 3) + 1;
+  const year = yearFromText(period);
+  const nextQuarter = quarter === 4 ? 1 : quarter + 1;
+  const nextYear = quarter === 4 ? year + 1 : year;
+  return `T${nextQuarter} ${nextYear}`;
+}
+
 export function inferPlanningType(text: string): "strategic" | "quarterly" | "monthly" | null {
   const normalized = normalizeTextForRouting(text);
   if (/\b(estrateg|anual|ano|planejamento da empresa|plano da empresa)\b/.test(normalized)) return "strategic";
@@ -91,4 +119,17 @@ export function periodForPlanning(type: "strategic" | "quarterly" | "monthly", h
 
   const month = monthFromText(text) ?? new Date().getMonth();
   return `${MONTHS[month]} ${year}`;
+}
+
+export function periodForClose(type: "quarterly" | "monthly" | null | undefined, hint: string | null | undefined, sourceText = "") {
+  const text = [hint, sourceText].filter(Boolean).join(" ");
+  const year = yearFromText(text);
+
+  if (type === "quarterly") {
+    const quarter = quarterFromText(text);
+    return quarter ? `T${quarter} ${year}` : previousQuarterPeriod();
+  }
+
+  const month = monthFromText(text);
+  return month === null ? previousMonthPeriod() : `${MONTHS[month]} ${year}`;
 }

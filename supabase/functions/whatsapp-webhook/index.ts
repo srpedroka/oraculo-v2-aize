@@ -16,7 +16,7 @@ import { callModel } from "../_shared/model.ts";
 import { buildPlanContext } from "../_shared/plan-context.ts";
 import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
-import { periodForPlanning } from "../_shared/periods.ts";
+import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { handleQuickUpdate } from "../_shared/quick-updates.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
@@ -1990,18 +1990,34 @@ serve(async (req) => {
     }
 
     if (intent.intent === "close_period") {
-      const reply = "O fechamento guiado entra na próxima fase do Oráculo. Por enquanto, posso fazer uma revisão estruturada do mês ou do trimestre e apontar pendências. Quer que eu revise agora?";
-      await insertConversationMessage(client, {
+      const closeType = intent.planning_type === "quarterly" ? "quarter_close" : "month_close";
+      if (!areaId) {
+        const reply = closeType === "quarter_close"
+          ? "Claro. De qual departamento você quer fechar o trimestre?"
+          : "Claro. De qual departamento você quer fechar o mês?";
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "close_period_missing_area" });
+      }
+      const sessionResult = await startPlanningSession(client, {
         orgId,
         areaId,
+        type: closeType,
+        period: periodForClose(closeType === "quarter_close" ? "quarterly" : "monthly", intent.period_hint, text),
         userId: profile.id,
-        conversationId: conversation.id,
-        author: "oracle",
-        text: reply,
         channel: "whatsapp",
       });
+      const reply = `Vou conduzir o fechamento por aqui mesmo.\n\n${sessionResult.reply}`;
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
-      return jsonResponse({ ok: true, intent: "close_period_pending_phase" });
+      return jsonResponse({ ok: true, intent: "close_period", sessionId: sessionResult.session.id });
     }
 
     if (intent.intent === "document_question") {

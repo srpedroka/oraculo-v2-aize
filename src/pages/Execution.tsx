@@ -3,12 +3,14 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { formatDate } from "../lib/format";
+import { previousMonthPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
 
 export function Execution() {
   const { state, dispatch } = useAppState();
   const projects = state.strategicPlan?.projects ?? [];
   const rituals = state.strategicPlan?.rituals ?? [];
+  const closePeriod = previousMonthPeriod();
 
   return (
     <div className="space-y-6">
@@ -78,24 +80,24 @@ export function Execution() {
         <div className="mt-5 grid gap-3 xl:grid-cols-2">
           {state.areas.length ? (
             state.areas.map((area) => {
-              const monthlyObjectives = state.objectives.filter((objective) => objective.areaId === area.id && objective.level === "monthly");
-              const lastCheckIn = state.checkIns.find((checkIn) => checkIn.areaId === area.id);
+              const monthlyObjectives = state.objectives.filter((objective) => objective.areaId === area.id && objective.level === "monthly" && objective.period === closePeriod);
+              const lastCheckIn = state.checkIns.find((checkIn) => checkIn.areaId === area.id && checkIn.period === closePeriod);
               return (
                 <div key={area.id} className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-text">{area.name}</p>
                       <p className="text-xs text-text-secondary">
-                        {monthlyObjectives.length} objetivo mensal · Coordenador: {area.coordinator}
+                        {monthlyObjectives.length} objetivo mensal em {closePeriod} · Coordenador: {area.coordinator}
                       </p>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
                       icon={RefreshCcw}
-                      onClick={() => dispatch({ type: "run_monthly_check_in", areaId: area.id, period: "Set 2026" })}
+                      onClick={() => dispatch({ type: "start_session", sessionType: "month_close", areaId: area.id, period: closePeriod })}
                     >
-                      Rodar check-in
+                      Fechar mês
                     </Button>
                   </div>
                   {lastCheckIn ? (

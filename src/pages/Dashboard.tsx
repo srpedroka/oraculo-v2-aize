@@ -1,5 +1,5 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { Pencil, Plus, Sprout, Trophy, TrendingUp } from "lucide-react";
+import { CalendarCheck, Pencil, Plus, Sprout, Trophy, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Card } from "../components/ui/Card";
 import { ProgressBar } from "../components/ui/ProgressBar";
@@ -7,6 +7,7 @@ import { StatusBadge } from "../components/ui/StatusBadge";
 import { Button } from "../components/ui/Button";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveEditDialog } from "../features/objective/ObjectiveEditDialog";
+import { previousMonthPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
 import type { Objective } from "../types";
 
@@ -21,9 +22,10 @@ function canEditObjective(objective: Objective | undefined, state: ReturnType<ty
 }
 
 export function Dashboard() {
-  const { state } = useAppState();
+  const { state, dispatch } = useAppState();
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const closePeriod = previousMonthPeriod();
   const revenue =
     state.objectives.find((objective) => objective.id === "e1") ??
     state.objectives.find((objective) => objective.metric?.toLowerCase().includes("faturamento")) ??
@@ -47,6 +49,11 @@ export function Dashboard() {
       ].filter((item) => item.value > 0)
     : [{ name: "Sem dados", value: 1, color: "#ECECEF" }];
   const canCreateStrategicObjective = state.currentMembership?.role === "owner";
+  const pendingCloseAreas = state.areas.filter((area) => {
+    const hasMonthlyPlan = state.objectives.some((objective) => objective.areaId === area.id && objective.level === "monthly" && objective.period === closePeriod);
+    const hasCheckIn = state.checkIns.some((checkIn) => checkIn.areaId === area.id && checkIn.period === closePeriod);
+    return hasMonthlyPlan && !hasCheckIn;
+  });
 
   return (
     <div className="mx-auto max-w-[820px] space-y-7">
@@ -64,6 +71,35 @@ export function Dashboard() {
           <p className="mt-2 text-sm leading-6 text-text-secondary">
             Crie o Plano Estratégico e as áreas para o Oráculo mostrar Resultado e Evolução ao vivo.
           </p>
+        </Card>
+      ) : null}
+
+      {pendingCloseAreas.length ? (
+        <Card className="border-[#D6D2CA] bg-[#FBFAF7]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-[560px]">
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="h-5 w-5 text-[#7A6A45]" />
+                <p className="text-base font-semibold text-text">Fechamento pendente · {closePeriod}</p>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">
+                Existe plano mensal encerrado sem fechamento. O Oráculo conduz status final, evidência, aprendizado e decisão das pendências.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {pendingCloseAreas.slice(0, 3).map((area) => (
+                <Button
+                  key={area.id}
+                  variant="ghost"
+                  size="sm"
+                  icon={CalendarCheck}
+                  onClick={() => dispatch({ type: "start_session", sessionType: "month_close", areaId: area.id, period: closePeriod })}
+                >
+                  Fechar {area.name}
+                </Button>
+              ))}
+            </div>
+          </div>
         </Card>
       ) : null}
 

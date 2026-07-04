@@ -13,7 +13,7 @@ import {
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
 import { callModel } from "../_shared/model.ts";
 import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context.ts";
-import { periodForPlanning } from "../_shared/periods.ts";
+import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { CONVERSATION_STYLE, guideForContext } from "../_shared/prompt-guides.ts";
 import { startPlanningSession } from "../_shared/session-engine.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
@@ -105,17 +105,31 @@ serve(async (req) => {
     }
 
     if (intent.intent === "close_period") {
-      const answer = "O fechamento guiado entra na próxima fase do Oráculo. Por enquanto, posso fazer uma revisão estruturada do mês ou trimestre e apontar pendências. Quer que eu revise agora?";
-      await insertConversationMessage(client, {
+      const closeType = intent.planning_type === "quarterly" ? "quarter_close" : "month_close";
+      if (!resolvedAreaId) {
+        const answer = closeType === "quarter_close"
+          ? "Claro. De qual departamento você quer fechar o trimestre?"
+          : "Claro. De qual departamento você quer fechar o mês?";
+        await insertConversationMessage(client, {
+          orgId,
+          areaId: resolvedAreaId,
+          userId: user.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: answer,
+          channel: "web",
+        });
+        return jsonResponse({ answer, conversationId: conversation.id });
+      }
+      const sessionResult = await startPlanningSession(client, {
         orgId,
         areaId: resolvedAreaId,
+        type: closeType,
+        period: periodForClose(closeType === "quarter_close" ? "quarterly" : "monthly", intent.period_hint, String(message)),
         userId: user.id,
-        conversationId: conversation.id,
-        author: "oracle",
-        text: answer,
         channel: "web",
       });
-      return jsonResponse({ answer, conversationId: conversation.id });
+      return jsonResponse({ answer: sessionResult.reply, conversationId: conversation.id, session: sessionResult.session });
     }
 
     const aiRoute = await resolveAiFunction(client, orgId, "daily");

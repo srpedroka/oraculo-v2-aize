@@ -127,11 +127,12 @@ Secrets esperados no Supabase:
 SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
+MONTH_TURN_SECRET
 ```
 
 Esses valores ficam no painel/CLI do Supabase, nao no repositorio.
 
-Por que assim: Edge Functions rodam no servidor e podem usar service role com seguranca. O navegador nao pode receber service role.
+Por que assim: Edge Functions rodam no servidor e podem usar service role com seguranca. O navegador nao pode receber service role. `MONTH_TURN_SECRET` protege a chamada agendada da virada de mes quando a funcao `month-turn` for exposta sem JWT.
 
 `oracle-session` usa esses mesmos secrets server-side para conduzir planejamento e aplicar propostas confirmadas. Ela nao cria novo segredo; apenas grava estado em `planning_sessions` e dados confirmados nas tabelas de plano.
 

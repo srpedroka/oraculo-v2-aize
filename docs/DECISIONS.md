@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-04 - Fechamentos de mes e trimestre por sessao
+
+Decisao: executar a Fase 5 da V3 com condutores `month_close` e `quarter_close` no mesmo motor `oracle-session`, mantendo proposta pendente e confirmacao antes de gravar.
+
+Contexto: o Oraculo ja conduzia planejamento e atualizacoes rapidas, mas a virada de mes ainda era um check-in simples ou uma resposta dizendo que fechamento guiado ficaria para depois. O usuario precisa fechar ciclos com status final, evidencias, aprendizados e destino de pendencias.
+
+Alternativas: manter o check-in simples, gravar fechamentos direto pela conversa, ou criar uma tela separada sem IA.
+
+Motivo: usar `planning_sessions` preserva estado, memoria e confirmacao. `proposals.ts` continua sendo a fronteira segura: o modelo monta `month_close`/`quarter_close`, mas o servidor valida permissao e aplica apenas operacoes conhecidas.
+
+Consequencias: novos condutores ficam em `_shared/conductors/month-close.ts` e `_shared/conductors/quarter-close.ts`; `plan-context` passa a incluir periodo em foco e IDs de objetivos/acoes; `oracle-chat` e `whatsapp-webhook` abrem fechamento real em `close_period`; `month-turn` envia convites de virada por WhatsApp quando agendada.
+
 ## 2026-07-04 - Escopo de conversa do WhatsApp
 
 Decisao: limitar o WhatsApp do Oraculo a temas de negocio, gestao, administracao, estrategia, planejamento, objetivos, areas, execucao e funcionamento do proprio Oraculo.

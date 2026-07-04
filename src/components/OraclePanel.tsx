@@ -39,6 +39,13 @@ const PHASE_LABEL: Record<string, string> = {
   objetivos_do_mes: "Objetivos do mês",
   acoes_chave: "Ações-chave",
   realismo: "Realismo",
+  revisao: "Revisão",
+  pendencias: "Pendências",
+  resumo: "Resumo",
+  ponte: "Ponte",
+  revisao_trimestre: "Revisão do trimestre",
+  aprendizado_do_time: "Aprendizado do time",
+  balanco: "Balanço",
 };
 
 function proposalTitle(proposal: Record<string, unknown> | null) {
@@ -47,6 +54,8 @@ function proposalTitle(proposal: Record<string, unknown> | null) {
   if (type === "save_strategic_plan") return "Plano Estratégico";
   if (type === "save_quarterly_plan") return "Plano Trimestral";
   if (type === "save_monthly_plan") return "Plano Mensal";
+  if (type === "month_close") return "Fechamento do Mês";
+  if (type === "quarter_close") return "Fechamento do Trimestre";
   return "Proposta";
 }
 

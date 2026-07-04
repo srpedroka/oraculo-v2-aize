@@ -259,9 +259,70 @@ Se o sistema pedir percentual ou evidencia depois da escolha, isso e comportamen
 
 Limites atuais:
 
-- fechamento mensal/trimestral guiado ainda responde como pendencia de fase futura;
 - perguntas sobre documentos ainda nao geram documento padronizado automaticamente;
 - atualizacao rapida grava apenas status/progresso/evidencia em objetivo/acao existente, nao cria plano novo.
+
+## Problema: fechamento de mes ou trimestre nao inicia/grava
+
+Fluxo esperado da Fase 5:
+
+1. Pelo WhatsApp ou app, a pessoa pede "fechar o mes" ou "fechar o trimestre".
+2. Se nao houver departamento em foco, o Oraculo pergunta qual departamento fechar.
+3. `oracle-session` cria uma sessao `month_close` ou `quarter_close` com o periodo encerrado.
+4. A IA conduz revisao, evidencias, aprendizados e decisoes de pendencia.
+5. No resumo, a sessao cria `pending_proposal` do tipo `month_close` ou `quarter_close`.
+6. Ao confirmar, `proposals.ts` valida permissao e grava objetivos/acoes/evidencias/check-in.
+7. Depois de gravar, o Oraculo oferece abrir o proximo ciclo.
+
+Verifique:
+
+```sql
+select type, period, phase, pending_proposal is not null as has_proposal, status, created_at
+from public.planning_sessions
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
+
+```sql
+select period, area_id, summary, created_at
+from public.check_ins
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
+
+Se nao grava, confira se a proposta tem IDs reais de objetivos/acoes. O contexto enviado por `_shared/plan-context.ts` precisa incluir IDs. Se o owner pedir fechamento sem area, use o cartao do Dashboard/Execucao ou informe o departamento.
+
+## Problema: convite de virada de mes nao chega
+
+Fluxo esperado:
+
+1. A funcao `month-turn` roda no dia 1.
+2. Ela busca o mes encerrado e areas com objetivos mensais sem check-in.
+3. Se WhatsApp estiver ativo, envia convite para owners e coordenador da area.
+4. Sem WhatsApp configurado, o Dashboard continua exibindo o cartao de fechamento pendente porque nao existe check-in daquele periodo.
+
+Configurar agendamento no Supabase Cron, usando um segredo salvo em `MONTH_TURN_SECRET`:
+
+```sql
+select cron.schedule(
+  'oraculo-month-turn',
+  '0 11 1 * *',
+  $$
+  select net.http_post(
+    url := 'https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/month-turn',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-oraculo-cron-secret', '<MONTH_TURN_SECRET>'
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+Nao registrar o valor real do segredo no Git, docs ou chat.
 
 ## Problema: WhatsApp responde ou nao responde assuntos fora do Oraculo
 
@@ -620,6 +681,7 @@ supabase functions deploy invite-member
 supabase functions deploy save-ai-settings
 supabase functions deploy oracle-chat
 supabase functions deploy monthly-check-in
+supabase functions deploy month-turn --no-verify-jwt
 supabase functions deploy save-whatsapp-settings
 supabase functions deploy whatsapp-webhook --no-verify-jwt
 ```
