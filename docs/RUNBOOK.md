@@ -202,10 +202,13 @@ Fluxo esperado pela tela Plano Estrategico:
 2. Mesmo sem plano cadastrado, a tela mostra "Importar plano pronto".
 3. Usuario cola texto ou importa PDF, PPTX, DOCX ou TXT.
 4. O navegador extrai texto e preenche o campo "Plano existente".
-5. Usuario clica em "Preparar proposta com o Oraculo".
-6. O frontend chama `oracle-session` com `action = start` e depois `action = message`, usando o texto do plano como primeira mensagem da sessao estrategica.
-7. O Oraculo revisa lacunas, conduz o que faltar e, quando estiver pronto, mostra o cartao "Pronto para gravar".
-8. Somente "Confirmar e gravar" aplica a proposta no banco.
+5. Usuario escolhe uma das duas rotas:
+   - "Só revisar texto": revisa lacunas no navegador, sem gravar e sem chamar IA.
+   - "Gerar proposta e carregar no módulo": envia o texto para o Oraculo estruturar.
+6. O frontend chama `oracle-session` com `action = import_ready_plan`, enviando `orgId`, `period`, `planText`, `fileName` e `channel = web`.
+7. A Edge Function usa a funcao de IA `planning`, monta uma proposta `save_strategic_plan` e salva em `public.planning_sessions.pending_proposal`.
+8. O painel lateral mostra o cartao "Pronto para gravar".
+9. Somente "Confirmar e gravar" aplica a proposta no banco. "Descartar" abandona a sessao sem gravar; "Ajustar" deixa a pessoa pedir mudanças por conversa.
 
 Verifique:
 
@@ -213,8 +216,9 @@ Verifique:
 - se o texto aparece no campo antes de enviar ao Oraculo;
 - se existe uma sessao ativa em `public.planning_sessions` com `type = 'strategic'`;
 - se `public.chat_messages` recebeu a mensagem grande do usuario com `conversation_id`;
-- se `public.ai_usage_logs.metadata.aiFunction = 'planning'` apareceu depois do envio;
+- se `public.ai_usage_logs.metadata.aiFunction = 'planning'` e `metadata.action = 'ready_plan_import'` apareceram depois do envio;
 - se `pending_proposal` fica preenchido antes de confirmar.
+- se um teste gerou proposta ficticia, use "Descartar" no cartao antes de encerrar.
 
 Consulta util:
 
@@ -229,8 +233,9 @@ limit 10;
 Limites atuais:
 
 - arquivo escaneado ou imagem dentro de PDF pode nao ter texto extraivel;
-- textos muito longos sao cortados pelo frontend antes de entrar na sessao para proteger o contexto da IA;
+- textos muito longos sao cortados pelo frontend e pela Edge Function antes de entrar no modelo para proteger o contexto da IA;
 - o fluxo importa Plano Estrategico. Trimestral e Mensal por arquivo entram nas fases futuras de documentos/WhatsApp.
+- plano pronto aprovado deve ser preservado. O Oraculo pode estruturar trechos implicitos como objetivos, mas nao deve inventar KPI, meta, prazo, responsavel, diagnostico ou projeto que o documento nao trouxe.
 
 ## Problema: WhatsApp recebeu mensagem mas nao respondeu
 
@@ -302,12 +307,14 @@ Fluxo esperado:
 3. Se o arquivo vier como mídia criptografada do WhatsApp, o webhook descriptografa em memoria com `mediaKey` e info `WhatsApp Document Keys`.
 4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel.
 5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown`.
-6. O Oraculo responde no WhatsApp dizendo para qual tela/plano o arquivo pertence e faz uma pergunta de confirmação.
+6. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com resumo da proposta. A pessoa confirma respondendo `confirmar`.
+7. Se for `quarterly`, `monthly`, `evidence` ou `unknown`, o Oraculo ainda responde no WhatsApp dizendo para qual tela/plano o arquivo pertence e faz uma pergunta de confirmação/direcionamento.
 
 Limite atual:
 
-- O WhatsApp ainda nao sobrescreve nem cria planos estruturados automaticamente a partir do arquivo.
-- A importacao automática com salvamento estruturado deve ser feita em uma etapa posterior, com confirmação explícita do usuario e validação dos campos do plano.
+- O WhatsApp cria proposta estruturada apenas para Plano Estrategico.
+- Planos trimestrais, mensais e evidencias por arquivo ainda nao criam dados estruturados automaticamente.
+- Nenhum arquivo grava plano sem confirmação explícita do usuario e validação server-side.
 - PDF escaneado ou PDF muito comprimido pode nao ter texto extraível; nesse caso, orientar a enviar uma versao com texto selecionavel ou importar pela tela do Plano Estratégico.
 
 Verifique:
@@ -315,6 +322,8 @@ Verifique:
 - se a mensagem aparece em `chat_messages` como `[Arquivo recebido]`;
 - se a resposta informa `Plano Estratégico`, `Planos Trimestrais`, `Plano Mensal` ou `Evidência`;
 - se existe registro em `ai_usage_logs` com `metadata.action = document_classification`;
+- para Plano Estratégico, se existe registro em `ai_usage_logs` com `metadata.action = ready_plan_import`;
+- para Plano Estratégico, se `public.planning_sessions.pending_proposal` foi preenchido;
 - se o arquivo tem extensao e MIME compatíveis: PDF, PPTX, DOCX ou TXT;
 - se a rota `/message/downloadimage` da Evo continua baixando documentos.
 

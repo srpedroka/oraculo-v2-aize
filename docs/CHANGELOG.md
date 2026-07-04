@@ -13,7 +13,15 @@
 - Executada a Fase 2 da V3: criada a Edge Function `oracle-session`, com motor de sessao, estado persistido, condutores Estrategico/Trimestral/Mensal, envelope JSON e proposta pendente com confirmacao.
 - Conectado o painel do Oraculo a sessoes ativas com fase, progresso e cartao "Pronto para gravar".
 - Adicionados botoes "Planejar com o Oraculo" em Plano Estrategico e nas abas Trimestral/Mensal da Area.
-- Liberada importacao de Plano Estrategico pronto mesmo com base zerada; PDF/PPTX/DOCX/TXT ou texto colado entram como mensagem inicial de uma sessao estrategica, mantendo proposta e confirmacao antes de gravar.
+- Liberada importacao de Plano Estrategico pronto mesmo com base zerada; PDF/PPTX/DOCX/TXT ou texto colado entram em uma acao dedicada de importacao estrategica, mantendo proposta e confirmacao antes de gravar.
+- Corrigida a importacao de Plano Estrategico pronto para gerar proposta estruturada real (`save_strategic_plan`) pelo app, em vez de apenas revisar texto ou mandar o usuario para WhatsApp.
+- Separadas as acoes "Só revisar texto" e "Gerar proposta e carregar no módulo", com suporte a arrastar/soltar arquivo na area de importacao.
+- Ajustado WhatsApp para transformar documento classificado como Plano Estrategico em proposta pendente e permitir gravacao respondendo "confirmar".
+- Blindada a busca de conversa/sessao ativa para usar a mais recente quando houver historico duplicado, evitando erro na importacao de plano pronto.
+- Ajustado o painel do Oraculo para priorizar sessoes com proposta pendente, evitando que uma sessao antiga esconda o cartao "Pronto para gravar".
+- Recalibrado o prompt de plano pronto para preservar o documento aprovado e deixar lacunas vazias, sem inventar KPI, meta, prazo, responsavel ou projeto.
+- Adicionado "Descartar" no cartao de proposta pendente para abandonar testes ou propostas incorretas sem gravar dados.
+- Ajustada a confirmação por WhatsApp para priorizar sessoes com proposta pendente quando a pessoa responder "confirmar".
 
 ## 2026-07-02
 

@@ -1,5 +1,5 @@
 import { ClipboardCheck, FileText, Loader2, Plus, Send, Upload } from "lucide-react";
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { LineageTag } from "../components/ui/LineageTag";
@@ -76,6 +76,7 @@ export function Strategic() {
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [sentToOracle, setSentToOracle] = useState(false);
+  const [isDraggingPlan, setIsDraggingPlan] = useState(false);
   const plan = state.strategicPlan;
   const strategicObjectives = useMemo(
     () => state.objectives.filter((objective) => objective.level === "strategic"),
@@ -111,23 +112,15 @@ export function Strategic() {
         : planText;
 
     dispatch({
-      type: "start_session_with_message",
-      sessionType: "strategic",
+      type: "import_ready_strategic_plan",
       period: String(currentYear),
-      text: [
-        "Já tenho um plano estratégico pronto e quero importar para o Oráculo.",
-        "Use o conteúdo abaixo como insumo principal. Primeiro revise se há lacunas importantes; depois conduza somente o que faltar.",
-        "Quando estiver fiel e completo, monte uma proposta de Plano Estratégico para eu confirmar antes de gravar.",
-        "",
-        safePlanText,
-      ].join("\n"),
+      text: safePlanText,
+      fileName: importedFileName,
     });
     setSentToOracle(true);
   }
 
-  async function handlePlanFileImport(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  async function processPlanFile(file: File | undefined) {
     if (!file) return;
 
     setImportingPlan(true);
@@ -147,6 +140,36 @@ export function Strategic() {
     } finally {
       setImportingPlan(false);
     }
+  }
+
+  async function handlePlanFileImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    await processPlanFile(file);
+  }
+
+  function hasDraggedFile(event: DragEvent<HTMLElement>) {
+    return Array.from(event.dataTransfer.types).includes("Files");
+  }
+
+  function handlePlanDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!hasDraggedFile(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setIsDraggingPlan(true);
+  }
+
+  function handlePlanDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setIsDraggingPlan(false);
+  }
+
+  function handlePlanDrop(event: DragEvent<HTMLDivElement>) {
+    if (!hasDraggedFile(event)) return;
+    event.preventDefault();
+    setIsDraggingPlan(false);
+    const file = event.dataTransfer.files?.[0];
+    void processPlanFile(file);
   }
 
   return (
@@ -193,12 +216,17 @@ export function Strategic() {
 
       {tab === "paste" ? (
         <div className="space-y-4">
-          <Card>
+          <Card
+            onDragOver={handlePlanDragOver}
+            onDragLeave={handlePlanDragLeave}
+            onDrop={handlePlanDrop}
+            className={isDraggingPlan ? "border-accent bg-[#F7FAFF]" : ""}
+          >
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-text">Plano existente</p>
                 <p className="mt-1 text-xs leading-5 text-text-secondary">
-                  Importe PDF, PPTX, DOCX ou TXT. O texto extraído cai neste campo para a revisão.
+                  Importe ou arraste PDF, PPTX, DOCX ou TXT. O texto extraído entra neste campo.
                 </p>
               </div>
               <label
@@ -250,20 +278,20 @@ export function Strategic() {
                   disabled={!pastedPlan.trim() || importingPlan}
                   onClick={() => setReview(reviewPastedPlan(pastedPlan))}
                 >
-                  Revisar antes
+                  Só revisar texto
                 </Button>
                 <Button
                   icon={Send}
                   disabled={!pastedPlan.trim() || importingPlan}
                   onClick={sendReadyPlanToOracle}
                 >
-                  Preparar proposta com o Oráculo
+                  Gerar proposta e carregar no módulo
                 </Button>
               </div>
             </div>
             {sentToOracle ? (
               <p className="mt-3 text-xs leading-5 text-[#1D7A3E]">
-                Plano enviado ao Oráculo. A proposta aparecerá no painel lateral para confirmação antes de gravar.
+                Plano enviado ao Oráculo. O cartão de proposta aparecerá no painel lateral; confirme para gravar objetivos e projetos no módulo.
               </p>
             ) : null}
           </Card>

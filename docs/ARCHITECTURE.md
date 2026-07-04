@@ -15,7 +15,7 @@ O Oraculo V2 e um app web de execucao estrategica. O frontend roda em React/Vite
 - `src/components/`: layout, sidebar, painel do Oraculo e componentes de UI.
 - `src/features/objective/`: componentes de objetivo e builder.
 
-Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entradas: condução do zero pelo Oraculo ou importacao de plano pronto. A importacao aceita PDF, PPTX, DOCX e TXT no navegador, extrai texto com `src/lib/fileImport.ts` e envia esse texto para a sessao `oracle-session` via `start_session_with_message`. O arquivo bruto nao e enviado ao banco; a gravacao do plano continua dependendo de proposta pendente e confirmacao.
+Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entradas: condução do zero pelo Oraculo ou importacao de plano pronto. A importacao aceita PDF, PPTX, DOCX e TXT no navegador, extrai texto com `src/lib/fileImport.ts` e permite dois caminhos independentes: "Só revisar texto", que roda uma revisão local sem gravar, e "Gerar proposta e carregar no módulo", que chama `oracle-session` com `action = import_ready_plan`. O arquivo bruto nao e enviado ao banco; o texto extraido/colado vira insumo para uma proposta estruturada e a gravacao continua dependendo de confirmacao.
 
 ### Supabase
 
@@ -80,9 +80,9 @@ Essas tabelas foram criadas na Fase 0 da V3 sem alterar comportamento de runtime
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `oracle-chat`: consulta contexto da empresa e responde com fallback deterministico ou modelo configurado.
-- `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, persiste fase/estado/proposta pendente e grava planos apenas depois de confirmacao.
+- `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, persiste fase/estado/proposta pendente e grava planos apenas depois de confirmacao.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
-- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, responde e grava historico com canal `whatsapp`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA para direcionar ao plano correto.
+- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, responde e grava historico com canal `whatsapp`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico usam o mesmo importador server-side do app e geram proposta pendente; documentos trimestrais, mensais e evidencias ainda recebem direcionamento sem gravacao automatica.
 
 Funcoes compartilhadas:
 
@@ -127,7 +127,7 @@ Modo misto de gravacao:
 - ao confirmar, `proposals.ts` valida permissao de owner/coordenador e grava em `strategic_plans`, `area_plans`, `objectives`, `key_actions` e `strategic_projects` conforme o tipo;
 - a resposta final so diz que salvou depois da gravacao retornar sem erro.
 
-Plano pronto importado pela tela segue a mesma regra. O frontend apenas transforma arquivo/texto em mensagem inicial da sessao estrategica; o modelo deve revisar, perguntar o que faltar e gerar `proposal`. Sem clique em "Confirmar e gravar", nada e persistido como plano estruturado.
+Plano pronto importado pela tela ou por documento estrategico no WhatsApp segue a mesma regra. O texto extraido/colado entra em `prepareReadyStrategicPlanProposal`, que obriga o modelo a devolver `proposal.type = save_strategic_plan`. Sem clique em "Confirmar e gravar" no app, ou resposta "confirmar" no WhatsApp, nada e persistido como plano estruturado.
 
 Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto.
 

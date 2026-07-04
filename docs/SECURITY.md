@@ -90,9 +90,9 @@ Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chama
 
 Quando a transcrição falhar, o sistema pode exibir um codigo tecnico seguro com etapa, status HTTP, tipo de arquivo, tamanho e assinatura curta dos primeiros bytes. Esse codigo existe para diagnostico sem abrir logs brutos de producao. Ele nao deve incluir conteudo da fala, chave da Evolution, chave OpenAI, segredo de webhook, URL temporaria completa ou payload completo.
 
-Arquivos enviados pelo WhatsApp sao processados em memoria para extração de texto e classificação do plano correto. O arquivo bruto nao deve ser salvo no banco, versionado no repositorio nem enviado ao frontend. O historico pode guardar um resumo curto do arquivo e parte limitada do texto extraido para rastreabilidade da conversa; documentos sensiveis devem ser tratados como dados privados da empresa.
+Arquivos enviados pelo WhatsApp sao processados em memoria para extração de texto e classificação do plano correto. O arquivo bruto nao deve ser salvo no banco, versionado no repositorio nem enviado ao frontend. O historico pode guardar um resumo curto do arquivo e parte limitada do texto extraido para rastreabilidade da conversa; documentos sensiveis devem ser tratados como dados privados da empresa. Quando o documento for classificado como Plano Estrategico, o texto extraido gera uma proposta pendente em `planning_sessions`; a escrita real no banco continua exigindo confirmação explicita do usuario e validação server-side.
 
-Arquivos importados pela tela de Plano Estrategico sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Preparar proposta com o Oraculo", o frontend envia somente o texto extraido/colado para `oracle-session`; a gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side.
+Arquivos importados pela tela de Plano Estrategico sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Gerar proposta e carregar no módulo", o frontend envia somente o texto extraido/colado para `oracle-session` com `action = import_ready_plan`; a gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side. A opção "Só revisar texto" nao chama IA nem grava dados.
 
 ## RLS
 

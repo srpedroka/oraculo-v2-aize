@@ -38,15 +38,15 @@ Consequencias: `planning_sessions` vira tabela critica; prompts de condutores fi
 
 ## 2026-07-04 - Plano pronto entra pela sessao do Oraculo
 
-Decisao: permitir importar ou colar um Plano Estrategico pronto mesmo quando a empresa ainda nao tem plano cadastrado, mas rotear esse conteudo para `oracle-session` em vez de gravar direto.
+Decisao: permitir importar ou colar um Plano Estrategico pronto mesmo quando a empresa ainda nao tem plano cadastrado, mas rotear esse conteudo para `oracle-session` em uma acao dedicada (`import_ready_plan`) em vez de gravar direto ou tratar como chat comum.
 
-Contexto: o usuario quer testar o sistema do zero e tambem aproveitar planos existentes em PDF, PPTX, DOCX, TXT ou texto colado.
+Contexto: o usuario quer testar o sistema do zero e tambem aproveitar planos existentes em PDF, PPTX, DOCX, TXT ou texto colado. O primeiro desenho enviava o plano como mensagem inicial da sessao, o que deixava a IA livre para apenas revisar o texto e mandar o usuario para outro canal, sem criar objetivos reais no módulo.
 
-Alternativas: manter a importacao escondida ate existir um plano, criar gravacao direta a partir do arquivo, ou tratar o plano pronto apenas como revisao local sem persistencia.
+Alternativas: manter a importacao escondida ate existir um plano, criar gravacao direta a partir do arquivo, tratar o plano pronto apenas como revisao local sem persistencia, ou manter como mensagem inicial do condutor.
 
-Motivo: reaproveita o motor seguro da Fase 2. O arquivo/texto vira insumo da condução; o Oraculo revisa lacunas, monta proposta e o usuario confirma antes de qualquer escrita estruturada.
+Motivo: reaproveita o motor seguro da Fase 2, mas com um prompt especifico que obriga a saida estruturada `save_strategic_plan`. O arquivo/texto vira insumo da proposta; o Oraculo monta objetivos/projetos rastreaveis e o usuario confirma antes de qualquer escrita estruturada.
 
-Consequencias: o frontend precisa manter a aba "Colar plano pronto" visivel na base zerada. Arquivos brutos continuam fora do banco; apenas texto extraido/colado entra na conversa da sessao.
+Consequencias: o frontend precisa manter a aba "Colar plano pronto" visivel na base zerada e separar "Só revisar texto" de "Gerar proposta e carregar no módulo". Arquivos brutos continuam fora do banco; apenas texto extraido/colado entra na conversa da sessao. O WhatsApp usa o mesmo importador quando o documento for classificado como Plano Estrategico.
 
 ## 2026-06-29 - Supabase como backend da V2
 

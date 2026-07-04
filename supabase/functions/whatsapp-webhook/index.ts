@@ -7,6 +7,7 @@ import { CONVERSATION_STYLE, STRATEGIC_GUIDE } from "../_shared/prompt-guides.ts
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
+import { confirmPlanningProposal, prepareReadyStrategicPlanProposal, processPlanningMessage } from "../_shared/session-engine.ts";
 
 function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
@@ -50,6 +51,11 @@ function firstText(...values: unknown[]) {
   }
 
   return "";
+}
+
+function isConfirmationMessage(value: string) {
+  const normalized = normalizeText(value);
+  return /\b(confirmo|confirmar|gravar|salvar|pode gravar|pode salvar|sim|ok|fechado)\b/.test(normalized);
 }
 
 function extractText(payload: any) {
@@ -1340,6 +1346,24 @@ async function processIncomingDocument(
   try {
     const extractedText = await extractDocumentText(file);
     const classification = await classifyImportedDocument(client, orgId, areaId, file.fileName, extractedText, profile);
+    if (classification.target === "strategic") {
+      const year = classification.period?.match(/\b(20\d{2})\b/)?.[1] ?? String(new Date().getFullYear());
+      const prepared = await prepareReadyStrategicPlanProposal(client, {
+        orgId,
+        areaId: null,
+        period: year,
+        planText: extractedText,
+        fileName: file.fileName,
+        userId: profile.id,
+        channel: "whatsapp",
+      });
+      return {
+        userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+        answer: `${prepared.reply}\n\nSe estiver coerente, responda *confirmar* que eu gravo no módulo.`,
+        skipHistory: true,
+      };
+    }
+
     const route = targetRoute(classification.target);
     const confidence = Math.round((classification.confidence || 0) * 100);
     const areaText = classification.areaName ? `\nÁrea provável: ${classification.areaName}.` : "";
@@ -1353,11 +1377,13 @@ async function processIncomingDocument(
     return {
       userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
       answer,
+      skipHistory: false,
     };
   } catch (error) {
     return {
       userText: `[Arquivo recebido sem extração] ${file.fileName}`,
       answer: `Recebi o arquivo "${file.fileName}", mas não consegui extrair texto suficiente. ${error instanceof Error ? error.message : "Tente enviar uma versão com texto selecionável."}`,
+      skipHistory: false,
     };
   }
 }
@@ -1439,21 +1465,25 @@ serve(async (req) => {
     if (hasDocument) {
       const result = await processIncomingDocument(client, orgId, areaId, whatsappSettings, whatsappKeyRow, payload, profile);
 
-      await client.from("chat_messages").insert({
-        org_id: orgId,
-        area_id: areaId,
-        author: "user",
-        text: result.userText,
-        channel: "whatsapp",
-      });
+      if (!result.skipHistory) {
+        await client.from("chat_messages").insert({
+          org_id: orgId,
+          area_id: areaId,
+          user_id: profile.id,
+          author: "user",
+          text: result.userText,
+          channel: "whatsapp",
+        });
 
-      await client.from("chat_messages").insert({
-        org_id: orgId,
-        area_id: areaId,
-        author: "oracle",
-        text: result.answer,
-        channel: "whatsapp",
-      });
+        await client.from("chat_messages").insert({
+          org_id: orgId,
+          area_id: areaId,
+          user_id: profile.id,
+          author: "oracle",
+          text: result.answer,
+          channel: "whatsapp",
+        });
+      }
 
       await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, result.answer);
       return jsonResponse({ ok: true, document: "processed" });
@@ -1500,9 +1530,33 @@ serve(async (req) => {
 
     const storedUserText = wasTranscribedAudio ? `[Áudio transcrito] ${text}` : text;
 
+    const confirmationMessage = isConfirmationMessage(text);
+    const { data: activeSessions, error: activeSessionError } = await client
+      .from("planning_sessions")
+      .select("id, pending_proposal")
+      .eq("org_id", orgId)
+      .eq("user_id", profile.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (activeSessionError) throw activeSessionError;
+
+    const activeSession = confirmationMessage
+      ? (activeSessions ?? []).find((session: any) => session.pending_proposal) ?? activeSessions?.[0]
+      : activeSessions?.[0];
+
+    if (activeSession) {
+      const sessionResult = activeSession.pending_proposal && confirmationMessage
+        ? await confirmPlanningProposal(client, { sessionId: activeSession.id, userId: profile.id, channel: "whatsapp" })
+        : await processPlanningMessage(client, { sessionId: activeSession.id, message: storedUserText, userId: profile.id, channel: "whatsapp" });
+      await sendWhatsAppText(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
+      return jsonResponse({ ok: true, session: "processed" });
+    }
+
     const { data: savedUserMessage, error: userMessageError } = await client.from("chat_messages").insert({
       org_id: orgId,
       area_id: areaId,
+      user_id: profile.id,
       author: "user",
       text: storedUserText,
       channel: "whatsapp",
@@ -1514,6 +1568,7 @@ serve(async (req) => {
     await client.from("chat_messages").insert({
       org_id: orgId,
       area_id: areaId,
+      user_id: profile.id,
       author: "oracle",
       text: answer,
       channel: "whatsapp",

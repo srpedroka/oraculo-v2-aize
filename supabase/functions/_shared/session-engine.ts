@@ -30,6 +30,8 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
   },
 };
 
+const READY_PLAN_TEXT_LIMIT = 30000;
+
 function shallowMergeState(current: Record<string, unknown>, patch: Record<string, unknown>) {
   return { ...(current ?? {}), ...(patch ?? {}) };
 }
@@ -38,6 +40,93 @@ function validNextPhase(type: string, nextPhase: unknown) {
   if (!nextPhase) return null;
   const text = String(nextPhase);
   return CONDUCTORS[type]?.phases.includes(text) ? text : null;
+}
+
+function currentYearFromPeriod(period: string) {
+  const match = period.match(/\b(20\d{2})\b/);
+  return match ? Number(match[1]) : new Date().getFullYear();
+}
+
+function asArray<T = unknown>(value: unknown): T[] {
+  return Array.isArray(value) ? value as T[] : [];
+}
+
+function asText(value: unknown, fallback = "") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function asTextArray(value: unknown) {
+  if (Array.isArray(value)) return value.map((item) => asText(item)).filter(Boolean);
+  const text = asText(value);
+  return text ? [text] : [];
+}
+
+function normalizeReadyStrategicProposal(rawProposal: any, period: string) {
+  const year = Number(rawProposal?.year ?? currentYearFromPeriod(period));
+  const drivers = rawProposal?.drivers && typeof rawProposal.drivers === "object" ? rawProposal.drivers : {};
+  const swot = rawProposal?.swot && typeof rawProposal.swot === "object" ? rawProposal.swot : {};
+
+  return {
+    type: "save_strategic_plan",
+    year,
+    profile: rawProposal?.profile && typeof rawProposal.profile === "object" ? rawProposal.profile : {},
+    drivers: {
+      purpose: asText(drivers.purpose ?? drivers.proposito),
+      vision: asText(drivers.vision ?? drivers.visao),
+      values: asTextArray(drivers.values ?? drivers.valores).slice(0, 7),
+    },
+    swot: {
+      strengths: asTextArray(swot.strengths ?? swot.forcas).slice(0, 8),
+      weaknesses: asTextArray(swot.weaknesses ?? swot.fraquezas).slice(0, 8),
+      opportunities: asTextArray(swot.opportunities ?? swot.oportunidades).slice(0, 8),
+      threats: asTextArray(swot.threats ?? swot.ameacas).slice(0, 8),
+    },
+    themes: asTextArray(rawProposal?.themes ?? rawProposal?.temas ?? rawProposal?.theme ?? rawProposal?.tema_do_ano).slice(0, 4),
+    rituals: asTextArray(rawProposal?.rituals ?? rawProposal?.rituais).slice(0, 8),
+    executiveSummary: asText(rawProposal?.executiveSummary ?? rawProposal?.executive_summary ?? rawProposal?.resumoExecutivo),
+    objectives: asArray<any>(rawProposal?.objectives ?? rawProposal?.objetivos)
+      .map((objective) => ({
+        title: asText(objective?.title ?? objective?.titulo, "Objetivo estratégico"),
+        type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
+        result: asText(objective?.result ?? objective?.resultado),
+        metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
+        target: asText(objective?.target ?? objective?.meta),
+        owner: asText(objective?.owner ?? objective?.responsavel),
+        period: asText(objective?.period ?? objective?.periodo, String(year)),
+      }))
+      .filter((objective) => objective.title)
+      .slice(0, 8),
+    projects: asArray<any>(rawProposal?.projects ?? rawProposal?.projetos)
+      .map((project) => ({
+        name: asText(project?.name ?? project?.nome, "Projeto estratégico"),
+        owner: asText(project?.owner ?? project?.responsavel),
+        deadline: asText(project?.deadline ?? project?.prazo),
+        linkedObjectiveTitle: asText(project?.linkedObjectiveTitle ?? project?.objetivoVinculado ?? project?.objetivo_vinculado),
+      }))
+      .filter((project) => project.name)
+      .slice(0, 8),
+  };
+}
+
+function readyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
+  return [
+    PERSONA_ORACULO,
+    "Você está importando um Plano Estratégico pronto para dentro do Oráculo.",
+    "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Plano Estratégico.",
+    "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
+    "Não faça apenas uma revisão textual. Gere uma proposal completa do tipo save_strategic_plan.",
+    "Fidelidade ao plano aprovado é mais importante que completar campos. Não acrescente KPI, meta, prazo, responsável, diagnóstico ou projeto que não esteja no texto.",
+    "Se houver lacunas, use string vazia ou lista vazia. Quando um objetivo estiver implícito, transforme o próprio trecho do plano em um objetivo curto, sem inventar indicador, meta ou responsável.",
+    "Metas podem ficar como texto quando o plano original trouxer texto; se o plano não trouxer meta, deixe target vazio.",
+    "Agrupe objetivos parecidos. Prefira 3 a 6 objetivos estratégicos e até 7 projetos prioritários.",
+    "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se não houver prazo, use string vazia.",
+    "Responda SOMENTE JSON válido, sem markdown, com este formato:",
+    '{"reply":"resumo curto do que foi estruturado e aviso de confirmação","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026"}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
+    `Ano/período do plano: ${period}`,
+    "Contexto atual do Oráculo:",
+    context,
+  ].join("\n\n");
 }
 
 async function assertCanStartSession(client: Client, orgId: string, areaId: string | null, userId: string) {
@@ -71,6 +160,9 @@ async function getOrCreateConversation(client: Client, orgId: string, userId: st
     .eq("user_id", userId)
     .eq("channel", channel)
     .eq("status", "active")
+    .order("last_message_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (error) throw error;
   if (existing) return existing;
@@ -171,6 +263,8 @@ export async function startPlanningSession(
     .eq("type", params.type)
     .eq("period", params.period)
     .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (existingError) throw existingError;
   if (existing) return { session: existing, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
@@ -268,6 +362,129 @@ export async function processPlanningMessage(
 
   await insertMessage(client, updated, "oracle", reply, params.channel ?? "web");
   return { session: updated, reply, pendingProposal };
+}
+
+export async function prepareReadyStrategicPlanProposal(
+  client: Client,
+  params: {
+    orgId: string;
+    areaId?: string | null;
+    period: string;
+    planText: string;
+    fileName?: string | null;
+    userId: string;
+    channel?: "web" | "whatsapp";
+  },
+) {
+  const channel = params.channel ?? "web";
+  const planText = params.planText.trim();
+  if (!planText) throw new Error("Texto do plano pronto não informado");
+
+  await assertCanStartSession(client, params.orgId, params.areaId ?? null, params.userId);
+  const aiRoute = await resolveAiFunction(client, params.orgId, "planning");
+  if (!aiRoute) throw new Error("IA de planejamento não configurada");
+
+  const conversation = await getOrCreateConversation(client, params.orgId, params.userId, channel, params.areaId ?? null);
+  const { data: existing, error: existingError } = await client
+    .from("planning_sessions")
+    .select("*")
+    .eq("org_id", params.orgId)
+    .eq("user_id", params.userId)
+    .eq("type", "strategic")
+    .eq("period", params.period)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  let session = existing;
+  if (!session) {
+    const { data, error } = await client
+      .from("planning_sessions")
+      .insert({
+        org_id: params.orgId,
+        area_id: params.areaId ?? null,
+        user_id: params.userId,
+        conversation_id: conversation.id,
+        type: "strategic",
+        period: params.period,
+        phase: "sintese",
+        state: { periodo: params.period, importacao_plano_pronto: true, arquivo: params.fileName ?? null },
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    session = data;
+  }
+
+  const context = await buildPlanContext(client, params.orgId, params.areaId ?? null);
+  const importedText = planText.length > READY_PLAN_TEXT_LIMIT
+    ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
+    : planText;
+  const userMessage = [
+    "Importar plano estratégico pronto para o Oráculo.",
+    params.fileName ? `Arquivo: ${params.fileName}` : "",
+    "Texto extraído/colado:",
+    importedText,
+  ].filter(Boolean).join("\n\n");
+
+  await insertMessage(client, session, "user", userMessage, channel);
+
+  const result = await callModel(
+    aiRoute.provider,
+    aiRoute.model,
+    aiRoute.apiKey,
+    readyPlanSystemPrompt(context, params.period, channel),
+    [{ role: "user", content: userMessage }],
+    aiRoute.limits,
+  );
+
+  await recordAiUsage({
+    client,
+    orgId: params.orgId,
+    provider: aiRoute.provider,
+    model: aiRoute.model,
+    channel,
+    usage: result.usage,
+    settings: aiRoute.legacySettings,
+    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: "strategic", phase: "sintese", action: "ready_plan_import" },
+  });
+
+  const parsed = parseJsonObject(result.text) as any;
+  const rawProposal = parsed?.proposal ?? parsed;
+  const proposal = normalizeReadyStrategicProposal(rawProposal, params.period);
+  if (!proposal.objectives.length) {
+    throw new Error("O Oráculo não conseguiu identificar objetivos estratégicos no plano importado");
+  }
+
+  const reply =
+    typeof parsed?.reply === "string" && parsed.reply.trim()
+      ? parsed.reply
+      : `Estruturei o plano em ${proposal.objectives.length} objetivo(s) estratégico(s) e ${proposal.projects.length} projeto(s). Confira o cartão de proposta e confirme para gravar no módulo.`;
+  const nextState = shallowMergeState(session.state ?? {}, {
+    ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
+    importacao_plano_pronto: true,
+    arquivo: params.fileName ?? null,
+  });
+
+  const { data: updated, error: updateError } = await client
+    .from("planning_sessions")
+    .update({
+      phase: "sintese",
+      state: nextState,
+      pending_proposal: proposal,
+      status: "active",
+      completed_at: null,
+      conversation_id: session.conversation_id ?? conversation.id,
+    })
+    .eq("id", session.id)
+    .select("*")
+    .single();
+  if (updateError) throw updateError;
+
+  await insertMessage(client, updated, "oracle", reply, channel);
+  return { session: updated, reply, pendingProposal: proposal };
 }
 
 export async function confirmPlanningProposal(client: Client, params: { sessionId: string; userId: string; channel?: "web" | "whatsapp" }) {

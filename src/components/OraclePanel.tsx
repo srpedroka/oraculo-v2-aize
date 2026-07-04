@@ -255,17 +255,22 @@ export function OraclePanel() {
                 <p className="mt-1 text-xs leading-5 text-[#5F6368]">
                   {proposalTitle(activeSession.pendingProposal)} preparado. Confirme para salvar no sistema ou peça ajustes na conversa.
                 </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid gap-2">
                   <Button
                     type="button"
-                    className="bg-[#25D366] hover:bg-[#20BD5A]"
+                    className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
                     onClick={() => dispatch({ type: "confirm_session_proposal", sessionId: activeSession.id })}
                   >
                     Confirmar e gravar
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setMessage("Quero ajustar: ")}>
-                    Ajustar
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="ghost" className="w-full" onClick={() => setMessage("Quero ajustar: ")}>
+                      Ajustar
+                    </Button>
+                    <Button type="button" variant="ghost" className="w-full" onClick={() => dispatch({ type: "abandon_session", sessionId: activeSession.id })}>
+                      Descartar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
