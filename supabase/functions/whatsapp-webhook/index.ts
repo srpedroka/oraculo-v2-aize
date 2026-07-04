@@ -1054,8 +1054,8 @@ function isClearlyGeneralTopic(message: string) {
 
 function outOfScopeTopicLabel(message: string) {
   const normalized = normalizeText(message);
-  if (/(ucrania|russia|guerra)/.test(normalized)) return "esse tema geopolítico";
-  if (/(copa|world cup|futebol|jogo|campeonato)/.test(normalized)) return "esse assunto de futebol";
+  if (/(ucrania|russia|guerra|israel|palestina)/.test(normalized)) return "esse tema geopolítico";
+  if (/(copa|world cup|futebol|jogo|campeonato|olimpiada)/.test(normalized)) return "esse assunto de esporte";
   if (/(politica|presidente|eleicao)/.test(normalized)) return "esse assunto político";
   if (/(filme|serie|novela|musica|celebridade|fofoca)/.test(normalized)) return "esse assunto de entretenimento";
   if (/(receita|culinaria)/.test(normalized)) return "essa pauta culinária";
@@ -1063,25 +1063,123 @@ function outOfScopeTopicLabel(message: string) {
   return "esse assunto";
 }
 
+function outOfScopeKind(message: string) {
+  const normalized = normalizeText(message);
+  if (/(ucrania|russia|guerra|israel|palestina)/.test(normalized)) return "sensitive_geopolitics";
+  if (/(copa|world cup|futebol|jogo|campeonato|olimpiada)/.test(normalized)) return "sports";
+  if (/(politica|presidente|eleicao)/.test(normalized)) return "politics";
+  if (/(filme|serie|novela|musica|celebridade|fofoca)/.test(normalized)) return "entertainment";
+  if (/(receita|culinaria)/.test(normalized)) return "cooking";
+  if (/(previsao do tempo|viagem|turismo)/.test(normalized)) return "travel_weather";
+  return "general";
+}
+
+function outOfScopeHumorGuide(message: string) {
+  const kind = outOfScopeKind(message);
+  const guides: Record<string, string> = {
+    sensitive_geopolitics:
+      "Tema sensível: não faça piada sobre guerra, vítimas ou sofrimento. Use apenas leveza sobre o Oráculo não virar comentarista de mapa e ofereça conectar o tema a riscos de negócio, fornecedores ou cenário estratégico se esse for o objetivo.",
+    sports:
+      "Use humor de futebol com elegância: escalação, placar, campo ou campeonato. Exemplo de direção: não escalar seleção, mas ajudar a escalar prioridades do trimestre.",
+    politics:
+      "Use humor discreto de política/processo: urna, palanque ou debate, sem tomar posição. Exemplo de direção: deixar a urna de lado e voltar às decisões do plano.",
+    entertainment:
+      "Use humor de entretenimento: temporada, roteiro, elenco ou maratona. Exemplo de direção: não virar crítico de série, mas organizar o próximo episódio da execução.",
+    cooking:
+      "Use humor culinário: forno, receita, tempero ou ponto. Exemplo de direção: não passar receita, mas ajustar os ingredientes do plano.",
+    travel_weather:
+      "Use humor leve de clima/viagem: previsão, rota ou embarque. Exemplo de direção: a previsão útil aqui é prazo, risco e prioridade.",
+    general:
+      "Use humor leve conectado às palavras do usuário, evitando frase genérica. Sempre volte para planejamento ou gestão.",
+  };
+  return guides[kind] ?? guides.general;
+}
+
 function fallbackOutOfScopeReply(profile: any, message: string) {
   const topic = outOfScopeTopicLabel(message);
-  const options = [
-    [
-      `${localGreeting()}, ${firstName(profile)}. ${topic} eu vou deixar fora do nosso radar por aqui.`,
-      "Meu papel é ajudar no jogo da empresa: estratégia, metas, áreas, execução e evidências.",
-      "Quer que eu olhe algum objetivo ou plano agora?",
+  const common = "Quer trazer isso para planejamento, metas ou alguma área da empresa?";
+  const optionsByKind: Record<string, string[][]> = {
+    sensitive_geopolitics: [
+      [
+        `${firstName(profile)}, ${topic} é sério demais para eu tratar como palpite rápido por aqui.`,
+        "Se for risco para fornecedores, custos ou cenário da empresa, aí eu entro bem.",
+        "Quer olhar por esse ângulo estratégico?",
+      ],
+      [
+        `${localGreeting()}, ${firstName(profile)}. Eu não vou virar comentarista de mapa no WhatsApp do Oráculo.`,
+        "Mas posso ajudar a traduzir cenário externo em risco, plano e decisão para a empresa.",
+        "Esse era o caminho que você queria seguir?",
+      ],
     ],
-    [
-      `${firstName(profile)}, eu entendi o tema, mas ${topic} não é o campo do Oráculo.`,
-      "Se eu sair para esse lado, o planejamento fica esperando na sala de reunião.",
-      "Vamos voltar para metas, execução ou alguma área da empresa?",
+    sports: [
+      [
+        `${firstName(profile)}, placar e Copa eu deixo para a mesa esportiva.`,
+        "Aqui eu jogo melhor montando escalação de prioridades, metas e próximos passos.",
+        common,
+      ],
+      [
+        `${localGreeting()}, ${firstName(profile)}. Se eu entrar no futebol, daqui a pouco estou chamando objetivo trimestral de atacante.`,
+        "Vamos deixar a bola com o Oráculo no campo da execução.",
+        "Qual plano ou área você quer revisar?",
+      ],
     ],
-    [
-      `Boa pergunta, mas ${topic} mora fora do Oráculo.`,
-      "Por aqui eu rendo melhor quando a conversa é sobre negócio, gestão, estratégia e o que precisa andar na empresa.",
-      "Quer revisar o plano ou registrar algum avanço?",
+    politics: [
+      [
+        `${firstName(profile)}, esse assunto político eu vou deixar fora da urna do Oráculo.`,
+        "Por aqui eu ajudo melhor com decisões da empresa, metas e responsabilidades claras.",
+        common,
+      ],
+      [
+        `${localGreeting()}, ${firstName(profile)}. Se eu subir nesse palanque, o plano fica sem dono.`,
+        "Vamos voltar para estratégia, execução e evidências.",
+        "Quer revisar algum objetivo?",
+      ],
     ],
-  ];
+    entertainment: [
+      [
+        `${firstName(profile)}, entretenimento eu deixo para depois do expediente.`,
+        "Se eu virar crítico de série, a execução ganha temporada demais e entrega de menos.",
+        "Quer organizar o próximo passo do plano?",
+      ],
+      [
+        `${localGreeting()}, ${firstName(profile)}. Esse roteiro não é do Oráculo.`,
+        "O meu papel é ajudar a escrever o próximo capítulo da empresa.",
+        "Vamos olhar metas, áreas ou execução?",
+      ],
+    ],
+    cooking: [
+      [
+        `${firstName(profile)}, receita de cozinha eu vou deixar fora do painel.`,
+        "Mas se for a receita do trimestre, aí eu ajudo a acertar ingredientes, prazo e responsável.",
+        "Quer montar esse plano?",
+      ],
+      [
+        `${localGreeting()}, ${firstName(profile)}. Se eu for para o fogão, daqui a pouco coloco KPI no forno.`,
+        "Melhor eu ficar na gestão: meta, ação e evidência.",
+        "Qual objetivo precisa andar?",
+      ],
+    ],
+    travel_weather: [
+      [
+        `${firstName(profile)}, previsão e roteiro de viagem não são meu melhor painel.`,
+        "A previsão que eu consigo fazer bem aqui é de prazo, risco e prioridade.",
+        "Quer olhar algum plano nessa linha?",
+      ],
+      [
+        `${localGreeting()}, ${firstName(profile)}. Eu não emito cartão de embarque, mas ajudo a traçar rota de execução.`,
+        "Vamos voltar para metas, responsáveis e próximos passos.",
+        "Qual área quer revisar?",
+      ],
+    ],
+    general: [
+      [
+        `${localGreeting()}, ${firstName(profile)}. ${topic} fica fora da minha mesa por aqui.`,
+        "Eu rendo melhor em negócio, gestão, estratégia e execução.",
+        common,
+      ],
+    ],
+  };
+  const options = optionsByKind[outOfScopeKind(message)] ?? optionsByKind.general;
   const index = Math.abs([...normalizeText(message)].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % options.length;
   return options[index].join("\n");
 }
@@ -1097,18 +1195,25 @@ async function buildOutOfScopeReply(
   if (!aiRoute) return fallbackOutOfScopeReply(profile, message);
 
   const history = await loadConversationHistory(client, conversation.id, 12);
+  const topic = outOfScopeTopicLabel(message);
+  const humorGuide = outOfScopeHumorGuide(message);
   const systemPrompt = [
     PERSONA_ORACULO,
     "A mensagem mais recente do usuário está fora do escopo do Oráculo.",
+    `Mensagem atual: ${message}`,
+    `Assunto detectado: ${topic}`,
     "Escopo do Oráculo: negócio, gestão, administração, estratégia, planejamento, objetivos, áreas, execução, evidências e funcionamento do próprio Oráculo.",
     "Tarefa: responda de modo contextual e natural, em português do Brasil, sem parecer resposta padrão.",
+    `Guia de leveza contextual: ${humorGuide}`,
     "Regras obrigatórias:",
     "- Reconheça o assunto específico que a pessoa trouxe.",
     "- NÃO responda o conteúdo factual externo. Não explique guerra, Copa, política, celebridade, clima, entretenimento ou curiosidades gerais.",
     "- Use no máximo 3 frases curtas.",
-    "- Pode usar humor leve e elegante se couber.",
+    "- Quando o tema não for sensível, inclua uma leveza ou piadinha curta que nasça do assunto citado. Não use piada genérica.",
+    "- Em tema sensível, não faça piada do sofrimento; use apenas leveza sobre o Oráculo não ser o canal certo.",
     "- Conduza de volta com uma pergunta prática sobre planejamento, objetivo, área, execução ou gestão.",
     "- Não repita literalmente respostas anteriores do histórico.",
+    "- Não comece sempre do mesmo jeito e não use a frase 'esse não é o objetivo do Oráculo' de forma crua.",
     formatConversationMemory(history),
   ].filter(Boolean).join("\n\n");
 

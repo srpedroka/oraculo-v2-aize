@@ -41,6 +41,7 @@
 - Documentado que fechamento guiado e documentos padronizados continuam como pendencia segura para fases seguintes, sem promessa de gravacao automatica.
 - Adicionado limite de escopo no WhatsApp: curiosidades gerais fora do Oraculo recebem resposta curta, com humor leve, e sao conduzidas de volta para negocio, gestao, estrategia, planejamento e execucao.
 - Ajustado o limite de escopo para gerar respostas contextuais por IA, evitando repeticao robotizada quando o usuario pergunta assuntos externos diferentes.
+- Refinado o limite de escopo para usar leveza contextual por assunto e tratar temas sensiveis sem piada sobre sofrimento.
 
 ## 2026-07-02
 
