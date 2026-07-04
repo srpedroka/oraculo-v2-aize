@@ -80,6 +80,11 @@ export function Strategic() {
     () => state.objectives.filter((objective) => objective.level === "strategic"),
     [state.objectives],
   );
+  const currentYear = new Date().getFullYear();
+
+  function startStrategicSession() {
+    dispatch({ type: "start_session", sessionType: "strategic", period: String(currentYear) });
+  }
 
   function updatePastedPlan(value: string) {
     setPastedPlan(value);
@@ -125,27 +130,8 @@ export function Strategic() {
             Crie a estrutura anual para começar a desdobrar objetivos por área, trimestre e mês.
           </p>
           <div className="mt-4">
-            <Button
-              icon={Plus}
-              onClick={() =>
-                dispatch({
-                  type: "update_strategic_plan",
-                  plan: {
-                    id: "draft-strategic-plan",
-                    orgId: state.activeOrgId ?? "",
-                    year: 2026,
-                    profile: { sector: "", size: "", region: "", founded: "", mainPain: "" },
-                    drivers: { purpose: "", vision: "", values: [] },
-                    swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
-                    themes: [],
-                    projects: [],
-                    rituals: [],
-                    executiveSummary: "",
-                  },
-                })
-              }
-            >
-              Criar plano 2026
+            <Button icon={Plus} onClick={startStrategicSession}>
+              Planejar o ano com o Oráculo
             </Button>
           </div>
         </Card>
@@ -160,8 +146,8 @@ export function Strategic() {
           <p className="text-sm font-medium text-text-tertiary">Planejamento anual da empresa · {plan.year}</p>
           <h1 className="text-2xl font-semibold text-text">Plano Estratégico</h1>
         </div>
-        <Button icon={Plus} onClick={() => setBuilderOpen(true)}>
-          Novo objetivo com o Oráculo
+        <Button icon={Plus} onClick={startStrategicSession}>
+          Planejar o ano com o Oráculo
         </Button>
       </div>
 

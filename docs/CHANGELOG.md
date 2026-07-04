@@ -10,6 +10,9 @@
 - Executada a Fase 1 da V3: adicionado provedor xAI/Grok, modelos recentes da Anthropic no catalogo de pricing e roteador de IA por funcao (`planning`, `daily`, `background`).
 - Reformulada a tela Configuracoes > IA do Oraculo com chaves por provedor, funcoes de IA separadas e consumo exibindo a funcao usada.
 - Atualizadas `oracle-chat` e `whatsapp-webhook` para usar a funcao `daily`; classificacao de documentos passa a usar `background`; transcricao de audio continua usando chave OpenAI cadastrada.
+- Executada a Fase 2 da V3: criada a Edge Function `oracle-session`, com motor de sessao, estado persistido, condutores Estrategico/Trimestral/Mensal, envelope JSON e proposta pendente com confirmacao.
+- Conectado o painel do Oraculo a sessoes ativas com fase, progresso e cartao "Pronto para gravar".
+- Adicionados botoes "Planejar com o Oraculo" em Plano Estrategico e nas abas Trimestral/Mensal da Area.
 
 ## 2026-07-02
 

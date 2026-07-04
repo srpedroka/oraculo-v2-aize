@@ -128,6 +128,17 @@ Regras de seguranca:
 
 Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios. Documentos estruturados ficam como dados privados da empresa e dependem de RLS para isolamento por organizacao.
 
+## Sessoes e propostas da V3
+
+`oracle-session` usa service role para conduzir sessoes, mas valida o usuario autenticado antes de qualquer acao:
+
+- `start`: exige membership na empresa; se houver area e o usuario for coordenador, exige que a area seja dele.
+- `message`: exige que a sessao pertença ao usuario autenticado.
+- `confirm`: exige proposta pendente e valida permissao novamente em `proposals.ts` antes de gravar.
+- `abandon`: so altera sessoes do proprio usuario.
+
+Criacao de planos, objetivos e acoes nunca acontece apenas porque o modelo pediu. O modelo gera uma `proposal`; o usuario precisa confirmar; o servidor valida permissao; so entao o banco e alterado. Essa separacao evita que prompt injection ou erro de interpretacao grave dados sem confirmacao explicita.
+
 ## Arquivos que nao devem ser versionados
 
 Ja cobertos no `.gitignore`:

@@ -3,6 +3,8 @@ export type ObjectiveType = "harvest" | "seed";
 export type Status = "on_track" | "at_risk" | "late" | "done";
 
 export type PlanLevel = "strategic" | "area_annual" | "quarterly" | "monthly";
+export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+export type PlanningSessionStatus = "active" | "completed" | "abandoned";
 
 export interface Organization {
   id: string;
@@ -132,6 +134,22 @@ export interface ChatMessage {
   createdAt?: string;
 }
 
+export interface PlanningSession {
+  id: string;
+  orgId: string;
+  areaId: string | null;
+  userId: string;
+  conversationId: string | null;
+  type: PlanningSessionType;
+  period: string;
+  phase: string;
+  state: Record<string, unknown>;
+  pendingProposal: Record<string, unknown> | null;
+  status: PlanningSessionStatus;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export type OracleMode = "normal" | "minimized" | "expanded";
 
 export type MembershipRole = "owner" | "coordinator";
@@ -242,6 +260,8 @@ export interface AppState {
   evidences: Evidence[];
   chatMessages: ChatMessage[];
   checkIns: CheckIn[];
+  planningSessions: PlanningSession[];
+  activeSession: PlanningSession | null;
   loading: boolean;
   ready: boolean;
   ui: {

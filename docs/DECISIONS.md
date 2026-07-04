@@ -24,6 +24,18 @@ Motivo: funcoes explicitas deixam o owner escolher custo e qualidade por tipo de
 
 Consequencias: `save-ai-settings` aceita payloads de chave por provedor e modelo por funcao; chamadas de IA gravam `metadata.aiFunction`; a tela de Configuracoes passa a exibir quatro provedores e tres funcoes. Ao adicionar provedor novo, e preciso atualizar checks de banco, catalogos de pricing no frontend/servidor e documentacao.
 
+## 2026-07-04 - Motor de sessao com proposta confirmada
+
+Decisao: implementar `oracle-session` como motor server-side para conduzir planejamento estrategico, trimestral e mensal com fase, estado persistido e proposta pendente.
+
+Contexto: a V2 tinha chat livre e criadores manuais. A V3 precisa que o Oraculo conduza fase a fase, lembre o que ja coletou e tenha "maos" para gravar, mas sem gravar automaticamente por interpretacao solta do modelo.
+
+Alternativas: deixar o frontend controlar as fases, usar function calling nativo de cada provedor, ou manter criadores manuais enquanto o chat apenas orienta.
+
+Motivo: estado server-side permite retomar sessoes e cruzar canais no futuro; envelope JSON uniforme funciona com todos os provedores; proposal + confirmacao reduz risco de gravacao indevida.
+
+Consequencias: `planning_sessions` vira tabela critica; prompts de condutores ficam empacotados em TypeScript; `proposals.ts` deve manter validacao server-side de permissao sempre que um novo tipo de proposta for criado.
+
 ## 2026-06-29 - Supabase como backend da V2
 
 Decisao: usar Supabase para autenticacao, banco PostgreSQL, RLS, realtime e Edge Functions.

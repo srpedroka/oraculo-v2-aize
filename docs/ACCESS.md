@@ -117,6 +117,7 @@ O Supabase guarda:
 - Edge Functions;
 - secrets de servidor das Edge Functions;
 - chaves de IA e WhatsApp em tabelas bloqueadas para leitura do navegador.
+- sessoes de planejamento da V3 em `public.planning_sessions`.
 
 ### Secrets das Edge Functions
 
@@ -131,6 +132,8 @@ SUPABASE_SERVICE_ROLE_KEY
 Esses valores ficam no painel/CLI do Supabase, nao no repositorio.
 
 Por que assim: Edge Functions rodam no servidor e podem usar service role com seguranca. O navegador nao pode receber service role.
+
+`oracle-session` usa esses mesmos secrets server-side para conduzir planejamento e aplicar propostas confirmadas. Ela nao cria novo segredo; apenas grava estado em `planning_sessions` e dados confirmados nas tabelas de plano.
 
 ### Banco de dados
 

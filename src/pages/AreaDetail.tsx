@@ -16,6 +16,18 @@ const TAB_LABEL: Record<AreaTab, string> = {
   monthly: "Mensal",
 };
 
+const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+function currentQuarterPeriod() {
+  const now = new Date();
+  return `T${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
+}
+
+function currentMonthPeriod() {
+  const now = new Date();
+  return `${MONTH_LABELS[now.getMonth()]} ${now.getFullYear()}`;
+}
+
 function BulletList({ title, items }: { title: string; items: string[] }) {
   return (
     <div>
@@ -43,6 +55,21 @@ export function AreaDetail() {
     [areaId, state.objectives, tab],
   );
 
+  function startQuarterlySession() {
+    if (!area) return;
+    dispatch({ type: "start_session", sessionType: "quarterly", areaId: area.id, period: currentQuarterPeriod() });
+  }
+
+  function startMonthlySession() {
+    if (!area) return;
+    dispatch({ type: "start_session", sessionType: "monthly", areaId: area.id, period: currentMonthPeriod() });
+  }
+
+  function startSessionForCurrentTab() {
+    if (tab === "monthly") startMonthlySession();
+    else startQuarterlySession();
+  }
+
   if (!area) return <Navigate to="/areas" replace />;
 
   if (!plan) {
@@ -62,25 +89,8 @@ export function AreaDetail() {
             Crie a base anual para depois desdobrar objetivos trimestrais e mensais.
           </p>
           <div className="mt-4">
-            <Button
-              icon={Plus}
-              onClick={() =>
-                dispatch({
-                  type: "upsert_area_plan",
-                  plan: {
-                    id: `draft-area-plan-${area.id}`,
-                    areaId: area.id,
-                    year: 2026,
-                    role: { mission: "", contribution: [] },
-                    linkedStrategicObjectiveIds: [],
-                    diagnosis: { strengths: [], weaknesses: [] },
-                    mainAnnualObjectiveId: null,
-                    learningFocus: { q1: [], q2: [], q3: [], q4: [] },
-                  },
-                })
-              }
-            >
-              Criar plano da área
+            <Button icon={Plus} onClick={startQuarterlySession}>
+              Planejar o trimestre com o Oráculo
             </Button>
           </div>
         </Card>
@@ -103,8 +113,8 @@ export function AreaDetail() {
           <p className="text-sm font-medium text-text-tertiary">Coordenador: {area.coordinator}</p>
           <h1 className="text-2xl font-semibold text-text">Área: {area.name}</h1>
         </div>
-        <Button icon={Plus} onClick={() => setBuilderLevel(tab)}>
-          Novo objetivo com o Oráculo
+        <Button icon={Plus} onClick={startSessionForCurrentTab}>
+          {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
         </Button>
       </div>
 
@@ -193,8 +203,8 @@ export function AreaDetail() {
             <p className="text-base font-semibold text-text">Nenhum objetivo mensal ainda.</p>
             <p className="mt-2 text-sm text-text-secondary">Crie o primeiro com o Oráculo.</p>
             <div className="mt-4">
-              <Button icon={Plus} onClick={() => setBuilderLevel("monthly")}>
-                Novo objetivo com o Oráculo
+              <Button icon={Plus} onClick={tab === "monthly" ? startMonthlySession : startQuarterlySession}>
+                {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
               </Button>
             </div>
           </Card>

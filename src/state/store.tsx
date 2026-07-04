@@ -22,6 +22,8 @@ import type {
   Objective,
   OracleMode,
   Organization,
+  PlanningSession,
+  PlanningSessionType,
   Profile,
   StrategicPlan,
   StrategicProject,
@@ -40,6 +42,10 @@ type AppAction =
   | { type: "remove_member"; membershipId: string }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
+  | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
+  | { type: "send_session_message"; sessionId: string; text: string }
+  | { type: "confirm_session_proposal"; sessionId: string }
+  | { type: "abandon_session"; sessionId: string }
   | { type: "add_evidence"; evidence: Evidence }
   | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[] }
   | { type: "update_objective"; objective: Objective }
@@ -117,6 +123,8 @@ const EMPTY_STATE: AppState = {
   evidences: [],
   chatMessages: [],
   checkIns: [],
+  planningSessions: [],
+  activeSession: null,
   loading: true,
   ready: false,
   ui: INITIAL_UI,
@@ -309,6 +317,24 @@ function mapChatMessage(row: any): ChatMessage {
     text: row.text,
     channel: row.channel ?? "web",
     createdAt: row.created_at,
+  };
+}
+
+function mapPlanningSession(row: any): PlanningSession {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    areaId: row.area_id ?? null,
+    userId: row.user_id,
+    conversationId: row.conversation_id ?? null,
+    type: row.type,
+    period: row.period,
+    phase: row.phase,
+    state: row.state ?? {},
+    pendingProposal: row.pending_proposal ?? null,
+    status: row.status,
+    createdAt: row.created_at,
+    completedAt: row.completed_at ?? null,
   };
 }
 
@@ -647,6 +673,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const planningSessionsQuery = useQuery({
+    queryKey: ["planning_sessions", orgId, userId],
+    enabled: Boolean(supabase && orgId && userId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client
+        .from("planning_sessions")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapPlanningSession);
+    },
+  });
+
   const aiSettingsQuery = useQuery({
     queryKey: ["ai_settings", orgId],
     enabled: Boolean(supabase && orgId),
@@ -742,6 +785,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["key_actions", orgId] });
     queryClient.invalidateQueries({ queryKey: ["evidences", orgId] });
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
@@ -763,6 +807,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_function_settings", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
 
     return () => {
@@ -785,6 +830,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       keyActionsQuery.isLoading ||
       evidencesQuery.isLoading ||
       chatMessagesQuery.isLoading ||
+      planningSessionsQuery.isLoading ||
       aiSettingsQuery.isLoading ||
       aiFunctionSettingsQuery.isLoading ||
       aiProviderKeyStatusesQuery.isLoading ||
@@ -814,6 +860,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evidences: evidencesQuery.data ?? [],
       chatMessages: chatMessagesQuery.data ?? [],
       checkIns: checkInsQuery.data ?? [],
+      planningSessions: planningSessionsQuery.data ?? [],
+      activeSession: planningSessionsQuery.data?.[0] ?? null,
       loading,
       ready: Boolean(session && organization),
       ui,
@@ -851,6 +899,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     organizations,
     organizationsQuery.isLoading,
     profilesQuery.isLoading,
+    planningSessionsQuery.data,
+    planningSessionsQuery.isLoading,
     rawMembershipsQuery.isLoading,
     session,
     strategicPlan,
@@ -976,6 +1026,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
           queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
         });
+        return;
+      }
+
+      if (action.type === "start_session") {
+        uiDispatch({ type: "set_oracle_mode", mode: "normal" });
+        void callEdgeFunction("oracle-session", {
+          action: "start",
+          orgId,
+          areaId: action.areaId ?? null,
+          type: action.sessionType,
+          period: action.period,
+          channel: "web",
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
+          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+        });
+        return;
+      }
+
+      if (action.type === "send_session_message") {
+        void callEdgeFunction("oracle-session", {
+          action: "message",
+          sessionId: action.sessionId,
+          message: action.text,
+          channel: "web",
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
+          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+        });
+        return;
+      }
+
+      if (action.type === "confirm_session_proposal") {
+        void callEdgeFunction("oracle-session", {
+          action: "confirm",
+          sessionId: action.sessionId,
+          channel: "web",
+        }).then(invalidateOrg);
+        return;
+      }
+
+      if (action.type === "abandon_session") {
+        void callEdgeFunction("oracle-session", {
+          action: "abandon",
+          sessionId: action.sessionId,
+        }).then(invalidateOrg);
         return;
       }
 

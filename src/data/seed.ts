@@ -551,6 +551,8 @@ export const initialState: AppState = {
   evidences,
   chatMessages,
   checkIns: [],
+  planningSessions: [],
+  activeSession: null,
   loading: false,
   ready: true,
   ui: {

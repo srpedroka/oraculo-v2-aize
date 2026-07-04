@@ -163,6 +163,37 @@ Observacoes:
 - xAI/Grok usa endpoint compativel com Chat Completions.
 - A transcricao de audio do WhatsApp continua usando chave OpenAI cadastrada, mesmo que a conversa diaria use outro provedor.
 
+## Problema: sessao do Oraculo nao avanca ou nao grava
+
+Fluxo esperado da Fase 2:
+
+1. Usuario clica em "Planejar o ano/trimestre/mes com o Oraculo".
+2. `oracle-session` cria uma linha em `public.planning_sessions` com `status = active`.
+3. Cada resposta do usuario chama `oracle-session` com `action = message`.
+4. O modelo retorna envelope JSON e o servidor atualiza `phase`, `state` e, quando houver, `pending_proposal`.
+5. O painel mostra "Pronto para gravar".
+6. Ao clicar em Confirmar, `action = confirm` chama `proposals.ts`, grava os dados e marca a sessao como `completed`.
+
+Verifique:
+
+```sql
+select type, period, phase, status, pending_proposal is not null as has_proposal, created_at, completed_at
+from public.planning_sessions
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
+
+Se a conversa responde mas nao grava:
+
+- conferir se `pending_proposal` existe;
+- conferir se o usuario clicou em Confirmar e gravar;
+- conferir permissao do usuario em `memberships`;
+- para coordenador, conferir se `areas.coordinator_id` aponta para a membership correta;
+- conferir `public.ai_usage_logs.metadata.sessionType` e `metadata.phase` para saber em que fase a IA parou.
+
+Se a IA devolver texto solto em vez de JSON, o sistema mostra a resposta, mas nao avanca fase nem grava proposta. Nesse caso, revisar prompt/condutor da fase ou pedir ao usuario para responder de forma mais objetiva.
+
 ## Problema: WhatsApp recebeu mensagem mas nao respondeu
 
 Diagnostico rapido:

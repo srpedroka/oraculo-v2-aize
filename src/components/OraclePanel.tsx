@@ -5,6 +5,51 @@ import { createMessageId, generateWeeklyReview, respondToUserMessage } from "../
 import { useAppState } from "../state/store";
 import { Button } from "./ui/Button";
 
+const SESSION_TYPE_LABEL = {
+  strategic: "Plano Estratégico",
+  quarterly: "Plano Trimestral",
+  monthly: "Plano Mensal",
+  month_close: "Fechamento do Mês",
+  quarter_close: "Fechamento do Trimestre",
+};
+
+const SESSION_PHASES = {
+  strategic: ["abertura", "direcionadores", "swot", "tema_do_ano", "objetivos", "projetos", "rituais", "sintese"],
+  quarterly: ["abertura", "alinhamento", "anual_da_area", "diagnostico", "objetivos_do_trimestre", "foco_de_aprendizado", "sintese"],
+  monthly: ["abertura", "relembrar", "objetivos_do_mes", "acoes_chave", "realismo", "sintese"],
+  month_close: ["abertura", "revisao", "pendencias", "resumo", "ponte"],
+  quarter_close: ["abertura", "revisao_trimestre", "aprendizado_do_time", "balanco"],
+};
+
+const PHASE_LABEL: Record<string, string> = {
+  abertura: "Abertura",
+  direcionadores: "Direcionadores",
+  swot: "SWOT",
+  tema_do_ano: "Tema do ano",
+  objetivos: "Objetivos",
+  projetos: "Projetos",
+  rituais: "Rituais",
+  sintese: "Síntese",
+  alinhamento: "Alinhamento",
+  anual_da_area: "Anual da área",
+  diagnostico: "Diagnóstico",
+  objetivos_do_trimestre: "Objetivos do trimestre",
+  foco_de_aprendizado: "Foco de aprendizado",
+  relembrar: "Relembrar",
+  objetivos_do_mes: "Objetivos do mês",
+  acoes_chave: "Ações-chave",
+  realismo: "Realismo",
+};
+
+function proposalTitle(proposal: Record<string, unknown> | null) {
+  if (!proposal) return "";
+  const type = String(proposal.type ?? "");
+  if (type === "save_strategic_plan") return "Plano Estratégico";
+  if (type === "save_quarterly_plan") return "Plano Trimestral";
+  if (type === "save_monthly_plan") return "Plano Mensal";
+  return "Proposta";
+}
+
 export function OraclePanel() {
   const { state, dispatch } = useAppState();
   const location = useLocation();
@@ -14,6 +59,10 @@ export function OraclePanel() {
   const [evidenceText, setEvidenceText] = useState("");
   const mode = state.ui.oracleMode;
   const isDashboard = location.pathname === "/";
+  const activeSession = state.activeSession;
+  const phases = activeSession ? SESSION_PHASES[activeSession.type] : [];
+  const phaseIndex = activeSession ? Math.max(0, phases.indexOf(activeSession.phase)) : 0;
+  const phaseProgress = phases.length ? ((phaseIndex + 1) / phases.length) * 100 : 0;
 
   const selectedObjective = useMemo(
     () => state.objectives.find((objective) => objective.id === selectedObjectiveId),
@@ -46,6 +95,11 @@ export function OraclePanel() {
     event.preventDefault();
     const text = message.trim();
     if (!text) return;
+    if (activeSession) {
+      dispatch({ type: "send_session_message", sessionId: activeSession.id, text });
+      setMessage("");
+      return;
+    }
     dispatch({
       type: "add_chat_message",
       message: { id: createMessageId("user"), author: "user", text },
@@ -132,8 +186,12 @@ export function OraclePanel() {
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#075E54] bg-[#25D366]" />
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">Oráculo</h2>
-                <p className="truncate text-xs text-white/75">IA Estratégica · {state.organization?.name}</p>
+                <h2 className="truncate text-sm font-semibold">
+                  {activeSession ? SESSION_TYPE_LABEL[activeSession.type] : "Oráculo"}
+                </h2>
+                <p className="truncate text-xs text-white/75">
+                  {activeSession ? `${PHASE_LABEL[activeSession.phase] ?? activeSession.phase} · ${activeSession.period}` : `IA Estratégica · ${state.organization?.name}`}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -156,6 +214,14 @@ export function OraclePanel() {
             </div>
           </div>
 
+          {activeSession ? (
+            <div className="border-b border-black/5 bg-[#075E54] px-4 pb-3">
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
+                <div className="h-full rounded-full bg-[#25D366] transition-all" style={{ width: `${phaseProgress}%` }} />
+              </div>
+            </div>
+          ) : null}
+
           <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
             {state.chatMessages.map((chatMessage) => (
               <div
@@ -171,6 +237,29 @@ export function OraclePanel() {
               </div>
             ))}
           </div>
+
+          {activeSession?.pendingProposal ? (
+            <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
+              <div className="rounded-2xl bg-white/90 p-3 shadow-sm">
+                <p className="text-sm font-semibold text-[#1D1D1F]">Pronto para gravar</p>
+                <p className="mt-1 text-xs leading-5 text-[#5F6368]">
+                  {proposalTitle(activeSession.pendingProposal)} preparado. Confirme para salvar no sistema ou peça ajustes na conversa.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    className="bg-[#25D366] hover:bg-[#20BD5A]"
+                    onClick={() => dispatch({ type: "confirm_session_proposal", sessionId: activeSession.id })}
+                  >
+                    Confirmar e gravar
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setMessage("Quero ajustar: ")}>
+                    Ajustar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {isDashboard ? (
             <div className="space-y-3 border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
@@ -223,7 +312,7 @@ export function OraclePanel() {
             <input
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="Escreva para o Oráculo"
+              placeholder={activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
               className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
             />
             <button
