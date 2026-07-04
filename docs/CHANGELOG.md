@@ -46,6 +46,9 @@
 - Executada a Fase 5 da V3: adicionados condutores de fechamento mensal e trimestral, propostas `month_close`/`quarter_close`, gravacao de check-ins/evidencias/status e rolagem de pendencias confirmadas.
 - Adicionado cartao de fechamento pendente no Dashboard/Execucao e Edge Function `month-turn` para convite de virada por WhatsApp.
 - Configurado `MONTH_TURN_SECRET` no Supabase e agendado o cron mensal `oraculo-month-turn` para rodar no dia 1 as 11:00 UTC.
+- Adicionado anexo de PDF/PPTX/DOCX/TXT no chat lateral do app, enviando apenas texto extraido para a conversa ou sessao ativa.
+- Adicionada importacao de Plano Trimestral pronto por departamento na tela Planos Trimestrais, com proposta `save_quarterly_plan`, previa no painel lateral e confirmacao antes de gravar.
+- Renomeado o fechamento mensal na Execucao Viva para "Adicionar check-in", deixando claro que o check-in e salvo ao confirmar o fechamento guiado.
 
 ## 2026-07-02
 

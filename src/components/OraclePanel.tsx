@@ -1,6 +1,7 @@
-import { Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Maximize2, Minimize2, Paperclip, Send, Sparkles, X } from "lucide-react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { createMessageId, generateWeeklyReview } from "../lib/oracle";
 import { useAppState } from "../state/store";
 import { Button } from "./ui/Button";
@@ -230,6 +231,97 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
   );
 }
 
+function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  if (asText(proposal.type) !== "save_quarterly_plan") return null;
+
+  const areaRole = asRecord(proposal.areaRole);
+  const diagnosis = asRecord(proposal.diagnosis);
+  const annualObjectives = asRecordArray(proposal.annualObjectives);
+  const quarterlyObjectives = asRecordArray(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre);
+  const learningFocus = asTextArray(proposal.learningFocus ?? proposal.foco_aprendizado);
+
+  return (
+    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será gravado</p>
+        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Plano Trimestral {asText(proposal.period)}</p>
+        <p className="text-[12px] text-[#7A7D82]">
+          Será salvo no departamento escolhido, com objetivo anual da área quando necessário e objetivos do trimestre.
+        </p>
+      </div>
+
+      {asText(areaRole.mission) || asTextArray(areaRole.contribution).length ? (
+        <div className="rounded-xl bg-[#F7F7F8] p-3">
+          <p className="mb-1 font-semibold text-[#1D1D1F]">Papel da área</p>
+          <DetailLine label="Missão" value={areaRole.mission} />
+          <ChipList items={asTextArray(areaRole.contribution)} />
+        </div>
+      ) : null}
+
+      {annualObjectives.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Objetivos anuais da área ({annualObjectives.length})</p>
+          {annualObjectives.map((objective, index) => (
+            <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
+              <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo anual ${index + 1}`}</p>
+              {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
+              <p className="mt-1 text-[11px] text-[#7A7D82]">
+                {[
+                  asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
+                  asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
+                  asText(objective.owner) ? `Dono: ${asText(objective.owner)}` : "",
+                ].filter(Boolean).join(" · ") || "Sem indicador, meta ou dono explícitos no arquivo."}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {quarterlyObjectives.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Objetivos do trimestre ({quarterlyObjectives.length})</p>
+          {quarterlyObjectives.map((objective, index) => {
+            const deliverables = asTextArray(objective.deliverables ?? objective.entregas);
+            return (
+              <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
+                <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo trimestral ${index + 1}`}</p>
+                {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
+                <p className="mt-1 text-[11px] text-[#7A7D82]">
+                  {[
+                    asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
+                    asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
+                    asText(objective.owner) ? `Dono: ${asText(objective.owner)}` : "",
+                    asText(objective.parentTitle) ? `Vínculo anual: ${asText(objective.parentTitle)}` : "",
+                  ].filter(Boolean).join(" · ") || "Sem indicador, meta, dono ou vínculo explícitos no arquivo."}
+                </p>
+                <ChipList items={deliverables} />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <div className="grid gap-2">
+        {asTextArray(diagnosis.strengths).length || asTextArray(diagnosis.weaknesses).length ? (
+          <p>
+            <span className="font-medium text-[#1D1D1F]">Diagnóstico: </span>
+            {[
+              asTextArray(diagnosis.strengths).length ? `${asTextArray(diagnosis.strengths).length} força(s)` : "",
+              asTextArray(diagnosis.weaknesses).length ? `${asTextArray(diagnosis.weaknesses).length} gargalo(s)` : "",
+            ].filter(Boolean).join(" · ")}
+          </p>
+        ) : null}
+        {learningFocus.length ? (
+          <p>
+            <span className="font-medium text-[#1D1D1F]">Foco de aprendizado: </span>
+            {learningFocus.join("; ")}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function OraclePanel() {
   const { state, dispatch } = useAppState();
   const location = useLocation();
@@ -237,7 +329,10 @@ export function OraclePanel() {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [selectedObjectiveId, setSelectedObjectiveId] = useState(state.objectives[0]?.id ?? "");
   const [evidenceText, setEvidenceText] = useState("");
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const mode = state.ui.oracleMode;
   const isDashboard = location.pathname === "/";
   const activeSession = state.activeSession;
@@ -292,6 +387,43 @@ export function OraclePanel() {
     }
     dispatch({ type: "send_oracle_message", text, context: location.pathname });
     setMessage("");
+  }
+
+  async function processAttachment(file: File | undefined) {
+    if (!file) return;
+    setAttachmentLoading(true);
+    setAttachmentError(null);
+
+    try {
+      const imported = await importPlanFile(file);
+      const contextLimit = activeSession ? 24000 : 18000;
+      const safeText =
+        imported.text.length > contextLimit
+          ? `${imported.text.slice(0, contextLimit)}\n\n[Texto cortado pelo limite de contexto. Se precisar, peça o restante do arquivo antes de concluir.]`
+          : imported.text;
+      const text = [
+        `Arquivo anexado no chat do app: ${imported.fileName}`,
+        imported.warning ? `Aviso: ${imported.warning}` : "",
+        "Texto extraído:",
+        safeText,
+      ].filter(Boolean).join("\n\n");
+
+      if (activeSession) {
+        dispatch({ type: "send_session_message", sessionId: activeSession.id, text });
+      } else {
+        dispatch({ type: "send_oracle_message", text, context: `arquivo:${location.pathname}` });
+      }
+    } catch (error) {
+      setAttachmentError(error instanceof Error ? error.message : "Não consegui ler esse arquivo.");
+    } finally {
+      setAttachmentLoading(false);
+    }
+  }
+
+  function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    void processAttachment(file);
   }
 
   function runWeeklyReview() {
@@ -425,6 +557,7 @@ export function OraclePanel() {
                   {proposalTitle(activeSession.pendingProposal)} preparado. Confirme para salvar no sistema ou peça ajustes na conversa.
                 </p>
                 <StrategicProposalPreview proposal={activeSession.pendingProposal} />
+                <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
                 <div className="mt-3 grid gap-2">
                   <Button
                     type="button"
@@ -493,22 +626,36 @@ export function OraclePanel() {
             </div>
           ) : null}
 
-          <form onSubmit={submitMessage} className="flex items-center gap-2 border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
-            <input
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder={activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
-              className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
-            />
-            <button
-              type="submit"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!message.trim()}
-              aria-label="Enviar mensagem"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
+          <div className="border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
+            {attachmentError ? <p className="mb-2 px-1 text-xs leading-5 text-[#B42318]">{attachmentError}</p> : null}
+            <form onSubmit={submitMessage} className="flex items-center gap-2">
+              <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} />
+              <button
+                type="button"
+                onClick={() => attachmentInputRef.current?.click()}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#5F6368] shadow-sm transition hover:bg-[#F7F7F7] disabled:cursor-wait disabled:opacity-60"
+                disabled={attachmentLoading}
+                aria-label="Anexar arquivo"
+                title="Anexar PDF, PPTX, DOCX ou TXT"
+              >
+                {attachmentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </button>
+              <input
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder={activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
+                className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
+              />
+              <button
+                type="submit"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!message.trim()}
+                aria-label="Enviar mensagem"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </aside>

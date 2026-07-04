@@ -71,9 +71,9 @@ export function Execution() {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-text">Check-in mensal</h2>
+            <h2 className="text-base font-semibold text-text">Check-in e fechamento mensal</h2>
             <p className="mt-1 text-sm leading-6 text-text-secondary">
-              O Oráculo puxa os objetivos mensais por área, registra evidências e salva o resumo do mês.
+              Para adicionar um check-in, inicie o fechamento guiado da área. Ao confirmar o resumo, o Oráculo salva o check-in, evidências e pendências do período.
             </p>
           </div>
         </div>
@@ -97,13 +97,20 @@ export function Execution() {
                       icon={RefreshCcw}
                       onClick={() => dispatch({ type: "start_session", sessionType: "month_close", areaId: area.id, period: closePeriod })}
                     >
-                      Fechar mês
+                      Adicionar check-in
                     </Button>
                   </div>
                   {lastCheckIn ? (
-                    <p className="mt-3 text-sm leading-6 text-text-secondary">{lastCheckIn.summary}</p>
+                    <div className="mt-3 rounded-xl border border-[#D9EADF] bg-[#F5FBF7] px-3 py-2">
+                      <p className="text-xs font-medium text-[#1D7A3E]">Check-in salvo</p>
+                      <p className="mt-1 text-sm leading-6 text-text-secondary">{lastCheckIn.summary}</p>
+                    </div>
                   ) : (
-                    <p className="mt-3 text-sm leading-6 text-text-secondary">Nenhum check-in registrado ainda.</p>
+                    <p className="mt-3 text-sm leading-6 text-text-secondary">
+                      {monthlyObjectives.length
+                        ? "Nenhum check-in registrado ainda. Use o botão para revisar o mês com o Oráculo e confirmar o registro."
+                        : "Sem objetivo mensal nesse período. Crie o plano mensal antes de registrar um check-in útil."}
+                    </p>
                   )}
                 </div>
               );

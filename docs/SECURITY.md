@@ -99,7 +99,7 @@ O classificador de intencao usa a funcao de IA `background`, mas a decisao de es
 
 Na Fase 5, fechamentos de mes e trimestre tambem seguem `proposal` + confirmacao. O modelo monta `month_close` ou `quarter_close`, mas a escrita so acontece em `proposals.ts` depois de validar membership, area e permissao. A gravacao permitida e limitada a atualizar status/progresso, registrar evidencias, criar check-in, rolar pendencias para o proximo periodo e atualizar foco de aprendizado do trimestre.
 
-Arquivos importados pela tela de Plano Estrategico sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Gerar proposta e carregar no módulo", o frontend envia somente o texto extraido/colado para `oracle-session` com `action = import_ready_plan`; a gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side. A opção "Só revisar texto" nao chama IA nem grava dados.
+Arquivos importados pela tela de Plano Estrategico, pela tela de Planos Trimestrais ou anexados no chat lateral sao lidos no navegador apenas para extrair texto. O arquivo bruto nao e salvo no banco. Quando o usuario escolhe "Gerar proposta e carregar no módulo" no Plano Estrategico, o frontend envia somente o texto extraido/colado para `oracle-session` com `action = import_ready_plan`; quando importa um plano trimestral por departamento, envia somente o texto para `action = import_ready_quarterly_plan`. A gravacao estruturada ainda depende de proposta, confirmacao do usuario e validacao server-side. A opção "Só revisar texto" nao chama IA nem grava dados.
 
 ## RLS
 
@@ -152,7 +152,7 @@ O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-co
 
 Criacao de planos, objetivos e acoes nunca acontece apenas porque o modelo pediu. O modelo gera uma `proposal`; o usuario precisa confirmar; o servidor valida permissao; so entao o banco e alterado. Essa separacao evita que prompt injection ou erro de interpretacao grave dados sem confirmacao explicita.
 
-No fluxo de plano pronto, texto de arquivo deve ser tratado como conteudo nao confiavel. Ele pode orientar a proposta, mas nao pode substituir as regras do sistema, exigir exposicao de segredo ou pular a confirmacao.
+No fluxo de plano pronto, seja estrategico ou trimestral, texto de arquivo deve ser tratado como conteudo nao confiavel. Ele pode orientar a proposta, mas nao pode substituir as regras do sistema, exigir exposicao de segredo ou pular a confirmacao.
 
 Atualizacoes rapidas por WhatsApp sao deliberadamente menores que uma proposta. Elas nao podem criar planejamento novo, trocar dono da empresa, alterar configuracao, salvar chave, convidar membro ou apagar dados. Se uma mensagem pedir algo fora desse escopo, o fluxo deve responder com orientacao ou iniciar sessao de planejamento, nao gravar direto.
 

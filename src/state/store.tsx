@@ -44,6 +44,7 @@ type AppAction =
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
   | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
   | { type: "import_ready_strategic_plan"; period: string; text: string; fileName?: string | null }
+  | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null }
   | { type: "send_session_message"; sessionId: string; text: string }
   | { type: "confirm_session_proposal"; sessionId: string }
   | { type: "abandon_session"; sessionId: string }
@@ -1060,6 +1061,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         void callEdgeFunction("oracle-session", {
           action: "import_ready_plan",
           orgId,
+          period: action.period,
+          planText: action.text,
+          fileName: action.fileName ?? null,
+          channel: "web",
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
+          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+        });
+        return;
+      }
+
+      if (action.type === "import_ready_quarterly_plan") {
+        uiDispatch({ type: "set_oracle_mode", mode: "normal" });
+        void callEdgeFunction("oracle-session", {
+          action: "import_ready_quarterly_plan",
+          orgId,
+          areaId: action.areaId,
           period: action.period,
           planText: action.text,
           fileName: action.fileName ?? null,

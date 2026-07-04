@@ -455,8 +455,78 @@ Limites atuais:
 - a importacao pelo app aceita PDF, PPTX, DOCX e TXT ate 80 MB; arquivos maiores devem ser compactados ou convertidos para texto antes de importar;
 - arquivos acima de 30 MB podem demorar porque a extracao roda no navegador da pessoa;
 - textos muito longos sao cortados pelo frontend e pela Edge Function antes de entrar no modelo para proteger o contexto da IA;
-- o fluxo importa Plano Estrategico. Trimestral e Mensal por arquivo entram nas fases futuras de documentos/WhatsApp.
+- o fluxo estrategico importa Plano Estrategico. Plano Trimestral tambem pode ser importado pela tela Planos Trimestrais, escolhendo antes o departamento. Plano Mensal por arquivo ainda nao grava dados estruturados automaticamente.
 - plano pronto aprovado deve ser preservado. O Oraculo pode estruturar trechos implicitos como objetivos, mas nao deve inventar KPI, meta, prazo, responsavel, diagnostico ou projeto que o documento nao trouxe.
+
+## Problema: arquivo anexado no chat do app nao funciona
+
+Fluxo esperado:
+
+1. Usuario abre o painel lateral do Oraculo.
+2. Clica no icone de anexo ao lado do campo de mensagem.
+3. Seleciona PDF, PPTX, DOCX ou TXT.
+4. O navegador extrai o texto com `src/lib/fileImport.ts`.
+5. Se houver sessao ativa, o texto entra como mensagem da sessao via `oracle-session`.
+6. Se nao houver sessao ativa, o texto entra como mensagem do chat via `oracle-chat`.
+
+Verifique:
+
+- se o arquivo tem formato suportado e texto selecionavel;
+- se o painel mostra erro de formato, tamanho ou falta de texto extraivel;
+- se `chat_messages` recebeu mensagem começando por `Arquivo anexado no chat do app`;
+- se a chamada de IA aparece em `ai_usage_logs` para `daily` ou `planning`, conforme havia ou nao sessao ativa;
+- se nenhum arquivo bruto foi salvo no banco. O esperado e salvar apenas texto extraido na conversa.
+
+## Problema: importacao de Plano Trimestral nao vira proposta
+
+Fluxo esperado pela tela Planos Trimestrais:
+
+1. Usuario abre Planos Trimestrais.
+2. Escolhe o departamento correto.
+3. Clica em "Importar plano".
+4. Seleciona PDF, PPTX, DOCX ou TXT.
+5. O frontend extrai texto e chama `oracle-session` com `action = import_ready_quarterly_plan`, enviando `orgId`, `areaId`, `period`, `planText`, `fileName` e `channel = web`.
+6. A Edge Function usa a funcao de IA `planning`, monta uma proposta `save_quarterly_plan` e salva em `planning_sessions.pending_proposal`.
+7. O painel lateral mostra o cartao "Pronto para gravar" com previa de papel da area, diagnostico, objetivos anuais, objetivos trimestrais, entregas e lacunas.
+8. Somente "Confirmar e gravar" aplica a proposta no banco.
+
+Verifique:
+
+- se existe area/departamento cadastrado e se o usuario tem permissao de owner ou coordenador daquela area;
+- se o arquivo tem texto extraivel;
+- se existe sessao ativa em `public.planning_sessions` com `type = 'quarterly'`, `area_id` do departamento e `period = 'Q3 2026'`;
+- se `pending_proposal` tem `type = 'save_quarterly_plan'`;
+- se `public.ai_usage_logs.metadata.action = 'ready_quarterly_plan_import'` apareceu depois do envio;
+- se o cartao de aprovacao aparece no painel lateral. Se nao aparecer, confira se outra sessao ativa antiga esta prendendo o painel e use "Descartar" nela.
+
+Consulta util:
+
+```sql
+select type, period, area_id, phase, pending_proposal ->> 'type' as proposal_type, status, created_at
+from public.planning_sessions
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 10;
+```
+
+## Como adicionar check-in na Execucao Viva
+
+Na Fase 5, check-in nao e mais um registro solto. Ele nasce do fechamento mensal guiado:
+
+1. Abra Execucao Viva.
+2. No bloco "Check-in e fechamento mensal", escolha a area.
+3. Clique em "Adicionar check-in".
+4. O Oraculo abre uma sessao `month_close` para o mes encerrado.
+5. Responda a revisao de objetivos, evidencias, aprendizados e pendencias.
+6. Quando aparecer o cartao "Pronto para gravar", clique em "Confirmar e gravar".
+7. `proposals.ts` cria o registro em `check_ins`, atualiza objetivos/acoes e registra evidencias permitidas.
+
+Se nao aparecer check-in:
+
+- confira se existem objetivos mensais para o periodo indicado;
+- confira se a sessao `month_close` tem `pending_proposal`;
+- confira se o usuario confirmou a proposta;
+- consulte `public.check_ins` filtrando por `area_id` e `period`.
 
 ## Problema: WhatsApp recebeu mensagem mas nao respondeu
 

@@ -4,6 +4,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   abandonPlanningSession,
   confirmPlanningProposal,
+  prepareReadyQuarterlyPlanProposal,
   prepareReadyStrategicPlanProposal,
   processPlanningMessage,
   startPlanningSession,
@@ -45,6 +46,19 @@ serve(async (req) => {
       const result = await prepareReadyStrategicPlanProposal(client, {
         orgId: String(payload.orgId ?? ""),
         areaId: payload.areaId ? String(payload.areaId) : null,
+        period: String(payload.period ?? ""),
+        planText: String(payload.planText ?? payload.message ?? ""),
+        fileName: payload.fileName ? String(payload.fileName) : null,
+        userId: user.id,
+        channel: payload.channel === "whatsapp" ? "whatsapp" : "web",
+      });
+      return jsonResponse(result);
+    }
+
+    if (action === "import_ready_quarterly_plan") {
+      const result = await prepareReadyQuarterlyPlanProposal(client, {
+        orgId: String(payload.orgId ?? ""),
+        areaId: String(payload.areaId ?? ""),
         period: String(payload.period ?? ""),
         planText: String(payload.planText ?? payload.message ?? ""),
         fileName: payload.fileName ? String(payload.fileName) : null,

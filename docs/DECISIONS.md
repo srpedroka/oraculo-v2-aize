@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-04 - Arquivos no app e importacao trimestral por proposta
+
+Decisao: permitir anexar PDF/PPTX/DOCX/TXT no chat lateral do app e importar Plano Trimestral pronto diretamente na tela Planos Trimestrais, mantendo extração local de texto, proposta pendente e confirmacao antes de gravar.
+
+Contexto: o usuario conseguia importar Plano Estrategico pronto, mas nao havia entrada de arquivo no chat do app nem no modulo trimestral. Isso quebrava o fluxo independente app/WhatsApp e impedia testar planos prontos por departamento.
+
+Alternativas: tratar arquivo como chat comum, gravar objetivos direto ao importar, ou deixar o trimestral para fase futura.
+
+Motivo: reutilizar `src/lib/fileImport.ts` preserva segurança e experiencia. O arquivo bruto nunca vai ao banco; apenas texto extraido entra na conversa ou em `oracle-session`. Para o trimestral, uma acao dedicada `import_ready_quarterly_plan` obriga `proposal.type = save_quarterly_plan`, mostra previa no painel lateral e so grava depois de confirmacao e validacao server-side.
+
+Consequencias: `oracle-session` passa a expor `prepareReadyQuarterlyPlanProposal`; a tela Planos Trimestrais exige escolher o departamento antes de anexar o arquivo; o chat lateral aceita anexos como mensagem da conversa/sessao ativa. Plano Mensal por arquivo continua fora do escopo de gravacao automatica.
+
 ## 2026-07-04 - Fechamentos de mes e trimestre por sessao
 
 Decisao: executar a Fase 5 da V3 com condutores `month_close` e `quarter_close` no mesmo motor `oracle-session`, mantendo proposta pendente e confirmacao antes de gravar.

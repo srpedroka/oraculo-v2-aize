@@ -225,6 +225,134 @@ function readyPlanSystemPrompt(context: string, period: string, channel: "web" |
   ].join("\n\n");
 }
 
+function normalizeReadyQuarterlyProposal(rawProposal: any, period: string) {
+  const year = currentYearFromPeriod(period);
+  const areaRole = rawProposal?.areaRole && typeof rawProposal.areaRole === "object"
+    ? rawProposal.areaRole
+    : rawProposal?.papel_area && typeof rawProposal.papel_area === "object"
+      ? rawProposal.papel_area
+      : {};
+  const diagnosis = rawProposal?.diagnosis && typeof rawProposal.diagnosis === "object"
+    ? rawProposal.diagnosis
+    : rawProposal?.diagnostico && typeof rawProposal.diagnostico === "object"
+      ? rawProposal.diagnostico
+      : {};
+
+  return {
+    type: "save_quarterly_plan",
+    period,
+    areaRole: {
+      mission: asText(areaRole.mission ?? areaRole.missao),
+      contribution: asTextArray(areaRole.contribution ?? areaRole.contribuicao).slice(0, 6),
+    },
+    diagnosis: {
+      strengths: asTextArray(diagnosis.strengths ?? diagnosis.forcas).slice(0, 8),
+      weaknesses: asTextArray(diagnosis.weaknesses ?? diagnosis.gargalos ?? diagnosis.fraquezas).slice(0, 8),
+    },
+    linkedStrategicObjectiveIds: asTextArray(rawProposal?.linkedStrategicObjectiveIds ?? rawProposal?.objetivos_estrategicos_vinculados).slice(0, 8),
+    learningFocus: asTextArray(rawProposal?.learningFocus ?? rawProposal?.foco_aprendizado).slice(0, 5),
+    annualObjectives: asArray<any>(rawProposal?.annualObjectives ?? rawProposal?.objetivos_anuais_area ?? rawProposal?.objetivosAnuais)
+      .map((objective) => ({
+        title: asText(objective?.title ?? objective?.titulo, "Objetivo anual da área"),
+        type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
+        result: asText(objective?.result ?? objective?.resultado),
+        metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
+        target: asText(objective?.target ?? objective?.meta),
+        owner: asText(objective?.owner ?? objective?.responsavel),
+        period: asText(objective?.period ?? objective?.periodo, String(year)),
+        linkedStrategicObjectiveId: asText(objective?.linkedStrategicObjectiveId ?? objective?.objetivo_estrategico_id),
+      }))
+      .filter((objective) => objective.title)
+      .slice(0, 6),
+    quarterlyObjectives: asArray<any>(rawProposal?.quarterlyObjectives ?? rawProposal?.objetivos_trimestre ?? rawProposal?.objetivosTrimestrais)
+      .map((objective) => ({
+        title: asText(objective?.title ?? objective?.titulo, "Objetivo trimestral"),
+        type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
+        result: asText(objective?.result ?? objective?.resultado),
+        metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
+        target: asText(objective?.target ?? objective?.meta),
+        owner: asText(objective?.owner ?? objective?.responsavel),
+        period: asText(objective?.period ?? objective?.periodo, period),
+        parentTitle: asText(objective?.parentTitle ?? objective?.objetivo_anual_vinculado ?? objective?.vinculo),
+        deliverables: asTextArray(objective?.deliverables ?? objective?.entregas).slice(0, 6),
+      }))
+      .filter((objective) => objective.title)
+      .slice(0, 8),
+  };
+}
+
+function missingReadyQuarterlyPlanFields(proposal: ReturnType<typeof normalizeReadyQuarterlyProposal>) {
+  const missing: string[] = [];
+  if (!asText(proposal.areaRole.mission)) missing.push("missão da área");
+
+  const annualWithoutMetric = proposal.annualObjectives.filter((objective) => !asText(objective.metric)).length;
+  const quarterlyWithoutMetric = proposal.quarterlyObjectives.filter((objective) => !asText(objective.metric)).length;
+  const quarterlyWithoutTarget = proposal.quarterlyObjectives.filter((objective) => !asText(objective.target)).length;
+  const quarterlyWithoutOwner = proposal.quarterlyObjectives.filter((objective) => !asText(objective.owner)).length;
+  const quarterlyWithoutDeliverables = proposal.quarterlyObjectives.filter((objective) => !objective.deliverables.length).length;
+
+  if (annualWithoutMetric) missing.push(`${annualWithoutMetric} objetivo(s) anual(is) sem indicador`);
+  if (quarterlyWithoutMetric) missing.push(`${quarterlyWithoutMetric} objetivo(s) trimestral(is) sem indicador`);
+  if (quarterlyWithoutTarget) missing.push(`${quarterlyWithoutTarget} objetivo(s) trimestral(is) sem meta`);
+  if (quarterlyWithoutOwner) missing.push(`${quarterlyWithoutOwner} objetivo(s) trimestral(is) sem responsável`);
+  if (quarterlyWithoutDeliverables) missing.push(`${quarterlyWithoutDeliverables} objetivo(s) trimestral(is) sem entregas`);
+
+  return missing;
+}
+
+function formatReadyQuarterlyPlanReply(
+  proposal: ReturnType<typeof normalizeReadyQuarterlyProposal>,
+  channel: "web" | "whatsapp",
+) {
+  const objectiveLines = proposal.quarterlyObjectives.map((objective) => {
+    const details = [
+      objective.result,
+      objective.metric ? `Indicador: ${objective.metric}` : "",
+      objective.target ? `Meta: ${objective.target}` : "",
+      objective.owner ? `Dono: ${objective.owner}` : "",
+      objective.parentTitle ? `Vínculo anual: ${objective.parentTitle}` : "",
+      objective.deliverables.length ? `Entregas: ${objective.deliverables.join("; ")}` : "",
+    ].filter(Boolean).join(" | ");
+    return details ? `${objective.title} - ${details}` : objective.title;
+  });
+  const missing = missingReadyQuarterlyPlanFields(proposal);
+
+  if (channel === "web") {
+    return [
+      `Estruturei uma prévia do Plano Trimestral ${proposal.period} com ${proposal.quarterlyObjectives.length} objetivo(s).`,
+      "Ainda não gravei nada. Confira o cartão de aprovação no painel lateral: ele mostra objetivos, vínculos anuais, entregas e campos que ficaram em branco no arquivo.",
+    ].join(" ");
+  }
+
+  return [
+    `Estruturei uma prévia do Plano Trimestral ${proposal.period} com ${proposal.quarterlyObjectives.length} objetivo(s).`,
+    "",
+    objectiveLines.length ? "Objetivos do trimestre:" : "",
+    ...numberedPreview(objectiveLines),
+    "",
+    missing.length ? `Campos que deixei em branco porque não estavam explícitos: ${missing.join("; ")}.` : "Não identifiquei lacunas importantes nos campos principais.",
+  ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
+}
+
+function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
+  return [
+    PERSONA_ORACULO,
+    "Você está importando um Plano Trimestral pronto para dentro do Oráculo.",
+    "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Planos Trimestrais da área selecionada.",
+    "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
+    "Não faça apenas uma revisão textual. Gere uma proposal completa do tipo save_quarterly_plan.",
+    "Fidelidade ao arquivo é mais importante que completar campos. Não acrescente KPI, meta, prazo, responsável, diagnóstico, entregas ou objetivo anual que não esteja explícito ou fortemente implícito no texto/contexto.",
+    "Se houver lacunas, use string vazia ou lista vazia. Quando algo estiver implícito, preserve o texto original como base curta e sinalize lacunas na resposta.",
+    "Monte 1 a 4 objetivos trimestrais e até 5 entregas principais por objetivo. Se o arquivo trouxer plano anual da área, inclua em annualObjectives; se não trouxer, use annualObjectives vazio e parentTitle vazio.",
+    "Use o período recebido exatamente como padrão para objetivos trimestrais.",
+    "Responda SOMENTE JSON válido, sem markdown, com este formato:",
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_trimestral_pronto":true},"next_phase":"sintese","proposal":{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"linkedStrategicObjectiveIds":[],"annualObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","deliverables":[]}]}}',
+    `Trimestre/período do plano: ${period}`,
+    "Contexto atual do Oráculo:",
+    context,
+  ].join("\n\n");
+}
+
 async function assertCanStartSession(client: Client, orgId: string, areaId: string | null, userId: string) {
   const { data: membership, error } = await client
     .from("memberships")
@@ -584,6 +712,134 @@ export async function prepareReadyStrategicPlanProposal(
   const nextState = shallowMergeState(session.state ?? {}, {
     ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
     importacao_plano_pronto: true,
+    arquivo: params.fileName ?? null,
+  });
+
+  const { data: updated, error: updateError } = await client
+    .from("planning_sessions")
+    .update({
+      phase: "sintese",
+      state: nextState,
+      pending_proposal: proposal,
+      status: "active",
+      completed_at: null,
+      conversation_id: session.conversation_id ?? conversation.id,
+    })
+    .eq("id", session.id)
+    .select("*")
+    .single();
+  if (updateError) throw updateError;
+
+  await insertMessage(client, updated, "oracle", reply, channel);
+  return { session: updated, reply, pendingProposal: proposal };
+}
+
+export async function prepareReadyQuarterlyPlanProposal(
+  client: Client,
+  params: {
+    orgId: string;
+    areaId: string;
+    period: string;
+    planText: string;
+    fileName?: string | null;
+    userId: string;
+    channel?: "web" | "whatsapp";
+  },
+) {
+  const channel = params.channel ?? "web";
+  const planText = params.planText.trim();
+  if (!params.areaId) throw new Error("Plano trimestral exige um departamento selecionado");
+  if (!planText) throw new Error("Texto do plano trimestral pronto não informado");
+
+  await assertCanStartSession(client, params.orgId, params.areaId, params.userId);
+  const aiRoute = await resolveAiFunction(client, params.orgId, "planning");
+  if (!aiRoute) throw new Error("IA de planejamento não configurada");
+
+  const conversation = await getOrCreateConversation(client, {
+    orgId: params.orgId,
+    userId: params.userId,
+    channel,
+    areaId: params.areaId,
+  });
+  const { data: existing, error: existingError } = await client
+    .from("planning_sessions")
+    .select("*")
+    .eq("org_id", params.orgId)
+    .eq("area_id", params.areaId)
+    .eq("user_id", params.userId)
+    .eq("type", "quarterly")
+    .eq("period", params.period)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  let session = existing;
+  if (!session) {
+    const { data, error } = await client
+      .from("planning_sessions")
+      .insert({
+        org_id: params.orgId,
+        area_id: params.areaId,
+        user_id: params.userId,
+        conversation_id: conversation.id,
+        type: "quarterly",
+        period: params.period,
+        phase: "sintese",
+        state: { periodo: params.period, importacao_plano_trimestral_pronto: true, arquivo: params.fileName ?? null },
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    session = data;
+  }
+
+  const context = await buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "quarterly", period: params.period });
+  const importedText = planText.length > READY_PLAN_TEXT_LIMIT
+    ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
+    : planText;
+  const userMessage = [
+    "Importar plano trimestral pronto para o Oráculo.",
+    params.fileName ? `Arquivo: ${params.fileName}` : "",
+    `Período: ${params.period}`,
+    "Texto extraído/colado:",
+    importedText,
+  ].filter(Boolean).join("\n\n");
+
+  await insertMessage(client, session, "user", userMessage, channel);
+
+  const result = await callModel(
+    aiRoute.provider,
+    aiRoute.model,
+    aiRoute.apiKey,
+    readyQuarterlyPlanSystemPrompt(context, params.period, channel),
+    [{ role: "user", content: userMessage }],
+    aiRoute.limits,
+  );
+
+  await recordAiUsage({
+    client,
+    orgId: params.orgId,
+    provider: aiRoute.provider,
+    model: aiRoute.model,
+    channel,
+    usage: result.usage,
+    settings: aiRoute.legacySettings,
+    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: "quarterly", phase: "sintese", action: "ready_quarterly_plan_import" },
+  });
+
+  const parsed = parseJsonObject(result.text) as any;
+  const rawProposal = parsed?.proposal ?? parsed;
+  const proposal = normalizeReadyQuarterlyProposal(rawProposal, params.period);
+  if (!proposal.quarterlyObjectives.length) {
+    throw new Error("O Oráculo não conseguiu identificar objetivos trimestrais no plano importado");
+  }
+
+  const reply = formatReadyQuarterlyPlanReply(proposal, channel);
+  const nextState = shallowMergeState(session.state ?? {}, {
+    ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
+    importacao_plano_trimestral_pronto: true,
     arquivo: params.fileName ?? null,
   });
 

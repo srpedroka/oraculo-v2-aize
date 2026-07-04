@@ -6,6 +6,8 @@ const LARGE_FILE_WARNING_BYTES = LARGE_FILE_WARNING_MB * 1024 * 1024;
 export const STRATEGIC_PLAN_FILE_ACCEPT =
   ".pdf,.pptx,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
 
+export const PLAN_FILE_ACCEPT = STRATEGIC_PLAN_FILE_ACCEPT;
+
 interface ImportedPlanText {
   fileName: string;
   text: string;
@@ -164,3 +166,5 @@ export async function importStrategicPlanFile(file: File): Promise<ImportedPlanT
     warning: warnings.length ? warnings.join(" ") : undefined,
   };
 }
+
+export const importPlanFile = importStrategicPlanFile;

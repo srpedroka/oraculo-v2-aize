@@ -1,18 +1,30 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, Plus, Waypoints } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { ArrowRight, Building2, FileText, Loader2, Plus, Upload, Waypoints } from "lucide-react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
+import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { useAppState } from "../state/store";
 import type { Status } from "../types";
+
+const CURRENT_QUARTER_PERIOD = "Q3 2026";
+const IMPORT_TEXT_LIMIT = 24000;
+
+type ImportStatus = {
+  areaId: string;
+  kind: "success" | "error";
+  text: string;
+};
 
 export function QuarterlyPlans() {
   const { state, dispatch } = useAppState();
   const [areaName, setAreaName] = useState("");
   const [builderAreaId, setBuilderAreaId] = useState<string | null>(null);
+  const [importingAreaId, setImportingAreaId] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
 
   function createArea(event: FormEvent<HTMLFormElement>) {
@@ -28,6 +40,47 @@ export function QuarterlyPlans() {
       state.currentMembership?.role === "coordinator" &&
         state.areas.some((area) => area.id === areaId && area.coordinatorId === state.currentMembership?.id),
     );
+  }
+
+  async function processQuarterlyPlanFile(areaId: string, file: File | undefined) {
+    if (!file) return;
+    setImportingAreaId(areaId);
+    setImportStatus(null);
+
+    try {
+      const imported = await importPlanFile(file);
+      const safeText =
+        imported.text.length > IMPORT_TEXT_LIMIT
+          ? `${imported.text.slice(0, IMPORT_TEXT_LIMIT)}\n\n[Texto cortado pelo limite de contexto. Se precisar, peça o restante do arquivo antes de gravar.]`
+          : imported.text;
+
+      dispatch({
+        type: "import_ready_quarterly_plan",
+        areaId,
+        period: CURRENT_QUARTER_PERIOD,
+        text: safeText,
+        fileName: imported.fileName,
+      });
+      setImportStatus({
+        areaId,
+        kind: "success",
+        text: `Arquivo "${imported.fileName}" enviado ao Oráculo. Confira a proposta no painel lateral antes de gravar.`,
+      });
+    } catch (error) {
+      setImportStatus({
+        areaId,
+        kind: "error",
+        text: error instanceof Error ? error.message : "Não foi possível importar o arquivo.",
+      });
+    } finally {
+      setImportingAreaId(null);
+    }
+  }
+
+  function handleQuarterlyPlanFile(areaId: string, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    void processQuarterlyPlanFile(areaId, file);
   }
 
   return (
@@ -77,7 +130,7 @@ export function QuarterlyPlans() {
         {state.areas.map((area) => {
           const plan = state.areaPlans.find((item) => item.areaId === area.id);
           const quarterlyObjectives = state.objectives.filter(
-            (objective) => objective.areaId === area.id && objective.level === "quarterly" && objective.period === "Q3 2026",
+            (objective) => objective.areaId === area.id && objective.level === "quarterly" && objective.period === CURRENT_QUARTER_PERIOD,
           );
           const annualObjectives = state.objectives.filter(
             (objective) => objective.areaId === area.id && objective.level === "area_annual",
@@ -108,12 +161,48 @@ export function QuarterlyPlans() {
                     Abrir área
                   </Link>
                   {canPlanArea(area.id) ? (
-                    <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
-                      Criar objetivo
-                    </Button>
+                    <>
+                      <label
+                        className={[
+                          "inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-[10px] border border-border bg-transparent px-3 text-[13px] font-medium text-text transition hover:border-accent/30 hover:bg-white",
+                          importingAreaId === area.id ? "cursor-wait opacity-70" : "",
+                        ].join(" ")}
+                      >
+                        {importingAreaId === area.id ? (
+                          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload aria-hidden="true" className="h-4 w-4" />
+                        )}
+                        <span>{importingAreaId === area.id ? "Importando" : "Importar plano"}</span>
+                        <input
+                          className="sr-only"
+                          type="file"
+                          accept={PLAN_FILE_ACCEPT}
+                          disabled={Boolean(importingAreaId)}
+                          onChange={(event) => handleQuarterlyPlanFile(area.id, event)}
+                        />
+                      </label>
+                      <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
+                        Criar objetivo
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </div>
+
+              {importStatus?.areaId === area.id ? (
+                <p
+                  className={[
+                    "flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs leading-5",
+                    importStatus.kind === "success"
+                      ? "border-[#BFE6CE] bg-[#F3FBF6] text-[#1D7A3E]"
+                      : "border-[#F3C4C4] bg-[#FFF7F7] text-[#B42318]",
+                  ].join(" ")}
+                >
+                  <FileText aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{importStatus.text}</span>
+                </p>
+              ) : null}
 
               {plan ? (
                 <div className="grid gap-3 rounded-2xl border border-border bg-[#FAFAFB] p-4 lg:grid-cols-[1fr_1fr]">
