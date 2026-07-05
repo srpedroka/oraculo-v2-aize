@@ -158,9 +158,14 @@ export function Sidebar() {
     >
       <div className="flex h-24 items-start justify-between px-5 pt-7">
         <div className="min-w-0 overflow-hidden">
-          <div className="text-[21px] font-bold leading-none tracking-normal text-[#1D2A31]">
+          <div className="text-[21px] font-bold leading-none tracking-normal text-[#1D2A31]" title={collapsed ? "Ad astra per aspera" : undefined}>
             {collapsed ? "O" : "ORÁCULO"}
           </div>
+          {!collapsed ? (
+            <div className="mt-1 whitespace-nowrap text-[9px] font-medium italic leading-none tracking-[0.16em] text-[#8C9096]/80">
+              Ad astra per aspera
+            </div>
+          ) : null}
         </div>
         <Button
           variant="quiet"
