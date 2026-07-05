@@ -4,6 +4,7 @@ dist/
 .env
 .env.*
 !.env.example
+.agents-private/
 .supabase-private/
 supabase/.branches/
 supabase/.temp/
