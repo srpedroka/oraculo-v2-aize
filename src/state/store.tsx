@@ -22,6 +22,7 @@ import type {
   Objective,
   OracleMode,
   Organization,
+  PlanDocument,
   PlanningSession,
   PlanningSessionType,
   Profile,
@@ -126,6 +127,7 @@ const EMPTY_STATE: AppState = {
   chatMessages: [],
   checkIns: [],
   planningSessions: [],
+  planDocuments: [],
   activeSession: null,
   loading: true,
   ready: false,
@@ -339,6 +341,22 @@ function mapPlanningSession(row: any): PlanningSession {
     status: row.status,
     createdAt: row.created_at,
     completedAt: row.completed_at ?? null,
+  };
+}
+
+function mapPlanDocument(row: any): PlanDocument {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    areaId: row.area_id ?? null,
+    sessionId: row.session_id ?? null,
+    type: row.type,
+    period: row.period,
+    title: row.title,
+    content: row.content ?? {},
+    version: Number(row.version ?? 1),
+    createdBy: row.created_by ?? null,
+    createdAt: row.created_at,
   };
 }
 
@@ -700,6 +718,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const planDocumentsQuery = useQuery({
+    queryKey: ["plan_documents", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client
+        .from("plan_documents")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapPlanDocument);
+    },
+  });
+
   const aiSettingsQuery = useQuery({
     queryKey: ["ai_settings", orgId],
     enabled: Boolean(supabase && orgId),
@@ -796,6 +829,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["evidences", orgId] });
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
+    queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
@@ -818,6 +852,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_function_settings", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "plan_documents", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
 
     return () => {
@@ -841,6 +876,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evidencesQuery.isLoading ||
       chatMessagesQuery.isLoading ||
       planningSessionsQuery.isLoading ||
+      planDocumentsQuery.isLoading ||
       aiSettingsQuery.isLoading ||
       aiFunctionSettingsQuery.isLoading ||
       aiProviderKeyStatusesQuery.isLoading ||
@@ -871,6 +907,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       chatMessages: chatMessagesQuery.data ?? [],
       checkIns: checkInsQuery.data ?? [],
       planningSessions: planningSessionsQuery.data ?? [],
+      planDocuments: planDocumentsQuery.data ?? [],
       activeSession: (planningSessionsQuery.data ?? []).find((session) => session.pendingProposal) ?? planningSessionsQuery.data?.[0] ?? null,
       loading,
       ready: Boolean(session && organization),
@@ -911,6 +948,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     profilesQuery.isLoading,
     planningSessionsQuery.data,
     planningSessionsQuery.isLoading,
+    planDocumentsQuery.data,
+    planDocumentsQuery.isLoading,
     rawMembershipsQuery.isLoading,
     session,
     strategicPlan,
@@ -1051,6 +1090,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           channel: "web",
         }).then(() => {
           queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
+          queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
           queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
         });
         return;

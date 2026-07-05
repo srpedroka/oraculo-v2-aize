@@ -19,6 +19,8 @@ Na tela `src/pages/Strategic.tsx`, o Plano Estrategico pode nascer de duas entra
 
 Na tela `src/pages/QuarterlyPlans.tsx`, cada departamento com permissao de escrita pode importar um plano trimestral pronto. A entrada usa o mesmo `src/lib/fileImport.ts`, aceita PDF, PPTX, DOCX e TXT, envia apenas o texto extraido para `oracle-session` com `action = import_ready_quarterly_plan` e exige confirmacao antes de gravar `area_plans` e objetivos trimestrais. O painel lateral mostra a previa de papel da area, diagnostico, objetivos anuais de apoio, objetivos do trimestre, entregas e lacunas. O chat lateral `src/components/OraclePanel.tsx` tambem aceita anexo de PDF/PPTX/DOCX/TXT e envia o texto extraido como mensagem para a conversa ou sessao ativa; ele nao salva o arquivo bruto.
 
+Na tela `src/pages/Documents.tsx`, os documentos canonicos gravados em `plan_documents` aparecem com filtros por tipo, departamento e periodo. O componente `src/components/PlanDocument.tsx` renderiza o mesmo conteudo estruturado para tela e para a rota limpa `src/pages/DocumentPrint.tsx` (`/documentos/:documentId/imprimir`), que usa CSS de impressao A4 sem sidebar nem painel lateral.
+
 Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oraculo. `src/features/objective/ObjectiveEditDialog.tsx` permite editar tipo, resultado, indicador, meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas. O mesmo editor aparece em Plano Estrategico, Dashboard e cards de planos por area. A tela de Areas tambem permite ao owner cadastrar areas e vincular coordenadores no proprio modulo, enquanto coordenadores e demais membros ficam em leitura quando nao tiverem permissao de escrita.
 
 ### Supabase
@@ -74,7 +76,7 @@ Fundacao V3:
 - `planning_sessions`: guarda o estado das sessoes conduzidas pelo Oraculo, incluindo tipo, periodo, fase atual, dados coletados e proposta pendente de confirmacao.
 - `ai_function_settings`: permite configurar modelos diferentes para planejamento, conversa do dia a dia e bastidores, sem duplicar chaves no frontend.
 - `ai_provider_key_status`: guarda apenas `has_key` e `key_preview` por provedor para a tela de Configuracoes. A chave real continua em `public.ai_model_keys`, acessivel apenas por service role.
-- `plan_documents`: guarda o conteudo estruturado dos documentos canonicos de plano e fechamento que serao renderizados em tela, PDF e WhatsApp nas fases seguintes.
+- `plan_documents`: guarda o conteudo estruturado dos documentos canonicos de plano e fechamento renderizados em tela, PDF A4 e WhatsApp.
 
 Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations` passa a ser usada em runtime por `oracle-chat`, `oracle-session` e `whatsapp-webhook`: cada pessoa tem uma conversa ativa por canal (`web` ou `whatsapp`), `chat_messages` recebe `user_id` e `conversation_id`, e conversas longas ganham resumo em `conversations.summary`.
 
@@ -87,7 +89,7 @@ Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations`
 - `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, importa plano trimestral pronto via `import_ready_quarterly_plan`, persiste fase/estado/proposta pendente e grava planos ou fechamentos apenas depois de confirmacao.
 - `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
 - `month-turn`: funcao de virada de mes. Verifica areas com plano mensal encerrado sem check-in e envia convite por WhatsApp para owner/coordenador quando a integracao estiver ativa.
-- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico usam o mesmo importador server-side do app e geram proposta pendente; documentos trimestrais, mensais e evidencias ainda recebem direcionamento sem gravacao automatica. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos.
+- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp.
 
 Funcoes compartilhadas:
 
@@ -106,6 +108,8 @@ Funcoes compartilhadas:
 - `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias e pendencias.
 - `_shared/session-engine.ts`: orquestra sessoes de planejamento, historico, prompts, estado e chamadas ao modelo.
 - `_shared/proposals.ts`: aplica propostas confirmadas no banco com validacao server-side de permissao.
+- `_shared/plan-documents.ts`: transforma propostas confirmadas em `plan_documents` deterministico, incrementando versao por empresa/area/tipo/periodo.
+- `_shared/plan-render.ts`: formata o `content` canonico para WhatsApp, com blocos divididos por `---`.
 - `_shared/conductors/`: persona e condutores de Planejamento Estrategico, Plano Trimestral da Area e Plano Mensal.
 
 Arquivos `.md` de roteiro continuam no repositorio como referencia, mas Edge Functions publicadas nao dependem de leitura desses arquivos em runtime.
@@ -138,10 +142,10 @@ O contexto do plano tambem deixa de ser JSON cru. `_shared/plan-context.ts` devo
 Modo misto de gravacao:
 
 - criar plano, objetivo e acao exige `proposal` + confirmacao;
-- ao confirmar, `proposals.ts` valida permissao de owner/coordenador e grava em `strategic_plans`, `area_plans`, `objectives`, `key_actions` e `strategic_projects` conforme o tipo;
+- ao confirmar, `proposals.ts` valida permissao de owner/coordenador, grava em `strategic_plans`, `area_plans`, `objectives`, `key_actions`, `strategic_projects`, `check_ins` quando aplicavel, e gera um `plan_documents` canonico a partir da mesma proposta;
 - a resposta final so diz que salvou depois da gravacao retornar sem erro.
 
-Plano pronto importado pela tela ou por documento estrategico no WhatsApp segue a mesma regra. O texto extraido/colado entra em `prepareReadyStrategicPlanProposal`, que obriga o modelo a devolver `proposal.type = save_strategic_plan`. Sem clique em "Confirmar e gravar" no app, ou resposta "confirmar" no WhatsApp, nada e persistido como plano estruturado. Os canais permanecem independentes: no app a confirmacao acontece no cartao visual de aprovacao; no WhatsApp a previa vem em texto e a confirmacao acontece por mensagem.
+Plano pronto importado pela tela ou por documento no WhatsApp segue a mesma regra. O texto extraido/colado entra em `prepareReadyStrategicPlanProposal`, `prepareReadyQuarterlyPlanProposal` ou `prepareReadyMonthlyPlanProposal`, obrigando o modelo a devolver uma proposal estruturada. Sem clique em "Confirmar e gravar" no app, ou resposta "confirmar" no WhatsApp, nada e persistido como plano estruturado. Os canais permanecem independentes: no app a confirmacao acontece no cartao visual de aprovacao; no WhatsApp a previa vem em texto e a confirmacao acontece por mensagem.
 
 Plano trimestral pronto importado pela tela de Planos Trimestrais segue a mesma fronteira de seguranca. O usuario escolhe o departamento antes de anexar o arquivo; o texto extraido entra em `prepareReadyQuarterlyPlanProposal`, que exige `proposal.type = save_quarterly_plan`; a gravacao em `area_plans` e `objectives` so acontece depois de "Confirmar e gravar" no painel lateral.
 
@@ -152,11 +156,13 @@ Na Fase 4, a funcao `background` tambem virou o classificador operacional do Ora
 - `start_planning`: cria ou retoma uma `planning_session` para plano estrategico, trimestral ou mensal, no canal em que a pessoa esta falando;
 - `quick_update`: usa `_shared/quick-updates.ts` para gravar pequenas atualizacoes de execucao mensal, como conclusao de acao, percentual de objetivo ou evidencia curta;
 - `close_period`: inicia `month_close` ou `quarter_close` quando existe area em foco; sem area, pergunta qual departamento fechar;
-- `document_question`: direciona perguntas sobre documentos sem prometer geracao automatica ainda.
+- `document_question`: busca o documento canonico mais recente pelo tipo, periodo e departamento inferidos, renderiza com `_shared/plan-render.ts` e envia no WhatsApp.
 
 Essa camada nao substitui proposta e confirmacao para criar planos. Ela so permite gravacao direta para atualizacoes operacionais pequenas, depois de identificar alvo, tipo de alteracao e permissao do usuario.
 
 Na Fase 5, `oracle-session` tambem conduz fechamentos. `month_close` revisa objetivos mensais, acoes, evidencias, aprendizados e pendencias; a proposta `month_close` atualiza objetivos/acoes, registra evidencias, cria `check_ins` e rola pendencias para o mes seguinte quando confirmado. `quarter_close` aplica a mesma logica aos objetivos trimestrais e pode atualizar o foco de aprendizado do proximo trimestre. Depois de gravar, a sessao permanece na ponte para oferecer abrir o proximo ciclo.
+
+Na Fase 6, toda proposta confirmada (`save_strategic_plan`, `save_quarterly_plan`, `save_monthly_plan`, `month_close`, `quarter_close`) tambem gera um documento canonico em `plan_documents`. O documento nao depende de nova chamada de IA: e montado de forma deterministica por `_shared/plan-documents.ts` a partir da proposta aprovada e de dados basicos de empresa/area. A tela `/documentos` renderiza esse conteudo, a rota `/documentos/:documentId/imprimir` exporta por impressao/PDF A4, e o WhatsApp usa `_shared/plan-render.ts` para enviar resumo nativo.
 
 ### WhatsApp
 

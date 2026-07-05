@@ -552,6 +552,7 @@ export const initialState: AppState = {
   chatMessages,
   checkIns: [],
   planningSessions: [],
+  planDocuments: [],
   activeSession: null,
   loading: false,
   ready: true,

@@ -5,6 +5,7 @@ export type Status = "on_track" | "at_risk" | "late" | "done";
 export type PlanLevel = "strategic" | "area_annual" | "quarterly" | "monthly";
 export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
 export type PlanningSessionStatus = "active" | "completed" | "abandoned";
+export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
 
 export interface Organization {
   id: string;
@@ -152,6 +153,20 @@ export interface PlanningSession {
   completedAt: string | null;
 }
 
+export interface PlanDocument {
+  id: string;
+  orgId: string;
+  areaId: string | null;
+  sessionId: string | null;
+  type: PlanDocumentType;
+  period: string;
+  title: string;
+  content: Record<string, unknown>;
+  version: number;
+  createdBy: string | null;
+  createdAt: string;
+}
+
 export type OracleMode = "normal" | "minimized" | "expanded";
 
 export type MembershipRole = "owner" | "coordinator";
@@ -263,6 +278,7 @@ export interface AppState {
   chatMessages: ChatMessage[];
   checkIns: CheckIn[];
   planningSessions: PlanningSession[];
+  planDocuments: PlanDocument[];
   activeSession: PlanningSession | null;
   loading: boolean;
   ready: boolean;

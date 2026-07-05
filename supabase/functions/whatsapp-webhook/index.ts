@@ -14,6 +14,7 @@ import {
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModel } from "../_shared/model.ts";
 import { buildPlanContext } from "../_shared/plan-context.ts";
+import { renderPlanForWhatsApp } from "../_shared/plan-render.ts";
 import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
@@ -21,7 +22,14 @@ import { handleQuickUpdate } from "../_shared/quick-updates.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
-import { confirmPlanningProposal, prepareReadyStrategicPlanProposal, processPlanningMessage, startPlanningSession } from "../_shared/session-engine.ts";
+import {
+  confirmPlanningProposal,
+  prepareReadyMonthlyPlanProposal,
+  prepareReadyQuarterlyPlanProposal,
+  prepareReadyStrategicPlanProposal,
+  processPlanningMessage,
+  startPlanningSession,
+} from "../_shared/session-engine.ts";
 
 function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
@@ -1579,6 +1587,76 @@ function targetRoute(target: DocumentTarget) {
   return routes[target];
 }
 
+type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+
+function inferDocumentType(message: string, planningType: "strategic" | "quarterly" | "monthly" | null): PlanDocumentType {
+  const normalized = normalizeText(message);
+  const asksClose = /\b(fechamento|fechar|check in|checkin|balanco|revisao)\b/.test(normalized);
+  if (asksClose && /\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarter_close";
+  if (asksClose) return "month_close";
+  if (planningType === "strategic" || /\b(estrategico|estrategia|anual|ano)\b/.test(normalized)) return "strategic";
+  if (planningType === "quarterly" || /\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarterly";
+  if (planningType === "monthly" || /\b(mes|mensal|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|abr|mai|jun|jul|ago|set|out|nov|dez)\b/.test(normalized)) return "monthly";
+  return "monthly";
+}
+
+function periodForDocument(type: PlanDocumentType, hint: string | null | undefined, message: string) {
+  if (type === "strategic") return periodForPlanning("strategic", hint, message);
+  if (type === "quarterly") return periodForPlanning("quarterly", hint, message);
+  if (type === "monthly") return periodForPlanning("monthly", hint, message);
+  if (type === "quarter_close") return periodForClose("quarterly", hint, message);
+  return periodForClose("monthly", hint, message);
+}
+
+async function resolveDocumentAreaId(client: ReturnType<typeof serviceClient>, orgId: string, message: string, currentAreaId: string | null) {
+  const normalized = normalizeText(message);
+  const { data: areas, error } = await client.from("areas").select("id, name").eq("org_id", orgId).order("created_at");
+  if (error) throw error;
+  const match = (areas ?? []).find((area: any) => {
+    const name = normalizeText(String(area.name ?? ""));
+    return name && normalized.includes(name);
+  });
+  return match?.id ?? currentAreaId;
+}
+
+async function latestDocumentByQuery(client: ReturnType<typeof serviceClient>, orgId: string, type: PlanDocumentType, areaId: string | null, period: string | null) {
+  let query = client.from("plan_documents").select("*").eq("org_id", orgId).eq("type", type).order("created_at", { ascending: false }).limit(1);
+  if (areaId) query = query.eq("area_id", areaId);
+  if (period) query = query.eq("period", period);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function answerDocumentQuestion(
+  client: ReturnType<typeof serviceClient>,
+  params: {
+    orgId: string;
+    areaId: string | null;
+    message: string;
+    planningType: "strategic" | "quarterly" | "monthly" | null;
+    periodHint: string | null;
+  },
+) {
+  const type = inferDocumentType(params.message, params.planningType);
+  const period = periodForDocument(type, params.periodHint, params.message);
+  const areaId = type === "strategic" ? null : await resolveDocumentAreaId(client, params.orgId, params.message, params.areaId);
+
+  const document =
+    await latestDocumentByQuery(client, params.orgId, type, areaId, period) ??
+    await latestDocumentByQuery(client, params.orgId, type, areaId, null) ??
+    await latestDocumentByQuery(client, params.orgId, type, null, null);
+
+  if (!document) {
+    const typeText = targetLabel(type === "strategic" ? "strategic" : type === "quarterly" || type === "quarter_close" ? "quarterly" : "monthly");
+    return `Ainda não encontrei um documento padrão de ${typeText} salvo no Oráculo. Posso te conduzir para criar esse plano agora, ou você pode importar um arquivo e confirmar a proposta.`;
+  }
+
+  const rendered = renderPlanForWhatsApp(document.content ?? {});
+  const versionLine = `Documento: ${document.title} · v${document.version}`;
+  return `${versionLine}\n\n${rendered}`;
+}
+
 async function classifyImportedDocument(
   client: ReturnType<typeof serviceClient>,
   orgId: string,
@@ -1684,6 +1762,49 @@ async function processIncomingDocument(
       return {
         userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
         answer: `${prepared.reply}\n\nSe estiver coerente, responda *confirmar* que eu gravo no módulo.`,
+        skipHistory: true,
+      };
+    }
+
+    if (classification.target === "quarterly" || classification.target === "monthly") {
+      const matchedAreaId = await resolveDocumentAreaId(
+        client,
+        orgId,
+        `${classification.areaName ?? ""}\n${extractedText.slice(0, 3000)}`,
+        areaId,
+      );
+      if (!matchedAreaId) {
+        return {
+          userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+          answer: `Recebi e li o arquivo "${file.fileName}". Ele parece um ${targetLabel(classification.target).toLowerCase()}, mas preciso saber de qual departamento ele é antes de montar a proposta. Me diga o nome do departamento e eu continuo.`,
+          skipHistory: false,
+        };
+      }
+
+      const period = classification.period ?? periodForPlanning(classification.target === "quarterly" ? "quarterly" : "monthly", null, extractedText);
+      const prepared = classification.target === "quarterly"
+        ? await prepareReadyQuarterlyPlanProposal(client, {
+          orgId,
+          areaId: matchedAreaId,
+          period,
+          planText: extractedText,
+          fileName: file.fileName,
+          userId: profile.id,
+          channel: "whatsapp",
+        })
+        : await prepareReadyMonthlyPlanProposal(client, {
+          orgId,
+          areaId: matchedAreaId,
+          period,
+          planText: extractedText,
+          fileName: file.fileName,
+          userId: profile.id,
+          channel: "whatsapp",
+        });
+
+      return {
+        userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+        answer: `${prepared.reply}\n\nSe estiver coerente, responda *confirmar* que eu gravo no módulo e gero o documento padrão.`,
         skipHistory: true,
       };
     }
@@ -2021,7 +2142,13 @@ serve(async (req) => {
     }
 
     if (intent.intent === "document_question") {
-      const reply = "Consigo falar sobre o plano que está no Oráculo. A geração e envio de documentos padronizados entra na próxima fase; por agora, me diga se você quer um resumo do estratégico, trimestre ou mês.";
+      const reply = await answerDocumentQuestion(client, {
+        orgId,
+        areaId,
+        message: text,
+        planningType: intent.planning_type,
+        periodHint: intent.period_hint,
+      });
       await insertConversationMessage(client, {
         orgId,
         areaId,
@@ -2032,7 +2159,7 @@ serve(async (req) => {
         channel: "whatsapp",
       });
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
-      return jsonResponse({ ok: true, intent: "document_question_pending_phase" });
+      return jsonResponse({ ok: true, intent: "document_question" });
     }
 
     const answer = await buildAnswer(client, orgId, areaId, text, profile, membership, conversation);

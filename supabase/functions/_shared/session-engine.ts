@@ -17,6 +17,8 @@ import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts
 import { parseJsonObject } from "./json.ts";
 import { callModel } from "./model.ts";
 import { buildPlanContext } from "./plan-context.ts";
+import { documentTypeFromProposalType } from "./plan-documents.ts";
+import { renderPlanForWhatsApp } from "./plan-render.ts";
 import { applyProposal } from "./proposals.ts";
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
@@ -348,6 +350,119 @@ function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
     '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_trimestral_pronto":true},"next_phase":"sintese","proposal":{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"linkedStrategicObjectiveIds":[],"annualObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","deliverables":[]}]}}',
     `Trimestre/período do plano: ${period}`,
+    "Contexto atual do Oráculo:",
+    context,
+  ].join("\n\n");
+}
+
+function normalizeReadyMonthlyProposal(rawProposal: any, period: string) {
+  return {
+    type: "save_monthly_plan",
+    period,
+    context: asTextArray(rawProposal?.context ?? rawProposal?.contexto ?? rawProposal?.contexto_rapido).slice(0, 5),
+    learningFocus: asTextArray(rawProposal?.learningFocus ?? rawProposal?.foco_aprendizado).slice(0, 5),
+    focusPhrase: asText(rawProposal?.focusPhrase ?? rawProposal?.frase_de_foco),
+    realism: rawProposal?.realism && typeof rawProposal.realism === "object"
+      ? {
+        fits: rawProposal.realism.fits ?? rawProposal.realism.cabe ?? true,
+        firstToRemove: asText(rawProposal.realism.firstToRemove ?? rawProposal.realism.primeira_a_sair),
+      }
+      : {
+        fits: rawProposal?.realismo?.cabe ?? true,
+        firstToRemove: asText(rawProposal?.realismo?.primeira_a_sair),
+      },
+    objectives: asArray<any>(rawProposal?.objectives ?? rawProposal?.objetivos_mes ?? rawProposal?.objetivos)
+      .map((objective) => ({
+        title: asText(objective?.title ?? objective?.titulo, "Objetivo mensal"),
+        type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
+        result: asText(objective?.result ?? objective?.resultado),
+        metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
+        target: asText(objective?.target ?? objective?.meta),
+        owner: asText(objective?.owner ?? objective?.responsavel),
+        period: asText(objective?.period ?? objective?.periodo, period),
+        parentTitle: asText(objective?.parentTitle ?? objective?.objetivo_trimestral_vinculado ?? objective?.vinculo),
+        actions: asArray<any>(objective?.actions ?? objective?.acoes)
+          .map((action) => ({
+            description: asText(action?.description ?? action?.descricao, "Ação-chave"),
+            completionCriterion: asText(action?.completionCriterion ?? action?.completion_criterion ?? action?.criterio),
+            deadline: asText(action?.deadline ?? action?.prazo),
+            owner: asText(action?.owner ?? action?.responsavel),
+          }))
+          .filter((action) => action.description)
+          .slice(0, 5),
+      }))
+      .filter((objective) => objective.title)
+      .slice(0, 5),
+  };
+}
+
+function missingReadyMonthlyPlanFields(proposal: ReturnType<typeof normalizeReadyMonthlyProposal>) {
+  const missing: string[] = [];
+  const withoutMetric = proposal.objectives.filter((objective) => !asText(objective.metric)).length;
+  const withoutTarget = proposal.objectives.filter((objective) => !asText(objective.target)).length;
+  const withoutOwner = proposal.objectives.filter((objective) => !asText(objective.owner)).length;
+  const withoutActions = proposal.objectives.filter((objective) => !objective.actions.length).length;
+  const actionsWithoutDeadline = proposal.objectives.reduce(
+    (total, objective) => total + objective.actions.filter((action) => !asText(action.deadline)).length,
+    0,
+  );
+
+  if (withoutMetric) missing.push(`${withoutMetric} objetivo(s) sem indicador`);
+  if (withoutTarget) missing.push(`${withoutTarget} objetivo(s) sem meta`);
+  if (withoutOwner) missing.push(`${withoutOwner} objetivo(s) sem responsável`);
+  if (withoutActions) missing.push(`${withoutActions} objetivo(s) sem ações-chave`);
+  if (actionsWithoutDeadline) missing.push(`${actionsWithoutDeadline} ação(ões) sem prazo`);
+  return missing;
+}
+
+function formatReadyMonthlyPlanReply(
+  proposal: ReturnType<typeof normalizeReadyMonthlyProposal>,
+  channel: "web" | "whatsapp",
+) {
+  const objectiveLines = proposal.objectives.map((objective) => {
+    const details = [
+      objective.result,
+      objective.metric ? `Indicador: ${objective.metric}` : "",
+      objective.target ? `Meta: ${objective.target}` : "",
+      objective.owner ? `Dono: ${objective.owner}` : "",
+      objective.parentTitle ? `Vínculo trimestral: ${objective.parentTitle}` : "",
+      objective.actions.length ? `Ações: ${objective.actions.map((action) => action.description).join("; ")}` : "",
+    ].filter(Boolean).join(" | ");
+    return details ? `${objective.title} - ${details}` : objective.title;
+  });
+  const missing = missingReadyMonthlyPlanFields(proposal);
+
+  if (channel === "web") {
+    return [
+      `Estruturei uma prévia do Plano Mensal ${proposal.period} com ${proposal.objectives.length} objetivo(s).`,
+      "Ainda não gravei nada. Confira o cartão de aprovação no painel lateral: ele mostra objetivos, ações-chave e campos que ficaram em branco no arquivo.",
+    ].join(" ");
+  }
+
+  return [
+    `Estruturei uma prévia do Plano Mensal ${proposal.period} com ${proposal.objectives.length} objetivo(s).`,
+    "",
+    objectiveLines.length ? "Objetivos do mês:" : "",
+    ...numberedPreview(objectiveLines),
+    "",
+    missing.length ? `Campos que deixei em branco porque não estavam explícitos: ${missing.join("; ")}.` : "Não identifiquei lacunas importantes nos campos principais.",
+  ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
+}
+
+function readyMonthlyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
+  return [
+    PERSONA_ORACULO,
+    "Você está importando um Plano Mensal pronto para dentro do Oráculo.",
+    "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Execução Mensal.",
+    "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
+    "Não faça apenas uma revisão textual. Gere uma proposal completa do tipo save_monthly_plan.",
+    "Fidelidade ao arquivo é mais importante que completar campos. Não invente KPI, meta, dono, prazo ou ação que não esteja explícita ou muito fortemente implícita.",
+    "Se houver lacunas, use string vazia ou lista vazia. Preserve a linguagem do plano original quando transformar trechos em objetivos e ações.",
+    "Monte 1 a 5 objetivos mensais, cada um com 1 a 5 ações-chave. Se houver vínculo trimestral, preencha parentTitle; se não houver, deixe vazio.",
+    "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se o texto trouxer só 'até dia 15', converta usando o mês/período recebido.",
+    "Responda SOMENTE JSON válido, sem markdown, com este formato:",
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_mensal_pronto":true},"next_phase":"sintese","proposal":{"type":"save_monthly_plan","period":"' + period + '","context":[],"learningFocus":[],"focusPhrase":"","realism":{"fits":true,"firstToRemove":""},"objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","actions":[{"description":"","completionCriterion":"","deadline":"","owner":""}]}]}}',
+    `Mês/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
   ].join("\n\n");
@@ -862,6 +977,155 @@ export async function prepareReadyQuarterlyPlanProposal(
   return { session: updated, reply, pendingProposal: proposal };
 }
 
+export async function prepareReadyMonthlyPlanProposal(
+  client: Client,
+  params: {
+    orgId: string;
+    areaId: string;
+    period: string;
+    planText: string;
+    fileName?: string | null;
+    userId: string;
+    channel?: "web" | "whatsapp";
+  },
+) {
+  const channel = params.channel ?? "web";
+  const planText = params.planText.trim();
+  if (!params.areaId) throw new Error("Plano mensal exige um departamento selecionado");
+  if (!planText) throw new Error("Texto do plano mensal pronto não informado");
+
+  await assertCanStartSession(client, params.orgId, params.areaId, params.userId);
+  const aiRoute = await resolveAiFunction(client, params.orgId, "planning");
+  if (!aiRoute) throw new Error("IA de planejamento não configurada");
+
+  const conversation = await getOrCreateConversation(client, {
+    orgId: params.orgId,
+    userId: params.userId,
+    channel,
+    areaId: params.areaId,
+  });
+  const { data: existing, error: existingError } = await client
+    .from("planning_sessions")
+    .select("*")
+    .eq("org_id", params.orgId)
+    .eq("area_id", params.areaId)
+    .eq("user_id", params.userId)
+    .eq("type", "monthly")
+    .eq("period", params.period)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  let session = existing;
+  if (!session) {
+    const { data, error } = await client
+      .from("planning_sessions")
+      .insert({
+        org_id: params.orgId,
+        area_id: params.areaId,
+        user_id: params.userId,
+        conversation_id: conversation.id,
+        type: "monthly",
+        period: params.period,
+        phase: "sintese",
+        state: { periodo: params.period, importacao_plano_mensal_pronto: true, arquivo: params.fileName ?? null },
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    session = data;
+  }
+
+  const context = await buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "monthly", period: params.period });
+  const importedText = planText.length > READY_PLAN_TEXT_LIMIT
+    ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
+    : planText;
+  const userMessage = [
+    "Importar plano mensal pronto para o Oráculo.",
+    params.fileName ? `Arquivo: ${params.fileName}` : "",
+    `Período: ${params.period}`,
+    "Texto extraído/colado:",
+    importedText,
+  ].filter(Boolean).join("\n\n");
+
+  await insertMessage(client, session, "user", userMessage, channel);
+
+  const result = await callModel(
+    aiRoute.provider,
+    aiRoute.model,
+    aiRoute.apiKey,
+    readyMonthlyPlanSystemPrompt(context, params.period, channel),
+    [{ role: "user", content: userMessage }],
+    aiRoute.limits,
+  );
+
+  await recordAiUsage({
+    client,
+    orgId: params.orgId,
+    provider: aiRoute.provider,
+    model: aiRoute.model,
+    channel,
+    usage: result.usage,
+    settings: aiRoute.legacySettings,
+    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: "monthly", phase: "sintese", action: "ready_monthly_plan_import" },
+  });
+
+  const parsed = parseJsonObject(result.text) as any;
+  const rawProposal = parsed?.proposal ?? parsed;
+  const proposal = normalizeReadyMonthlyProposal(rawProposal, params.period);
+  if (!proposal.objectives.length) {
+    throw new Error("O Oráculo não conseguiu identificar objetivos mensais no plano importado");
+  }
+
+  const reply = formatReadyMonthlyPlanReply(proposal, channel);
+  const nextState = shallowMergeState(session.state ?? {}, {
+    ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
+    importacao_plano_mensal_pronto: true,
+    arquivo: params.fileName ?? null,
+  });
+
+  const { data: updated, error: updateError } = await client
+    .from("planning_sessions")
+    .update({
+      phase: "sintese",
+      state: nextState,
+      pending_proposal: proposal,
+      status: "active",
+      completed_at: null,
+      conversation_id: session.conversation_id ?? conversation.id,
+    })
+    .eq("id", session.id)
+    .select("*")
+    .single();
+  if (updateError) throw updateError;
+
+  await insertMessage(client, updated, "oracle", reply, channel);
+  return { session: updated, reply, pendingProposal: proposal };
+}
+
+async function loadLatestDocumentForProposal(client: Client, session: any, proposal: any) {
+  const documentType = documentTypeFromProposalType(asText(proposal?.type));
+  if (!documentType) return null;
+  const period = documentType === "strategic"
+    ? String(proposal?.year ?? currentYearFromPeriod(session.period))
+    : asText(proposal?.period ?? proposal?.periodo, session.period);
+
+  let query = client
+    .from("plan_documents")
+    .select("*")
+    .eq("org_id", session.org_id)
+    .eq("type", documentType)
+    .eq("period", period)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  query = session.area_id ? query.eq("area_id", session.area_id) : query.is("area_id", null);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function confirmPlanningProposal(client: Client, params: { sessionId: string; userId: string; channel?: "web" | "whatsapp"; confirmationText?: string | null }) {
   const { data: session, error } = await client.from("planning_sessions").select("*").eq("id", params.sessionId).maybeSingle();
   if (error) throw error;
@@ -875,12 +1139,15 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
     await insertMessage(client, ensured.session, "user", params.confirmationText, channel);
   }
 
-  const summary = await applyProposal(client, ensured.session, ensured.session.pending_proposal, params.userId);
+  const proposal = ensured.session.pending_proposal;
+  const summary = await applyProposal(client, ensured.session, proposal, params.userId);
+  const document = params.channel === "whatsapp" ? await loadLatestDocumentForProposal(client, ensured.session, proposal) : null;
+  const documentText = document ? `\n\n---\n\n${renderPlanForWhatsApp(document.content ?? {})}` : "";
   const isCloseSession = ensured.session.type === "month_close" || ensured.session.type === "quarter_close";
   const nextPhase = ensured.session.type === "month_close" ? "ponte" : ensured.session.type === "quarter_close" ? "balanco" : ensured.session.phase;
   const reply = isCloseSession
-    ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?`
-    : `${summary} O plano já está salvo no sistema.`;
+    ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?${documentText}`
+    : `${summary} O plano já está salvo no sistema.${documentText}`;
   const { data: updated, error: updateError } = await client
     .from("planning_sessions")
     .update({

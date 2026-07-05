@@ -5,6 +5,8 @@ import { AreaDetail } from "./pages/AreaDetail";
 import { Areas } from "./pages/Areas";
 import { Auth } from "./pages/Auth";
 import { Dashboard } from "./pages/Dashboard";
+import { DocumentPrint } from "./pages/DocumentPrint";
+import { Documents } from "./pages/Documents";
 import { Execution } from "./pages/Execution";
 import { Onboarding } from "./pages/Onboarding";
 import { PasswordRecovery } from "./pages/PasswordRecovery";
@@ -60,10 +62,12 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/documentos/:documentId/imprimir" element={<DocumentPrint />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/estrategico" element={<Strategic />} />
         <Route path="/planos-trimestrais" element={<QuarterlyPlans />} />
+        <Route path="/documentos" element={<Documents />} />
         <Route path="/areas" element={<Areas />} />
         <Route path="/areas/:areaId" element={<AreaDetail />} />
         <Route path="/execucao" element={<Execution />} />

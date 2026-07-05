@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-05 - Documento padrao Oraculo deterministico
+
+Decisao: executar a Fase 6 da V3 gerando um `plan_documents` canonico sempre que uma proposta de plano ou fechamento for confirmada, com renderizacao unica para tela, PDF A4 e WhatsApp.
+
+Contexto: o Oraculo ja criava propostas e gravava planos, mas faltava um documento final claro para o usuario validar, imprimir e pedir pelo WhatsApp. Deixar o modelo decidir a formatacao a cada resposta deixaria o resultado inconsistente.
+
+Alternativas: gerar PDF direto no servidor, pedir para a IA escrever um documento em markdown a cada consulta, ou manter somente os cards de objetivos.
+
+Motivo: o conteudo precisa nascer da proposta aprovada, sem nova chamada de IA, para preservar rastreabilidade e evitar divergencia entre banco e documento. A tela e o PDF usam o mesmo componente `PlanDocument`; o WhatsApp usa um renderizador deterministico em `_shared/plan-render.ts`.
+
+Consequencias: `proposals.ts` chama `_shared/plan-documents.ts` depois de gravar `save_strategic_plan`, `save_quarterly_plan`, `save_monthly_plan`, `month_close` ou `quarter_close`; a rota `/documentos` lista e filtra documentos; `/documentos/:id/imprimir` renderiza sem layout do app; `whatsapp-webhook` responde `document_question` buscando o documento mais recente por tipo/periodo/departamento. Arquivos mensais e trimestrais recebidos pelo WhatsApp agora tambem podem gerar proposta estruturada, mas continuam exigindo confirmacao.
+
 ## 2026-07-04 - Arquivos no app e importacao trimestral por proposta
 
 Decisao: permitir anexar PDF/PPTX/DOCX/TXT no chat lateral do app e importar Plano Trimestral pronto diretamente na tela Planos Trimestrais, mantendo extração local de texto, proposta pendente e confirmacao antes de gravar.
@@ -10,7 +22,7 @@ Alternativas: tratar arquivo como chat comum, gravar objetivos direto ao importa
 
 Motivo: reutilizar `src/lib/fileImport.ts` preserva segurança e experiencia. O arquivo bruto nunca vai ao banco; apenas texto extraido entra na conversa ou em `oracle-session`. Para o trimestral, uma acao dedicada `import_ready_quarterly_plan` obriga `proposal.type = save_quarterly_plan`, mostra previa no painel lateral e so grava depois de confirmacao e validacao server-side.
 
-Consequencias: `oracle-session` passa a expor `prepareReadyQuarterlyPlanProposal`; a tela Planos Trimestrais exige escolher o departamento antes de anexar o arquivo; o chat lateral aceita anexos como mensagem da conversa/sessao ativa. Plano Mensal por arquivo continua fora do escopo de gravacao automatica.
+Consequencias: `oracle-session` passa a expor `prepareReadyQuarterlyPlanProposal`; a tela Planos Trimestrais exige escolher o departamento antes de anexar o arquivo; o chat lateral aceita anexos como mensagem da conversa/sessao ativa. Plano Mensal por arquivo no app continua dependente de uma sessao mensal ativa; pelo WhatsApp, a Fase 6 adicionou importacao mensal estruturada com confirmacao.
 
 ## 2026-07-04 - Fechamentos de mes e trimestre por sessao
 

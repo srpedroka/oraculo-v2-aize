@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-05
+
+- Executada a Fase 6 da V3: propostas confirmadas de plano estratégico, trimestral, mensal e fechamentos agora geram `plan_documents` canônico.
+- Criados `_shared/plan-documents.ts` e `_shared/plan-render.ts` para gerar documento determinístico e resumo nativo de WhatsApp sem nova chamada de IA.
+- Adicionada tela `/documentos` com filtros por tipo, departamento e período, além da rota limpa `/documentos/:documentId/imprimir` para exportar PDF A4 pelo navegador.
+- Atualizado o WhatsApp para responder perguntas sobre documentos buscando o plano/fechamento mais recente e enviando resumo formatado em blocos.
+- Evoluída a importação de arquivos pelo WhatsApp: documentos estratégicos, trimestrais e mensais podem virar proposta estruturada, sempre com confirmação antes de gravar.
+- Atualizada a documentação de arquitetura, segurança, decisões e runbook para explicar o fluxo, os limites e o diagnóstico de documentos padrão.
+
 ## 2026-07-04
 
 - Iniciada a V3 com a Fase 0: fundacao de dados para conversas por pessoa/canal, sessoes de planejamento com estado, funcoes de IA por uso e documentos canonicos de plano.

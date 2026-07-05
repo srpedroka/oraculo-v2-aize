@@ -3,6 +3,7 @@ import { getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   abandonPlanningSession,
+  prepareReadyMonthlyPlanProposal,
   confirmPlanningProposal,
   prepareReadyQuarterlyPlanProposal,
   prepareReadyStrategicPlanProposal,
@@ -57,6 +58,19 @@ serve(async (req) => {
 
     if (action === "import_ready_quarterly_plan") {
       const result = await prepareReadyQuarterlyPlanProposal(client, {
+        orgId: String(payload.orgId ?? ""),
+        areaId: String(payload.areaId ?? ""),
+        period: String(payload.period ?? ""),
+        planText: String(payload.planText ?? payload.message ?? ""),
+        fileName: payload.fileName ? String(payload.fileName) : null,
+        userId: user.id,
+        channel: payload.channel === "whatsapp" ? "whatsapp" : "web",
+      });
+      return jsonResponse(result);
+    }
+
+    if (action === "import_ready_monthly_plan") {
+      const result = await prepareReadyMonthlyPlanProposal(client, {
         orgId: String(payload.orgId ?? ""),
         areaId: String(payload.areaId ?? ""),
         period: String(payload.period ?? ""),

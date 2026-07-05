@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, FileText, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
@@ -125,6 +125,13 @@ export function AreaDetail() {
           <h1 className="text-2xl font-semibold text-text">Área: {area.name}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link
+            to="/documentos"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border bg-transparent px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white"
+          >
+            <FileText className="h-4 w-4" />
+            Ver documentos
+          </Link>
           {canEditArea ? (
             <Button variant="ghost" icon={Plus} onClick={() => setBuilderLevel(tab)}>
               Novo objetivo

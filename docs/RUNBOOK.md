@@ -259,7 +259,7 @@ Se o sistema pedir percentual ou evidencia depois da escolha, isso e comportamen
 
 Limites atuais:
 
-- perguntas sobre documentos ainda nao geram documento padronizado automaticamente;
+- perguntas sobre documentos buscam `public.plan_documents` e enviam o resumo nativo pelo WhatsApp; se nao houver documento salvo, o Oraculo orienta criar/importar o plano;
 - atualizacao rapida grava apenas status/progresso/evidencia em objetivo/acao existente, nao cria plano novo.
 
 ## Problema: fechamento de mes ou trimestre nao inicia/grava
@@ -293,6 +293,49 @@ limit 20;
 ```
 
 Se nao grava, confira se a proposta tem IDs reais de objetivos/acoes. O contexto enviado por `_shared/plan-context.ts` precisa incluir IDs. Se o owner pedir fechamento sem area, use o cartao do Dashboard/Execucao ou informe o departamento.
+
+## Problema: documento padrao nao aparece ou nao exporta PDF
+
+Fluxo esperado da Fase 6:
+
+1. Uma sessao de plano ou fechamento gera `pending_proposal`.
+2. A pessoa confirma no app ou responde `confirmar` no WhatsApp.
+3. `proposals.ts` valida permissao e grava os dados do plano/fechamento.
+4. `proposals.ts` chama `_shared/plan-documents.ts`, que monta o `content` canonico e insere uma linha em `public.plan_documents`.
+5. A tela `/documentos` lista o documento por tipo, departamento e periodo.
+6. A rota `/documentos/<DOCUMENT_ID>/imprimir` renderiza apenas o documento e o botao "Imprimir ou salvar PDF" abre o dialogo do navegador.
+7. No WhatsApp, perguntas como "me manda o plano do mês do Comercial" usam `_shared/plan-render.ts` para enviar o documento em blocos.
+
+Verifique se o documento foi gerado:
+
+```sql
+select id, type, period, title, version, area_id, session_id, created_at
+from public.plan_documents
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 20;
+```
+
+Se nao houver linha:
+
+- confira se a proposta foi realmente confirmada;
+- confira logs de `oracle-session` e erro em `applyProposal`;
+- confira se a proposta tem `type` suportado: `save_strategic_plan`, `save_quarterly_plan`, `save_monthly_plan`, `month_close` ou `quarter_close`;
+- confira permissao: owner grava documento geral e coordenador grava documento da propria area.
+
+Se houver linha mas nao aparece no app:
+
+- confira RLS de `public.plan_documents`;
+- confira se o usuario e membro da empresa;
+- atualize a tela `/documentos`;
+- confira se o realtime/invalidation chegou ou use logout/login para forcar reload.
+
+Se o PDF sair com layout ruim:
+
+- use a rota de impressao, nao a tela normal com sidebar;
+- confira CSS de impressao em `src/index.css`;
+- confira blocos em `src/components/PlanDocument.tsx`, especialmente classes `plan-document-section` e `plan-document-block`;
+- planos mensais muito longos podem passar para segunda pagina; isso e aceitavel se a quebra estiver limpa.
 
 ## Problema: convite de virada de mes nao chega
 
@@ -455,7 +498,7 @@ Limites atuais:
 - a importacao pelo app aceita PDF, PPTX, DOCX e TXT ate 80 MB; arquivos maiores devem ser compactados ou convertidos para texto antes de importar;
 - arquivos acima de 30 MB podem demorar porque a extracao roda no navegador da pessoa;
 - textos muito longos sao cortados pelo frontend e pela Edge Function antes de entrar no modelo para proteger o contexto da IA;
-- o fluxo estrategico importa Plano Estrategico. Plano Trimestral tambem pode ser importado pela tela Planos Trimestrais, escolhendo antes o departamento. Plano Mensal por arquivo ainda nao grava dados estruturados automaticamente.
+- o fluxo estrategico importa Plano Estrategico. Plano Trimestral tambem pode ser importado pela tela Planos Trimestrais, escolhendo antes o departamento. Pelo WhatsApp, documentos classificados como Estrategico, Trimestral ou Mensal geram proposta estruturada e continuam exigindo `confirmar`.
 - plano pronto aprovado deve ser preservado. O Oraculo pode estruturar trechos implicitos como objetivos, mas nao deve inventar KPI, meta, prazo, responsavel, diagnostico ou projeto que o documento nao trouxe.
 
 ## Problema: arquivo anexado no chat do app nao funciona
@@ -599,12 +642,15 @@ Fluxo esperado:
 4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel.
 5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown`.
 6. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com previa textual dos objetivos, projetos e lacunas. A pessoa confirma respondendo `confirmar`.
-7. Se for `quarterly`, `monthly`, `evidence` ou `unknown`, o Oraculo ainda responde no WhatsApp dizendo para qual tela/plano o arquivo pertence e faz uma pergunta de confirmação/direcionamento.
+7. Se for `quarterly`, o webhook tenta identificar o departamento, chama `prepareReadyQuarterlyPlanProposal` e responde com previa textual dos objetivos trimestrais. A pessoa confirma respondendo `confirmar`.
+8. Se for `monthly`, o webhook tenta identificar o departamento, chama `prepareReadyMonthlyPlanProposal` e responde com previa textual dos objetivos mensais e acoes-chave. A pessoa confirma respondendo `confirmar`.
+9. Se faltar departamento, o Oraculo pergunta qual departamento usar antes de montar a proposta.
+10. Se for `evidence` ou `unknown`, o Oraculo ainda responde com pergunta de direcionamento, sem gravar automaticamente.
 
 Limite atual:
 
-- O WhatsApp cria proposta estruturada apenas para Plano Estrategico.
-- Planos trimestrais, mensais e evidencias por arquivo ainda nao criam dados estruturados automaticamente.
+- O WhatsApp cria proposta estruturada para Plano Estrategico, Trimestral e Mensal.
+- Evidencias por arquivo ainda nao criam dados estruturados automaticamente.
 - Nenhum arquivo grava plano sem confirmação explícita do usuario e validação server-side.
 - PDF escaneado ou PDF muito comprimido pode nao ter texto extraível; nesse caso, orientar a enviar uma versao com texto selecionavel ou importar pela tela do Plano Estratégico.
 

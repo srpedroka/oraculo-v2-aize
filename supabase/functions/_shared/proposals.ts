@@ -1,3 +1,5 @@
+import { createDocumentForProposal } from "./plan-documents.ts";
+
 type Client = any;
 
 type CloseStatus = "on_track" | "at_risk" | "late" | "done";
@@ -660,10 +662,17 @@ async function saveQuarterClose(client: Client, session: any, proposal: any, use
 export async function applyProposal(client: Client, session: any, proposal: any, userId: string) {
   await assertProposalPermission(client, session, userId);
   const type = asText(proposal?.type);
-  if (type === "save_strategic_plan") return await saveStrategicPlan(client, session, proposal, userId);
-  if (type === "save_quarterly_plan") return await saveQuarterlyPlan(client, session, proposal, userId);
-  if (type === "save_monthly_plan") return await saveMonthlyPlan(client, session, proposal, userId);
-  if (type === "month_close") return await saveMonthClose(client, session, proposal, userId);
-  if (type === "quarter_close") return await saveQuarterClose(client, session, proposal, userId);
-  throw new Error("Proposta não reconhecida para gravação");
+  let summary = "";
+  if (type === "save_strategic_plan") summary = await saveStrategicPlan(client, session, proposal, userId);
+  else if (type === "save_quarterly_plan") summary = await saveQuarterlyPlan(client, session, proposal, userId);
+  else if (type === "save_monthly_plan") summary = await saveMonthlyPlan(client, session, proposal, userId);
+  else if (type === "month_close") summary = await saveMonthClose(client, session, proposal, userId);
+  else if (type === "quarter_close") summary = await saveQuarterClose(client, session, proposal, userId);
+  else throw new Error("Proposta não reconhecida para gravação");
+
+  const document = await createDocumentForProposal(client, session, proposal, userId);
+  if (document) {
+    return `${summary} Documento padrão gerado: ${document.title} (v${document.version}).`;
+  }
+  return summary;
 }

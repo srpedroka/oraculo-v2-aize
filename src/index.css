@@ -70,3 +70,37 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+@page {
+  size: A4;
+  margin: 18mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    min-height: auto;
+    background: #ffffff !important;
+  }
+
+  body {
+    min-width: 0;
+  }
+
+  .plan-document {
+    width: 100% !important;
+    max-width: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .plan-document-section,
+  .plan-document-block,
+  .plan-document-header,
+  .plan-document-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
