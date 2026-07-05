@@ -74,8 +74,7 @@ type AppAction =
       apiKey?: string;
       webhookSecret?: string;
       enabled: boolean;
-    }
-  | { type: "run_monthly_check_in"; areaId: string; period: string };
+    };
 
 interface UiState {
   sidebarCollapsed: boolean;
@@ -1309,13 +1308,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (action.type === "run_monthly_check_in") {
-        void callEdgeFunction("monthly-check-in", {
-          orgId,
-          areaId: action.areaId,
-          period: action.period,
-        }).then(invalidateOrg);
-      }
     },
     [invalidateOrg, orgId, queryClient, userId],
   );

@@ -302,25 +302,25 @@ export async function createDocumentForProposal(client: Client, session: any, pr
   if (proposalType === "save_quarterly_plan") {
     const documentType = "quarterly";
     const base = await loadDocumentBase(client, session, documentType, proposal);
-    return await savePlanDocument(client, session, userId, documentType, period, `Plano Trimestral ${base.area ?? "Departamento"} · ${period}`, buildQuarterlyContent(base, proposal, period));
+    return await savePlanDocument(client, session, userId, documentType, period, `Plano Trimestral ${base.area ?? "Área"} · ${period}`, buildQuarterlyContent(base, proposal, period));
   }
 
   if (proposalType === "save_monthly_plan") {
     const documentType = "monthly";
     const base = await loadDocumentBase(client, session, documentType, proposal);
-    return await savePlanDocument(client, session, userId, documentType, period, `Plano Mensal ${base.area ?? "Departamento"} · ${period}`, buildMonthlyContent(base, proposal, period));
+    return await savePlanDocument(client, session, userId, documentType, period, `Plano Mensal ${base.area ?? "Área"} · ${period}`, buildMonthlyContent(base, proposal, period));
   }
 
   if (proposalType === "month_close") {
     const documentType = "month_close";
     const base = await loadDocumentBase(client, session, documentType, proposal);
-    return await savePlanDocument(client, session, userId, documentType, period, `Fechamento Mensal ${base.area ?? "Departamento"} · ${period}`, buildCloseContent(base, proposal, period, documentType));
+    return await savePlanDocument(client, session, userId, documentType, period, `Fechamento Mensal ${base.area ?? "Área"} · ${period}`, buildCloseContent(base, proposal, period, documentType));
   }
 
   if (proposalType === "quarter_close") {
     const documentType = "quarter_close";
     const base = await loadDocumentBase(client, session, documentType, proposal);
-    return await savePlanDocument(client, session, userId, documentType, period, `Fechamento Trimestral ${base.area ?? "Departamento"} · ${period}`, buildCloseContent(base, proposal, period, documentType));
+    return await savePlanDocument(client, session, userId, documentType, period, `Fechamento Trimestral ${base.area ?? "Área"} · ${period}`, buildCloseContent(base, proposal, period, documentType));
   }
 
   return null;

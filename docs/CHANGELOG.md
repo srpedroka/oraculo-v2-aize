@@ -2,9 +2,12 @@
 
 ## 2026-07-05
 
+- Executada a Fase 7 da V3: removidos roteiros Markdown legados, guia de prompt separado e a Edge Function antiga de check-in mensal.
+- Consolidada a calibragem de tom e guias por contexto em `_shared/conductors/persona.ts`, usado pelo chat web e pelos condutores da V3.
+- Removidas referencias antigas de interface/prompt e alinhada a documentacao para a nomenclatura atual de Areas.
 - Executada a Fase 6 da V3: propostas confirmadas de plano estratégico, trimestral, mensal e fechamentos agora geram `plan_documents` canônico.
 - Criados `_shared/plan-documents.ts` e `_shared/plan-render.ts` para gerar documento determinístico e resumo nativo de WhatsApp sem nova chamada de IA.
-- Adicionada tela `/documentos` com filtros por tipo, departamento e período, além da rota limpa `/documentos/:documentId/imprimir` para exportar PDF A4 pelo navegador.
+- Adicionada tela `/documentos` com filtros por tipo, area e período, além da rota limpa `/documentos/:documentId/imprimir` para exportar PDF A4 pelo navegador.
 - Atualizado o WhatsApp para responder perguntas sobre documentos buscando o plano/fechamento mais recente e enviando resumo formatado em blocos.
 - Evoluída a importação de arquivos pelo WhatsApp: documentos estratégicos, trimestrais e mensais podem virar proposta estruturada, sempre com confirmação antes de gravar.
 - Atualizada a documentação de arquitetura, segurança, decisões e runbook para explicar o fluxo, os limites e o diagnóstico de documentos padrão.
@@ -73,7 +76,7 @@
 - Migradas chaves operacionais para tabelas acessiveis apenas por service role: `public.ai_model_keys` e `public.whatsapp_instance_keys`, com RLS habilitado e acesso revogado para `anon` e `authenticated`.
 - Corrigido webhook do WhatsApp para salvar a mensagem recebida antes de chamar IA, aplicar timeout na chamada do modelo e registrar erro quando a IA falhar.
 - Migrada chamada OpenAI para endpoint de Responses API em `_shared/model.ts`, mantendo Moonshot em Chat Completions.
-- Corrigido empacotamento dos roteiros do Oraculo em Edge Functions com `_shared/prompt-guides.ts`, evitando falha por leitura de arquivos `.md` nao enviados no deploy.
+- Corrigido empacotamento dos roteiros do Oraculo em Edge Functions com modulo TypeScript compartilhado, evitando falha por leitura de arquivos `.md` nao enviados no deploy.
 - Calibrado tom do Oraculo para conversa mais natural: respostas curtas, amigaveis, sem despejar numeros quando a pergunta for ambigua, e pedindo esclarecimento quando necessario.
 - Ajustado WhatsApp para enviar tambem saudacoes, testes e aberturas simples para a IA quando houver chave configurada; respostas programadas ficam apenas como fallback.
 - Adicionado suporte inicial a áudio no WhatsApp: o webhook detecta áudio, tenta baixar a mídia pela Evolution, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA.
@@ -95,7 +98,7 @@
 - Publicada a V2 do frontend no Netlify.
 - Conectado frontend ao Supabase.
 - Criadas migrations de schema, RLS, schema privado para chaves de IA e realtime.
-- Publicadas Edge Functions `invite-member`, `save-ai-settings`, `oracle-chat` e `monthly-check-in`.
+- Publicadas Edge Functions iniciais `invite-member`, `save-ai-settings` e `oracle-chat`, depois substituidas pelos fluxos V3 de sessoes, virada mensal e WhatsApp.
 - Adicionadas rotas de autenticacao, onboarding, configuracoes, execucao e planos.
 - Configurado fallback SPA para rotas diretas no Netlify.
 - Criada documentacao minima de manutencao: README, AGENTS, Architecture, Security, Decisions, Runbook e Changelog.

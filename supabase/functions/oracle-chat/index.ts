@@ -14,7 +14,7 @@ import { classifyOracleIntent } from "../_shared/intent-router.ts";
 import { callModel } from "../_shared/model.ts";
 import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
-import { CONVERSATION_STYLE, guideForContext } from "../_shared/prompt-guides.ts";
+import { CONVERSATION_STYLE, conversationGuideForContext } from "../_shared/conductors/persona.ts";
 import { startPlanningSession } from "../_shared/session-engine.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 
@@ -144,7 +144,7 @@ serve(async (req) => {
     if (!aiRoute) {
       answer = fallbackReview(objectives ?? []);
     } else {
-      const guide = guideForContext(String(context));
+      const guide = conversationGuideForContext(String(context));
       const systemPrompt = [
         "Você é o Oráculo, a IA Estratégica da empresa. Responda em português do Brasil.",
         "Conduza o usuário com perguntas curtas e mantenha a lógica de Resultado e Evolução sem soar mecânico.",

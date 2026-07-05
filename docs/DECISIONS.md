@@ -206,9 +206,21 @@ Motivo: descriptografar em memoria com `mediaKey` evita salvar áudio bruto, red
 
 Consequencias: o webhook precisa manter a logica de download da mídia, normalizacao de MIME, descriptografia por HKDF/SHA-256 com info `WhatsApp Audio Keys`, AES-CBC e fallback de transcrição OpenAI. Diagnosticos devem continuar seguros e sem conteudo do áudio.
 
+## 2026-07-05 - Limpeza final da V3 e fonte unica dos roteiros
+
+Decisao: remover roteiros Markdown soltos, guia legado separado e a funcao mensal antiga, concentrando persona, tom e guias de contexto em `supabase/functions/_shared/conductors/persona.ts`. Check-ins e fechamentos passam pelo condutor de fechamento e pela funcao `month-turn`.
+
+Contexto: ao fim das fases 0 a 6 da V3, os condutores estruturados passaram a cobrir planejamento, importacao, fechamento, documentos canonicos e virada de mes. Manter os arquivos antigos criava risco de manutencao dupla e deploy inconsistente.
+
+Alternativas: manter os arquivos como historico, duplicar orientacoes nos webhooks, ou deixar o modulo antigo apenas para o chat web.
+
+Motivo: uma fonte unica reduz divergencia de tom, evita referencia a codigo morto e deixa claro onde calibrar comportamento do Oraculo.
+
+Consequencias: ajustes de personalidade, roteiro, conversa casual e guias por contexto devem ser feitos em `conductors/persona.ts` e publicados nas Edge Functions que usam IA conversacional, principalmente `oracle-chat`, `oracle-session` e `whatsapp-webhook`.
+
 ## 2026-07-02 - Guias do Oraculo empacotados em codigo
 
-Decisao: usar `supabase/functions/_shared/prompt-guides.ts` como fonte empacotada dos guias e do tom do Oraculo nas Edge Functions.
+Decisao: empacotar os guias e o tom do Oraculo em modulo TypeScript compartilhado nas Edge Functions.
 
 Contexto: a funcao tentava ler arquivos `.md` em runtime, mas esses arquivos nao eram enviados no bundle do deploy.
 
@@ -216,7 +228,7 @@ Alternativas: configurar empacotamento dos `.md`, duplicar prompts em cada funca
 
 Motivo: modulo TypeScript compartilhado e enviado automaticamente no deploy das funcoes, reduzindo risco de quebra.
 
-Consequencias: ajustes de personalidade, roteiro e calibragem da IA devem ser feitos em `prompt-guides.ts` e publicados nas Edge Functions.
+Consequencias: essa decisao evoluiu na limpeza final da V3; a fonte atual fica junto dos condutores.
 
 ## 2026-06-29 - React Query com Context para estado
 

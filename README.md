@@ -91,7 +91,6 @@ As Edge Functions ficam em `supabase/functions/`:
 - `save-whatsapp-settings`
 - `oracle-chat`
 - `oracle-session`
-- `monthly-check-in`
 - `month-turn`
 - `whatsapp-webhook`
 

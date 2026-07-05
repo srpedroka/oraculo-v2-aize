@@ -798,7 +798,6 @@ Edge Functions:
 supabase functions deploy invite-member
 supabase functions deploy save-ai-settings
 supabase functions deploy oracle-chat
-supabase functions deploy monthly-check-in
 supabase functions deploy month-turn --no-verify-jwt
 supabase functions deploy save-whatsapp-settings
 supabase functions deploy whatsapp-webhook --no-verify-jwt
@@ -819,7 +818,7 @@ Use `--use-api` quando Docker local nao estiver disponivel.
 O tom e o roteiro empacotado das Edge Functions ficam em:
 
 ```text
-supabase/functions/_shared/prompt-guides.ts
+supabase/functions/_shared/conductors/persona.ts
 ```
 
 Para deixar a IA mais natural:
@@ -827,7 +826,7 @@ Para deixar a IA mais natural:
 1. Ajuste `CONVERSATION_STYLE`.
 2. Evite instrucoes contraditorias, como "seja curto" e "explique tudo".
 3. Lembre que saudacoes simples tambem passam pela IA quando houver chave configurada; respostas fixas devem ficar apenas como fallback.
-4. Publique `whatsapp-webhook` e `oracle-chat`.
+4. Publique `whatsapp-webhook`, `oracle-chat` e `oracle-session`.
 5. Teste pelo WhatsApp com pergunta ambigua, por exemplo "Como esta o sistema?".
 6. Confira se ela pede esclarecimento antes de despejar numeros.
 

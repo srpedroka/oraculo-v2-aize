@@ -87,7 +87,6 @@ Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations`
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `oracle-chat`: usa a conversa web da pessoa, grava pergunta e resposta com `user_id`/`conversation_id`, monta contexto legivel do plano e responde com fallback deterministico ou modelo configurado. Tambem classifica a intencao da mensagem para iniciar planejamento anual/trimestral/mensal ou fechamento mensal/trimestral pelo app.
 - `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, importa plano trimestral pronto via `import_ready_quarterly_plan`, persiste fase/estado/proposta pendente e grava planos ou fechamentos apenas depois de confirmacao.
-- `monthly-check-in`: gera check-in mensal e registra mensagem do Oraculo.
 - `month-turn`: funcao de virada de mes. Verifica areas com plano mensal encerrado sem check-in e envia convite por WhatsApp para owner/coordenador quando a integracao estiver ativa.
 - `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp.
 
@@ -100,10 +99,10 @@ Funcoes compartilhadas:
 - `_shared/transcription.ts`: normalizacao de arquivo de áudio e chamada da API de transcrição da OpenAI, com fallback de modelo.
 - `_shared/usage.ts`: calculo e gravacao de consumo de IA.
 - `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
+- `_shared/conductors/persona.ts`: persona, tom de conversa e guias por contexto usados pelos condutores e pelo chat web.
 - `_shared/intent-router.ts`: classifica mensagens em `smalltalk`, `status`, `quick_update`, `start_planning`, `close_period`, `document_question` ou `other`, usando a funcao de IA `background` com fallback deterministico.
 - `_shared/periods.ts`: normaliza texto e resolve ano, trimestre e mes vigentes ou citados na mensagem.
 - `_shared/quick-updates.ts`: identifica atualizacoes curtas do WhatsApp, escolhe objetivo/acao mensal, pede esclarecimento em caso de ambiguidade, valida permissao e grava status, progresso ou evidencia.
-- `_shared/prompt-guides.ts`: guias de comportamento, roteiro e tom do Oraculo empacotados junto das Edge Functions.
 - `_shared/conversations.ts`: cria/retoma conversa por pessoa e canal, grava mensagens com dono, carrega historico da conversa e resume historico longo com a funcao `background`.
 - `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias e pendencias.
 - `_shared/session-engine.ts`: orquestra sessoes de planejamento, historico, prompts, estado e chamadas ao modelo.

@@ -16,7 +16,7 @@ const TYPE_LABEL: Record<PlanDocumentType, string> = {
 
 function documentAreaName(document: PlanDocument, areas: { id: string; name: string }[]) {
   if (!document.areaId) return "Empresa";
-  return areas.find((area) => area.id === document.areaId)?.name ?? "Departamento";
+  return areas.find((area) => area.id === document.areaId)?.name ?? "Área";
 }
 
 export function Documents() {
@@ -79,7 +79,7 @@ export function Documents() {
             </select>
           </label>
           <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
-            Departamento
+            Área
             <select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
               <option value="all">Todos</option>
               <option value="company">Empresa</option>
