@@ -1,6 +1,7 @@
 import { Plus, Save, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { buildSavedObjectiveResponse, createMessageId } from "../../lib/oracle";
+import { currentMonthPeriod, currentQuarterPeriod, currentYear } from "../../lib/periods";
 import { evaluateConcreteness, getConcretenessTone } from "../../lib/concreteness";
 import { useAppState } from "../../state/store";
 import type { KeyAction, Objective, ObjectiveType, PlanLevel } from "../../types";
@@ -23,10 +24,10 @@ interface DraftAction {
 }
 
 const PERIOD_BY_LEVEL: Record<PlanLevel, string> = {
-  strategic: "2026",
-  area_annual: "2026",
-  quarterly: "Q3 2026",
-  monthly: "Set 2026",
+  strategic: String(currentYear()),
+  area_annual: String(currentYear()),
+  quarterly: currentQuarterPeriod(),
+  monthly: currentMonthPeriod(),
 };
 
 function createObjectiveId() {

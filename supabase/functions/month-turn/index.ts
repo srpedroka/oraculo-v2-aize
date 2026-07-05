@@ -6,11 +6,26 @@ import { sendWhatsAppMessages } from "../_shared/whatsapp.ts";
 
 type Client = ReturnType<typeof serviceClient>;
 
+// Comparacao em tempo constante para nao vazar o segredo por timing.
+function timingSafeEqual(a: string, b: string) {
+  const encoder = new TextEncoder();
+  const bufferA = encoder.encode(a);
+  const bufferB = encoder.encode(b);
+  // Compara sempre o mesmo numero de bytes; diferenca de tamanho ja falha, mas sem short-circuit no conteudo.
+  let mismatch = bufferA.length ^ bufferB.length;
+  const length = Math.max(bufferA.length, bufferB.length);
+  for (let i = 0; i < length; i += 1) {
+    mismatch |= (bufferA[i] ?? 0) ^ (bufferB[i] ?? 0);
+  }
+  return mismatch === 0;
+}
+
 function assertCronSecret(req: Request) {
   const expected = Deno.env.get("MONTH_TURN_SECRET");
-  if (!expected) return;
+  // Fail-closed: sem segredo configurado, ninguem dispara a virada de mes.
+  if (!expected) throw new Error("MONTH_TURN_SECRET não configurado");
   const received = req.headers.get("x-oraculo-cron-secret") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  if (received !== expected) throw new Error("Segredo do agendamento inválido");
+  if (!received || !timingSafeEqual(received, expected)) throw new Error("Segredo do agendamento inválido");
 }
 
 async function whatsappConfig(client: Client, orgId: string) {

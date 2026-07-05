@@ -16,3 +16,6 @@ supabase/.temp/
 
 # Local Netlify folder
 .netlify
+
+# Config local do Claude Code (launch.json/dev-server.sh tem caminhos da maquina)
+.claude/

@@ -348,10 +348,90 @@ function mediaFileFromBase64(base64: string, mimeType: string, fileName: string)
   return { bytes, mimeType, fileName };
 }
 
-async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, diagnostics?: string[]): Promise<AudioFile | null> {
-  if (!url.startsWith("http")) return null;
-  const response = await fetch(url, {
-    headers: keyRow?.api_key ? { apikey: keyRow.api_key } : undefined,
+// Comparacao em tempo constante para o segredo do webhook (evita timing attack).
+function timingSafeEqual(a: string, b: string) {
+  const encoder = new TextEncoder();
+  const bufferA = encoder.encode(a);
+  const bufferB = encoder.encode(b);
+  let mismatch = bufferA.length ^ bufferB.length;
+  const length = Math.max(bufferA.length, bufferB.length);
+  for (let i = 0; i < length; i += 1) {
+    mismatch |= (bufferA[i] ?? 0) ^ (bufferB[i] ?? 0);
+  }
+  return mismatch === 0;
+}
+
+// Teto de tamanho para download de midia recebida por webhook (evita esgotar memoria).
+const MAX_MEDIA_DOWNLOAD_BYTES = 25 * 1024 * 1024;
+
+// Anti-SSRF: so permite http(s) para hosts publicos. Bloqueia loopback, redes privadas,
+// link-local (inclui o metadata 169.254.169.254 de cloud) e nomes internos.
+function isSafeMediaUrl(rawUrl: string): URL | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  const host = parsed.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal") || host.endsWith(".local")) return null;
+
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    if (a === 127 || a === 10 || a === 0) return null; // loopback, privada, "this host"
+    if (a === 169 && b === 254) return null; // link-local + metadata cloud
+    if (a === 172 && b >= 16 && b <= 31) return null; // privada
+    if (a === 192 && b === 168) return null; // privada
+    if (a === 100 && b >= 64 && b <= 127) return null; // CGNAT
+    if (a >= 224) return null; // multicast/reservado
+  }
+  // IPv6 loopback/link-local/ULA.
+  if (host === "::1" || host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd")) return null;
+  return parsed;
+}
+
+// So anexa a apikey da Evolution quando o download e no proprio host da instancia,
+// nunca para uma URL de CDN/host arbitrario vinda do payload.
+function mediaFetchHeaders(target: URL, keyRow: any, allowedApiKeyHost?: string | null) {
+  if (keyRow?.api_key && allowedApiKeyHost && target.hostname.toLowerCase() === allowedApiKeyHost.toLowerCase()) {
+    return { apikey: keyRow.api_key as string };
+  }
+  return undefined;
+}
+
+function hostFromInstanceUrl(settings: any): string | null {
+  try {
+    return new URL(String(settings?.instance_url ?? "")).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+async function readCappedBytes(response: Response, diagnostics?: string[]): Promise<Uint8Array | null> {
+  const declared = Number(response.headers.get("content-length") ?? "0");
+  if (declared && declared > MAX_MEDIA_DOWNLOAD_BYTES) {
+    diagnostics?.push(`media-too-large:${declared}`);
+    return null;
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length > MAX_MEDIA_DOWNLOAD_BYTES) {
+    diagnostics?.push(`media-too-large:${bytes.length}`);
+    return null;
+  }
+  return bytes;
+}
+
+async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, diagnostics?: string[], allowedApiKeyHost?: string | null): Promise<AudioFile | null> {
+  const target = isSafeMediaUrl(url);
+  if (!target) {
+    diagnostics?.push("url:blocked");
+    return null;
+  }
+  const response = await fetch(target, {
+    headers: mediaFetchHeaders(target, keyRow, allowedApiKeyHost),
+    redirect: "manual",
   }).catch(() => null);
   if (!response?.ok) {
     diagnostics?.push(`url:${response?.status ?? "no-response"}`);
@@ -359,7 +439,8 @@ async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, 
   }
 
   const contentType = response.headers.get("content-type") ?? mimeType;
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const bytes = await readCappedBytes(response, diagnostics);
+  if (!bytes) return null;
   return {
     bytes,
     mimeType: contentType || mimeType,
@@ -367,18 +448,25 @@ async function downloadAudioFromUrl(url: string, keyRow: any, mimeType: string, 
   };
 }
 
-async function downloadMediaFromUrl(url: string, keyRow: any, mimeType: string, fileName: string, diagnostics?: string[]): Promise<AudioFile | null> {
-  if (!url.startsWith("http")) return null;
-  const response = await fetch(url, {
-    headers: keyRow?.api_key ? { apikey: keyRow.api_key } : undefined,
+async function downloadMediaFromUrl(url: string, keyRow: any, mimeType: string, fileName: string, diagnostics?: string[], allowedApiKeyHost?: string | null): Promise<AudioFile | null> {
+  const target = isSafeMediaUrl(url);
+  if (!target) {
+    diagnostics?.push("doc-url:blocked");
+    return null;
+  }
+  const response = await fetch(target, {
+    headers: mediaFetchHeaders(target, keyRow, allowedApiKeyHost),
+    redirect: "manual",
   }).catch(() => null);
   if (!response?.ok) {
     diagnostics?.push(`doc-url:${response?.status ?? "no-response"}`);
     return null;
   }
 
+  const bytes = await readCappedBytes(response, diagnostics);
+  if (!bytes) return null;
   return {
-    bytes: new Uint8Array(await response.arrayBuffer()),
+    bytes,
     mimeType: response.headers.get("content-type") ?? mimeType,
     fileName,
   };
@@ -964,7 +1052,7 @@ async function resolveAudioFile(settings: any, keyRow: any, payload: any, diagno
   }
 
   if (audioInfo.url) {
-    const file = await downloadAudioFromUrl(audioInfo.url, keyRow, audioInfo.mimeType, diagnostics);
+    const file = await downloadAudioFromUrl(audioInfo.url, keyRow, audioInfo.mimeType, diagnostics, hostFromInstanceUrl(settings));
     if (file) return await maybeDecryptWhatsAppAudio(file, audioInfo, diagnostics);
   }
 
@@ -982,7 +1070,7 @@ async function resolveDocumentFile(settings: any, keyRow: any, payload: any, dia
 
   let file: AudioFile | null = null;
   if (documentInfo.base64) file = mediaFileFromBase64(documentInfo.base64, documentInfo.mimeType, documentInfo.fileName);
-  if (!file && documentInfo.url) file = await downloadMediaFromUrl(documentInfo.url, keyRow, documentInfo.mimeType, documentInfo.fileName, diagnostics);
+  if (!file && documentInfo.url) file = await downloadMediaFromUrl(documentInfo.url, keyRow, documentInfo.mimeType, documentInfo.fileName, diagnostics, hostFromInstanceUrl(settings));
   if (!file) file = await downloadDocumentFromEvolution(settings, keyRow, documentInfo, diagnostics);
 
   if (!file) return null;
@@ -1860,11 +1948,11 @@ serve(async (req) => {
       .maybeSingle();
     if (whatsappKeyError) throw whatsappKeyError;
 
+    // Segredo aceito apenas por header (nunca por query string, que vaza em logs de proxy/acesso).
     const receivedSecret =
       req.headers.get("x-oraculo-webhook-secret") ??
-      req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
-      url.searchParams.get("secret");
-    if (!whatsappKeyRow?.webhook_secret || receivedSecret !== whatsappKeyRow.webhook_secret) {
+      req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (!whatsappKeyRow?.webhook_secret || !receivedSecret || !timingSafeEqual(receivedSecret, whatsappKeyRow.webhook_secret)) {
       return jsonResponse({ error: "Webhook não autorizado" }, 401);
     }
 

@@ -28,7 +28,7 @@ Secrets das Edge Functions:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `MONTH_TURN_SECRET` para proteger chamadas agendadas da funcao `month-turn`, quando configurado.
+- `MONTH_TURN_SECRET` para proteger chamadas agendadas da funcao `month-turn`. **Obrigatorio**: desde 2026-07-05 a funcao falha fechada (retorna erro) se o segredo nao estiver configurado, e o segredo e comparado em tempo constante. Configurar o secret antes de habilitar o cron.
 
 Segredos operacionais salvos pelo app:
 
@@ -81,7 +81,9 @@ Senhas nao sao salvas no frontend, na documentacao ou no banco em texto puro. A 
 
 ## WhatsApp
 
-O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
+O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. Desde 2026-07-05 o segredo **nao** e mais aceito via query string (`?secret=`), porque vaza em logs de proxy/acesso, e a comparacao e feita em tempo constante. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
+
+Download de midia (audio/documento) por URL vinda do payload passa por guarda anti-SSRF: apenas `http(s)`, com bloqueio de loopback, redes privadas, link-local (inclui o metadata `169.254.169.254` de cloud) e nomes internos; ha teto de tamanho por download; e a `apikey` da Evolution so e enviada quando o host da URL e o da propria instancia (`instance_url`), nunca para um CDN ou host arbitrario.
 
 Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usando service role no servidor. O frontend nunca recebe a chave da Evolution API e tambem nao monta a chamada direta para a VPS. O link de convite do Supabase e entregue ao celular informado no cadastro do convidado.
 
@@ -96,6 +98,17 @@ Arquivos enviados pelo WhatsApp sao processados em memoria para extração de te
 Na Fase 4 da V3, o WhatsApp ganhou roteamento de intencao e atualizacoes rapidas de execucao. Esse e o unico fluxo em que o Oraculo pode gravar sem proposta formal, e somente para pequenas alteracoes operacionais: marcar acao como concluida, atualizar percentual de objetivo mensal, alterar status quando a intencao estiver clara ou registrar evidencia curta. Antes de escrever, `_shared/quick-updates.ts` valida membership, papel e escopo da area: owner pode atualizar a empresa; coordenador so atualiza objetivo/acao da propria area. Se houver ambiguidade de alvo ou falta de percentual/evidencia, o Oraculo deve perguntar antes de gravar.
 
 O classificador de intencao usa a funcao de IA `background`, mas a decisao de escrita nao confia apenas no texto do modelo. O servidor cruza a resposta da IA com candidatos reais do banco, calcula similaridade, valida permissao e aplica somente operacoes conhecidas. Criacao de plano, objetivo e acao continua exigindo `proposal` + confirmacao pela sessao de planejamento.
+
+## Revisao de seguranca 2026-07-05
+
+Auditoria completa (RLS/migrations, Edge Functions, frontend) mais teste ponta a ponta com conta de teste nova. Corrigido no mesmo ciclo: fail-open do `month-turn`, SSRF + vazamento da `apikey` no download de midia do webhook, aceitacao do segredo do webhook por query string e comparacoes de segredo sem tempo constante. Verificado OK: isolamento de tenant por RLS (`is_org_member`/`is_owner`/`can_write_area`/`can_write_objective`), funcoes `SECURITY DEFINER` com `search_path` fixo, mascaramento de chaves na UI (`has_key`/`key_preview`), ausencia de `dangerouslySetInnerHTML` e de `console.*` com segredo no frontend, e gravacao por proposta usando dados do banco (nao do modelo).
+
+Recomendacoes pendentes (decisao do dono, ainda nao aplicadas):
+
+- **Segredos no schema `public`**: `public.ai_model_keys` e `public.whatsapp_instance_keys` guardam chave/segredo em texto puro e dependem so de RLS + revokes. Uma futura migration de rotina com `grant ... on all tables in schema public` pode reabrir acesso. Avaliar mover para `private`/Supabase Vault (exige redeploy coordenado das Edge Functions).
+- **Erros de mutacao silenciosos no frontend**: `src/state/store.tsx` usa inserts/updates fire-and-forget sem `.catch`; a UI pode exibir sucesso falso (ex.: "Chave salva") quando a operacao falhou. Recomendado propagar erro para a UI.
+- **Confirmacao de identidade no webhook**: o segredo do webhook e um shared secret estatico por org; se vazar, permite spoof de `profiles.phone` da org. Considerar validacao de assinatura HMAC do provedor, se suportada.
+- **Dashboard "Evolucao"**: cards ainda sao scaffolding legado (rotulos fixos, incluindo nome do cliente de referencia, e mapeamento por IDs de seed antigos como `e2`/`e4`/`q-inov-1`). Decidir se viram totalmente orientados a dados da empresa.
 
 Na Fase 5, fechamentos de mes e trimestre tambem seguem `proposal` + confirmacao. O modelo monta `month_close` ou `quarter_close`, mas a escrita so acontece em `proposals.ts` depois de validar membership, area e permissao. A gravacao permitida e limitada a atualizar status/progresso, registrar evidencias, criar check-in, rolar pendencias para o proximo periodo e atualizar foco de aprendizado do trimestre.
 

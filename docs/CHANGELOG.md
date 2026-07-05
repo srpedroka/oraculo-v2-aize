@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-05 (revisão de segurança + E2E)
+
+- Auditoria completa de segurança (RLS/migrations, Edge Functions, frontend) e teste ponta a ponta com conta de teste nova.
+- Corrigido fail-open em `month-turn`: sem `MONTH_TURN_SECRET` configurado a virada de mês era liberada; agora falha fechada e o segredo é comparado em tempo constante.
+- Fechada SSRF em `whatsapp-webhook`: download de mídia por URL agora bloqueia hosts internos/loopback/link-local (inclui metadata `169.254.169.254`), impõe teto de tamanho e só envia a `apikey` da Evolution quando o host é o da própria instância (antes vazava a chave para hosts arbitrários).
+- Segredo do webhook aceito apenas por header (removida aceitação via query string, que vaza em logs) e comparado em tempo constante.
+- Corrigida divergência de período trimestral no frontend: telas usavam "Q3 2026" enquanto o servidor grava "T3 2026", fazendo objetivos sumirem de Planos Trimestrais. Centralizado em `src/lib/periods.ts` (`currentQuarterPeriod`, `currentMonthPeriod`, `currentYear`) e alinhado com `_shared/periods.ts`.
+- Adicionado guard de duplo-submit na confirmação de proposta do Oráculo (`OraclePanel`), evitando gravação duplicada.
+- Pendências registradas para decisão do dono: mover segredos (`ai_model_keys`, `whatsapp_instance_keys`) do schema `public` para `private`/Vault; cards da seção "Evolução" do Dashboard ainda são scaffolding legado (rótulos fixos, incluindo o nome do cliente de referência, e mapeamento por IDs de seed antigos); erros de mutação no store são silenciosos (UI pode mostrar sucesso falso).
+
 ## 2026-07-05
 
 - Executada a Fase 7 da V3: removidos roteiros Markdown legados, guia de prompt separado e a Edge Function antiga de check-in mensal.

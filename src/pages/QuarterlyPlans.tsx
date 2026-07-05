@@ -7,10 +7,11 @@ import { StatusBadge } from "../components/ui/StatusBadge";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
+import { currentQuarterPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
 import type { Status } from "../types";
 
-const CURRENT_QUARTER_PERIOD = "Q3 2026";
+const CURRENT_QUARTER_PERIOD = currentQuarterPeriod();
 const IMPORT_TEXT_LIMIT = 24000;
 
 type ImportStatus = {
@@ -87,7 +88,7 @@ export function QuarterlyPlans() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-text-tertiary">Planejamento da execução · Q3 2026</p>
+          <p className="text-sm font-medium text-text-tertiary">Planejamento da execução · {CURRENT_QUARTER_PERIOD}</p>
           <h1 className="text-2xl font-semibold text-text">Planos Trimestrais</h1>
         </div>
         <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium text-text-secondary shadow-card">

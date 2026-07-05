@@ -331,6 +331,8 @@ export function OraclePanel() {
   const [evidenceText, setEvidenceText] = useState("");
   const [attachmentLoading, setAttachmentLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  // Trava o botao de confirmar enquanto a gravacao esta em voo, evitando duplo submit.
+  const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const mode = state.ui.oracleMode;
@@ -350,6 +352,11 @@ export function OraclePanel() {
       setSelectedObjectiveId(state.objectives[0].id);
     }
   }, [selectedObjectiveId, state.objectives]);
+
+  // Libera o botao quando a proposta e aplicada/descartada (pendingProposal some) ou troca a sessao.
+  useEffect(() => {
+    if (!activeSession?.pendingProposal) setConfirmingSessionId(null);
+  }, [activeSession?.id, activeSession?.pendingProposal]);
 
   useEffect(() => {
     function syncNarrowMode() {
@@ -562,15 +569,32 @@ export function OraclePanel() {
                   <Button
                     type="button"
                     className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
-                    onClick={() => dispatch({ type: "confirm_session_proposal", sessionId: activeSession.id })}
+                    disabled={confirmingSessionId === activeSession.id}
+                    onClick={() => {
+                      if (confirmingSessionId === activeSession.id) return;
+                      setConfirmingSessionId(activeSession.id);
+                      dispatch({ type: "confirm_session_proposal", sessionId: activeSession.id });
+                    }}
                   >
-                    Confirmar e gravar
+                    {confirmingSessionId === activeSession.id ? "Gravando…" : "Confirmar e gravar"}
                   </Button>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="ghost" className="w-full" onClick={() => setMessage("Quero ajustar: ")}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      disabled={confirmingSessionId === activeSession.id}
+                      onClick={() => setMessage("Quero ajustar: ")}
+                    >
                       Ajustar
                     </Button>
-                    <Button type="button" variant="ghost" className="w-full" onClick={() => dispatch({ type: "abandon_session", sessionId: activeSession.id })}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      disabled={confirmingSessionId === activeSession.id}
+                      onClick={() => dispatch({ type: "abandon_session", sessionId: activeSession.id })}
+                    >
                       Descartar
                     </Button>
                   </div>

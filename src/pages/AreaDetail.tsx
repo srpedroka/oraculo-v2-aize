@@ -5,6 +5,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
+import { currentMonthPeriod, currentQuarterPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
 import type { PlanLevel } from "../types";
 
@@ -15,18 +16,6 @@ const TAB_LABEL: Record<AreaTab, string> = {
   quarterly: "Trimestral",
   monthly: "Mensal",
 };
-
-const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-function currentQuarterPeriod() {
-  const now = new Date();
-  return `T${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
-}
-
-function currentMonthPeriod() {
-  const now = new Date();
-  return `${MONTH_LABELS[now.getMonth()]} ${now.getFullYear()}`;
-}
 
 function BulletList({ title, items }: { title: string; items: string[] }) {
   return (
