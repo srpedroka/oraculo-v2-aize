@@ -6,6 +6,8 @@
 - Corrigido o Dashboard para remover rótulos fixos de demonstração na seção "Evolução"; agora os cards usam objetivos reais do tipo Evolução e mostram estado vazio quando não há dados.
 - Decidido manter, por ora, as tabelas de segredo em `public.*_keys` com RLS/revokes até uma janela coordenada de migração para `private` ou Vault.
 - Decidido tratar os erros silenciosos de mutação como refactor transversal futuro, a ser feito com propagação explícita de erro para a UI.
+- Blindado o roteamento do `whatsapp-webhook`: quando o `orgId` da URL não resolve `whatsapp_settings` (ex.: org recriada com novo id e URL antiga na Evolution), a função agora cai de volta para o `instance_name` estável em vez de responder 404 silencioso e parar o WhatsApp. Recomendada também a remoção do `?orgId=` da URL na Evolution para depender só do `instance_name`.
+- Concluída a limpeza da seção "Evolução" do Dashboard: removidos os últimos IDs de seed legados (`e1`, `e2`) do casamento de Faturamento/Margem, que passam a usar apenas indicador/título reais.
 
 ## 2026-07-05 (revisão de segurança + E2E)
 

@@ -1935,10 +1935,20 @@ serve(async (req) => {
     const requestedOrgId = url.searchParams.get("orgId") ?? payload?.orgId ?? null;
     const instanceName = extractInstanceName(payload);
 
-    let settingsQuery = client.from("whatsapp_settings").select("*").eq("enabled", true);
-    settingsQuery = requestedOrgId ? settingsQuery.eq("org_id", requestedOrgId) : settingsQuery.eq("instance_name", instanceName);
-    const { data: whatsappSettings, error: settingsError } = await settingsQuery.maybeSingle();
-    if (settingsError) throw settingsError;
+    // Resolve os settings primeiro pelo orgId da URL; se nao achar (ex.: org recriada com novo id
+    // e URL desatualizada na Evolution), cai de volta para o instance_name, que e estavel. Isso
+    // evita 404 silencioso e a parada muda do WhatsApp quando o orgId da URL fica velho.
+    let whatsappSettings: any = null;
+    if (requestedOrgId) {
+      const byOrg = await client.from("whatsapp_settings").select("*").eq("enabled", true).eq("org_id", requestedOrgId).maybeSingle();
+      if (byOrg.error) throw byOrg.error;
+      whatsappSettings = byOrg.data;
+    }
+    if (!whatsappSettings && instanceName) {
+      const byInstance = await client.from("whatsapp_settings").select("*").eq("enabled", true).eq("instance_name", instanceName).maybeSingle();
+      if (byInstance.error) throw byInstance.error;
+      whatsappSettings = byInstance.data;
+    }
     if (!whatsappSettings) return jsonResponse({ error: "WhatsApp não configurado para esta empresa" }, 404);
 
     const { data: whatsappKeyRow, error: whatsappKeyError } = await client

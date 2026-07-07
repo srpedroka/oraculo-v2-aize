@@ -27,10 +27,11 @@ export function Dashboard() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const closePeriod = previousMonthPeriod();
   const revenue =
-    state.objectives.find((objective) => objective.id === "e1") ??
     state.objectives.find((objective) => objective.metric?.toLowerCase().includes("faturamento")) ??
     state.objectives.find((objective) => objective.title.toLowerCase().includes("faturamento"));
-  const margin = state.objectives.find((objective) => objective.id === "e2") ?? state.objectives.find((objective) => objective.metric?.toLowerCase().includes("margem"));
+  const margin =
+    state.objectives.find((objective) => objective.metric?.toLowerCase().includes("margem")) ??
+    state.objectives.find((objective) => objective.title.toLowerCase().includes("margem"));
   const hasData = state.objectives.length > 0;
   const seedObjectives = state.objectives.filter((objective) => objective.type === "seed");
   const executiveSeeds = seedObjectives.filter((objective) => objective.level === "strategic");
