@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-07
+
+- Publicadas em produção as Edge Functions `whatsapp-webhook` e `month-turn` com as correções de segurança da revisão de 2026-07-05.
+- Corrigido o Dashboard para remover rótulos fixos de demonstração na seção "Evolução"; agora os cards usam objetivos reais do tipo Evolução e mostram estado vazio quando não há dados.
+- Decidido manter, por ora, as tabelas de segredo em `public.*_keys` com RLS/revokes até uma janela coordenada de migração para `private` ou Vault.
+- Decidido tratar os erros silenciosos de mutação como refactor transversal futuro, a ser feito com propagação explícita de erro para a UI.
+
 ## 2026-07-05 (revisão de segurança + E2E)
 
 - Auditoria completa de segurança (RLS/migrations, Edge Functions, frontend) e teste ponta a ponta com conta de teste nova.

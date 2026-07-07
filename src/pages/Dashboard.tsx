@@ -31,17 +31,13 @@ export function Dashboard() {
     state.objectives.find((objective) => objective.metric?.toLowerCase().includes("faturamento")) ??
     state.objectives.find((objective) => objective.title.toLowerCase().includes("faturamento"));
   const margin = state.objectives.find((objective) => objective.id === "e2") ?? state.objectives.find((objective) => objective.metric?.toLowerCase().includes("margem"));
-  const leadership = state.objectives.find((objective) => objective.id === "e4") ?? state.objectives.find((objective) => objective.title.toLowerCase().includes("líder"));
-  const productDelay = state.objectives.find((objective) => objective.id === "q-inov-1") ?? state.objectives.find((objective) => objective.type === "seed" && objective.status === "late");
   const hasData = state.objectives.length > 0;
   const seedObjectives = state.objectives.filter((objective) => objective.type === "seed");
   const executiveSeeds = seedObjectives.filter((objective) => objective.level === "strategic");
   const activeSeeds = (executiveSeeds.length ? executiveSeeds : seedObjectives).filter((objective) => objective.status !== "done");
+  const visibleEvolutionObjectives = activeSeeds.slice(0, 2);
   const onTrackSeeds = activeSeeds.filter((objective) => objective.status === "on_track").length;
   const attentionSeeds = activeSeeds.filter((objective) => ["at_risk", "late"].includes(objective.status)).length;
-  const productProjectCount = state.objectives.filter(
-    (objective) => ["strategic", "quarterly"].includes(objective.level) && /produto|pipeline|protótipo|inova/i.test(objective.title),
-  ).length;
   const donutData = activeSeeds.length
     ? [
         { name: "No Prazo", value: onTrackSeeds, color: "#DDE7F3" },
@@ -175,69 +171,77 @@ export function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          <Card className="rounded-2xl">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[17px] font-medium text-text">Pipeline de Novos Produtos</p>
-                <p className="mt-4 text-[34px] font-semibold leading-none text-text">{productProjectCount} Projetos</p>
-                <p className="mt-3 text-[15px] text-text-secondary">{productProjectCount ? "Fase: Validação" : "Fase: A definir"}</p>
-              </div>
-              <span className="rounded-[12px] bg-[#FDF1DD] px-3 py-1.5 text-sm font-medium text-[#9A6400]">
-                {productDelay?.status === "late" ? "1 Atrasado" : productProjectCount ? "Em atenção" : "A definir"}
-              </span>
-            </div>
-          </Card>
-
-          <Card className="rounded-2xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[17px] font-medium text-text">Treinamento de Liderança Aize</p>
-                <p className="mt-4 text-[34px] font-semibold leading-none text-text">{leadership?.progress ?? 0}%</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <StatusBadge status={leadership?.status ?? "on_track"} />
-                {canEditObjective(leadership, state) ? (
-                  <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(leadership!)}>
-                    Editar
+          {visibleEvolutionObjectives.length ? (
+            visibleEvolutionObjectives.map((objective) => (
+              <Card key={objective.id} className="rounded-2xl">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[17px] font-medium text-text">{objective.title}</p>
+                    <p className="mt-4 text-[34px] font-semibold leading-none text-text">{objective.progress ?? 0}%</p>
+                    <p className="mt-3 text-[15px] text-text-secondary">Meta: {objective.target ?? "A definir"}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge status={objective.status} />
+                    {canEditObjective(objective, state) ? (
+                      <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(objective)}>
+                        Editar
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <ProgressBar value={objective.progress ?? 0} />
+              </Card>
+            ))
+          ) : (
+            <Card className="rounded-2xl">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-[17px] font-medium text-text">Nenhum objetivo de Evolução cadastrado</p>
+                  <p className="mt-3 text-[15px] text-text-secondary">O próximo jogo ainda precisa de um objetivo próprio.</p>
+                </div>
+                {canCreateStrategicObjective ? (
+                  <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderOpen(true)}>
+                    Criar
                   </Button>
                 ) : null}
               </div>
-            </div>
-            <ProgressBar value={leadership?.progress ?? 0} />
-          </Card>
+            </Card>
+          )}
 
-          <Card className="rounded-2xl">
-            <div className="grid grid-cols-[1fr_112px] items-center gap-4">
-              <div>
-                <p className="text-[17px] font-medium text-text">Iniciativas de Inovação</p>
-                <p className="mt-4 text-[34px] font-semibold leading-none text-text">{activeSeeds.length} Em Andamento</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <span className="text-[15px] text-text-secondary">{onTrackSeeds} No Prazo</span>
-                  <span className="rounded-[12px] bg-[#FDF1DD] px-3 py-1.5 text-sm font-medium text-[#9A6400]">
-                    {attentionSeeds} Em Risco
-                  </span>
+          {activeSeeds.length ? (
+            <Card className="rounded-2xl">
+              <div className="grid grid-cols-[1fr_112px] items-center gap-4">
+                <div>
+                  <p className="text-[17px] font-medium text-text">Objetivos de Evolução</p>
+                  <p className="mt-4 text-[34px] font-semibold leading-none text-text">{activeSeeds.length} Em Andamento</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="text-[15px] text-text-secondary">{onTrackSeeds} No Prazo</span>
+                    <span className="rounded-[12px] bg-[#FDF1DD] px-3 py-1.5 text-sm font-medium text-[#9A6400]">
+                      {attentionSeeds} Em Risco
+                    </span>
+                  </div>
+                </div>
+                <div className="h-28 w-28">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={donutData}
+                        dataKey="value"
+                        innerRadius={34}
+                        outerRadius={50}
+                        paddingAngle={3}
+                        isAnimationActive={false}
+                      >
+                        {donutData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} stroke="#CCD4DE" />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-              <div className="h-28 w-28">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={donutData}
-                      dataKey="value"
-                      innerRadius={34}
-                      outerRadius={50}
-                      paddingAngle={3}
-                      isAnimationActive={false}
-                    >
-                      {donutData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} stroke="#CCD4DE" />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          ) : null}
         </div>
       </section>
       {editingObjective ? <ObjectiveEditDialog objective={editingObjective} onClose={() => setEditingObjective(null)} /> : null}

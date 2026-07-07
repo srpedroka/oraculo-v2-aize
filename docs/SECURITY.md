@@ -108,7 +108,7 @@ Recomendacoes pendentes (decisao do dono, ainda nao aplicadas):
 - **Segredos no schema `public`**: `public.ai_model_keys` e `public.whatsapp_instance_keys` guardam chave/segredo em texto puro e dependem so de RLS + revokes. Uma futura migration de rotina com `grant ... on all tables in schema public` pode reabrir acesso. Avaliar mover para `private`/Supabase Vault (exige redeploy coordenado das Edge Functions).
 - **Erros de mutacao silenciosos no frontend**: `src/state/store.tsx` usa inserts/updates fire-and-forget sem `.catch`; a UI pode exibir sucesso falso (ex.: "Chave salva") quando a operacao falhou. Recomendado propagar erro para a UI.
 - **Confirmacao de identidade no webhook**: o segredo do webhook e um shared secret estatico por org; se vazar, permite spoof de `profiles.phone` da org. Considerar validacao de assinatura HMAC do provedor, se suportada.
-- **Dashboard "Evolucao"**: cards ainda sao scaffolding legado (rotulos fixos, incluindo nome do cliente de referencia, e mapeamento por IDs de seed antigos como `e2`/`e4`/`q-inov-1`). Decidir se viram totalmente orientados a dados da empresa.
+- **Dashboard "Evolucao"**: resolvido em 2026-07-07. A seção deixou de usar rótulos fixos de demonstração e passou a renderizar objetivos reais do tipo Evolução, com estado vazio quando não houver dados.
 
 Na Fase 5, fechamentos de mes e trimestre tambem seguem `proposal` + confirmacao. O modelo monta `month_close` ou `quarter_close`, mas a escrita so acontece em `proposals.ts` depois de validar membership, area e permissao. A gravacao permitida e limitada a atualizar status/progresso, registrar evidencias, criar check-in, rolar pendencias para o proximo periodo e atualizar foco de aprendizado do trimestre.
 

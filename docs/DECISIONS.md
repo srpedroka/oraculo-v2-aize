@@ -1,5 +1,41 @@
 # Decisoes tecnicas
 
+## 2026-07-07 - Migração de segredos exige janela coordenada
+
+Decisao: manter temporariamente `public.ai_model_keys` e `public.whatsapp_instance_keys` com RLS, revokes para `anon`/`authenticated` e grants apenas para `service_role`, sem migrar imediatamente para schema `private` ou Supabase Vault.
+
+Contexto: a revisão de segurança identificou que as tabelas atuais guardam segredos em texto puro no schema `public`. Hoje elas estão bloqueadas, mas uma migration futura descuidada poderia reabrir acesso.
+
+Alternativas: migrar agora para `private`, migrar para Vault, ou manter o modelo atual com documentação reforçada até uma janela de deploy coordenado.
+
+Motivo: a migração toca todas as Edge Functions que leem chaves de IA ou WhatsApp e precisa de validação operacional com deploy coordenado. Como as correções críticas de webhook/month-turn precisavam ir para produção agora, a troca de storage de segredos deve ser tratada como mudança dedicada.
+
+Consequencias: qualquer mudança em grants/policies no schema `public` deve revisar explicitamente essas duas tabelas. A migração para `private`/Vault continua recomendada para hardening, mas deve sair em ciclo próprio com migration, ajuste das Edge Functions e teste completo.
+
+## 2026-07-07 - Erros de mutação serão tratados como refactor transversal
+
+Decisao: não corrigir pontualmente os `fire-and-forget` de `src/state/store.tsx` neste ciclo; tratar a propagação de erro para a UI como refactor transversal dedicado.
+
+Contexto: o store tem várias mutações que lançam erro dentro de `.then()` sem `.catch`, o que pode gerar rejeições não tratadas e mensagens de sucesso falsas.
+
+Alternativas: adicionar `.catch` em cada chamada atual, migrar gradualmente para helpers centralizados, ou transformar as mutações principais em React Query mutations com `onError`.
+
+Motivo: uma correção parcial reduziria alguns sintomas, mas manteria comportamento inconsistente. O melhor caminho é centralizar tratamento de erro, invalidation e feedback visual, especialmente para configurações sensíveis e criação/edição de objetivos.
+
+Consequencias: novos fluxos de mutação devem evitar `void promise.then(...)` sem tratamento. O refactor futuro deve priorizar `save-ai-settings`, `save-whatsapp-settings`, criação/edição de objetivos e confirmações de sessão.
+
+## 2026-07-07 - Dashboard Evolução orientado a objetivos reais
+
+Decisao: remover os cards fixos de scaffolding da seção "Evolução" do Dashboard e renderizar objetivos reais do tipo Evolução (`seed`), com estado vazio quando a empresa ainda nao cadastrou esse tipo de objetivo.
+
+Contexto: a auditoria de 2026-07-05 identificou que empresas novas podiam herdar rótulos de demonstração como "Pipeline de Novos Produtos" e "Treinamento de Liderança Aize", porque o Dashboard procurava IDs de seed antigos e usava textos fixos.
+
+Alternativas: manter rótulos genericos, esconder a seção inteira sem dados ou transformar a seção em um resumo dos objetivos reais.
+
+Motivo: o Dashboard precisa refletir a estratégia da empresa ativa, nao dados de referencia. Mostrar os objetivos reais preserva a utilidade da seção quando ha plano cadastrado; o estado vazio orienta a criação sem vazar nomes de demonstração.
+
+Consequencias: ajustes futuros na seção "Evolução" devem continuar partindo de `objectives.type = "seed"` e evitar IDs fixos de seed/demo.
+
 ## 2026-07-05 - Documento padrao Oraculo deterministico
 
 Decisao: executar a Fase 6 da V3 gerando um `plan_documents` canonico sempre que uma proposta de plano ou fechamento for confirmada, com renderizacao unica para tela, PDF A4 e WhatsApp.
