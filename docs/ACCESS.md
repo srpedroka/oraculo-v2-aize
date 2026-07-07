@@ -264,6 +264,22 @@ Ao trocar modelo:
 4. Verificar se `ai_settings.pricing_source` aponta para a fonte correta.
 5. Fazer uma chamada pequena e conferir `ai_usage_logs`.
 
+## Credenciais de operacao dos agentes (Claude Code / Codex)
+
+Para os agentes operarem sem depender um do outro (deploy de Edge Functions, deploy Netlify, config da Evolution), as credenciais de operacao ficam num arquivo local fora do Git:
+
+- Arquivo real: `.agents-private/agent-env` (gitignored, `chmod 600`, nunca commitar).
+- Template versionado do formato: `.agents-private/agent-env.example`.
+- Uso: `set -a; source .agents-private/agent-env; set +a` antes dos comandos.
+
+Variaveis (apenas nomes; valores so no arquivo local):
+
+- `SUPABASE_ACCESS_TOKEN` — essencial; destrava `supabase functions deploy` e `supabase secrets`. Token pessoal revogavel (app.supabase.com > Account > Access Tokens).
+- `NETLIFY_AUTH_TOKEN` — opcional; a CLI ja costuma estar logada em `~/Library/Preferences/netlify/config.json`.
+- `EVOLUTION_API_URL` / `EVOLUTION_INSTANCE` / `EVOLUTION_API_KEY` — opcional; so se o agente for configurar o webhook do WhatsApp direto na Evolution.
+
+Nao duplicar aqui: `SUPABASE_SERVICE_ROLE_KEY` (ja e secret do projeto), chaves de IA (`public.ai_model_keys`), senha do banco (`.supabase-private/db-password`). Principio: guardar o minimo, cada segredo na sua fonte, nunca ecoar valores em log/chat/PR.
+
 ## Arquivos locais sensiveis
 
 Nao entram no Git:
