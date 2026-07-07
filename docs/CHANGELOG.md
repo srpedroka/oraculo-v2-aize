@@ -2,6 +2,7 @@
 
 ## 2026-07-07
 
+- Iniciada a Memoria Estrategica: documentos historicos podem ser importados pelo Plano Estrategico, salvos em `plan_documents` com `origin = historical` e visualizados/filtrados em Documentos sem criar objetivos ativos nem chamar IA.
 - Publicadas em produção as Edge Functions `whatsapp-webhook` e `month-turn` com as correções de segurança da revisão de 2026-07-05.
 - Corrigido o Dashboard para remover rótulos fixos de demonstração na seção "Evolução"; agora os cards usam objetivos reais do tipo Evolução e mostram estado vazio quando não há dados.
 - Decidido manter, por ora, as tabelas de segredo em `public.*_keys` com RLS/revokes até uma janela coordenada de migração para `private` ou Vault.

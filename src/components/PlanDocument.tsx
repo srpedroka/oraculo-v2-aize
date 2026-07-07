@@ -160,11 +160,60 @@ function StrategicSection({ content }: { content: Record<string, unknown> }) {
 export function PlanDocumentView({ document, printMode = false }: { document: PlanDocument; printMode?: boolean }) {
   const content = document.content ?? {};
   const type = document.type;
+  const isHistorical = document.origin === "historical";
+  const rawHistory = asText(content.raw);
+  const historicalSource = asText(content.source);
+  const historicalNote = asText(content.note);
   const objectives = asArray<Record<string, unknown>>(content.objetivos);
   const context = asArray<string>(content.contexto_rapido);
   const focus = asArray<string>(content.foco_aprendizado);
   const closing = asRecord(content.fechamento);
   const generatedAt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(document.createdAt));
+
+  if (isHistorical) {
+    return (
+      <article className={["plan-document mx-auto bg-white text-text", printMode ? "max-w-[210mm] px-0 py-0" : "rounded-[18px] border border-border p-6 shadow-card lg:p-10"].join(" ")}>
+        <header className="plan-document-header border-b border-border pb-8">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.22em] text-text-tertiary">{asText(content.empresa, "Empresa")}</p>
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-normal text-text">{document.title}</h1>
+              <p className="mt-2 text-sm text-text-secondary">
+                {DOCUMENT_TYPE_LABEL[type]} · {asText(content.area, "Empresa")} · {asText(content.periodo, document.period)}
+              </p>
+            </div>
+            <div className="text-left text-xs leading-5 text-text-tertiary sm:text-right">
+              <p>Versão {document.version}</p>
+              <p>Importado como histórico</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="space-y-10 py-8">
+          {(historicalSource || historicalNote) ? (
+            <Section index={1} title="Origem">
+              <div className="grid gap-3 md:grid-cols-2">
+                <KeyValue label="Fonte" value={historicalSource} />
+                <KeyValue label="Nota" value={historicalNote} />
+              </div>
+            </Section>
+          ) : null}
+
+          <Section index={historicalSource || historicalNote ? 2 : 1} title="Texto Importado">
+            <div className="whitespace-pre-wrap break-words rounded-xl border border-border bg-surface px-4 py-4 text-sm leading-6 text-text-secondary">
+              {rawHistory || "Documento histórico sem texto disponível."}
+            </div>
+          </Section>
+        </div>
+
+        {printMode ? (
+          <footer className="plan-document-footer border-t border-border pt-8 text-center">
+            <p className="mt-8 text-[10px] uppercase tracking-[0.16em] text-text-tertiary">Histórico importado no Oráculo · {generatedAt}</p>
+          </footer>
+        ) : null}
+      </article>
+    );
+  }
 
   return (
     <article className={["plan-document mx-auto bg-white text-text", printMode ? "max-w-[210mm] px-0 py-0" : "rounded-[18px] border border-border p-6 shadow-card lg:p-10"].join(" ")}>

@@ -23,6 +23,7 @@ import type {
   OracleMode,
   Organization,
   PlanDocument,
+  PlanDocumentType,
   PlanningSession,
   PlanningSessionType,
   Profile,
@@ -46,6 +47,18 @@ type AppAction =
   | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
   | { type: "import_ready_strategic_plan"; period: string; text: string; fileName?: string | null }
   | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null }
+  | {
+      type: "import_historical_document";
+      documentType: PlanDocumentType;
+      areaId?: string | null;
+      period: string;
+      rawText: string;
+      source?: string | null;
+      note?: string | null;
+      title?: string | null;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | { type: "send_session_message"; sessionId: string; text: string }
   | { type: "confirm_session_proposal"; sessionId: string }
   | { type: "abandon_session"; sessionId: string }
@@ -350,6 +363,7 @@ function mapPlanDocument(row: any): PlanDocument {
     areaId: row.area_id ?? null,
     sessionId: row.session_id ?? null,
     type: row.type,
+    origin: row.origin ?? "session",
     period: row.period,
     title: row.title,
     content: row.content ?? {},
@@ -1127,6 +1141,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
           queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
         });
+        return;
+      }
+
+      if (action.type === "import_historical_document") {
+        void callEdgeFunction("save-historical-document", {
+          orgId,
+          areaId: action.areaId ?? null,
+          documentType: action.documentType,
+          period: action.period,
+          rawText: action.rawText,
+          source: action.source ?? null,
+          note: action.note ?? null,
+          title: action.title ?? null,
+        })
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível importar o histórico.");
+          });
         return;
       }
 

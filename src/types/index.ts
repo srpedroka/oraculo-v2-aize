@@ -6,6 +6,7 @@ export type PlanLevel = "strategic" | "area_annual" | "quarterly" | "monthly";
 export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
 export type PlanningSessionStatus = "active" | "completed" | "abandoned";
 export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+export type PlanDocumentOrigin = "session" | "historical";
 
 export interface Organization {
   id: string;
@@ -159,6 +160,7 @@ export interface PlanDocument {
   areaId: string | null;
   sessionId: string | null;
   type: PlanDocumentType;
+  origin: PlanDocumentOrigin;
   period: string;
   title: string;
   content: Record<string, unknown>;

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { PlanDocumentView } from "../components/PlanDocument";
 import { Card } from "../components/ui/Card";
 import { useAppState } from "../state/store";
-import type { PlanDocument, PlanDocumentType } from "../types";
+import type { PlanDocument, PlanDocumentOrigin, PlanDocumentType } from "../types";
 
 const TYPE_LABEL: Record<PlanDocumentType, string> = {
   strategic: "Plano Estratégico",
@@ -12,6 +12,11 @@ const TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
+};
+
+const ORIGIN_LABEL: Record<PlanDocumentOrigin, string> = {
+  session: "Sessão",
+  historical: "Histórico",
 };
 
 function documentAreaName(document: PlanDocument, areas: { id: string; name: string }[]) {
@@ -22,6 +27,7 @@ function documentAreaName(document: PlanDocument, areas: { id: string; name: str
 export function Documents() {
   const { state } = useAppState();
   const [typeFilter, setTypeFilter] = useState<"all" | PlanDocumentType>("all");
+  const [originFilter, setOriginFilter] = useState<"all" | PlanDocumentOrigin>("all");
   const [areaFilter, setAreaFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -32,6 +38,7 @@ export function Documents() {
     () =>
       state.planDocuments.filter((document) => {
         if (typeFilter !== "all" && document.type !== typeFilter) return false;
+        if (originFilter !== "all" && document.origin !== originFilter) return false;
         if (areaFilter !== "all") {
           if (areaFilter === "company" && document.areaId) return false;
           if (areaFilter !== "company" && document.areaId !== areaFilter) return false;
@@ -39,7 +46,7 @@ export function Documents() {
         if (periodFilter !== "all" && document.period !== periodFilter) return false;
         return true;
       }),
-    [areaFilter, periodFilter, state.planDocuments, typeFilter],
+    [areaFilter, originFilter, periodFilter, state.planDocuments, typeFilter],
   );
 
   const selectedDocument = filteredDocuments.find((document) => document.id === selectedId) ?? filteredDocuments[0] ?? null;
@@ -51,7 +58,7 @@ export function Documents() {
           <p className="text-sm font-medium text-text-tertiary">Oráculo</p>
           <h1 className="text-2xl font-semibold text-text">Documentos</h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Planos e fechamentos gerados a partir das propostas confirmadas, prontos para leitura, impressão e envio pelo WhatsApp.
+            Planos, fechamentos e históricos salvos para leitura, impressão e envio pelo WhatsApp.
           </p>
         </div>
         {selectedDocument ? (
@@ -66,7 +73,7 @@ export function Documents() {
       </div>
 
       <Card>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
             Tipo
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "all" | PlanDocumentType)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
@@ -76,6 +83,14 @@ export function Documents() {
                   {TYPE_LABEL[type]}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
+            Origem
+            <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value as "all" | PlanDocumentOrigin)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
+              <option value="all">Todas</option>
+              <option value="session">Sessão</option>
+              <option value="historical">Histórico</option>
             </select>
           </label>
           <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
@@ -126,7 +141,13 @@ export function Documents() {
                       <p className="mt-1 text-xs leading-5 text-text-secondary">
                         {TYPE_LABEL[document.type]} · {documentAreaName(document, state.areas)} · {document.period}
                       </p>
-                      <p className="mt-1 text-xs text-text-tertiary">Versão {document.version}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
+                        <span>{ORIGIN_LABEL[document.origin]}</span>
+                        <span>Versão {document.version}</span>
+                        {document.origin === "historical" ? (
+                          <span className="rounded-full bg-[#F0F0F2] px-2 py-0.5 font-medium text-text-secondary">Histórico</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </button>

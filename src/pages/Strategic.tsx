@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileText, Loader2, Plus, Send, Upload } from "lucide-react";
+import { Archive, ClipboardCheck, FileText, Loader2, Plus, Save, Send, Upload } from "lucide-react";
 import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -9,8 +9,17 @@ import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/file
 import { formatDate } from "../lib/format";
 import { reviewPastedPlan, type PastedPlanReview } from "../lib/oracle";
 import { useAppState } from "../state/store";
+import type { PlanDocumentType } from "../types";
 
-type StrategicTab = "build" | "paste";
+type StrategicTab = "build" | "paste" | "history";
+
+const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
+  strategic: "Plano Estratégico",
+  quarterly: "Plano Trimestral",
+  monthly: "Plano Mensal",
+  month_close: "Fechamento Mensal",
+  quarter_close: "Fechamento Trimestral",
+};
 
 function ListBlock({ title, items }: { title: string; items: string[] }) {
   return (
@@ -77,8 +86,26 @@ export function Strategic() {
   const [importError, setImportError] = useState<string | null>(null);
   const [sentToOracle, setSentToOracle] = useState(false);
   const [isDraggingPlan, setIsDraggingPlan] = useState(false);
+  const [historicalType, setHistoricalType] = useState<PlanDocumentType>("strategic");
+  const [historicalPeriod, setHistoricalPeriod] = useState(String(new Date().getFullYear() - 1));
+  const [historicalAreaId, setHistoricalAreaId] = useState("company");
+  const [historicalText, setHistoricalText] = useState("");
+  const [historicalFileName, setHistoricalFileName] = useState<string | null>(null);
+  const [historicalNote, setHistoricalNote] = useState("");
+  const [historicalFeedback, setHistoricalFeedback] = useState<string | null>(null);
+  const [historicalError, setHistoricalError] = useState<string | null>(null);
+  const [importingHistorical, setImportingHistorical] = useState(false);
+  const [savingHistorical, setSavingHistorical] = useState(false);
+  const [isDraggingHistorical, setIsDraggingHistorical] = useState(false);
   const plan = state.strategicPlan;
   const isOwner = state.currentMembership?.role === "owner";
+  const writableHistoricalAreas = useMemo(() => {
+    if (isOwner) return state.areas;
+    const membershipId = state.currentMembership?.id;
+    return state.areas.filter((area) => area.coordinatorId === membershipId);
+  }, [isOwner, state.areas, state.currentMembership?.id]);
+  const effectiveHistoricalAreaId =
+    !isOwner && historicalAreaId === "company" ? writableHistoricalAreas[0]?.id ?? "" : historicalAreaId;
   const strategicObjectives = useMemo(
     () => state.objectives.filter((objective) => objective.level === "strategic"),
     [state.objectives],
@@ -93,6 +120,10 @@ export function Strategic() {
     setTab("paste");
   }
 
+  function openHistoricalImport() {
+    setTab("history");
+  }
+
   function updatePastedPlan(value: string) {
     setPastedPlan(value);
     setReview(null);
@@ -100,6 +131,12 @@ export function Strategic() {
     setImportFeedback(null);
     setImportError(null);
     setSentToOracle(false);
+  }
+
+  function updateHistoricalText(value: string) {
+    setHistoricalText(value);
+    setHistoricalFeedback(null);
+    setHistoricalError(null);
   }
 
   function sendReadyPlanToOracle() {
@@ -143,10 +180,36 @@ export function Strategic() {
     }
   }
 
+  async function processHistoricalFile(file: File | undefined) {
+    if (!file) return;
+
+    setImportingHistorical(true);
+    setHistoricalError(null);
+    setHistoricalFeedback(null);
+
+    try {
+      const imported = await importStrategicPlanFile(file);
+      setHistoricalText(imported.text);
+      setHistoricalFileName(imported.fileName);
+      setHistoricalFeedback(imported.warning ?? "Texto importado para conferência.");
+    } catch (error) {
+      setHistoricalFileName(null);
+      setHistoricalError(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
+    } finally {
+      setImportingHistorical(false);
+    }
+  }
+
   async function handlePlanFileImport(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     await processPlanFile(file);
+  }
+
+  async function handleHistoricalFileImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    await processHistoricalFile(file);
   }
 
   function hasDraggedFile(event: DragEvent<HTMLElement>) {
@@ -173,6 +236,72 @@ export function Strategic() {
     void processPlanFile(file);
   }
 
+  function handleHistoricalDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!hasDraggedFile(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setIsDraggingHistorical(true);
+  }
+
+  function handleHistoricalDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setIsDraggingHistorical(false);
+  }
+
+  function handleHistoricalDrop(event: DragEvent<HTMLDivElement>) {
+    if (!hasDraggedFile(event)) return;
+    event.preventDefault();
+    setIsDraggingHistorical(false);
+    const file = event.dataTransfer.files?.[0];
+    void processHistoricalFile(file);
+  }
+
+  function saveHistoricalDocument() {
+    const rawText = historicalText.trim();
+    const period = historicalPeriod.trim();
+    const areaId = effectiveHistoricalAreaId === "company" ? null : effectiveHistoricalAreaId || null;
+
+    setHistoricalFeedback(null);
+    setHistoricalError(null);
+
+    if (!period) {
+      setHistoricalError("Informe o ano ou período do histórico.");
+      return;
+    }
+
+    if (!rawText) {
+      setHistoricalError("Cole ou importe o texto do histórico.");
+      return;
+    }
+
+    if (!isOwner && !areaId) {
+      setHistoricalError("Seu usuário precisa ter uma área coordenada para salvar histórico de área.");
+      return;
+    }
+
+    setSavingHistorical(true);
+    dispatch({
+      type: "import_historical_document",
+      documentType: historicalType,
+      areaId,
+      period,
+      rawText,
+      source: historicalFileName ?? "Texto colado",
+      note: historicalNote.trim() || null,
+      onSuccess: () => {
+        setSavingHistorical(false);
+        setHistoricalText("");
+        setHistoricalNote("");
+        setHistoricalFileName(null);
+        setHistoricalFeedback("Histórico salvo em Documentos.");
+      },
+      onError: (message) => {
+        setSavingHistorical(false);
+        setHistoricalError(message);
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -188,6 +317,9 @@ export function Strategic() {
           </Button>
           <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>
             Importar plano pronto
+          </Button>
+          <Button variant="ghost" icon={Archive} onClick={openHistoricalImport}>
+            Importar histórico
           </Button>
         </div>
       </div>
@@ -212,6 +344,16 @@ export function Strategic() {
           ].join(" ")}
         >
           Colar plano pronto
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("history")}
+          className={[
+            "rounded-[10px] px-4 py-2 text-sm font-medium transition",
+            tab === "history" ? "bg-[#F0F7FF] text-accent" : "text-text-secondary hover:text-text",
+          ].join(" ")}
+        >
+          Importar histórico
         </button>
       </div>
 
@@ -298,6 +440,129 @@ export function Strategic() {
           </Card>
           {review ? <ReviewResult review={review} /> : null}
         </div>
+      ) : tab === "history" ? (
+        <div className="space-y-4">
+          <Card
+            onDragOver={handleHistoricalDragOver}
+            onDragLeave={handleHistoricalDragLeave}
+            onDrop={handleHistoricalDrop}
+            className={isDraggingHistorical ? "border-accent bg-[#F7FAFF]" : ""}
+          >
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-text">Documento histórico</p>
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  O histórico fica em Documentos e não cria objetivos ativos.
+                </p>
+              </div>
+              <label
+                className={[
+                  "inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-border px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white",
+                  importingHistorical ? "cursor-wait opacity-70" : "",
+                ].join(" ")}
+              >
+                {importingHistorical ? (
+                  <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload aria-hidden="true" className="h-4 w-4" />
+                )}
+                <span>{importingHistorical ? "Importando..." : "Importar arquivo"}</span>
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept={STRATEGIC_PLAN_FILE_ACCEPT}
+                  disabled={importingHistorical}
+                  onChange={(event) => {
+                    void handleHistoricalFileImport(event);
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
+                Tipo
+                <select
+                  value={historicalType}
+                  onChange={(event) => setHistoricalType(event.target.value as PlanDocumentType)}
+                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+                >
+                  {(Object.keys(DOCUMENT_TYPE_LABEL) as PlanDocumentType[]).map((type) => (
+                    <option key={type} value={type}>
+                      {DOCUMENT_TYPE_LABEL[type]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
+                Escopo
+                <select
+                  value={effectiveHistoricalAreaId || "company"}
+                  onChange={(event) => setHistoricalAreaId(event.target.value)}
+                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  disabled={!isOwner && !writableHistoricalAreas.length}
+                >
+                  {isOwner ? <option value="company">Empresa</option> : null}
+                  {!isOwner && !writableHistoricalAreas.length ? <option value="company">Sem área disponível</option> : null}
+                  {writableHistoricalAreas.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      {area.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
+                Ano ou período
+                <input
+                  value={historicalPeriod}
+                  onChange={(event) => setHistoricalPeriod(event.target.value)}
+                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  placeholder="2024, T3 2024, Jan 2024"
+                />
+              </label>
+            </div>
+
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-xs font-medium text-text-tertiary">Nota</span>
+              <input
+                value={historicalNote}
+                onChange={(event) => setHistoricalNote(event.target.value)}
+                className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-text"
+                placeholder="Ex.: versão aprovada no planejamento anual"
+              />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="sr-only">Texto do documento histórico</span>
+              <textarea
+                value={historicalText}
+                onChange={(event) => updateHistoricalText(event.target.value)}
+                rows={12}
+                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm leading-6"
+                placeholder="Cole aqui o plano ou estratégia passada"
+              />
+            </label>
+
+            {historicalFileName ? (
+              <p className="mt-3 flex items-center gap-2 text-xs font-medium text-text-secondary">
+                <FileText aria-hidden="true" className="h-4 w-4" />
+                Texto importado de {historicalFileName}.
+              </p>
+            ) : null}
+            {historicalFeedback ? <p className="mt-2 text-xs leading-5 text-[#1D7A3E]">{historicalFeedback}</p> : null}
+            {historicalError ? <p className="mt-2 text-xs leading-5 text-[#B42318]">{historicalError}</p> : null}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                icon={savingHistorical ? Loader2 : Save}
+                disabled={!historicalText.trim() || !historicalPeriod.trim() || importingHistorical || savingHistorical}
+                onClick={saveHistoricalDocument}
+              >
+                {savingHistorical ? "Salvando..." : "Salvar histórico"}
+              </Button>
+            </div>
+          </Card>
+        </div>
       ) : !plan ? (
         <Card>
           <p className="text-base font-semibold text-text">Nenhum Plano Estratégico ainda.</p>
@@ -310,6 +575,9 @@ export function Strategic() {
             </Button>
             <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>
               Importar plano pronto
+            </Button>
+            <Button variant="ghost" icon={Archive} onClick={openHistoricalImport}>
+              Importar histórico
             </Button>
           </div>
         </Card>

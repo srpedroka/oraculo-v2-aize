@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-07 - Memoria estrategica começa por documentos historicos
+
+Decisao: iniciar a Memoria Estrategica pela importacao de documentos historicos em `public.plan_documents`, usando `origin = historical`, sem criar tabela estruturada de metas nesta primeira fatia.
+
+Contexto: o dono quer alimentar planos e estrategias passadas para que o Oraculo ganhe memoria e, em uma etapa futura, questione metas recorrentes. A decisao de produto foi nao exigir campo de resultado como "batida/nao batida"; a recorrencia e o contexto do documento devem ser suficientes para a IA inferir padroes.
+
+Alternativas: criar imediatamente uma tabela normalizada de historico, transformar planos antigos em objetivos ativos, ou guardar o texto historico apenas em conversa.
+
+Motivo: `plan_documents` ja tem RLS, realtime, filtros, rota de impressao e renderizacao. Usar essa casa primeiro entrega valor rapido, evita poluir Dashboard/objetivos e deixa a futura extracao estruturada como uma camada incremental.
+
+Consequencias: `save-historical-document` valida permissao e tamanho do texto antes de gravar o historico; a tela Plano Estrategico importa arquivo/texto e a tela Documentos filtra por origem. A proxima fatia deve criar `strategic_history` e alimentar o contexto da IA com resumo de recorrencias, sem enviar documentos inteiros ao modelo.
+
 ## 2026-07-07 - Migração de segredos exige janela coordenada
 
 Decisao: manter temporariamente `public.ai_model_keys` e `public.whatsapp_instance_keys` com RLS, revokes para `anon`/`authenticated` e grants apenas para `service_role`, sem migrar imediatamente para schema `private` ou Supabase Vault.
