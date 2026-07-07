@@ -719,7 +719,7 @@ Configuracao atual de producao:
 URL Evolution/Evo Go: https://143-95-217-64.sslip.io
 Instancia: oraculo
 Numero conectado: +554691228197
-Webhook: https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=66fee6c9-df10-4f86-924c-103a25778d7d
+Webhook: https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7
 ```
 
 Nao registrar aqui chave da Evolution nem segredo do webhook. Eles ficam salvos pelo app e aparecem apenas mascarados.
