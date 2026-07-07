@@ -221,8 +221,11 @@ Configuracao operacional atual:
 Instancia: oraculo
 URL publica: https://143-95-217-64.sslip.io
 Numero conectado: +554691228197
-Webhook Supabase: https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7
+Webhook Supabase (atual): https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7
+Webhook Supabase (recomendado): https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook
 ```
+
+Desde 2026-07-07 o `whatsapp-webhook` resolve a empresa pelo `orgId` da URL e, se nao encontrar, cai de volta para o `instance_name` (estavel). Por isso o `?orgId=` na URL virou opcional e fragil: se a org for recriada com novo id, a URL antiga para de casar e o WhatsApp para calado (foi o incidente de 2026-07-07, orgId `66fee...` -> `3a680...`). **Acao pendente na Evolution**: trocar o webhook da instancia `oraculo` para a URL recomendada (sem `?orgId=`), que passa a depender so do `instance_name`. Requer chamar a API da Evolution com a apikey (em `whatsapp_instance_keys`, service role); fazer pelo painel/CLI da Evolution ou pelo agente que tiver esse acesso.
 
 Valores secretos:
 

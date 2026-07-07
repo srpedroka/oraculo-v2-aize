@@ -719,10 +719,13 @@ Configuracao atual de producao:
 URL Evolution/Evo Go: https://143-95-217-64.sslip.io
 Instancia: oraculo
 Numero conectado: +554691228197
-Webhook: https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7
+Webhook (atual): https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7
+Webhook (recomendado, sem orgId): https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook
 ```
 
 Nao registrar aqui chave da Evolution nem segredo do webhook. Eles ficam salvos pelo app e aparecem apenas mascarados.
+
+Roteamento por org: desde 2026-07-07 o `whatsapp-webhook` tenta primeiro o `orgId` da URL e, se nao resolver `whatsapp_settings`, cai de volta para o `instance_name` (estavel). Isso corrigiu o incidente em que a URL tinha o orgId antigo (`66fee...`) apos a org virar `3a680...` e o WhatsApp parou de responder sem erro visivel. Acao pendente recomendada: configurar na Evolution a URL sem `?orgId=` para depender so do `instance_name` e nunca mais quebrar por troca de org. Diagnostico do sintoma: se mensagens param de chegar, cheque nos logs do `whatsapp-webhook` se ha resposta 404 "WhatsApp nao configurado" — indica URL com orgId invalido; a correcao imediata e ajustar a URL na Evolution (ou remover o `?orgId=`).
 
 ## Problema: convite por WhatsApp nao chega
 
