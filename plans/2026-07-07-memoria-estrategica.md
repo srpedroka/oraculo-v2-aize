@@ -75,14 +75,35 @@ Entrega mínima, sem risco, imediatamente útil (construir o arquivo).
 
 **Critério de aceite:** subir um PDF de plano de 2024 com período "2024" → aparece em Documentos com badge Histórico → abre e imprime como os demais. `pnpm run lint && pnpm run build` verdes.
 
-## Fatia 2 — Memória na inteligência (o pulo do gato)
+## Fatia 2a — Memória como orientação (RECOMENDADA primeiro; SEM tabela nova)
+
+Objetivo do dono (2026-07-07): o histórico é **referência/lembrança**. Quando o Oráculo for construir um plano novo, ele deve **lembrar do que já foi planejado** e usar isso para **conduzir o autor a fazer melhor** — entender por que algo não avançou, e se já avançou em parte, ajudar a detalhar as próximas etapas com mais especificidade. O intuito é **orientação, não julgamento**.
+
+Abordagem "Caminho A": a própria IA de planejamento acha o padrão em contexto — sem tabela `strategic_history`, sem extração estruturada.
+
+- **Contexto:** em `_shared/plan-context.ts`, ao iniciar sessão `strategic`/`quarterly`, adicionar seção **"MEMÓRIA ESTRATÉGICA (planos passados — referência)"** listando os `plan_documents` com `origin='historical'` da empresa (para foco de área, incluir também os da área). Cada doc entra por ano com o texto **truncado** (ex.: ~1500–2000 chars por doc) e **no máximo N documentos** (ex.: 3 mais recentes/relevantes) para segurar tokens.
+- **Condução:** em `_shared/conductors/strategic.ts` e `quarterly.ts`, instruir a IA a usar essa memória com 4 movimentos:
+  1. **Lembrar** o que já foi planejado ("em 2023 você já queria X — vamos partir dali").
+  2. **Investigar o porquê de forma construtiva** ("isso reaparece em 2024; o que travou — responsável, recurso, ou ficou vago?").
+  3. **Se já avançou em parte, detalhar as próximas etapas** ("você já fez X; então o passo específico agora é Y, Z").
+  4. **Puxar especificidade** — transformar meta vaga repetida em ação-chave concreta usando o passado.
+  Tom de orientação. Toda inferência de "não foi feito" vira **pergunta** ("parece que não saiu do papel desde 2023 — confere?"), pois não há campo de resultado.
+- **Custo:** sem chamada de IA extra (a orientação acontece dentro da chamada de planejamento já existente, função `planning`); o custo é só mais tokens de entrada. Limitar N docs + truncagem é a mitigação. Sem migration, sem tabela nova.
+
+**Arquivos:** `_shared/plan-context.ts`, `_shared/conductors/strategic.ts`, `_shared/conductors/quarterly.ts` (e `persona.ts` se o tom precisar de ajuste).
+
+**Critério de aceite:** com ≥1 plano histórico importado contendo uma meta, iniciar um planejamento novo e o Oráculo espontaneamente lembrar do passado e conduzir o autor (perguntar o que travou / ajudar a detalhar etapas), sem afirmar resultado nem criar objetivos.
+
+## Fatia 2b — Memória estruturada (evolução, quando a 2a provar valor)
+
+Só depois da 2a. Torna a recorrência precisa e barata em tokens, e habilita a Fatia 3.
 
 - **Migration:** tabela `strategic_history` (acima).
-- **Extração estruturada:** ao importar histórico (Fatia 1), disparar extração com a função de IA `background` (`_shared/ai-router.ts` + `model.ts`) para transformar o texto em linhas de `strategic_history` (title/metric/target/level/type por período). Registrar uso em `ai_usage_logs`. Opcional: backfill a partir de `objectives`/`plan_documents` já existentes.
-- **Contexto histórico para a IA:** em `_shared/plan-context.ts`, adicionar seção "MEMÓRIA ESTRATÉGICA" (ou novo `buildHistoryContext`) que, ao iniciar sessão `strategic`/`quarterly`, resume as **metas recorrentes** (de `strategic_history` + objetivos atuais): ex. "Aumentar margem — aparece em 2023, 2024, 2025". Resumo compacto (não despejar documentos inteiros → controle de tokens).
-- **Condução:** em `_shared/conductors/strategic.ts` e `quarterly.ts`, instruir a IA a **usar** essa memória e questionar repetição: "essa meta se repete desde 2023 — o que vai ser diferente para ela sair do papel agora?". A inferência de "não vem sendo atingida" vem do contexto (recorrência + qualquer status citado nos docs), sem campo de resultado.
+- **Extração estruturada:** ao importar histórico, disparar extração com a função `background` (`_shared/ai-router.ts` + `model.ts`) para transformar o texto em linhas de `strategic_history` (title/metric/target/level/type por período). Registrar uso em `ai_usage_logs`.
+- **Digest de recorrência:** em `_shared/plan-context.ts`, trocar o texto truncado por um resumo determinístico (agrupar por `normalized_title`): ex. "'aumentar faturamento' aparece em 2023, 2024, 2025 (3×)". Muito mais barato que despejar documentos.
+- **Condução:** mesma dos 4 movimentos, agora apontando a meta específica com precisão.
 
-**Critério de aceite:** com ≥2 anos de histórico contendo uma meta parecida, iniciar um planejamento estratégico novo e a IA mencionar/questionar a recorrência espontaneamente.
+**Critério de aceite:** com ≥2 anos de histórico com meta parecida, o Oráculo cita a recorrência exata sem depender de mandar os documentos inteiros no contexto.
 
 ## Fatia 3 — Padrões visíveis (opcional, depois)
 
