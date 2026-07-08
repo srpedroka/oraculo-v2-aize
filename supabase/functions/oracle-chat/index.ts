@@ -11,7 +11,7 @@ import {
   maybeSummarize,
 } from "../_shared/conversations.ts";
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
-import { callModel } from "../_shared/model.ts";
+import { callModelForFunction } from "../_shared/call-for-function.ts";
 import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { CONVERSATION_STYLE, conversationGuideForContext } from "../_shared/conductors/persona.ts";
@@ -158,7 +158,7 @@ serve(async (req) => {
       ].filter(Boolean).join("\n\n");
 
       try {
-        const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
+        const result = await callModelForFunction(client, orgId, "daily", aiRoute, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
         answer = result.text;
         await recordAiUsage({
           client,

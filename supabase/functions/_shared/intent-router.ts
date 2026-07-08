@@ -1,6 +1,6 @@
 import { resolveAiFunction } from "./ai-router.ts";
+import { callModelForFunction } from "./call-for-function.ts";
 import { parseJsonObject } from "./json.ts";
-import { callModel } from "./model.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
 
@@ -69,10 +69,11 @@ export async function classifyOracleIntent(
   ].join("\n");
 
   try {
-    const result = await callModel(
-      aiRoute.provider,
-      aiRoute.model,
-      aiRoute.apiKey,
+    const result = await callModelForFunction(
+      client,
+      params.orgId,
+      "background",
+      aiRoute,
       systemPrompt,
       [{ role: "user", content: params.message }],
       aiRoute.limits,

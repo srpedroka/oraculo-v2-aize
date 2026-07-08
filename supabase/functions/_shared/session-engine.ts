@@ -16,7 +16,7 @@ import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quar
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
-import { callModel } from "./model.ts";
+import { callModelForFunction } from "./call-for-function.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
 import { renderPlanForWhatsApp } from "./plan-render.ts";
@@ -682,10 +682,11 @@ export async function processPlanningMessage(
     context,
   ].filter(Boolean).join("\n\n");
 
-  const result = await callModel(
-    aiRoute.provider,
-    aiRoute.model,
-    aiRoute.apiKey,
+  const result = await callModelForFunction(
+    client,
+    session.org_id,
+    "planning",
+    aiRoute,
     systemPrompt,
     conversationMessagesForModel(history),
     aiRoute.limits,
@@ -805,10 +806,11 @@ export async function prepareReadyStrategicPlanProposal(
 
   await insertMessage(client, session, "user", userMessage, channel);
 
-  const result = await callModel(
-    aiRoute.provider,
-    aiRoute.model,
-    aiRoute.apiKey,
+  const result = await callModelForFunction(
+    client,
+    params.orgId,
+    "planning",
+    aiRoute,
     readyPlanSystemPrompt(context, params.period, channel),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
@@ -933,10 +935,11 @@ export async function prepareReadyQuarterlyPlanProposal(
 
   await insertMessage(client, session, "user", userMessage, channel);
 
-  const result = await callModel(
-    aiRoute.provider,
-    aiRoute.model,
-    aiRoute.apiKey,
+  const result = await callModelForFunction(
+    client,
+    params.orgId,
+    "planning",
+    aiRoute,
     readyQuarterlyPlanSystemPrompt(context, params.period, channel),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
@@ -1061,10 +1064,11 @@ export async function prepareReadyMonthlyPlanProposal(
 
   await insertMessage(client, session, "user", userMessage, channel);
 
-  const result = await callModel(
-    aiRoute.provider,
-    aiRoute.model,
-    aiRoute.apiKey,
+  const result = await callModelForFunction(
+    client,
+    params.orgId,
+    "planning",
+    aiRoute,
     readyMonthlyPlanSystemPrompt(context, params.period, channel),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,

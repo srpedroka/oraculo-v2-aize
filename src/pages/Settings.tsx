@@ -1,10 +1,27 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, Bot, Building2, DollarSign, KeyRound, LogOut, MessageCircle, Phone, Plus, Save, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  Bot,
+  Building2,
+  CheckCircle2,
+  DollarSign,
+  KeyRound,
+  LogOut,
+  MessageCircle,
+  Phone,
+  Plus,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
-import type { AiFunction, AiProvider } from "../types";
+import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult } from "../types";
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
   openai: "gpt-5.4",
@@ -58,8 +75,43 @@ function functionLabel(value: unknown) {
   return aiFunction?.title ?? "Sem função";
 }
 
+function statusLabel(status: AiConfigStatus | null | undefined) {
+  if (status === "ok") return "Validado";
+  if (status === "invalid_key") return "Chave recusada";
+  if (status === "unknown_model") return "Modelo não reconhecido";
+  if (status === "rate_limited") return "Limite do provedor";
+  if (status === "timeout") return "Sem resposta";
+  if (status === "no_key") return "Sem chave";
+  if (status === "provider_error") return "Erro no provedor";
+  return "Não testado";
+}
+
+function statusClasses(status: AiConfigStatus | null | undefined) {
+  if (status === "ok") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "invalid_key" || status === "unknown_model" || status === "no_key") return "border-red-200 bg-red-50 text-red-700";
+  if (status === "rate_limited" || status === "timeout" || status === "provider_error") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-border bg-[#FAFAFB] text-text-secondary";
+}
+
+function validationMessage(validation: AiValidationResult | null | undefined) {
+  if (!validation) return "Configuração salva. Não houve validação do provedor.";
+  const provider = providerLabel(validation.provider);
+  if (validation.status === "ok") return `Validado com ${provider} agora.`;
+  if (validation.status === "unknown_model") return `${provider} não reconhece o modelo ${validation.model}. Confira o id do modelo.`;
+  if (validation.status === "invalid_key") return `A chave ${provider} foi recusada. Revise a chave.`;
+  if (validation.status === "no_key") return `Não há chave ${provider} cadastrada para validar esse modelo.`;
+  if (validation.status === "rate_limited") return `${provider} limitou a validação agora; tente novamente em instantes.`;
+  if (validation.status === "timeout") return `Não consegui falar com ${provider} agora; tente de novo.`;
+  return `O provedor retornou erro ao validar: ${validation.detail}`;
+}
+
+function checkedAtLabel(value: string | null | undefined) {
+  if (!value) return "Nunca testado";
+  return new Date(value).toLocaleString("pt-BR");
+}
+
 export function Settings() {
-  const { state, dispatch, signOut } = useAppState();
+  const { state, dispatch, signOut, saveAiProviderKey, saveAiFunctionSetting, testAiProviderKey, testAiFunction } = useAppState();
   const [organizationName, setOrganizationName] = useState("");
   const [organizationSubtitle, setOrganizationSubtitle] = useState("");
   const [organizationMessage, setOrganizationMessage] = useState("");
@@ -81,6 +133,11 @@ export function Settings() {
     background: { provider: state.aiSettings?.provider ?? "openai", model: state.aiSettings?.model ?? "gpt-5.4" },
   });
   const [aiMessage, setAiMessage] = useState("");
+  const [aiMessageTone, setAiMessageTone] = useState<AiConfigStatus | null>(null);
+  const [savingProvider, setSavingProvider] = useState<AiProvider | null>(null);
+  const [testingProvider, setTestingProvider] = useState<AiProvider | null>(null);
+  const [savingFunction, setSavingFunction] = useState<AiFunction | null>(null);
+  const [testingFunction, setTestingFunction] = useState<AiFunction | null>(null);
   const [whatsappInstanceUrl, setWhatsappInstanceUrl] = useState(state.whatsappSettings?.instanceUrl ?? "");
   const [whatsappInstanceName, setWhatsappInstanceName] = useState(state.whatsappSettings?.instanceName ?? "");
   const [whatsappConnectedNumber, setWhatsappConnectedNumber] = useState(state.whatsappSettings?.connectedNumber ?? "");
@@ -186,31 +243,79 @@ export function Settings() {
     setMemberMessage("Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp. Caso contrário, o envio segue por email.");
   }
 
-  function saveProviderKey(providerValue: AiProvider) {
+  async function saveProviderKey(providerValue: AiProvider) {
     const apiKey = providerApiKeys[providerValue].trim();
     if (!apiKey) {
       setAiMessage("Cole uma chave antes de salvar.");
+      setAiMessageTone("no_key");
       return;
     }
-    dispatch({
-      type: "upsert_ai_provider_key",
-      provider: providerValue,
-      apiKey,
-    });
-    setProviderApiKeys((current) => ({ ...current, [providerValue]: "" }));
-    setAiMessage(`Chave ${providerLabel(providerValue)} salva com segurança.`);
+    setSavingProvider(providerValue);
+    setAiMessage("");
+    setAiMessageTone(null);
+    try {
+      const result = await saveAiProviderKey(providerValue, apiKey);
+      setProviderApiKeys((current) => ({ ...current, [providerValue]: "" }));
+      setAiMessage(validationMessage(result.validation));
+      setAiMessageTone(result.validation?.status ?? "untested");
+    } catch (error) {
+      setAiMessage(error instanceof Error ? error.message : "Não foi possível salvar a chave.");
+      setAiMessageTone("provider_error");
+    } finally {
+      setSavingProvider(null);
+    }
   }
 
-  function saveAiFunction(aiFunction: AiFunction) {
+  async function testProvider(providerValue: AiProvider) {
+    setTestingProvider(providerValue);
+    setAiMessage("");
+    setAiMessageTone(null);
+    try {
+      const result = await testAiProviderKey(providerValue);
+      setAiMessage(validationMessage(result.validation));
+      setAiMessageTone(result.validation?.status ?? "untested");
+    } catch (error) {
+      setAiMessage(error instanceof Error ? error.message : "Não foi possível testar a chave.");
+      setAiMessageTone("provider_error");
+    } finally {
+      setTestingProvider(null);
+    }
+  }
+
+  async function saveAiFunction(aiFunction: AiFunction) {
     const draft = aiFunctionDrafts[aiFunction];
     const modelValue = draft.model.trim() || DEFAULT_MODEL_BY_PROVIDER[draft.provider];
-    dispatch({
-      type: "upsert_ai_function_settings",
-      function: aiFunction,
-      provider: draft.provider,
-      model: modelValue,
-    });
-    setAiMessage(`${functionLabel(aiFunction)} atualizado para ${providerLabel(draft.provider)} / ${modelValue}.`);
+    setSavingFunction(aiFunction);
+    setAiMessage("");
+    setAiMessageTone(null);
+    try {
+      const result = await saveAiFunctionSetting(aiFunction, draft.provider, modelValue);
+      setAiMessage(validationMessage(result.validation));
+      setAiMessageTone(result.validation?.status ?? "untested");
+    } catch (error) {
+      setAiMessage(error instanceof Error ? error.message : "Não foi possível salvar a função de IA.");
+      setAiMessageTone("provider_error");
+    } finally {
+      setSavingFunction(null);
+    }
+  }
+
+  async function testFunction(aiFunction: AiFunction) {
+    const draft = aiFunctionDrafts[aiFunction];
+    const modelValue = draft.model.trim() || DEFAULT_MODEL_BY_PROVIDER[draft.provider];
+    setTestingFunction(aiFunction);
+    setAiMessage("");
+    setAiMessageTone(null);
+    try {
+      const result = await testAiFunction(aiFunction, draft.provider, modelValue);
+      setAiMessage(validationMessage(result.validation));
+      setAiMessageTone(result.validation?.status ?? "untested");
+    } catch (error) {
+      setAiMessage(error instanceof Error ? error.message : "Não foi possível testar a função de IA.");
+      setAiMessageTone("provider_error");
+    } finally {
+      setTestingFunction(null);
+    }
   }
 
   function saveWhatsApp(event: FormEvent<HTMLFormElement>) {
@@ -493,11 +598,16 @@ export function Settings() {
                           size="sm"
                           variant="ghost"
                           icon={Save}
-                          disabled={!providerApiKeys[providerItem.value].trim()}
+                          disabled={!providerApiKeys[providerItem.value].trim() || savingProvider === providerItem.value}
                           onClick={() => saveProviderKey(providerItem.value)}
                         >
-                          Salvar chave
+                          {savingProvider === providerItem.value ? "Validando..." : "Salvar chave"}
                         </Button>
+                      </div>
+                      <div className={["mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs", statusClasses(status?.lastStatus)].join(" ")}>
+                        <span className="font-medium">{statusLabel(status?.lastStatus)}</span>
+                        <span>{checkedAtLabel(status?.lastCheckedAt)}</span>
+                        {status?.lastStatusDetail ? <span className="basis-full truncate text-[11px] opacity-80">{status.lastStatusDetail}</span> : null}
                       </div>
                       <input
                         type="password"
@@ -509,6 +619,18 @@ export function Settings() {
                         placeholder={status?.hasKey ? "Nova chave, se quiser trocar" : "Cole a chave da API"}
                         className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
                       />
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="quiet"
+                          icon={RefreshCw}
+                          disabled={!status?.hasKey || testingProvider === providerItem.value}
+                          onClick={() => testProvider(providerItem.value)}
+                        >
+                          {testingProvider === providerItem.value ? "Testando..." : "Testar chave"}
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -526,12 +648,25 @@ export function Settings() {
                   const pricing = findModelPricing(draft.provider, draft.model);
                   const modelOptions = modelOptionsForProvider(draft.provider);
                   const datalistId = `ai-model-options-${item.value}`;
+                  const persisted = state.aiFunctionSettings.find((setting) => setting.function === item.value);
                   return (
                     <div key={item.value} className="rounded-2xl border border-border bg-white p-4">
-                      <div className="mb-3">
-                        <p className="text-sm font-semibold text-text">{item.title}</p>
-                        <p className="mt-1 text-xs leading-5 text-text-secondary">{item.description}</p>
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-text">{item.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-text-secondary">{item.description}</p>
+                        </div>
+                        <div className={["rounded-full border px-2.5 py-1 text-xs font-medium", statusClasses(persisted?.lastStatus)].join(" ")}>
+                          {statusLabel(persisted?.lastStatus)}
+                        </div>
                       </div>
+                      {persisted?.lastStatus || persisted?.lastCheckedAt ? (
+                        <p className="mb-3 text-xs leading-5 text-text-secondary">
+                          Última verificação: {checkedAtLabel(persisted.lastCheckedAt)}
+                          {persisted.lastStatusSource === "runtime" ? " no uso real" : persisted.lastStatusSource === "manual" ? " em teste manual" : " ao salvar"}.
+                          {persisted.lastStatusDetail ? ` ${persisted.lastStatusDetail}` : ""}
+                        </p>
+                      ) : null}
                       <div className="grid gap-3">
                         <select
                           value={draft.provider}
@@ -579,9 +714,25 @@ export function Settings() {
                             </p>
                             <p className="mt-1 truncate text-xs text-text-tertiary">{pricing?.source ?? "Escolha um modelo conhecido para contabilizar custo."}</p>
                           </div>
-                          <Button type="button" icon={Save} onClick={() => saveAiFunction(item.value)}>
-                            Salvar função
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="quiet"
+                              icon={RefreshCw}
+                              disabled={testingFunction === item.value}
+                              onClick={() => testFunction(item.value)}
+                            >
+                              {testingFunction === item.value ? "Testando..." : "Testar agora"}
+                            </Button>
+                            <Button
+                              type="button"
+                              icon={Save}
+                              disabled={savingFunction === item.value}
+                              onClick={() => saveAiFunction(item.value)}
+                            >
+                              {savingFunction === item.value ? "Validando..." : "Salvar função"}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -591,7 +742,8 @@ export function Settings() {
             </div>
           </div>
           {aiMessage ? (
-            <p className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+            <p className={["mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm leading-6", statusClasses(aiMessageTone)].join(" ")}>
+              {aiMessageTone === "ok" ? <CheckCircle2 className="mt-1 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-1 h-4 w-4 shrink-0" />}
               {aiMessage}
             </p>
           ) : null}

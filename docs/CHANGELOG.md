@@ -2,6 +2,7 @@
 
 ## 2026-07-08
 
+- Executada a Onda 1 do pacote de melhorias: configuração de IA agora valida provider/modelo/chave ao salvar/testar, mostra status real por função/chave e grava erros de runtime; sidebar perdeu o placeholder Analytics; logo/lema ORÁCULO foram ajustados; importação histórica não sugere mais período silencioso.
 - Executada a Fatia 2a da Memoria Estrategica: `_shared/plan-context.ts` injeta ate 3 documentos historicos truncados em contextos estrategicos/trimestrais, e os condutores passaram a usar esse passado como orientacao construtiva sem afirmar resultado nem criar tabela nova.
 - Implementada a Fatia 1 da Revisao Estrategica sob demanda: owner pode iniciar o ritual no Plano Estrategico, confirmar microajustes em objetivos existentes e gravar um `plan_documents(strategic_review)` com antes/depois/porquê.
 

@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   Building2,
   Check,
   ChevronLeft,
@@ -32,10 +31,6 @@ const navItems = [
   { to: "/areas", label: "Áreas", icon: Users },
   { to: "/execucao", label: "Execução Viva", icon: PlayCircle },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
-];
-
-const inertItems = [
-  { label: "Analytics", icon: BarChart3 },
 ];
 
 function getInitials(name: string) {
@@ -158,13 +153,13 @@ export function Sidebar() {
       className="relative hidden min-h-screen shrink-0 border-r border-border bg-surface transition-[width] duration-200 sm:flex sm:flex-col"
       style={{ width }}
     >
-      <div className="flex h-24 items-start justify-between px-5 pt-7">
+      <div className="flex h-20 items-center justify-between px-5">
         <div className="min-w-0 overflow-hidden">
-          <div className="text-[21px] font-bold leading-none tracking-normal text-[#1D2A31]" title={collapsed ? "Ad astra per aspera" : undefined}>
+          <div className="text-[22px] font-bold leading-[1.05] tracking-[0.01em] text-text" title={collapsed ? "Ad astra per aspera" : undefined}>
             {collapsed ? "O" : "ORÁCULO"}
           </div>
           {!collapsed ? (
-            <div className="mt-1 whitespace-nowrap text-[9px] font-medium italic leading-none tracking-[0.16em] text-[#8C9096]/80">
+            <div className="mt-1 whitespace-nowrap text-[9px] font-normal leading-none tracking-[0.08em] text-text-tertiary">
               Ad astra per aspera
             </div>
           ) : null}
@@ -175,7 +170,6 @@ export function Sidebar() {
           icon={collapsed ? PanelLeftOpen : PanelLeftClose}
           onClick={() => dispatch({ type: "toggle_sidebar" })}
           aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
-          className="mt-[-6px]"
         />
       </div>
 
@@ -198,23 +192,6 @@ export function Sidebar() {
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
             ) : null}
           </NavLink>
-        ))}
-
-        <div className="my-3 h-px bg-border" />
-
-        {inertItems.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            title="Em breve"
-            className={[
-              "flex h-12 cursor-default items-center gap-3 rounded-xl text-[15px] font-medium text-text-tertiary",
-              collapsed ? "justify-center px-0" : "px-4",
-            ].join(" ")}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {!collapsed ? <span className="truncate">{item.label}</span> : null}
-          </button>
         ))}
       </nav>
 

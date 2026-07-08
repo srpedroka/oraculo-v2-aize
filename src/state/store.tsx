@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import type {
   AiSettings,
+  AiSettingsSaveResult,
   AiFunction,
   AiFunctionSetting,
   AiProvider,
@@ -107,6 +108,10 @@ interface AppContextValue {
   passwordRecoveryActive: boolean;
   updateProfile: (profile: { fullName: string; phone: string | null }) => Promise<void>;
   refresh: () => void;
+  saveAiProviderKey: (provider: AiProvider, apiKey: string) => Promise<AiSettingsSaveResult>;
+  saveAiFunctionSetting: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
+  testAiProviderKey: (provider: AiProvider) => Promise<AiSettingsSaveResult>;
+  testAiFunction: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -392,6 +397,10 @@ function mapAiFunctionSetting(row: any): AiFunctionSetting {
     function: row.function,
     provider: row.provider,
     model: row.model,
+    lastStatus: row.last_status ?? null,
+    lastStatusDetail: row.last_status_detail ?? null,
+    lastStatusSource: row.last_status_source ?? null,
+    lastCheckedAt: row.last_checked_at ?? null,
     updatedAt: row.updated_at,
   };
 }
@@ -402,6 +411,9 @@ function mapAiProviderKeyStatus(row: any): AiProviderKeyStatus {
     provider: row.provider,
     hasKey: row.has_key ?? false,
     keyPreview: row.key_preview ?? null,
+    lastStatus: row.last_status ?? null,
+    lastStatusDetail: row.last_status_detail ?? null,
+    lastCheckedAt: row.last_checked_at ?? null,
     updatedAt: row.updated_at,
   };
 }
@@ -1410,6 +1422,84 @@ export function AppProvider({ children }: { children: ReactNode }) {
     invalidateOrg();
   }, [invalidateOrg]);
 
+  const saveAiProviderKey = useCallback(
+    async (provider: AiProvider, apiKey: string) => {
+      if (!orgId) throw new Error("Empresa obrigatória");
+      const result = await callEdgeFunction<{
+        orgId: string;
+        provider: AiProvider;
+        apiKey: string;
+      }>("save-ai-settings", {
+        orgId,
+        provider,
+        apiKey,
+      }) as AiSettingsSaveResult;
+      invalidateOrg();
+      return result;
+    },
+    [invalidateOrg, orgId],
+  );
+
+  const saveAiFunctionSetting = useCallback(
+    async (fn: AiFunction, provider: AiProvider, model: string) => {
+      if (!orgId) throw new Error("Empresa obrigatória");
+      const result = await callEdgeFunction<{
+        orgId: string;
+        function: AiFunction;
+        provider: AiProvider;
+        model: string;
+      }>("save-ai-settings", {
+        orgId,
+        function: fn,
+        provider,
+        model,
+      }) as AiSettingsSaveResult;
+      invalidateOrg();
+      return result;
+    },
+    [invalidateOrg, orgId],
+  );
+
+  const testAiProviderKey = useCallback(
+    async (provider: AiProvider) => {
+      if (!orgId) throw new Error("Empresa obrigatória");
+      const result = await callEdgeFunction<{
+        orgId: string;
+        provider: AiProvider;
+        mode: string;
+      }>("save-ai-settings", {
+        orgId,
+        provider,
+        mode: "test",
+      }) as AiSettingsSaveResult;
+      invalidateOrg();
+      return result;
+    },
+    [invalidateOrg, orgId],
+  );
+
+  const testAiFunction = useCallback(
+    async (fn: AiFunction, provider: AiProvider, model: string) => {
+      if (!orgId) throw new Error("Empresa obrigatória");
+      const result = await callEdgeFunction<{
+        orgId: string;
+        function: AiFunction;
+        provider: AiProvider;
+        model: string;
+        mode: string;
+      }>("save-ai-settings", {
+        orgId,
+        function: fn,
+        provider,
+        model,
+        mode: "test",
+      }) as AiSettingsSaveResult;
+      invalidateOrg();
+      return result;
+    },
+    [invalidateOrg, orgId],
+  );
+
   const value = useMemo(
     () => ({
       state,
@@ -1423,8 +1513,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       passwordRecoveryActive,
       updateProfile,
       refresh,
+      saveAiProviderKey,
+      saveAiFunctionSetting,
+      testAiProviderKey,
+      testAiFunction,
     }),
-    [dispatch, passwordRecoveryActive, refresh, resetPasswordForEmail, session, signIn, signOut, signUp, state, updatePassword, updateProfile],
+    [
+      dispatch,
+      passwordRecoveryActive,
+      refresh,
+      resetPasswordForEmail,
+      saveAiFunctionSetting,
+      saveAiProviderKey,
+      session,
+      signIn,
+      signOut,
+      signUp,
+      state,
+      testAiFunction,
+      testAiProviderKey,
+      updatePassword,
+      updateProfile,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

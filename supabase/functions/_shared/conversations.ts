@@ -1,5 +1,5 @@
 import { resolveAiFunction } from "./ai-router.ts";
-import { callModel } from "./model.ts";
+import { callModelForFunction } from "./call-for-function.ts";
 import { recordAiUsage } from "./usage.ts";
 
 type Client = any;
@@ -187,10 +187,11 @@ export async function maybeSummarize(client: Client, orgId: string, conversation
   ].join("\n\n");
 
   try {
-    const result = await callModel(
-      aiRoute.provider,
-      aiRoute.model,
-      aiRoute.apiKey,
+    const result = await callModelForFunction(
+      client,
+      orgId,
+      "background",
+      aiRoute,
       systemPrompt,
       [{ role: "user", content: userContent }],
       aiRoute.limits,

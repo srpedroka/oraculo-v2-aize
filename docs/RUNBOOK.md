@@ -136,7 +136,18 @@ Verifique:
 - existencia de linha em `public.ai_model_keys` para o provider da funcao;
 - `public.ai_function_settings` para saber qual provider/modelo a funcao usa;
 - `public.ai_provider_key_status` para conferir preview sem abrir a chave real;
+- `public.ai_function_settings.last_status` e `last_status_detail` para saber se o ultimo teste/uso falhou por chave, modelo, limite ou timeout;
+- `public.ai_provider_key_status.last_status` para saber se a chave/modelo testado no salvamento foi aceito pelo provedor;
 - logs da Edge Function `oracle-chat`.
+
+Consulta rapida de saude da IA:
+
+```sql
+select "function", provider, model, last_status, last_status_source, last_checked_at, left(last_status_detail, 180) as detail
+from public.ai_function_settings
+where org_id = '<ORG_ID>'
+order by "function";
+```
 
 Para consumo:
 

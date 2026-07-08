@@ -39,6 +39,7 @@ Migrations principais:
 - `20260704123000_v3_ai_function_router.sql`: libera xAI/Grok nos checks de provider e adiciona status publico, sem segredo, das chaves por provedor.
 - `20260707170000_plan_documents_origin.sql`: adiciona `origin` em `plan_documents` para distinguir documentos de sessao e historicos importados.
 - `20260708120000_strategic_review_type.sql`: adiciona o tipo `strategic_review` a `planning_sessions` e `plan_documents`.
+- `20260708140000_ai_config_health.sql`: adiciona status da ultima validacao/uso em `ai_function_settings` e `ai_provider_key_status`.
 
 Tabelas publicas principais:
 
@@ -85,7 +86,7 @@ Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations`
 ### Edge Functions
 
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
-- `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
+- `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `save-historical-document`: valida sessao, permissao de empresa/area, tipo, periodo e tamanho do texto antes de gravar um `plan_documents` historico. Nao chama IA e nao grava objetivos, acoes ou planos ativos.
 - `oracle-chat`: usa a conversa web da pessoa, grava pergunta e resposta com `user_id`/`conversation_id`, monta contexto legivel do plano e responde com fallback deterministico ou modelo configurado. Tambem classifica a intencao da mensagem para iniciar planejamento anual/trimestral/mensal ou fechamento mensal/trimestral pelo app.
@@ -98,6 +99,8 @@ Funcoes compartilhadas:
 - `_shared/auth.ts`: valida sessao, acesso a empresa, owner e escrita por area.
 - `_shared/cors.ts`: respostas CORS e JSON.
 - `_shared/model.ts`: chamada aos provedores de IA.
+- `_shared/model-probe.ts`: chamada minima de validacao de provider/modelo/chave, com classificacao segura de erros.
+- `_shared/call-for-function.ts`: wrapper de chamada de IA que atualiza o status de runtime por funcao antes de devolver sucesso ou fallback.
 - `_shared/pricing.ts`: resolucao de pricing conhecido/automatico no servidor.
 - `_shared/transcription.ts`: normalizacao de arquivo de áudio e chamada da API de transcrição da OpenAI, com fallback de modelo.
 - `_shared/usage.ts`: calculo e gravacao de consumo de IA.
@@ -134,6 +137,8 @@ Funcoes de IA:
 - `background`: classificacao de documentos, resumos e tarefas auxiliares.
 
 O helper `_shared/ai-router.ts` resolve provider/modelo/chave por funcao. Se uma funcao ainda nao tiver configuracao especifica, ele cai no legado `ai_settings`, preservando o comportamento anterior. Na Fase 1, `oracle-chat` e `whatsapp-webhook` usam `daily`; classificacao de documentos usa `background`. A transcricao de audio continua exigindo uma chave OpenAI cadastrada.
+
+Desde 2026-07-08, salvar ou testar uma chave/modelo chama `_shared/model-probe.ts` no servidor e grava `last_status`, `last_status_detail` e `last_checked_at` em `ai_function_settings` e `ai_provider_key_status`. Em runtime, `_shared/call-for-function.ts` marca sucesso ou erro real por funcao (`planning`, `daily`, `background`), sem expor chave e sem remover os fallbacks determinísticos dos canais.
 
 Na Fase 2, `oracle-session` usa `planning` para conduzir sessoes. O modelo responde em envelope JSON com `reply`, `state_patch`, `next_phase`, `proposal` e `done`. O sistema persiste `state`, `phase` e `pending_proposal` em `planning_sessions`.
 

@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-08 - Configuracao de IA precisa validar contra o provedor
+
+Decisao: `save-ai-settings` passa a testar provider/modelo/chave no servidor ao salvar ou testar manualmente, e as chamadas reais de IA passam a atualizar status por funcao em `ai_function_settings`.
+
+Contexto: o dono encontrou o WhatsApp mudo depois de configurar Grok. O app dizia que havia salvo, mas a combinacao de chave/modelo so era testada no primeiro uso real, e o erro caia em fallback silencioso.
+
+Alternativas: manter validacao so por catalogo estatico, remover modelos suspeitos manualmente, ou depender de logs de Edge Functions.
+
+Motivo: o catalogo de modelos ajuda em pricing e sugestoes, mas nao prova que o modelo existe ou que a chave autoriza uso. O probe server-side entrega feedback imediato sem expor segredo.
+
+Consequencias: `ai_function_settings` e `ai_provider_key_status` guardam `last_status`, detalhe truncado e horario. A UI mostra salvamento/teste real, e runtime marca sucesso ou erro por `planning`, `daily` e `background`. O fallback ao usuario continua funcionando quando a IA falha.
+
 ## 2026-07-08 - Revisao Estrategica sob demanda como microajuste
 
 Decisao: adicionar o ritual `strategic_review` como acao manual do owner no Plano Estrategico, sem cadencia automatica, para recalibrar objetivos estrategicos existentes quando o contexto mudar.

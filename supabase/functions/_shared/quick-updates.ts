@@ -1,6 +1,6 @@
 import { resolveAiFunction } from "./ai-router.ts";
+import { callModelForFunction } from "./call-for-function.ts";
 import { parseJsonObject } from "./json.ts";
-import { callModel } from "./model.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { currentMonthPeriod, normalizeTextForRouting } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
@@ -174,10 +174,11 @@ async function extractUpdateWithAi(
   ].join("\n\n");
 
   try {
-    const result = await callModel(
-      aiRoute.provider,
-      aiRoute.model,
-      aiRoute.apiKey,
+    const result = await callModelForFunction(
+      client,
+      params.orgId,
+      "background",
+      aiRoute,
       systemPrompt,
       [{ role: "user", content: params.message }],
       aiRoute.limits,

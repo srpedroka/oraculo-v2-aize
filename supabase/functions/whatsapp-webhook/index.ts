@@ -12,7 +12,7 @@ import {
   type ConversationRecord,
 } from "../_shared/conversations.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callModel } from "../_shared/model.ts";
+import { callModelForFunction } from "../_shared/call-for-function.ts";
 import { buildPlanContext } from "../_shared/plan-context.ts";
 import { renderPlanForWhatsApp } from "../_shared/plan-render.ts";
 import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
@@ -1415,10 +1415,11 @@ async function buildOutOfScopeReply(
   ].filter(Boolean).join("\n\n");
 
   try {
-    const result = await callModel(
-      aiRoute.provider,
-      aiRoute.model,
-      aiRoute.apiKey,
+    const result = await callModelForFunction(
+      client,
+      orgId,
+      "daily",
+      aiRoute,
       systemPrompt,
       conversationMessagesForModel(history),
       { ...aiRoute.limits, maxTokens: Math.min(aiRoute.limits.maxTokens, 320), temperature: 0.8 },
@@ -1605,7 +1606,7 @@ async function buildAnswer(
   ].filter(Boolean).join("\n\n");
 
   try {
-    const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
+    const result = await callModelForFunction(client, orgId, "daily", aiRoute, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
     await recordAiUsage({
       client,
       orgId,
@@ -1778,10 +1779,11 @@ async function classifyImportedDocument(
     JSON.stringify({ areas, strategicPlan, areaPlans, objectives, currentAreaId: areaId, contact: profile?.full_name ?? null }, null, 2),
   ].join("\n\n");
 
-  const result = await callModel(
-    aiRoute.provider,
-    aiRoute.model,
-    aiRoute.apiKey,
+  const result = await callModelForFunction(
+    client,
+    orgId,
+    "background",
+    aiRoute,
     systemPrompt,
     [
       {

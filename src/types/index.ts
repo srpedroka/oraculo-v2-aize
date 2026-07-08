@@ -201,12 +201,34 @@ export interface AiSettings {
 
 export type AiProvider = "openai" | "anthropic" | "moonshot" | "xai";
 export type AiFunction = "planning" | "daily" | "background";
+export type AiConfigStatus = "ok" | "invalid_key" | "unknown_model" | "rate_limited" | "provider_error" | "timeout" | "no_key" | "untested";
+export type AiConfigStatusSource = "save" | "manual" | "runtime";
+
+export interface AiValidationResult {
+  scope: AiFunction | AiProvider;
+  provider: AiProvider;
+  model: string;
+  status: AiConfigStatus;
+  httpStatus?: number;
+  detail: string;
+  checkedAt: string;
+}
+
+export interface AiSettingsSaveResult {
+  ok: boolean;
+  keyPreview?: string | null;
+  validation?: AiValidationResult | null;
+}
 
 export interface AiFunctionSetting {
   orgId: string;
   function: AiFunction;
   provider: AiProvider;
   model: string;
+  lastStatus?: AiConfigStatus | null;
+  lastStatusDetail?: string | null;
+  lastStatusSource?: AiConfigStatusSource | null;
+  lastCheckedAt?: string | null;
   updatedAt?: string;
 }
 
@@ -215,6 +237,9 @@ export interface AiProviderKeyStatus {
   provider: AiProvider;
   hasKey: boolean;
   keyPreview?: string | null;
+  lastStatus?: AiConfigStatus | null;
+  lastStatusDetail?: string | null;
+  lastCheckedAt?: string | null;
   updatedAt?: string;
 }
 

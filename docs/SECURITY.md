@@ -53,6 +53,8 @@ A tabela de chave real tem RLS habilitado, acesso revogado para `anon` e `authen
 
 Os modelos por funcao (`planning`, `daily`, `background`) ficam em `public.ai_function_settings`; essa tabela nao contem segredo e so owners podem alterar.
 
+Ao salvar ou testar IA, `save-ai-settings` valida a combinacao provider/modelo/chave com uma chamada minima server-side. O retorno para o frontend contem apenas status, modelo, provedor, horario e detalhe truncado do erro; a chave real nunca volta ao cliente. As colunas `last_status*` tambem recebem erros de runtime por funcao, permitindo diagnosticar modelo invalido ou chave recusada sem abrir logs nem expor segredo.
+
 ## Uso, pricing e custo de IA
 
 O app registra consumo de IA em `public.ai_usage_logs`:

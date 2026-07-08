@@ -89,7 +89,7 @@ export function Strategic() {
   const [sentToOracle, setSentToOracle] = useState(false);
   const [isDraggingPlan, setIsDraggingPlan] = useState(false);
   const [historicalType, setHistoricalType] = useState<PlanDocumentType>("strategic");
-  const [historicalPeriod, setHistoricalPeriod] = useState(String(new Date().getFullYear() - 1));
+  const [historicalPeriod, setHistoricalPeriod] = useState("");
   const [historicalAreaId, setHistoricalAreaId] = useState("company");
   const [historicalText, setHistoricalText] = useState("");
   const [historicalFileName, setHistoricalFileName] = useState<string | null>(null);
