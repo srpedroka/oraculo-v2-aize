@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-08 - Memoria estrategica como orientacao antes de estruturar dados
+
+Decisao: executar a Fatia 2a da Memoria Estrategica pelo Caminho A: injetar documentos historicos truncados no contexto de planejamento estrategico/trimestral e orientar os condutores a usar o passado como pergunta construtiva, sem criar a tabela `strategic_history`.
+
+Contexto: o dono quer que o Oraculo lembre planos passados para ajudar a fazer planos melhores, entendendo repeticoes, travas e avancos parciais. A decisao de produto continua sendo nao alimentar resultado obrigatorio de metas passadas.
+
+Alternativas: criar agora uma tabela estruturada de metas historicas, chamar IA de bastidores para extrair recorrencias na importacao, ou ignorar o historico ate existir um modelo normalizado.
+
+Motivo: a memoria por contexto entrega valor com menor risco: nao muda schema, nao cria custo de IA extra, nao polui objetivos ativos e permite testar se a orientacao melhora a conversa antes de investir na extracao estruturada.
+
+Consequencias: `_shared/plan-context.ts` busca no maximo 3 `plan_documents.origin = historical` relevantes, truncados para controlar tokens. Os condutores estrategico e trimestral devem lembrar, investigar, detalhar proximos passos e puxar especificidade, sempre em tom de orientacao e sem afirmar que algo nao foi feito como fato. A Fatia 2b continua aberta para criar `strategic_history` se a 2a provar valor.
+
 ## 2026-07-07 - Memoria estrategica começa por documentos historicos
 
 Decisao: iniciar a Memoria Estrategica pela importacao de documentos historicos em `public.plan_documents`, usando `origin = historical`, sem criar tabela estruturada de metas nesta primeira fatia.
@@ -10,7 +22,7 @@ Alternativas: criar imediatamente uma tabela normalizada de historico, transform
 
 Motivo: `plan_documents` ja tem RLS, realtime, filtros, rota de impressao e renderizacao. Usar essa casa primeiro entrega valor rapido, evita poluir Dashboard/objetivos e deixa a futura extracao estruturada como uma camada incremental.
 
-Consequencias: `save-historical-document` valida permissao e tamanho do texto antes de gravar o historico; a tela Plano Estrategico importa arquivo/texto e a tela Documentos filtra por origem. A proxima fatia deve criar `strategic_history` e alimentar o contexto da IA com resumo de recorrencias, sem enviar documentos inteiros ao modelo.
+Consequencias: `save-historical-document` valida permissao e tamanho do texto antes de gravar o historico; a tela Plano Estrategico importa arquivo/texto e a tela Documentos filtra por origem. A proxima fatia pode criar `strategic_history` e trocar o texto truncado por resumo deterministico de recorrencias, sem enviar documentos inteiros ao modelo.
 
 ## 2026-07-07 - Migração de segredos exige janela coordenada
 

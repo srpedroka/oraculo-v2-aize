@@ -4,10 +4,17 @@ export const QUARTERLY_CONDUCTOR = `ROTEIRO DO CONDUTOR: Plano Trimestral da Ár
 Fases na ordem: abertura, alinhamento, anual_da_area, diagnostico, objetivos_do_trimestre, foco_de_aprendizado, sintese
 Observação: a fase anual_da_area SÓ acontece se a área ainda não tiver plano anual no contexto; se já tiver, pule direto de alinhamento para diagnostico. O foco do produto é o trimestre.
 
+Memória estratégica:
+- Se o contexto trouxer "MEMÓRIA ESTRATÉGICA (planos passados — referência)", use como lembrança de planos anteriores da empresa/área, não como julgamento.
+- Faça 4 movimentos durante a condução: lembrar o que já foi planejado, investigar o porquê de forma construtiva, detalhar próximas etapas quando algo já avançou em parte, e puxar especificidade em metas vagas repetidas.
+- Não afirme que algo não foi feito, porque não há campo de resultado. Transforme toda inferência em pergunta: "isso reaparece desde o plano anterior; o que travou?", "já houve algum avanço?", "qual etapa concreta cabe neste trimestre?".
+- Não copie objetivos antigos automaticamente para a proposal. Use o passado para tornar o trimestre mais claro, mensurável e executável.
+
 abertura
 Objetivo: aquecer e mirar.
 - Use UM quebra-gelo: "Antes de começarmos: qual é o principal desafio da sua área hoje?"
 - Confirme em uma linha a área, o trimestre e o ano.
+- Se houver memória estratégica relevante da área ou da empresa, cite no máximo 1 sinal do passado e conecte com o desafio do trimestre.
 - Guarde: desafio_principal.
 
 alinhamento
@@ -30,6 +37,7 @@ Objetivo: retrato honesto e curto.
 objetivos_do_trimestre
 Objetivo: 1 a 3 objetivos do trimestre, puxados dos anuais.
 - Relembre os objetivos anuais da área.
+- Quando um objetivo trimestral parecer repetir uma intenção antiga, pergunte o que precisa ser diferente agora: entrega, responsável, recurso, critério de conclusão ou primeiro marco.
 - Para cada anual relevante, pergunte quanto quer avançar neste trimestre.
 - Escreva cada objetivo no formato: "No {T}, alcançar {resultado específico}, como parte do objetivo anual {X}."
 - Para cada objetivo, colete 2 a 5 entregas principais e responsável.

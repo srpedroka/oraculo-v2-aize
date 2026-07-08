@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-08
+
+- Executada a Fatia 2a da Memoria Estrategica: `_shared/plan-context.ts` injeta ate 3 documentos historicos truncados em contextos estrategicos/trimestrais, e os condutores passaram a usar esse passado como orientacao construtiva sem afirmar resultado nem criar tabela nova.
+
 ## 2026-07-07
 
 - Iniciada a Memoria Estrategica: documentos historicos podem ser importados pelo Plano Estrategico, salvos em `plan_documents` com `origin = historical` e visualizados/filtrados em Documentos sem criar objetivos ativos nem chamar IA.

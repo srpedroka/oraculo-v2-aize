@@ -106,7 +106,7 @@ Funcoes compartilhadas:
 - `_shared/periods.ts`: normaliza texto e resolve ano, trimestre e mes vigentes ou citados na mensagem.
 - `_shared/quick-updates.ts`: identifica atualizacoes curtas do WhatsApp, escolhe objetivo/acao mensal, pede esclarecimento em caso de ambiguidade, valida permissao e grava status, progresso ou evidencia.
 - `_shared/conversations.ts`: cria/retoma conversa por pessoa e canal, grava mensagens com dono, carrega historico da conversa e resume historico longo com a funcao `background`.
-- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias e pendencias.
+- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias, pendencias e memoria estrategica historica truncada quando o foco e estrategico ou trimestral.
 - `_shared/session-engine.ts`: orquestra sessoes de planejamento, historico, prompts, estado e chamadas ao modelo.
 - `_shared/proposals.ts`: aplica propostas confirmadas no banco com validacao server-side de permissao.
 - `_shared/plan-documents.ts`: transforma propostas confirmadas em `plan_documents` deterministico, incrementando versao por empresa/area/tipo/periodo.
@@ -139,6 +139,8 @@ Na Fase 2, `oracle-session` usa `planning` para conduzir sessoes. O modelo respo
 Na Fase 3, as chamadas de conversa deixam de usar historico geral da empresa. `oracle-chat` e `whatsapp-webhook` carregam apenas a conversa ativa daquele usuario e canal. Quando existem mais de 40 mensagens novas desde o ultimo resumo, `_shared/conversations.ts` usa a funcao `background` para gerar um resumo curto em `conversations.summary`; depois disso, o modelo recebe o resumo e as ultimas mensagens, reduzindo custo e evitando perda de contexto.
 
 O contexto do plano tambem deixa de ser JSON cru. `_shared/plan-context.ts` devolve texto estruturado para a IA, incluindo objetivos, progresso, donos, prazos, entregas e acoes-chave. Isso permite que perguntas como "como está o mês da minha área?" enxerguem tambem as ações-chave, não só os objetivos.
+
+Na Fatia 2a da Memoria Estrategica, o mesmo helper passa a incluir a seção "MEMÓRIA ESTRATÉGICA (planos passados — referência)" quando o foco e estrategico (`org`) ou trimestral. A seção busca no maximo 3 documentos historicos (`plan_documents.origin = historical`) mais relevantes/recentes, limita cada texto a cerca de 1.800 caracteres e orienta o modelo a tratar recorrencia como pergunta construtiva, nao como prova de resultado. Nao ha migration nem chamada de IA extra nessa fatia.
 
 Modo misto de gravacao:
 

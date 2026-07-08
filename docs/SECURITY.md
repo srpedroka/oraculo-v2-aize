@@ -154,7 +154,7 @@ Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios.
 
 Na Fase 3, `conversations.summary` guarda um resumo de conversa gerado por IA. Esse resumo pode conter decisoes, numeros e pendencias da empresa, portanto deve ser tratado como dado privado da organizacao. Ele nunca deve guardar chave de API, segredo de webhook, senha, URL temporaria de mídia, audio bruto ou arquivo bruto.
 
-O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. Segredos continuam fora desse contexto.
+O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. Na Memoria Estrategica Fatia 2a, contextos de planejamento estrategico/trimestral tambem podem incluir ate 3 documentos historicos truncados de `plan_documents.origin = historical`, no escopo da empresa e da area em foco. Segredos continuam fora desse contexto.
 
 ## Sessoes e propostas da V3
 

@@ -22,6 +22,8 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MAX_HISTORICAL_DOCS = 3;
+const MAX_HISTORICAL_CHARS_PER_DOC = 1800;
 
 function text(value: unknown, fallback = "não informado") {
   const output = String(value ?? "").trim();
@@ -30,6 +32,25 @@ function text(value: unknown, fallback = "não informado") {
 
 function asArray(value: unknown) {
   return Array.isArray(value) ? value.map((item) => text(item, "")).filter(Boolean) : [];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function rawText(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function truncateHistoricalText(value: unknown) {
+  const output = rawText(value)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+  if (output.length <= MAX_HISTORICAL_CHARS_PER_DOC) return output;
+  return `${output.slice(0, MAX_HISTORICAL_CHARS_PER_DOC).trim()}\n[trecho truncado para controlar tokens]`;
 }
 
 function currentPeriods(date = new Date()) {
@@ -104,6 +125,69 @@ function objectiveCounts(objectives: any[], areaId: string) {
   };
 }
 
+function historicalDocumentScore(document: any, focus: PlanContextFocus, areaId: string | null) {
+  let score = 0;
+  if (areaId && document.area_id === areaId) score += 4;
+  if (!document.area_id) score += 2;
+  if (focus === "quarterly" && document.type === "quarterly") score += 3;
+  if (focus === "quarterly" && document.type === "strategic") score += 1;
+  if (focus === "org" && document.type === "strategic") score += 3;
+  return score;
+}
+
+function historicalMemoryLines(
+  documents: any[],
+  areas: any[],
+  options: { focus: PlanContextFocus; areaId: string | null },
+) {
+  if (options.focus !== "org" && options.focus !== "quarterly") return [];
+
+  const allowedTypes = options.focus === "quarterly" ? new Set(["strategic", "quarterly"]) : new Set(["strategic"]);
+  const relevant = documents
+    .filter((document) => allowedTypes.has(String(document.type ?? "")))
+    .filter((document) => {
+      if (!options.areaId) return !document.area_id;
+      return !document.area_id || document.area_id === options.areaId;
+    })
+    .filter((document) => rawText(asRecord(document.content).raw))
+    .sort((a, b) => {
+      const scoreDelta = historicalDocumentScore(b, options.focus, options.areaId) - historicalDocumentScore(a, options.focus, options.areaId);
+      if (scoreDelta) return scoreDelta;
+      return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+    })
+    .slice(0, MAX_HISTORICAL_DOCS);
+
+  if (!relevant.length) return [];
+
+  const lines = [
+    "MEMÓRIA ESTRATÉGICA (planos passados — referência):",
+    "Use estes documentos como lembrança para orientar melhor. Não trate como prova de resultado; quando inferir repetição ou trava, transforme em pergunta construtiva.",
+  ];
+
+  for (const document of relevant) {
+    const content = asRecord(document.content);
+    const areaName = document.area_id
+      ? areas.find((area) => area.id === document.area_id)?.name ?? "Área"
+      : "Empresa";
+    const source = rawText(content.source);
+    const note = rawText(content.note);
+    const metadata = [
+      `período: ${text(document.period, "sem período")}`,
+      `tipo: ${text(document.type, "sem tipo")}`,
+      `escopo: ${areaName}`,
+      source ? `fonte: ${source}` : "",
+      note ? `nota: ${note}` : "",
+    ].filter(Boolean).join("; ");
+
+    lines.push(
+      `- ${text(document.title, "Documento histórico")} (${metadata})`,
+      truncateHistoricalText(content.raw),
+    );
+  }
+
+  return lines;
+}
+
 export async function buildPlanContext(
   client: Client,
   orgId: string,
@@ -117,6 +201,16 @@ export async function buildPlanContext(
     : periods.quarterLabels;
   const quarterDisplay = quarterLabels[0] ?? periods.quarterDisplay;
   const monthDisplay = periodInFocus && !/^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus) ? periodInFocus : periods.month;
+  const shouldLoadHistoricalMemory = focus === "org" || focus === "quarterly";
+  const historicalDocumentsQuery = shouldLoadHistoricalMemory
+    ? client
+      .from("plan_documents")
+      .select("id, area_id, type, period, title, content, version, created_at")
+      .eq("org_id", orgId)
+      .eq("origin", "historical")
+      .order("created_at", { ascending: false })
+      .limit(12)
+    : Promise.resolve({ data: [] });
   const [
     { data: organization },
     { data: areas },
@@ -128,6 +222,7 @@ export async function buildPlanContext(
     { data: evidences },
     { data: checkIns },
     { data: strategicProjects },
+    { data: historicalDocuments },
   ] = await Promise.all([
     client.from("organizations").select("id, name, subtitle").eq("id", orgId).maybeSingle(),
     client.from("areas").select("id, name, coordinator_id").eq("org_id", orgId).order("created_at"),
@@ -139,6 +234,7 @@ export async function buildPlanContext(
     client.from("evidences").select("*").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
     client.from("check_ins").select("*").eq("org_id", orgId).order("created_at", { ascending: false }).limit(12),
     client.from("strategic_projects").select("*").eq("org_id", orgId).order("created_at"),
+    historicalDocumentsQuery,
   ]);
 
   const profileIds = Array.from(new Set((memberships ?? []).map((membership: any) => membership.user_id).filter(Boolean)));
@@ -166,6 +262,11 @@ export async function buildPlanContext(
       ),
     );
   }
+
+  lines.push(...historicalMemoryLines(historicalDocuments ?? [], allAreas, {
+    focus,
+    areaId: area?.id ?? options.areaId ?? null,
+  }));
 
   if (!area && focus === "org") {
     lines.push("ÁREAS CADASTRADAS:");
