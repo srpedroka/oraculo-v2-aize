@@ -801,6 +801,7 @@ supabase functions deploy invite-member
 supabase functions deploy save-ai-settings
 supabase functions deploy save-historical-document
 supabase functions deploy oracle-chat
+supabase functions deploy oracle-session
 supabase functions deploy month-turn --no-verify-jwt
 supabase functions deploy save-whatsapp-settings
 supabase functions deploy whatsapp-webhook --no-verify-jwt

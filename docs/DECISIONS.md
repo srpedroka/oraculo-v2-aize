@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-08 - Revisao Estrategica sob demanda como microajuste
+
+Decisao: adicionar o ritual `strategic_review` como acao manual do owner no Plano Estrategico, sem cadencia automatica, para recalibrar objetivos estrategicos existentes quando o contexto mudar.
+
+Contexto: o dono quer revisar metas, numeros, prazos e status ao longo do ano sem recriar o planejamento anual nem perder a direcao original.
+
+Alternativas: criar um cron/lembrete de revisao, reabrir o fluxo completo de Plano Estrategico, ou permitir edicao livre sem rastro historico.
+
+Motivo: um ritual sob demanda preserva a decisao do dono de nao empurrar revisoes automaticas e mantem a fronteira de microajuste. A proposta confirmada atualiza apenas campos permitidos de objetivos existentes e registra antes/depois/porquê em `plan_documents.type = strategic_review`.
+
+Consequencias: `planning_sessions` e `plan_documents` aceitam `strategic_review`; `oracle-session` tem novo condutor; `proposals.ts` aplica `apply_strategic_review` com owner-only e justificativa obrigatoria. Criar/remover objetivos ou trocar estrategia continua pertencendo ao fluxo de planejamento/replanejamento.
+
 ## 2026-07-08 - Memoria estrategica como orientacao antes de estruturar dados
 
 Decisao: executar a Fatia 2a da Memoria Estrategica pelo Caminho A: injetar documentos historicos truncados no contexto de planejamento estrategico/trimestral e orientar os condutores a usar o passado como pergunta construtiva, sem criar a tabela `strategic_history`.

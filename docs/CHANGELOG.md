@@ -3,6 +3,7 @@
 ## 2026-07-08
 
 - Executada a Fatia 2a da Memoria Estrategica: `_shared/plan-context.ts` injeta ate 3 documentos historicos truncados em contextos estrategicos/trimestrais, e os condutores passaram a usar esse passado como orientacao construtiva sem afirmar resultado nem criar tabela nova.
+- Implementada a Fatia 1 da Revisao Estrategica sob demanda: owner pode iniciar o ritual no Plano Estrategico, confirmar microajustes em objetivos existentes e gravar um `plan_documents(strategic_review)` com antes/depois/porquê.
 
 ## 2026-07-07
 

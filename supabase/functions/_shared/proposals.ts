@@ -3,6 +3,7 @@ import { createDocumentForProposal } from "./plan-documents.ts";
 type Client = any;
 
 type CloseStatus = "on_track" | "at_risk" | "late" | "done";
+type StrategicReviewField = "metric" | "target" | "current" | "deadline" | "status";
 
 function asArray<T = any>(value: unknown): T[] {
   return Array.isArray(value) ? value as T[] : [];
@@ -38,11 +39,45 @@ function asCloseStatus(value: unknown): CloseStatus {
   return "on_track";
 }
 
+function asStrategicReviewField(value: unknown): StrategicReviewField | null {
+  const text = asText(value).toLowerCase();
+  if (text === "metric" || text === "indicador" || text === "metrica" || text === "métrica") return "metric";
+  if (text === "target" || text === "meta") return "target";
+  if (text === "current" || text === "atual" || text === "valor_atual" || text === "numero" || text === "número") return "current";
+  if (text === "deadline" || text === "prazo") return "deadline";
+  if (text === "status") return "status";
+  return null;
+}
+
 function defaultProgressForStatus(status: CloseStatus) {
   if (status === "done") return 100;
   if (status === "late") return 0;
   if (status === "at_risk") return 50;
   return 0;
+}
+
+function snapshotStrategicObjective(objective: any) {
+  return {
+    id: objective.id,
+    titulo: asText(objective.title),
+    resultado: asText(objective.result),
+    indicador: asText(objective.metric),
+    meta: asText(objective.target),
+    atual: asText(objective.current),
+    prazo: objective.deadline ?? null,
+    status: asText(objective.status),
+    progresso: Number(objective.progress ?? 0),
+    responsavel: asText(objective.owner),
+    periodo: asText(objective.period),
+  };
+}
+
+function strategicReviewValue(objective: any, field: StrategicReviewField) {
+  if (field === "metric") return asText(objective.metric);
+  if (field === "target") return asText(objective.target);
+  if (field === "current") return asText(objective.current);
+  if (field === "deadline") return asText(objective.deadline);
+  return asText(objective.status);
 }
 
 function normalizeDecision(value: unknown) {
@@ -659,6 +694,141 @@ async function saveQuarterClose(client: Client, session: any, proposal: any, use
   return `Fechamento de ${session.period} gravado com ${reviewStats.updatedObjectives} objetivo(s) revisado(s) e ${pendencyStats.rolled} pendência(s) rolada(s) para ${nextPeriod}.`;
 }
 
+async function nextPlanDocumentVersion(client: Client, orgId: string, areaId: string | null, type: string, period: string) {
+  let query = client
+    .from("plan_documents")
+    .select("version")
+    .eq("org_id", orgId)
+    .eq("type", type)
+    .eq("period", period)
+    .order("version", { ascending: false })
+    .limit(1);
+  query = areaId ? query.eq("area_id", areaId) : query.is("area_id", null);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return Number(data?.version ?? 0) + 1;
+}
+
+async function saveStrategicReview(client: Client, session: any, proposal: any, userId: string) {
+  if (session.area_id) throw new Error("Revisão estratégica é do plano da empresa");
+
+  const { data: strategicObjectives, error: objectivesError } = await client
+    .from("objectives")
+    .select("*")
+    .eq("org_id", session.org_id)
+    .is("area_id", null)
+    .eq("level", "strategic")
+    .order("created_at");
+  if (objectivesError) throw objectivesError;
+  if (!(strategicObjectives ?? []).length) throw new Error("Não há objetivos estratégicos para revisar");
+
+  const objectivesById = new Map((strategicObjectives ?? []).map((objective: any) => [objective.id, objective]));
+  const rawAdjustments = asArray<any>(proposal.adjustments ?? proposal.ajustes);
+  if (!rawAdjustments.length) throw new Error("Revisão estratégica exige pelo menos um ajuste");
+
+  const updatesByObjective = new Map<string, Record<string, unknown>>();
+  const normalizedAdjustments = [];
+
+  for (const adjustment of rawAdjustments) {
+    const objectiveId = asText(adjustment.objectiveId ?? adjustment.objective_id ?? adjustment.objetivo_id);
+    const objective = objectivesById.get(objectiveId);
+    if (!objective) throw new Error("A revisão só pode ajustar objetivos estratégicos existentes desta empresa");
+
+    const field = asStrategicReviewField(adjustment.field ?? adjustment.campo);
+    if (!field) throw new Error("Campo inválido na revisão estratégica");
+
+    const because = asText(adjustment.because ?? adjustment.porque ?? adjustment.justificativa);
+    if (!because) throw new Error("Cada ajuste da revisão estratégica precisa de justificativa");
+
+    let nextValue: string | null = asText(adjustment.to ?? adjustment.para ?? adjustment.valor);
+    if (!nextValue) throw new Error("Cada ajuste precisa informar o novo valor");
+
+    const update = updatesByObjective.get(objective.id) ?? {};
+    if (field === "deadline") {
+      const deadline = cleanDate(nextValue);
+      if (!deadline) throw new Error("Prazo da revisão estratégica precisa estar em formato AAAA-MM-DD");
+      update.deadline = deadline;
+      nextValue = deadline;
+    } else if (field === "status") {
+      const status = asCloseStatus(nextValue);
+      update.status = status;
+      nextValue = status;
+    } else {
+      update[field] = nextValue;
+    }
+    updatesByObjective.set(objective.id, update);
+
+    normalizedAdjustments.push({
+      objetivo_id: objective.id,
+      titulo: asText(objective.title),
+      campo: field,
+      de: strategicReviewValue(objective, field),
+      para: nextValue,
+      porque: because,
+    });
+  }
+
+  const before = (strategicObjectives ?? []).map(snapshotStrategicObjective);
+  for (const [objectiveId, update] of updatesByObjective.entries()) {
+    const { error } = await client
+      .from("objectives")
+      .update(update)
+      .eq("id", objectiveId)
+      .eq("org_id", session.org_id)
+      .is("area_id", null)
+      .eq("level", "strategic");
+    if (error) throw error;
+  }
+
+  const { data: updatedObjectives, error: updatedError } = await client
+    .from("objectives")
+    .select("*")
+    .eq("org_id", session.org_id)
+    .is("area_id", null)
+    .eq("level", "strategic")
+    .order("created_at");
+  if (updatedError) throw updatedError;
+
+  const { data: organization, error: organizationError } = await client
+    .from("organizations")
+    .select("name")
+    .eq("id", session.org_id)
+    .maybeSingle();
+  if (organizationError) throw organizationError;
+
+  const period = asText(proposal.period ?? proposal.periodo, session.period);
+  const version = await nextPlanDocumentVersion(client, session.org_id, null, "strategic_review", period);
+  const content = {
+    empresa: asText(organization?.name, "Empresa"),
+    area: null,
+    periodo: period,
+    motivo_revisao: asText(proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason),
+    ajustes: normalizedAdjustments,
+    antes: before,
+    depois: (updatedObjectives ?? []).map(snapshotStrategicObjective),
+  };
+
+  const { data: document, error: documentError } = await client
+    .from("plan_documents")
+    .insert({
+      org_id: session.org_id,
+      area_id: null,
+      session_id: session.id,
+      type: "strategic_review",
+      origin: "session",
+      period,
+      title: `Revisão Estratégica ${period}`,
+      content,
+      version,
+      created_by: userId,
+    })
+    .select("*")
+    .single();
+  if (documentError) throw documentError;
+
+  return `Revisão estratégica gravada com ${normalizedAdjustments.length} ajuste(s). Documento gerado: ${document.title} (v${document.version}).`;
+}
+
 export async function applyProposal(client: Client, session: any, proposal: any, userId: string) {
   await assertProposalPermission(client, session, userId);
   const type = asText(proposal?.type);
@@ -668,6 +838,7 @@ export async function applyProposal(client: Client, session: any, proposal: any,
   else if (type === "save_monthly_plan") summary = await saveMonthlyPlan(client, session, proposal, userId);
   else if (type === "month_close") summary = await saveMonthClose(client, session, proposal, userId);
   else if (type === "quarter_close") summary = await saveQuarterClose(client, session, proposal, userId);
+  else if (type === "apply_strategic_review") summary = await saveStrategicReview(client, session, proposal, userId);
   else throw new Error("Proposta não reconhecida para gravação");
 
   const document = await createDocumentForProposal(client, session, proposal, userId);

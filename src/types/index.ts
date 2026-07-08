@@ -3,9 +3,9 @@ export type ObjectiveType = "harvest" | "seed";
 export type Status = "on_track" | "at_risk" | "late" | "done";
 
 export type PlanLevel = "strategic" | "area_annual" | "quarterly" | "monthly";
-export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
 export type PlanningSessionStatus = "active" | "completed" | "abandoned";
-export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
 export type PlanDocumentOrigin = "session" | "historical";
 
 export interface Organization {

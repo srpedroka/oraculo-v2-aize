@@ -12,6 +12,7 @@ const TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
+  strategic_review: "Revisão Estratégica",
 };
 
 const ORIGIN_LABEL: Record<PlanDocumentOrigin, string> = {

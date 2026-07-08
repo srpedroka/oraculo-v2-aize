@@ -171,6 +171,8 @@ No fluxo de plano pronto, seja estrategico, trimestral ou mensal, texto de arqui
 
 Atualizacoes rapidas por WhatsApp sao deliberadamente menores que uma proposta. Elas nao podem criar planejamento novo, trocar dono da empresa, alterar configuracao, salvar chave, convidar membro ou apagar dados. Se uma mensagem pedir algo fora desse escopo, o fluxo deve responder com orientacao ou iniciar sessao de planejamento, nao gravar direto.
 
+Revisao Estrategica (`strategic_review`) e um ritual owner-only no escopo da empresa. O backend bloqueia inicio com `area_id` ou por usuario que nao seja `owner`, e a confirmacao passa novamente por `assertProposalPermission`. A proposta `apply_strategic_review` nao pode criar, excluir, renomear ou trocar objetivos em massa: ela so atualiza objetivos estrategicos existentes da mesma organizacao e sem area, nos campos `metric`, `target`, `current`, `deadline` e `status`. Cada ajuste precisa de justificativa; ao confirmar, o servidor grava snapshot antes/depois em `plan_documents.type = strategic_review`.
+
 ## Arquivos que nao devem ser versionados
 
 Ja cobertos no `.gitignore`:

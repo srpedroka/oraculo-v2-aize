@@ -13,6 +13,7 @@ import {
 } from "./conversations.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
 import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
+import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
 import { callModel } from "./model.ts";
@@ -25,7 +26,7 @@ import { recordAiUsage } from "./usage.ts";
 
 type Client = any;
 
-export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
 
 const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: string }> = {
   strategic: {
@@ -52,6 +53,11 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
     phases: QUARTER_CLOSE_PHASES,
     prompt: QUARTER_CLOSE_CONDUCTOR,
     opening: "Vamos fechar o trimestre subindo um andar: resultado dos objetivos, evidências, aprendizados e o que fica para o próximo ciclo.",
+  },
+  strategic_review: {
+    phases: STRATEGIC_REVIEW_PHASES,
+    prompt: STRATEGIC_REVIEW_CONDUCTOR,
+    opening: "Vamos fazer uma Revisão Estratégica: microajustes no plano anual, sem recriar a estratégia. O que mudou no contexto e por que vale revisar agora?",
   },
 };
 
@@ -556,7 +562,10 @@ export async function startPlanningSession(
 ) {
   const conductor = CONDUCTORS[params.type];
   if (!conductor) throw new Error("Tipo de sessão ainda não disponível nesta fase");
-  await assertCanStartSession(client, params.orgId, params.areaId, params.userId);
+  const membership = await assertCanStartSession(client, params.orgId, params.areaId, params.userId);
+  if (params.type === "strategic_review" && (params.areaId || membership.role !== "owner")) {
+    throw new Error("Apenas owner pode iniciar uma Revisão Estratégica da empresa");
+  }
 
   const { data: existing, error: existingError } = await client
     .from("planning_sessions")
@@ -1145,8 +1154,11 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   const documentText = document ? `\n\n---\n\n${renderPlanForWhatsApp(document.content ?? {})}` : "";
   const isCloseSession = ensured.session.type === "month_close" || ensured.session.type === "quarter_close";
   const nextPhase = ensured.session.type === "month_close" ? "ponte" : ensured.session.type === "quarter_close" ? "balanco" : ensured.session.phase;
+  const isReviewSession = ensured.session.type === "strategic_review";
   const reply = isCloseSession
     ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?${documentText}`
+    : isReviewSession
+      ? `${summary} Revisão salva no sistema.${documentText}`
     : `${summary} O plano já está salvo no sistema.${documentText}`;
   const { data: updated, error: updateError } = await client
     .from("planning_sessions")

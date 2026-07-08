@@ -1,4 +1,4 @@
-import { Archive, ClipboardCheck, FileText, Loader2, Plus, Save, Send, Upload } from "lucide-react";
+import { Archive, ClipboardCheck, FileText, Loader2, Plus, RefreshCw, Save, Send, Upload } from "lucide-react";
 import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -19,7 +19,9 @@ const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
+  strategic_review: "Revisão Estratégica",
 };
+const HISTORICAL_DOCUMENT_TYPES: PlanDocumentType[] = ["strategic", "quarterly", "monthly", "month_close", "quarter_close"];
 
 function ListBlock({ title, items }: { title: string; items: string[] }) {
   return (
@@ -114,6 +116,10 @@ export function Strategic() {
 
   function startStrategicSession() {
     dispatch({ type: "start_session", sessionType: "strategic", period: String(currentYear) });
+  }
+
+  function startStrategicReviewSession() {
+    dispatch({ type: "start_session", sessionType: "strategic_review", period: String(plan?.year ?? currentYear) });
   }
 
   function openReadyPlanImport() {
@@ -315,6 +321,11 @@ export function Strategic() {
           <Button icon={Plus} onClick={startStrategicSession}>
             Planejar o ano com o Oráculo
           </Button>
+          {isOwner && plan ? (
+            <Button variant="ghost" icon={RefreshCw} onClick={startStrategicReviewSession}>
+              Revisão Estratégica
+            </Button>
+          ) : null}
           <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>
             Importar plano pronto
           </Button>
@@ -487,7 +498,7 @@ export function Strategic() {
                   onChange={(event) => setHistoricalType(event.target.value as PlanDocumentType)}
                   className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
                 >
-                  {(Object.keys(DOCUMENT_TYPE_LABEL) as PlanDocumentType[]).map((type) => (
+                  {HISTORICAL_DOCUMENT_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {DOCUMENT_TYPE_LABEL[type]}
                     </option>

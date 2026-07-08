@@ -12,6 +12,7 @@ const SESSION_TYPE_LABEL = {
   monthly: "Plano Mensal",
   month_close: "Fechamento do Mês",
   quarter_close: "Fechamento do Trimestre",
+  strategic_review: "Revisão Estratégica",
 };
 
 const SESSION_PHASES = {
@@ -20,6 +21,7 @@ const SESSION_PHASES = {
   monthly: ["abertura", "relembrar", "objetivos_do_mes", "acoes_chave", "realismo", "sintese"],
   month_close: ["abertura", "revisao", "pendencias", "resumo", "ponte"],
   quarter_close: ["abertura", "revisao_trimestre", "aprendizado_do_time", "balanco"],
+  strategic_review: ["abertura", "revisao_objetivos", "sintese"],
 };
 
 const PHASE_LABEL: Record<string, string> = {
@@ -45,6 +47,7 @@ const PHASE_LABEL: Record<string, string> = {
   resumo: "Resumo",
   ponte: "Ponte",
   revisao_trimestre: "Revisão do trimestre",
+  revisao_objetivos: "Revisão dos objetivos",
   aprendizado_do_time: "Aprendizado do time",
   balanco: "Balanço",
 };
@@ -57,6 +60,7 @@ function proposalTitle(proposal: Record<string, unknown> | null) {
   if (type === "save_monthly_plan") return "Plano Mensal";
   if (type === "month_close") return "Fechamento do Mês";
   if (type === "quarter_close") return "Fechamento do Trimestre";
+  if (type === "apply_strategic_review") return "Revisão Estratégica";
   return "Proposta";
 }
 
@@ -322,6 +326,54 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
   );
 }
 
+function fieldLabel(value: unknown) {
+  const field = asText(value);
+  if (field === "metric") return "Indicador";
+  if (field === "target") return "Meta";
+  if (field === "current") return "Valor atual";
+  if (field === "deadline") return "Prazo";
+  if (field === "status") return "Status";
+  return field || "Campo";
+}
+
+function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  if (asText(proposal.type) !== "apply_strategic_review") return null;
+
+  const adjustments = asRecordArray(proposal.adjustments ?? proposal.ajustes);
+
+  return (
+    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será ajustado</p>
+        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Estratégica {asText(proposal.period ?? proposal.periodo)}</p>
+        <p className="text-[12px] text-[#7A7D82]">
+          Só objetivos estratégicos existentes serão ajustados depois da sua confirmação.
+        </p>
+      </div>
+
+      <DetailLine label="Motivo" value={proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason} />
+
+      {adjustments.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Ajustes ({adjustments.length})</p>
+          {adjustments.map((adjustment, index) => (
+            <div key={`${asText(adjustment.objectiveId ?? adjustment.objetivo_id)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
+              <p className="font-semibold text-[#1D1D1F]">{asText(adjustment.title ?? adjustment.titulo) || `Objetivo ${index + 1}`}</p>
+              <p className="mt-1">
+                <span className="font-medium text-[#1D1D1F]">{fieldLabel(adjustment.field ?? adjustment.campo)}: </span>
+                {asText(adjustment.from ?? adjustment.de) || "em branco"} → {asText(adjustment.to ?? adjustment.para) || "em branco"}
+              </p>
+              <DetailLine label="Por quê" value={adjustment.because ?? adjustment.porque ?? adjustment.justificativa} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-xl bg-[#FFF8E8] px-3 py-2 text-[#7A4E12]">Nenhum ajuste estruturado ainda.</p>
+      )}
+    </div>
+  );
+}
+
 export function OraclePanel() {
   const { state, dispatch } = useAppState();
   const location = useLocation();
@@ -565,6 +617,7 @@ export function OraclePanel() {
                 </p>
                 <StrategicProposalPreview proposal={activeSession.pendingProposal} />
                 <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
+                <StrategicReviewProposalPreview proposal={activeSession.pendingProposal} />
                 <div className="mt-3 grid gap-2">
                   <Button
                     type="button"
