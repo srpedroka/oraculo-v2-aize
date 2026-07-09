@@ -10,6 +10,11 @@ export function currentMonth() {
   return new Date().getMonth() + 1;
 }
 
+export function latestClosedKpiPeriod(referenceDate = new Date()) {
+  const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+}
+
 export function formatKpiValue(value: number | null | undefined, unit: KpiUnit, options: { compact?: boolean } = {}) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
 

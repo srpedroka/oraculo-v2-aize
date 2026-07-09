@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-09 - Resultado do Dashboard referencia o ultimo mes fechado
+
+Decisao: o bloco Resultado dos KPIs sempre destaca o mes calendario anterior; o mes atual e identificado como em andamento, sem ser apresentado como atingido consolidado.
+
+Contexto: os realizados sao preenchidos apos o fechamento do mes. Destacar o mes corrente induzia uma leitura de ausencia ou atraso durante toda a execucao normal.
+
+Alternativas: usar o ultimo mes que tiver qualquer valor preenchido, permitir que cada KPI escolha um mes diferente, ou adicionar agora um status persistido de fechamento por mes.
+
+Motivo: o mes anterior preserva uma referencia comum e previsivel para os quatro indicadores. Se algum realizado estiver ausente, a interface mostra `aguardando fechamento`, em vez de recuar silenciosamente para um dado mais antigo.
+
+Consequencias: a virada de janeiro usa dezembro do ano anterior; cada card sem realizado exibe `A fechar`. Um ritual persistido de fechamento pode substituir essa regra de calendario no futuro, caso o processo passe a exigir fechamento formal.
+
 ## 2026-07-09 - Importacao de planilha de KPI usa IA como proposta confirmada
 
 Decisao: ler planilhas de KPI no navegador, enviar apenas a tabela textual para a funcao de IA `background` e gravar Meta/Atingido somente depois da revisao e confirmacao da pessoa no editor.

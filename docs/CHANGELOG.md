@@ -2,6 +2,7 @@
 
 ## 2026-07-09
 
+- Ajustada a referencia principal dos KPIs no Dashboard: Resultado agora destaca sempre o mes calendario anterior como ultimo mes fechado, mostra `aguardando fechamento` quando faltar realizado e deixa o mes corrente explicitamente como em andamento.
 - Ajustado o minigráfico de Meta/Atingido dos KPIs no Dashboard: os meses agora aparecem no eixo horizontal. Adicionada importação de planilhas `.xlsx`, `.xls` e `.csv` no editor de KPIs; o navegador extrai a tabela, a IA de bastidores propõe indicador/mês/Meta/Atingido e a pessoa confirma a prévia antes de gravar.
 - Corrigida a seleção de modelos de IA: Configurações agora exibe uma lista explícita de todos os modelos cadastrados para cada provedor, incluindo `grok-4.3` e `grok-4.5` na xAI, e mantém a opção de informar um id personalizado que será validado pelo provedor ao salvar.
 - Executada a Onda 3c de polimento de UI: adicionados tokens de raio, sombra, movimento, superfícies, estados e tipografia; navegação e controles ganharam transições sutis, feedback de pressão, foco mais claro e respeito a redução de movimento. O Dashboard dos KPIs foi simplificado para remover a moldura redundante e unificar ritmo, métricas e camadas visuais.

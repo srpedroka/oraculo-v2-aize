@@ -11,6 +11,7 @@ import {
   formatKpiValue,
   KPI_MONTHS,
   ladderLabel,
+  latestClosedKpiPeriod,
   movingAverage3,
   valuesForKpi,
 } from "../../lib/kpi";
@@ -27,7 +28,6 @@ const KPI_ICON = {
 interface KpiResultBlockProps {
   kpis: ExecutiveKpi[];
   values: KpiMonthlyValue[];
-  year?: number;
   canEdit?: boolean;
   onEdit?: () => void;
 }
@@ -51,14 +51,17 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
   const Icon = KPI_ICON[kpi.key];
   const monthValues = valuesForKpi(values, kpi, year);
   const current = monthValues[focusMonth - 1];
+  const hasActual = current?.actualValue !== null && current?.actualValue !== undefined;
 
   if (kpi.key === "cash") {
     const deltas = cashDeltas(monthValues, kpi.openingBalance);
     const averages = movingAverage3(deltas);
     const currentDelta = deltas[focusMonth - 1];
     const currentAverage = averages[focusMonth - 1];
+    const reportedDelta = hasActual ? currentDelta : null;
+    const reportedAverage = hasActual ? currentAverage : null;
     const targetStage = ladderLabel(kpi.ladder, current?.targetStage);
-    const targetMet = cashTargetStatus(currentAverage, current?.targetValue);
+    const targetMet = cashTargetStatus(reportedAverage, current?.targetValue);
     const sparklineData = KPI_MONTHS.map((month, index) => ({
       month,
       actual: deltas[index],
@@ -76,16 +79,16 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
               </div>
               <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-text-tertiary">{KPI_MONTHS[focusMonth - 1]} {year}</p>
             </div>
-            <span className={`shrink-0 rounded-control px-2.5 py-1 text-sm font-medium ${cashBadgeClass(targetMet, currentAverage)}`}>
-              {targetMet === null ? (currentAverage === null ? "—" : currentAverage >= 0 ? "Positivo" : "Negativo") : targetMet ? "Meta OK" : "Abaixo"}
+            <span className={`shrink-0 rounded-control px-2.5 py-1 text-sm font-medium ${cashBadgeClass(targetMet, reportedAverage)}`}>
+              {!hasActual ? "A fechar" : targetMet === null ? (reportedAverage === null ? "—" : reportedAverage >= 0 ? "Positivo" : "Negativo") : targetMet ? "Meta OK" : "Abaixo"}
             </span>
           </div>
 
           <div>
-            <p className="text-metric font-semibold text-text">{formatKpiValue(currentAverage, "currency", { compact: true })}</p>
+            <p className="text-metric font-semibold text-text">{formatKpiValue(reportedAverage, "currency", { compact: true })}</p>
             <div className="mt-3 space-y-1 text-label text-text-secondary">
               <p>Saldo: {formatKpiValue(current?.actualValue, "currency", { compact: true })}</p>
-              <p>Geração: {formatKpiValue(currentDelta, "currency", { compact: true })}</p>
+              <p>Geração: {formatKpiValue(reportedDelta, "currency", { compact: true })}</p>
               <p>Estágio-alvo: {targetStage ?? "A definir"}</p>
             </div>
           </div>
@@ -116,7 +119,7 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
             </div>
             <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-text-tertiary">{KPI_MONTHS[focusMonth - 1]} {year}</p>
           </div>
-          <span className={`shrink-0 rounded-control px-2.5 py-1 text-sm font-medium ${badgeClass(attained)}`}>{formatAttainment(attained)}</span>
+          <span className={`shrink-0 rounded-control px-2.5 py-1 text-sm font-medium ${badgeClass(attained)}`}>{hasActual ? formatAttainment(attained) : "A fechar"}</span>
         </div>
 
         <div>
@@ -137,17 +140,28 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
   );
 }
 
-export function KpiResultBlock({ kpis, values, year = currentYear(), canEdit = false, onEdit }: KpiResultBlockProps) {
-  const focusMonth = currentMonth();
+export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiResultBlockProps) {
+  const { year, month: focusMonth } = latestClosedKpiPeriod();
+  const currentPeriod = `${KPI_MONTHS[currentMonth() - 1]} ${currentYear()}`;
+  const closedPeriod = `${KPI_MONTHS[focusMonth - 1]} ${year}`;
   const ordered = [...kpis].sort((left, right) => left.sortOrder - right.sortOrder);
+  const hasPendingClose = ordered.some((kpi) => {
+    const value = values.find((item) => item.kpiId === kpi.id && item.year === year && item.month === focusMonth);
+    return value?.actualValue === null || value?.actualValue === undefined;
+  });
 
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Banknote className="h-5 w-5 text-[#9A6400]" />
-          <h2 className="text-title-lg font-semibold text-text">Resultado</h2>
-          <span className="text-[18px] text-text-secondary">(Jogo Atual)</span>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Banknote className="h-5 w-5 text-[#9A6400]" />
+            <h2 className="text-title-lg font-semibold text-text">Resultado</h2>
+            <span className="text-[18px] text-text-secondary">(Jogo Atual)</span>
+          </div>
+          <p className="mt-1 text-sm text-text-secondary">
+            {hasPendingClose ? `${closedPeriod} aguardando fechamento` : `Último mês fechado: ${closedPeriod}`} · {currentPeriod} em andamento
+          </p>
         </div>
         {canEdit && onEdit ? (
           <Button variant="ghost" size="sm" icon={Pencil} onClick={onEdit}>
