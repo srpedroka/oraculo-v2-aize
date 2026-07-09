@@ -17,7 +17,7 @@
 | WhatsApp (fix Evo Go + anti-loop) | ✅ produção |
 | **F · Dashboard 4 KPIs (Fatias 0–3)** | ✅ produção |
 | **G · Onda 2 Fatia 4 — promover admin** | ✅ produção |
-| Catálogo de modelos (grok-4.5, gpt-5.5, fable-5, sonnet-5) | ⏳ plano pronto ([catalogo-modelos](2026-07-08-catalogo-modelos.md)) |
+| Catálogo de modelos (grok-4.5, gpt-5.5, fable-5, sonnet-5) | ✅ produção |
 | H · Importação com IA | ⏳ pendente |
 | I · Tom/persona por empresa | ⏳ pendente |
 | J · Polimento de UI (transições/ritmo) | ⏳ pendente |
