@@ -2,10 +2,10 @@ import type { Status } from "../../types";
 import { STATUS_LABEL } from "../../types";
 
 const STATUS_STYLES: Record<Status, { className: string; dot: string }> = {
-  on_track: { className: "bg-[#E6F4EA] text-[#1D7A3E]", dot: "bg-[#1D7A3E]" },
-  at_risk: { className: "bg-[#FDF1DD] text-[#9A6400]", dot: "bg-[#9A6400]" },
-  late: { className: "bg-[#FBE9E7] text-[#B42318]", dot: "bg-[#B42318]" },
-  done: { className: "bg-[#ECECEF] text-[#2E2E33]", dot: "bg-[#2E2E33]" },
+  on_track: { className: "bg-status-success-bg text-status-success", dot: "bg-status-success" },
+  at_risk: { className: "bg-status-warning-bg text-status-warning", dot: "bg-status-warning" },
+  late: { className: "bg-status-danger-bg text-status-danger", dot: "bg-status-danger" },
+  done: { className: "bg-fill-active text-accent", dot: "bg-accent" },
 };
 
 export function StatusBadge({ status, className = "" }: { status: Status; className?: string }) {
@@ -14,7 +14,7 @@ export function StatusBadge({ status, className = "" }: { status: Status; classN
   return (
     <span
       className={[
-        "inline-flex items-center gap-1.5 rounded-[10px] px-2.5 py-1 text-xs font-medium",
+        "inline-flex items-center gap-1.5 rounded-control px-2.5 py-1 text-xs font-medium",
         style.className,
         className,
       ].join(" ")}

@@ -8,8 +8,8 @@ export function Card({ className = "", interactive = false, ...props }: CardProp
   return (
     <div
       className={[
-        "rounded-2xl border border-border bg-surface p-5 shadow-card",
-        interactive ? "transition hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-md" : "",
+        "rounded-card border border-border bg-surface p-5 shadow-card",
+        interactive ? "cursor-pointer transition-[box-shadow,border-color] hover:border-accent/30 hover:shadow-raised motion-reduce:transition-none" : "",
         className,
       ].join(" ")}
       {...props}

@@ -33,18 +33,18 @@ interface KpiResultBlockProps {
 }
 
 function badgeClass(value: number | null) {
-  if (value === null) return "bg-[#ECECEF] text-text-secondary";
-  if (value >= 1) return "bg-[#E6F4EA] text-[#1D7A3E]";
-  if (value >= 0.8) return "bg-[#FDF1DD] text-[#9A6400]";
-  return "bg-[#FBE7E7] text-[#9F3333]";
+  if (value === null) return "bg-fill-active text-text-secondary";
+  if (value >= 1) return "bg-status-success-bg text-status-success";
+  if (value >= 0.8) return "bg-status-warning-bg text-status-warning";
+  return "bg-status-danger-bg text-status-danger";
 }
 
 function cashBadgeClass(status: boolean | null, ma3: number | null) {
-  if (status === true) return "bg-[#E6F4EA] text-[#1D7A3E]";
-  if (status === false) return "bg-[#FBE7E7] text-[#9F3333]";
-  if (ma3 !== null && ma3 >= 0) return "bg-[#E6F4EA] text-[#1D7A3E]";
-  if (ma3 !== null) return "bg-[#FBE7E7] text-[#9F3333]";
-  return "bg-[#ECECEF] text-text-secondary";
+  if (status === true) return "bg-status-success-bg text-status-success";
+  if (status === false) return "bg-status-danger-bg text-status-danger";
+  if (ma3 !== null && ma3 >= 0) return "bg-status-success-bg text-status-success";
+  if (ma3 !== null) return "bg-status-danger-bg text-status-danger";
+  return "bg-fill-active text-text-secondary";
 }
 
 function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values: KpiMonthlyValue[]; year: number; focusMonth: number }) {
@@ -66,24 +66,24 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
     }));
 
     return (
-      <Card className="rounded-2xl">
+      <Card>
         <div className="flex h-full flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 shrink-0 text-[#7A6A45]" />
-                <p className="truncate text-[15px] font-semibold text-text">{kpi.label}</p>
+                <p className="truncate text-body font-semibold text-text">{kpi.label}</p>
               </div>
               <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-text-tertiary">{KPI_MONTHS[focusMonth - 1]} {year}</p>
             </div>
-            <span className={`shrink-0 rounded-[10px] px-2.5 py-1 text-sm font-medium ${cashBadgeClass(targetMet, currentAverage)}`}>
+            <span className={`shrink-0 rounded-control px-2.5 py-1 text-sm font-medium ${cashBadgeClass(targetMet, currentAverage)}`}>
               {targetMet === null ? (currentAverage === null ? "—" : currentAverage >= 0 ? "Positivo" : "Negativo") : targetMet ? "Meta OK" : "Abaixo"}
             </span>
           </div>
 
           <div>
-            <p className="text-[32px] font-semibold leading-none text-text">{formatKpiValue(currentAverage, "currency", { compact: true })}</p>
-            <div className="mt-3 space-y-1 text-[13px] text-text-secondary">
+            <p className="text-metric font-semibold text-text">{formatKpiValue(currentAverage, "currency", { compact: true })}</p>
+            <div className="mt-3 space-y-1 text-label text-text-secondary">
               <p>Saldo: {formatKpiValue(current?.actualValue, "currency", { compact: true })}</p>
               <p>Geração: {formatKpiValue(currentDelta, "currency", { compact: true })}</p>
               <p>Estágio-alvo: {targetStage ?? "A definir"}</p>
@@ -106,22 +106,22 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
   }));
 
   return (
-    <Card className="rounded-2xl">
+    <Card>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Icon className="h-4 w-4 shrink-0 text-[#7A6A45]" />
-              <p className="truncate text-[15px] font-semibold text-text">{kpi.label}</p>
+              <p className="truncate text-body font-semibold text-text">{kpi.label}</p>
             </div>
             <p className="mt-1 text-xs font-medium uppercase tracking-[0.08em] text-text-tertiary">{KPI_MONTHS[focusMonth - 1]} {year}</p>
           </div>
-          <span className={`shrink-0 rounded-[10px] px-2.5 py-1 text-sm font-medium ${badgeClass(attained)}`}>{formatAttainment(attained)}</span>
+          <span className={`shrink-0 rounded-control px-2.5 py-1 text-sm font-medium ${badgeClass(attained)}`}>{formatAttainment(attained)}</span>
         </div>
 
         <div>
-          <p className="text-[32px] font-semibold leading-none text-text">{formatKpiValue(current?.actualValue, kpi.unit, { compact: true })}</p>
-          <div className="mt-3 space-y-1 text-[13px] text-text-secondary">
+          <p className="text-metric font-semibold text-text">{formatKpiValue(current?.actualValue, kpi.unit, { compact: true })}</p>
+          <div className="mt-3 space-y-1 text-label text-text-secondary">
             <p>Meta: {formatKpiValue(current?.targetValue, kpi.unit, { compact: true })}</p>
             {kpi.secondaryUnit && current?.secondaryActual !== null && current?.secondaryActual !== undefined ? (
               <p>Qtd: {formatKpiValue(current.secondaryActual, kpi.secondaryUnit, { compact: true })}</p>
@@ -146,7 +146,7 @@ export function KpiResultBlock({ kpis, values, year = currentYear(), canEdit = f
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Banknote className="h-5 w-5 text-[#9A6400]" />
-          <h2 className="text-[20px] font-semibold text-text">Resultado</h2>
+          <h2 className="text-title-lg font-semibold text-text">Resultado</h2>
           <span className="text-[18px] text-text-secondary">(Jogo Atual)</span>
         </div>
         {canEdit && onEdit ? (
@@ -156,20 +156,18 @@ export function KpiResultBlock({ kpis, values, year = currentYear(), canEdit = f
         ) : null}
       </div>
 
-      <div className="rounded-[22px] border border-border bg-white/70 p-3 shadow-card">
-        {ordered.length ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            {ordered.map((kpi) => (
-              <KpiCard key={kpi.id} kpi={kpi} values={values} year={year} focusMonth={focusMonth} />
-            ))}
-          </div>
-        ) : (
-          <Card className="rounded-2xl">
-            <p className="text-[16px] font-semibold text-text">KPIs executivos ainda não configurados</p>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">As quatro definições padrão entram automaticamente quando a migration é aplicada.</p>
-          </Card>
-        )}
-      </div>
+      {ordered.length ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {ordered.map((kpi) => (
+            <KpiCard key={kpi.id} kpi={kpi} values={values} year={year} focusMonth={focusMonth} />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <p className="text-base font-semibold text-text">KPIs executivos ainda não configurados</p>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">As quatro definições padrão entram automaticamente quando a migration é aplicada.</p>
+        </Card>
+      )}
     </section>
   );
 }

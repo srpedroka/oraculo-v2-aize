@@ -51,7 +51,7 @@ export function Dashboard() {
   });
 
   return (
-    <div className="mx-auto max-w-[820px] space-y-7">
+    <div className="mx-auto max-w-[820px] space-y-8">
       <div>
         <p className="text-sm font-medium text-text-tertiary">
           {state.organization?.name}
@@ -103,19 +103,19 @@ export function Dashboard() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Sprout className="h-5 w-5 text-[#9A6400]" />
-          <h2 className="text-[20px] font-semibold text-text">Evolução</h2>
+          <h2 className="text-title-lg font-semibold text-text">Evolução</h2>
           <span className="text-[18px] text-text-secondary">(Próximo Jogo)</span>
         </div>
 
         <div className="space-y-4">
           {visibleEvolutionObjectives.length ? (
             visibleEvolutionObjectives.map((objective) => (
-              <Card key={objective.id} className="rounded-2xl">
+              <Card key={objective.id}>
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[17px] font-medium text-text">{objective.title}</p>
-                    <p className="mt-4 text-[34px] font-semibold leading-none text-text">{objective.progress ?? 0}%</p>
-                    <p className="mt-3 text-[15px] text-text-secondary">Meta: {objective.target ?? "A definir"}</p>
+                    <p className="text-base font-medium text-text">{objective.title}</p>
+                    <p className="mt-4 text-metric font-semibold text-text">{objective.progress ?? 0}%</p>
+                    <p className="mt-3 text-body text-text-secondary">Meta: {objective.target ?? "A definir"}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <StatusBadge status={objective.status} />
@@ -130,11 +130,11 @@ export function Dashboard() {
               </Card>
             ))
           ) : (
-            <Card className="rounded-2xl">
+            <Card>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-[17px] font-medium text-text">Nenhum objetivo de Evolução cadastrado</p>
-                  <p className="mt-3 text-[15px] text-text-secondary">O próximo jogo ainda precisa de um objetivo próprio.</p>
+                  <p className="text-base font-medium text-text">Nenhum objetivo de Evolução cadastrado</p>
+                  <p className="mt-3 text-body text-text-secondary">O próximo jogo ainda precisa de um objetivo próprio.</p>
                 </div>
                 {canCreateStrategicObjective ? (
                   <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderOpen(true)}>
@@ -146,14 +146,14 @@ export function Dashboard() {
           )}
 
           {activeSeeds.length ? (
-            <Card className="rounded-2xl">
+            <Card>
               <div className="grid grid-cols-[1fr_112px] items-center gap-4">
                 <div>
-                  <p className="text-[17px] font-medium text-text">Objetivos de Evolução</p>
-                  <p className="mt-4 text-[34px] font-semibold leading-none text-text">{activeSeeds.length} Em Andamento</p>
+                  <p className="text-base font-medium text-text">Objetivos de Evolução</p>
+                  <p className="mt-4 text-metric font-semibold text-text">{activeSeeds.length} Em Andamento</p>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <span className="text-[15px] text-text-secondary">{onTrackSeeds} No Prazo</span>
-                    <span className="rounded-[12px] bg-[#FDF1DD] px-3 py-1.5 text-sm font-medium text-[#9A6400]">
+                    <span className="text-body text-text-secondary">{onTrackSeeds} No Prazo</span>
+                    <span className="rounded-control bg-status-warning-bg px-3 py-1.5 text-sm font-medium text-status-warning">
                       {attentionSeeds} Em Risco
                     </span>
                   </div>

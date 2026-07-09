@@ -150,7 +150,10 @@ export function Sidebar() {
 
   return (
     <aside
-      className="relative hidden min-h-screen shrink-0 border-r border-border bg-surface transition-[width] duration-200 sm:flex sm:flex-col"
+      className={[
+        "relative hidden min-h-screen shrink-0 border-r border-border bg-surface sm:flex sm:flex-col",
+        dragging ? "transition-none" : "transition-[width] duration-200 motion-reduce:transition-none",
+      ].join(" ")}
       style={{ width }}
     >
       <div className="flex h-20 items-center justify-between px-5">
@@ -159,7 +162,7 @@ export function Sidebar() {
             {collapsed ? "O" : "ORÁCULO"}
           </div>
           {!collapsed ? (
-            <div className="mt-1 whitespace-nowrap text-[9px] font-normal leading-none tracking-[0.08em] text-text-tertiary">
+            <div className="mt-1 whitespace-nowrap text-[9px] font-normal leading-[1.2] tracking-[0.08em] text-text-tertiary">
               Ad astra per aspera
             </div>
           ) : null}
@@ -181,13 +184,13 @@ export function Sidebar() {
             title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
               [
-                "group flex h-12 items-center gap-3 rounded-xl text-[15px] font-medium transition",
+                "group flex h-12 items-center gap-3 rounded-control text-body font-medium transition-colors motion-reduce:transition-none",
                 collapsed ? "justify-center px-0" : "px-4",
-                isActive ? "bg-[#ECECEF] text-text" : "text-[#2E2E33] hover:bg-[#F0F0F2]",
+                isActive ? "bg-fill-active text-text" : "text-[#2E2E33] hover:bg-fill-hover active:bg-fill-press",
               ].join(" ")
             }
           >
-            <item.icon className="h-5 w-5 shrink-0 text-text-secondary group-hover:text-text" />
+            <item.icon className="h-5 w-5 shrink-0 text-text-secondary transition-colors group-hover:text-text motion-reduce:transition-none" />
             {!collapsed ? (
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
             ) : null}
@@ -197,7 +200,7 @@ export function Sidebar() {
 
       <div className="relative space-y-3 p-4">
         {!collapsed ? (
-          <div className="rounded-2xl border border-border bg-[#FAFAFB] p-2">
+          <div className="rounded-card border border-border bg-surface-muted p-2">
             {state.organizations.length > 1 ? (
               <label className="flex items-center gap-2">
                 <Building2 aria-hidden="true" className="h-4 w-4 shrink-0 text-text-secondary" />
@@ -205,7 +208,7 @@ export function Sidebar() {
                 <select
                   value={state.activeOrgId ?? ""}
                   onChange={(event) => dispatch({ type: "set_active_org", orgId: event.target.value })}
-                  className="h-8 min-w-0 flex-1 rounded-[10px] border border-transparent bg-transparent px-1 text-sm font-medium text-text"
+                  className="h-8 min-w-0 flex-1 rounded-control border border-transparent bg-transparent px-1 text-sm font-medium text-text"
                 >
                   {state.organizations.map((organization) => (
                     <option key={organization.id} value={organization.id}>
@@ -235,11 +238,11 @@ export function Sidebar() {
             setAccountOpen((current) => !current);
           }}
           className={[
-            "flex w-full items-center gap-3 rounded-2xl border border-transparent p-2 text-left transition hover:border-border hover:bg-[#FAFAFB]",
+            "flex w-full items-center gap-3 rounded-card border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-surface-muted active:bg-fill-hover motion-reduce:transition-none",
             collapsed ? "justify-center" : "",
           ].join(" ")}
         >
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ECECEF] text-xs font-semibold text-text">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fill-active text-xs font-semibold text-text">
             {accountInitials}
             <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-[#30D158]" />
           </div>
@@ -254,7 +257,7 @@ export function Sidebar() {
         {accountOpen ? (
           <div
             className={[
-              "absolute z-40 rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.16)]",
+              "absolute z-40 animate-pop-in rounded-overlay border border-border bg-surface p-4 shadow-overlay motion-reduce:animate-none",
               collapsed ? "bottom-4 left-[calc(100%+12px)] w-80" : "bottom-28 left-4 right-4",
             ].join(" ")}
           >
@@ -266,7 +269,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => setAccountOpen(false)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-text-secondary transition hover:bg-[#F0F0F2] hover:text-text"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-text-secondary transition-colors hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
                 aria-label="Fechar conta"
               >
                 <X className="h-4 w-4" />
@@ -282,7 +285,7 @@ export function Sidebar() {
                     setAccountName(event.target.value);
                     setAccountSaved(false);
                   }}
-                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  className="h-10 w-full rounded-control border border-border bg-white px-3 text-sm text-text"
                 />
               </label>
               <label className="block">
@@ -290,7 +293,7 @@ export function Sidebar() {
                 <input
                   value={accountEmail}
                   readOnly
-                  className="h-10 w-full rounded-xl border border-border bg-[#FAFAFB] px-3 text-sm text-text-secondary"
+                  className="h-10 w-full rounded-control border border-border bg-surface-muted px-3 text-sm text-text-secondary"
                 />
               </label>
               <label className="block">
@@ -302,12 +305,12 @@ export function Sidebar() {
                     setAccountSaved(false);
                   }}
                   placeholder="+5546999990000"
-                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  className="h-10 w-full rounded-control border border-border bg-white px-3 text-sm text-text"
                 />
               </label>
 
               {accountSaved ? (
-                <p className="flex items-center gap-1.5 text-xs font-medium text-[#1D7A3E]">
+                <p className="animate-pop-in flex items-center gap-1.5 text-xs font-medium text-status-success motion-reduce:animate-none">
                   <Check className="h-3.5 w-3.5" />
                   Conta salva.
                 </p>
@@ -315,7 +318,7 @@ export function Sidebar() {
               {accountError ? <p className="text-xs leading-5 text-[#B42318]">{accountError}</p> : null}
 
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button type="submit" size="sm" icon={Save} disabled={accountSaving}>
+                <Button type="submit" size="sm" icon={Save} loading={accountSaving}>
                   {accountSaving ? "Salvando..." : "Salvar conta"}
                 </Button>
                 <Button variant="ghost" size="sm" icon={LogOut} onClick={() => void signOut()}>
@@ -331,7 +334,7 @@ export function Sidebar() {
         <button
           type="button"
           onMouseDown={startResize}
-          className="absolute right-[-5px] top-0 h-full w-2 cursor-col-resize bg-transparent transition hover:bg-accent/10"
+          className="absolute right-[-5px] top-0 h-full w-2 cursor-col-resize bg-transparent transition-colors hover:bg-accent/10 motion-reduce:transition-none"
           aria-label="Redimensionar barra lateral"
         >
           <span className="sr-only">Redimensionar barra lateral</span>
@@ -340,7 +343,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => dispatch({ type: "toggle_sidebar" })}
-          className="absolute right-[-12px] top-7 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card"
+          className="absolute right-[-12px] top-7 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card transition hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
           aria-label="Expandir barra lateral"
         >
           <ChevronRight className="h-4 w-4" />
@@ -351,7 +354,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => dispatch({ type: "toggle_sidebar" })}
-          className="absolute right-[-12px] top-7 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card"
+          className="absolute right-[-12px] top-7 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card transition hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
           aria-label="Recolher barra lateral"
         >
           <ChevronLeft className="h-4 w-4" />
