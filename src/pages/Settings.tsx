@@ -44,6 +44,8 @@ const AI_FUNCTIONS: { value: AiFunction; title: string; description: string }[] 
   { value: "background", title: "Bastidores", description: "Classifica documentos, prepara resumos e executa tarefas de apoio com custo controlado." },
 ];
 
+const CUSTOM_MODEL_VALUE = "__custom_model__";
+
 const TONE_PRESETS: Array<{
   value: OrgTonePreset;
   label: string;
@@ -365,7 +367,12 @@ export function Settings() {
 
   async function saveAiFunction(aiFunction: AiFunction) {
     const draft = aiFunctionDrafts[aiFunction];
-    const modelValue = draft.model.trim() || DEFAULT_MODEL_BY_PROVIDER[draft.provider];
+    const modelValue = draft.model.trim();
+    if (!modelValue) {
+      setAiMessage("Escolha um modelo do catálogo ou informe o id de um modelo personalizado.");
+      setAiMessageTone("provider_error");
+      return;
+    }
     setSavingFunction(aiFunction);
     setAiMessage("");
     setAiMessageTone(null);
@@ -383,7 +390,12 @@ export function Settings() {
 
   async function testFunction(aiFunction: AiFunction) {
     const draft = aiFunctionDrafts[aiFunction];
-    const modelValue = draft.model.trim() || DEFAULT_MODEL_BY_PROVIDER[draft.provider];
+    const modelValue = draft.model.trim();
+    if (!modelValue) {
+      setAiMessage("Escolha um modelo do catálogo ou informe o id de um modelo personalizado.");
+      setAiMessageTone("provider_error");
+      return;
+    }
     setTestingFunction(aiFunction);
     setAiMessage("");
     setAiMessageTone(null);
@@ -765,7 +777,7 @@ export function Settings() {
                   const draft = aiFunctionDrafts[item.value];
                   const pricing = findModelPricing(draft.provider, draft.model);
                   const modelOptions = modelOptionsForProvider(draft.provider);
-                  const datalistId = `ai-model-options-${item.value}`;
+                  const isCatalogModel = modelOptions.some((option) => option.model === draft.model);
                   const persisted = state.aiFunctionSettings.find((setting) => setting.function === item.value);
                   return (
                     <div key={item.value} className="rounded-2xl border border-border bg-white p-4">
@@ -804,24 +816,39 @@ export function Settings() {
                             </option>
                           ))}
                         </select>
-                        <input
-                          list={datalistId}
-                          value={draft.model}
+                        <select
+                          value={isCatalogModel ? draft.model : CUSTOM_MODEL_VALUE}
                           onChange={(event) => {
+                            const nextModel = event.target.value;
                             setAiFunctionDrafts((current) => ({
                               ...current,
-                              [item.value]: { ...current[item.value], model: event.target.value },
+                              [item.value]: { ...current[item.value], model: nextModel === CUSTOM_MODEL_VALUE ? "" : nextModel },
                             }));
                             setAiMessage("");
                           }}
-                          placeholder="Modelo"
                           className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
-                        />
-                        <datalist id={datalistId}>
+                          aria-label={`Modelo para ${item.title}`}
+                        >
                           {modelOptions.map((option) => (
-                            <option key={option.model} value={option.model} />
+                            <option key={option.model} value={option.model}>{option.model}</option>
                           ))}
-                        </datalist>
+                          <option value={CUSTOM_MODEL_VALUE}>Outro modelo</option>
+                        </select>
+                        {!isCatalogModel ? (
+                          <input
+                            value={draft.model}
+                            onChange={(event) => {
+                              setAiFunctionDrafts((current) => ({
+                                ...current,
+                                [item.value]: { ...current[item.value], model: event.target.value },
+                              }));
+                              setAiMessage("");
+                            }}
+                            placeholder="Id do modelo personalizado"
+                            className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+                            aria-label={`Id personalizado para ${item.title}`}
+                          />
+                        ) : null}
                         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                           <div className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2">
                             <p className="text-xs font-medium text-text-secondary">Pricing automático</p>

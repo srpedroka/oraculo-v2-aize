@@ -2,6 +2,7 @@
 
 ## 2026-07-09
 
+- Corrigida a seleção de modelos de IA: Configurações agora exibe uma lista explícita de todos os modelos cadastrados para cada provedor, incluindo `grok-4.3` e `grok-4.5` na xAI, e mantém a opção de informar um id personalizado que será validado pelo provedor ao salvar.
 - Executada a Onda 3c de polimento de UI: adicionados tokens de raio, sombra, movimento, superfícies, estados e tipografia; navegação e controles ganharam transições sutis, feedback de pressão, foco mais claro e respeito a redução de movimento. O Dashboard dos KPIs foi simplificado para remover a moldura redundante e unificar ritmo, métricas e camadas visuais.
 - Executada a Onda 3b de tom/persona por empresa: criada `org_ai_tone` com RLS membro-le/owner-escreve, presets, eixos gentil↔ácido e direto↔motivador, preferência personalizada e aplicação segura no app, WhatsApp e condutores de planejamento.
 - Executada a Onda 3a da importacao historica com IA: criada `suggest-historical-metadata`, usando a funcao `background` para sugerir tipo/area/periodo/titulo antes da gravacao, com fallback heuristico, confirmacao obrigatoria do usuario e periodo vazio quando nao houver data clara.
