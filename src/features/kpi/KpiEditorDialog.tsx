@@ -2,10 +2,10 @@ import { AlertTriangle, FileSpreadsheet, Save, Wand2, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { KPI_SPREADSHEET_ACCEPT, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
+import { isKpiImageFile, KPI_IMPORT_ACCEPT, readKpiImage, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
 import { cashDeltas, formatKpiValue, KPI_MONTHS, ladderLabel, movingAverage3, orderedLadder } from "../../lib/kpi";
 import { useAppState } from "../../state/store";
-import type { ExecutiveKpi, KpiMonthlyValue, KpiSpreadsheetSuggestion } from "../../types";
+import type { ExecutiveKpi, KpiImportKind, KpiMonthlyValue, KpiSpreadsheetSuggestion } from "../../types";
 
 interface KpiEditorDialogProps {
   onClose: () => void;
@@ -38,6 +38,10 @@ function parseInputNumber(value: string) {
 
 function formatInputNumber(value: number) {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
+}
+
+function suggestionYears(suggestion: KpiSpreadsheetSuggestion) {
+  return [...new Set(suggestion.rows.map((row) => row.year))].sort((left, right) => left - right);
 }
 
 function buildDraft(kpi: ExecutiveKpi, values: KpiMonthlyValue[], year: number): KpiDraft {
@@ -89,6 +93,7 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
   const [importing, setImporting] = useState(false);
   const [applyingImport, setApplyingImport] = useState(false);
   const [spreadsheetSuggestion, setSpreadsheetSuggestion] = useState<KpiSpreadsheetSuggestion | null>(null);
+  const [importSource, setImportSource] = useState<{ fileName: string; kind: KpiImportKind } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const spreadsheetInputRef = useRef<HTMLInputElement>(null);
   const activeKpi = orderedKpis.find((kpi) => kpi.id === activeKpiId) ?? orderedKpis[0] ?? null;
@@ -161,46 +166,57 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
     });
   }
 
-  async function importSpreadsheet(file: File | null) {
+  function discardImportSuggestion() {
+    setSpreadsheetSuggestion(null);
+    setImportSource(null);
+  }
+
+  async function importKpiFile(file: File | null) {
     if (!file) return;
     setImporting(true);
     setMessage(null);
-    setSpreadsheetSuggestion(null);
+    discardImportSuggestion();
 
     try {
-      const imported = await readKpiSpreadsheet(file);
-      const suggestion = await suggestKpiSpreadsheet(imported.rawText, imported.fileName);
+      const imported = isKpiImageFile(file)
+        ? await readKpiImage(file)
+        : await readKpiSpreadsheet(file);
+      const image = "image" in imported;
+      const suggestion = image
+        ? await suggestKpiSpreadsheet({ kind: "image", fileName: imported.fileName, image: imported.image })
+        : await suggestKpiSpreadsheet({ kind: "spreadsheet", fileName: imported.fileName, rawText: imported.rawText });
       if (!suggestion.rows.length) {
-        setMessage(suggestion.warnings[0] ?? "Não encontrei lançamentos de Meta ou Atingido na planilha.");
+        setMessage(suggestion.warnings[0] ?? "Não encontrei lançamentos de Meta ou Atingido no arquivo.");
         return;
       }
       setSpreadsheetSuggestion({
         ...suggestion,
-        warnings: imported.truncated
+        warnings: !image && imported.truncated
           ? ["A planilha é grande; a leitura foi limitada às primeiras abas e linhas.", ...suggestion.warnings]
           : suggestion.warnings,
       });
+      setImportSource({ fileName: imported.fileName, kind: image ? "image" : "spreadsheet" });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível importar esta planilha.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível importar este arquivo.");
     } finally {
       setImporting(false);
     }
   }
 
   async function applySpreadsheetSuggestion() {
-    if (!spreadsheetSuggestion) return;
+    if (!spreadsheetSuggestion || !importSource) return;
     setApplyingImport(true);
     setMessage(null);
 
     try {
-      const importedCount = await applyKpiSpreadsheetSuggestion(spreadsheetSuggestion);
-      if (spreadsheetSuggestion.year === year) {
+      const importedCount = await applyKpiSpreadsheetSuggestion(spreadsheetSuggestion, importSource);
+      if (spreadsheetSuggestion.rows.some((suggested) => suggested.year === year)) {
         setDrafts((current) => {
           const next = { ...current };
           for (const suggested of spreadsheetSuggestion.rows) {
             const kpi = orderedKpis.find((item) => item.key === suggested.kpiKey);
             const draft = kpi ? next[kpi.id] : null;
-            if (!kpi || !draft) continue;
+            if (!kpi || !draft || suggested.year !== year) continue;
             next[kpi.id] = {
               ...draft,
               months: draft.months.map((month, index) => index !== suggested.month - 1 ? month : {
@@ -216,10 +232,11 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
           return next;
         });
       }
-      setSpreadsheetSuggestion(null);
-      setMessage(`${importedCount} lançamentos de ${spreadsheetSuggestion.year} carregados.`);
+      const years = suggestionYears(spreadsheetSuggestion).join(", ");
+      discardImportSuggestion();
+      setMessage(`${importedCount} lançamentos de ${years} carregados e registrados em Documentos.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível carregar os lançamentos da planilha.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível carregar os lançamentos do arquivo.");
     } finally {
       setApplyingImport(false);
     }
@@ -261,16 +278,16 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
               <input
                 ref={spreadsheetInputRef}
                 type="file"
-                accept={KPI_SPREADSHEET_ACCEPT}
+                accept={KPI_IMPORT_ACCEPT}
                 className="hidden"
                 onChange={(event) => {
                   const [file] = Array.from(event.target.files ?? []);
                   event.target.value = "";
-                  void importSpreadsheet(file ?? null);
+                  void importKpiFile(file ?? null);
                 }}
               />
               <Button variant="ghost" icon={FileSpreadsheet} onClick={() => spreadsheetInputRef.current?.click()} disabled={importing}>
-                {importing ? "Lendo planilha" : "Importar planilha"}
+                {importing ? "Lendo arquivo" : "Importar planilha ou imagem"}
               </Button>
               <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
             </div>
@@ -301,10 +318,13 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
             <section className="border border-border bg-[#F7F7F8] p-4" aria-live="polite">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-text">Prévia da importação · {spreadsheetSuggestion.year}</p>
+                  <p className="text-sm font-semibold text-text">
+                    Prévia da importação · {suggestionYears(spreadsheetSuggestion).join(", ")}
+                    {importSource?.kind === "image" ? " · Imagem" : " · Planilha"}
+                  </p>
                   <p className="mt-1 text-sm text-text-secondary">{spreadsheetSuggestion.summary}</p>
                 </div>
-                <Button variant="quiet" size="icon" icon={X} onClick={() => setSpreadsheetSuggestion(null)} aria-label="Descartar prévia" />
+                <Button variant="quiet" size="icon" icon={X} onClick={discardImportSuggestion} aria-label="Descartar prévia" />
               </div>
 
               {spreadsheetSuggestion.warnings.length ? (
@@ -319,6 +339,7 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
                   <thead className="bg-[#EEF1F4] text-xs uppercase tracking-[0.08em] text-text-tertiary">
                     <tr>
                       <th className="px-3 py-2 font-semibold">Indicador</th>
+                      <th className="px-3 py-2 font-semibold">Ano</th>
                       <th className="px-3 py-2 font-semibold">Mês</th>
                       <th className="px-3 py-2 font-semibold">Meta</th>
                       <th className="px-3 py-2 font-semibold">Atingido</th>
@@ -330,8 +351,9 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
                       const target = suggested.targetStage && kpi ? ladderLabel(kpi.ladder, suggested.targetStage) : kpi ? formatKpiValue(suggested.targetValue, kpi.unit, { compact: true }) : "—";
                       const actual = kpi ? formatKpiValue(suggested.actualValue, kpi.unit, { compact: true }) : "—";
                       return (
-                        <tr key={`${suggested.kpiKey}-${suggested.month}`} className="border-t border-border">
+                        <tr key={`${suggested.year}-${suggested.kpiKey}-${suggested.month}`} className="border-t border-border">
                           <td className="px-3 py-2 font-medium text-text">{kpi?.label ?? suggested.kpiKey}</td>
+                          <td className="px-3 py-2 text-text-secondary">{suggested.year}</td>
                           <td className="px-3 py-2 text-text-secondary">{KPI_MONTHS[suggested.month - 1]}</td>
                           <td className="px-3 py-2 text-text-secondary">{target ?? "—"}</td>
                           <td className="px-3 py-2 text-text-secondary">{actual}</td>
@@ -344,7 +366,7 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
               {spreadsheetSuggestion.rows.length > 12 ? <p className="mt-2 text-xs text-text-tertiary">Mais {spreadsheetSuggestion.rows.length - 12} lançamentos serão aplicados.</p> : null}
 
               <div className="mt-4 flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" onClick={() => setSpreadsheetSuggestion(null)} disabled={applyingImport}>Descartar</Button>
+                <Button variant="ghost" onClick={discardImportSuggestion} disabled={applyingImport}>Descartar</Button>
                 <Button icon={FileSpreadsheet} onClick={applySpreadsheetSuggestion} disabled={applyingImport}>
                   {applyingImport ? "Carregando" : `Aplicar ${spreadsheetSuggestion.rows.length} lançamentos`}
                 </Button>

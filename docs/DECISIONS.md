@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-09 - Importacao de KPI aceita imagem e registra histórico estruturado
+
+Decisao: ampliar a importacao de KPI para planilhas e imagens, usando visao da IA somente para propor os quatro indicadores permitidos; a confirmacao grava anos passados em `kpi_monthly_values` e cria um documento `kpi_history` em Documentos.
+
+Contexto: numeros antigos e screenshots de relatórios trazem informação útil para o Dashboard, mas não devem forçar digitação manual nem virar mídia permanente no banco.
+
+Alternativas: guardar a imagem em Storage, tentar OCR local sem IA, ou gravar o resultado sem documento de origem.
+
+Motivo: visão no provedor de IA reconhece relatórios variados sem reter o arquivo no produto; sanitização server-side impede que a imagem crie indicadores fora de Faturamento, Margem operacional, Produção e Caixa. O documento histórico deixa a origem e as linhas aplicadas auditáveis.
+
+Consequencias: imagem só funciona com modelo `background` de OpenAI, Anthropic ou xAI; Moonshot/Kimi continua adequado a planilhas de texto. A imagem/base64 não é salva em Supabase, e `kpi_history` é excluído da memória de planejamento estratégico para não confundir dado de resultado com plano passado.
+
 ## 2026-07-09 - Resultado do Dashboard referencia o ultimo mes fechado
 
 Decisao: o bloco Resultado dos KPIs sempre destaca o mes calendario anterior; o mes atual e identificado como em andamento, sem ser apresentado como atingido consolidado.

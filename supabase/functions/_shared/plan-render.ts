@@ -14,6 +14,7 @@ function documentTypeLabel(value: unknown) {
   if (type === "monthly") return "PLANO MENSAL";
   if (type === "month_close") return "FECHAMENTO MENSAL";
   if (type === "quarter_close") return "FECHAMENTO TRIMESTRAL";
+  if (type === "kpi_history") return "HISTÓRICO DE KPIs";
   return "DOCUMENTO ORÁCULO";
 }
 

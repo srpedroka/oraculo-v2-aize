@@ -21,6 +21,11 @@ export interface ModelCallOptions {
   temperature?: number;
 }
 
+export interface ModelImageInput {
+  mimeType: "image/jpeg" | "image/png";
+  base64: string;
+}
+
 function emptyUsage(): ModelUsage {
   return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 }
@@ -162,6 +167,99 @@ export async function callModel(
   }
 
   throw new Error("Provedor não suportado");
+}
+
+export async function callModelWithImage(
+  provider: Provider,
+  model: string,
+  apiKey: string,
+  systemPrompt: string,
+  userText: string,
+  image: ModelImageInput,
+  options: ModelCallOptions = {},
+): Promise<ModelCallResult> {
+  const maxTokens = options.maxTokens;
+  const temperature = options.temperature;
+  const imageUrl = `data:${image.mimeType};base64,${image.base64}`;
+
+  if (provider === "openai" || provider === "xai") {
+    const baseUrl = provider === "openai" ? "https://api.openai.com/v1" : "https://api.x.ai/v1";
+    const response = await fetchWithTimeout(`${baseUrl}/responses`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        instructions: systemPrompt,
+        input: [{
+          role: "user",
+          content: [
+            { type: "input_text", text: userText },
+            { type: "input_image", image_url: imageUrl, detail: "high" },
+          ],
+        }],
+        max_output_tokens: maxTokens ?? 700,
+        ...(typeof temperature === "number" ? { temperature } : {}),
+        store: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${provider === "openai" ? "OpenAI" : "xAI/Grok"} não conseguiu ler a imagem: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return {
+      text: responseText(data),
+      usage: normalizeOpenAiUsage(data.usage),
+    };
+  }
+
+  if (provider === "anthropic") {
+    const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        system: systemPrompt,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: userText },
+            { type: "image", source: { type: "base64", media_type: image.mimeType, data: image.base64 } },
+          ],
+        }],
+        max_tokens: maxTokens ?? 900,
+        temperature: temperature ?? 0.4,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Anthropic não conseguiu ler a imagem: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const promptTokens = Number(data.usage?.input_tokens ?? 0);
+    const completionTokens = Number(data.usage?.output_tokens ?? 0);
+    return {
+      text: data.content?.map((block: { text?: string }) => block.text ?? "").join("\n").trim() || "Não consegui gerar uma resposta agora.",
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+      },
+    };
+  }
+
+  throw new Error("O modelo de bastidores selecionado não aceita leitura de imagem. Escolha OpenAI, Anthropic ou xAI em Configurações.");
 }
 
 export async function callModelText(

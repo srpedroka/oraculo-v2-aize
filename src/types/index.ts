@@ -5,7 +5,7 @@ export type Status = "on_track" | "at_risk" | "late" | "done";
 export type PlanLevel = "strategic" | "area_annual" | "quarterly" | "monthly";
 export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
 export type PlanningSessionStatus = "active" | "completed" | "abandoned";
-export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
+export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review" | "kpi_history";
 export type PlanDocumentOrigin = "session" | "historical";
 export type KpiKey = "revenue" | "operating_margin" | "production" | "cash";
 export type KpiUnit = "currency" | "percent" | "count" | "number";
@@ -226,6 +226,7 @@ export interface KpiMonthlyValue {
 }
 
 export interface KpiSpreadsheetSuggestionRow {
+  year: number;
   kpiKey: KpiKey;
   month: number;
   targetValue: number | null;
@@ -241,6 +242,20 @@ export interface KpiSpreadsheetSuggestion {
   summary: string;
   warnings: string[];
   source: "ai_background" | "unavailable";
+}
+
+export type KpiImportKind = "spreadsheet" | "image";
+
+export interface KpiImportImage {
+  mimeType: "image/jpeg" | "image/png";
+  base64: string;
+}
+
+export interface KpiImportInput {
+  kind: KpiImportKind;
+  fileName: string;
+  rawText?: string;
+  image?: KpiImportImage;
 }
 
 export type OracleMode = "normal" | "minimized" | "expanded";

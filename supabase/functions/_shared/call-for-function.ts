@@ -1,5 +1,5 @@
 import type { AiFunction } from "./ai-router.ts";
-import { callModel, type ModelCallOptions } from "./model.ts";
+import { callModel, callModelWithImage, type ModelCallOptions, type ModelImageInput } from "./model.ts";
 import { classifyModelError, type ProbeStatus } from "./model-probe.ts";
 
 type Client = any;
@@ -52,6 +52,27 @@ export async function callModelForFunction(
 ) {
   try {
     const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, messages, options);
+    await markFunctionStatus(client, orgId, fn, "ok", "runtime", "Último uso validado.");
+    return result;
+  } catch (error) {
+    const classified = classifyModelError(error);
+    await markFunctionStatus(client, orgId, fn, classified.status, "runtime", classified.detail);
+    throw error;
+  }
+}
+
+export async function callModelWithImageForFunction(
+  client: Client,
+  orgId: string,
+  fn: AiFunction,
+  aiRoute: AiRoute,
+  systemPrompt: string,
+  userText: string,
+  image: ModelImageInput,
+  options: ModelCallOptions = aiRoute.limits,
+) {
+  try {
+    const result = await callModelWithImage(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, userText, image, options);
     await markFunctionStatus(client, orgId, fn, "ok", "runtime", "Último uso validado.");
     return result;
   } catch (error) {

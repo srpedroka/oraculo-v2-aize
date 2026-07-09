@@ -93,6 +93,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - `oracle-session`
 - `month-turn`
 - `suggest-kpi-spreadsheet`
+- `apply-kpi-import`
 - `whatsapp-webhook`
 
 ## Documentacao

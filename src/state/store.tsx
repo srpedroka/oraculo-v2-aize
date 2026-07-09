@@ -20,6 +20,8 @@ import type {
   ExecutiveKpi,
   HistoricalMetadataSuggestion,
   KeyAction,
+  KpiImportInput,
+  KpiImportKind,
   KpiMonthlyValue,
   KpiSpreadsheetSuggestion,
   LadderStage,
@@ -151,8 +153,8 @@ interface AppContextValue {
   testAiProviderKey: (provider: AiProvider) => Promise<AiSettingsSaveResult>;
   testAiFunction: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
   saveOrgTone: (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">) => Promise<OrgTone>;
-  suggestKpiSpreadsheet: (rawText: string, fileName: string) => Promise<KpiSpreadsheetSuggestion>;
-  applyKpiSpreadsheetSuggestion: (suggestion: KpiSpreadsheetSuggestion) => Promise<number>;
+  suggestKpiSpreadsheet: (input: KpiImportInput) => Promise<KpiSpreadsheetSuggestion>;
+  applyKpiSpreadsheetSuggestion: (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind }) => Promise<number>;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -1734,12 +1736,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [invalidateOrg]);
 
   const suggestKpiSpreadsheet = useCallback(
-    async (rawText: string, fileName: string) => {
+    async (input: KpiImportInput) => {
       if (!orgId) throw new Error("Empresa obrigatória");
-      const result = await callEdgeFunction<{ orgId: string; rawText: string; fileName: string }>("suggest-kpi-spreadsheet", {
+      const result = await callEdgeFunction("suggest-kpi-spreadsheet", {
         orgId,
-        rawText,
-        fileName,
+        ...input,
       }) as { suggestion: KpiSpreadsheetSuggestion };
       queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
       return result.suggestion;
@@ -1748,38 +1749,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const applyKpiSpreadsheetSuggestion = useCallback(
-    async (suggestion: KpiSpreadsheetSuggestion) => {
+    async (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind }) => {
       if (!orgId) throw new Error("Empresa obrigatória");
-      if (!userId) throw new Error("Sessão obrigatória");
-
-      const client = requireClient();
-      const kpisByKey = new Map(state.executiveKpis.map((kpi) => [kpi.key, kpi]));
-      const rows = suggestion.rows.flatMap((suggested) => {
-        const kpi = kpisByKey.get(suggested.kpiKey);
-        if (!kpi) return [];
-        const existing = state.kpiValues.find((value) => value.kpiId === kpi.id && value.year === suggestion.year && value.month === suggested.month);
-        return [{
-          org_id: orgId,
-          kpi_id: kpi.id,
-          year: suggestion.year,
-          month: suggested.month,
-          target_value: suggested.targetValue ?? existing?.targetValue ?? null,
-          target_stage: suggested.targetStage ?? existing?.targetStage ?? null,
-          actual_value: suggested.actualValue ?? existing?.actualValue ?? null,
-          secondary_actual: suggested.secondaryActual ?? existing?.secondaryActual ?? null,
-          note: suggested.note ?? existing?.note ?? null,
-          updated_by: userId,
-          updated_at: new Date().toISOString(),
-        }];
-      });
-      if (!rows.length) throw new Error("A proposta não contém lançamentos válidos para os KPIs desta empresa.");
-
-      const { error } = await client.from("kpi_monthly_values").upsert(rows, { onConflict: "kpi_id,year,month" });
-      if (error) throw error;
+      const result = await callEdgeFunction<{
+        orgId: string;
+        suggestion: KpiSpreadsheetSuggestion;
+        fileName: string;
+        inputKind: KpiImportKind;
+      }>("apply-kpi-import", {
+        orgId,
+        suggestion,
+        fileName: source.fileName,
+        inputKind: source.kind,
+      }) as { appliedCount: number };
       queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
-      return rows.length;
+      queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
+      return result.appliedCount;
     },
-    [orgId, queryClient, state.executiveKpis, state.kpiValues, userId],
+    [orgId, queryClient],
   );
 
   const saveAiProviderKey = useCallback(

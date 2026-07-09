@@ -8,6 +8,7 @@ const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
   strategic_review: "Revisão Estratégica",
+  kpi_history: "Histórico de KPIs",
 };
 
 function asText(value: unknown, fallback = "") {

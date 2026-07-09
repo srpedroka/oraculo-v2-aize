@@ -2,6 +2,7 @@
 
 ## 2026-07-09
 
+- Ampliada a importação de KPIs: o editor agora aceita planilhas e imagens JPG/PNG/WEBP; a IA extrai somente Faturamento, Margem operacional, Produção e Caixa por ano/mês. Ao confirmar, valores históricos entram em `kpi_monthly_values` e um documento `Histórico de KPIs` é salvo para auditoria, sem armazenar a mídia original.
 - Ajustada a referencia principal dos KPIs no Dashboard: Resultado agora destaca sempre o mes calendario anterior como ultimo mes fechado, mostra `aguardando fechamento` quando faltar realizado e deixa o mes corrente explicitamente como em andamento.
 - Ajustado o minigráfico de Meta/Atingido dos KPIs no Dashboard: os meses agora aparecem no eixo horizontal. Adicionada importação de planilhas `.xlsx`, `.xls` e `.csv` no editor de KPIs; o navegador extrai a tabela, a IA de bastidores propõe indicador/mês/Meta/Atingido e a pessoa confirma a prévia antes de gravar.
 - Corrigida a seleção de modelos de IA: Configurações agora exibe uma lista explícita de todos os modelos cadastrados para cada provedor, incluindo `grok-4.3` e `grok-4.5` na xAI, e mantém a opção de informar um id personalizado que será validado pelo provedor ao salvar.
