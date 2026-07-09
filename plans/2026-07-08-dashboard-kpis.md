@@ -230,17 +230,18 @@ Em `src/pages/Settings.tsx` (bloco de membros, linhas 420-451): trocar o badge e
 ### Fatia 5 — Acabamento + docs (opcional)
 - YTD/acumulado anual por card (fluxo = soma; margem/caixa **não somam** — ver P9); atualizar `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/DECISIONS.md`, `docs/CHANGELOG.md` (schema novo, RLS, papel admin, Edge Function) — obrigatório por AGENTS.md §8.
 
-## 7. Decisões de produto em ABERTO (flaggo, não invento)
+## 7. Decisões (RESOLVIDAS pelo dono — 2026-07-09) → Onda 2 liberada
 
-- **P1 — Produção: valor ou quantidade?** Default proposto: `unit` primário escolhido pelo dono + `secondary_unit`/`secondary_actual` opcional para qtd. Confirmar se quer os dois lado a lado no card ou só um.
-- **P2 — Caixa "atingido": saldo ou variação?** Recomendo gravar **saldo do fim do mês** (é estoque) + `opening_balance`, app deriva delta/MA3. Alternativa mais simples: dono digita a **variação** direto. Precisa do dono confirmar como ele pensa o número.
-- **P3 — Ladder do caixa:** entrego 4 estágios default (estancar/operacional≥0/dívida/sobrar). Confirmar rótulos e se cada estágio tem **limiar numérico** (`target_value`) ou é só qualitativo.
-- **P4 — Escopo do papel `admin`:** default = **só edita o dashboard**. Ampliar para convidar membros / editar plano é decisão futura (evita escalonamento silencioso).
-- **P5 — Quem promove admin:** default = **só owner**. Admin poder promover outro admin? (recomendo não, por ora).
-- **P6 — Ano do dashboard:** default = ano corrente (`currentYear()`); schema já tem `year` para histórico/multi-ano. Confirmar se precisa seletor de ano já na v1.
-- **P7 — Agregação anual de Margem e Caixa:** soma de meses **não** faz sentido (margem é razão; caixa é saldo). Definir se o "acumulado" mostra última leitura, média ponderada (margem) ou saldo atual (caixa).
-- **P8 — Direção por KPI:** default `higher_better` para os 4. Algum caso `lower_better` (ex.: alguma meta de caixa)? Confirmar.
-- **P9 — % de atingimento quando meta ausente/zero:** default = exibir "—" (sem divisão por zero) e badge neutro.
+**Explícitas do dono:**
+- **Papel `admin` (P4/P5):** SIM — criar papel novo `admin`. Admin **edita o dashboard executivo/KPIs**; **só o owner promove** alguém a admin (admin não promove admin). Escopo do admin fica no dashboard por ora (não amplia para convites/plano — evita escalonamento silencioso).
+- **Produção (P1):** suportar **R$ E quantidade**; o dono escolhe por KPI qual acompanhar — um, o outro, ou os dois no card. Manter `unit` + `secondary_unit`/`secondary_actual`, ambos preenchíveis e exibidos conforme o dono usar.
+- **Caixa (P2 + P3):** "atingido" = **saldo bancário no fim do mês** (app deriva geração e média móvel de 3 meses via `opening_balance`). A **meta do caixa é ESCOLHER UM dos 4 estágios da escada** (1. estancar a sangria / 2. operacional ≥ 0 / 3. aguentar a dívida / 4. sobrar) — o campo de meta do caixa é um **seletor de estágio**, não um número. Estágio atual do dono = o **1º** ("não deixar o caixa zerar" / estancar a sangria). Limiar numérico por estágio (`target_value`) é **opcional** — não obrigatório na v1.
+
+**Defaults confirmados (sem objeção):**
+- **P6 — Ano:** ano corrente; sem seletor de ano na v1 (schema já guarda `year` para depois).
+- **P7 — Agregação anual:** margem = última leitura/média (não soma); caixa = saldo atual / geração acumulada; só fluxo (faturamento/produção) soma no YTD.
+- **P8 — Direção:** `higher_better` nos 4.
+- **P9 — % sem meta/zero:** exibe "—" com badge neutro (sem divisão por zero).
 
 ---
 
