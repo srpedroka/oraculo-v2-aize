@@ -17,7 +17,10 @@ import type {
   ChatMessage,
   CheckIn,
   Evidence,
+  ExecutiveKpi,
   KeyAction,
+  KpiMonthlyValue,
+  LadderStage,
   Membership,
   MembershipRole,
   Objective,
@@ -67,6 +70,29 @@ type AppAction =
   | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[] }
   | { type: "update_objective"; objective: Objective }
   | { type: "update_key_action"; keyAction: KeyAction }
+  | {
+      type: "upsert_kpi_definition";
+      kpiId: string;
+      annualTarget?: number | null;
+      openingBalance?: number | null;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
+  | {
+      type: "upsert_kpi_month";
+      kpiId: string;
+      year: number;
+      values: Array<{
+        month: number;
+        targetValue?: number | null;
+        targetStage?: string | null;
+        actualValue?: number | null;
+        secondaryActual?: number | null;
+        note?: string | null;
+      }>;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | { type: "update_strategic_plan"; plan: StrategicPlan }
   | { type: "upsert_area_plan"; plan: AreaPlan }
   | {
@@ -145,6 +171,8 @@ const EMPTY_STATE: AppState = {
   checkIns: [],
   planningSessions: [],
   planDocuments: [],
+  executiveKpis: [],
+  kpiValues: [],
   activeSession: null,
   loading: true,
   ready: false,
@@ -378,6 +406,57 @@ function mapPlanDocument(row: any): PlanDocument {
   };
 }
 
+function nullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function mapLadderStage(item: any): LadderStage | null {
+  if (!item || typeof item !== "object") return null;
+  const key = typeof item.key === "string" ? item.key : "";
+  const label = typeof item.label === "string" ? item.label : key;
+  const order = Number(item.order ?? 0);
+  if (!key) return null;
+  return { key, label, order: Number.isFinite(order) ? order : 0 };
+}
+
+function mapExecutiveKpi(row: any): ExecutiveKpi {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    key: row.kpi_key,
+    label: row.label,
+    unit: row.unit,
+    secondaryUnit: row.secondary_unit ?? null,
+    direction: row.direction ?? "higher_better",
+    flowType: row.flow_type ?? "flow",
+    isLadder: row.is_ladder ?? false,
+    ladder: Array.isArray(row.ladder) ? row.ladder.map(mapLadderStage).filter(Boolean) as LadderStage[] : [],
+    openingBalance: nullableNumber(row.opening_balance),
+    annualTarget: nullableNumber(row.annual_target),
+    sortOrder: Number(row.sort_order ?? 0),
+    createdAt: row.created_at,
+  };
+}
+
+function mapKpiMonthlyValue(row: any): KpiMonthlyValue {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    kpiId: row.kpi_id,
+    year: Number(row.year),
+    month: Number(row.month),
+    targetValue: nullableNumber(row.target_value),
+    targetStage: row.target_stage ?? null,
+    actualValue: nullableNumber(row.actual_value),
+    secondaryActual: nullableNumber(row.secondary_actual),
+    note: row.note ?? null,
+    updatedBy: row.updated_by ?? null,
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapAiSettings(row: any): AiSettings {
   return {
     orgId: row.org_id,
@@ -499,6 +578,64 @@ function toKeyActionInsert(keyAction: KeyAction, orgId: string) {
     owner: keyAction.owner,
     status: keyAction.status ?? "on_track",
   };
+}
+
+function defaultExecutiveKpiRows(orgId: string) {
+  return [
+    {
+      org_id: orgId,
+      kpi_key: "revenue",
+      label: "Faturamento",
+      unit: "currency",
+      secondary_unit: null,
+      direction: "higher_better",
+      flow_type: "flow",
+      is_ladder: false,
+      ladder: [],
+      sort_order: 10,
+    },
+    {
+      org_id: orgId,
+      kpi_key: "operating_margin",
+      label: "Margem operacional",
+      unit: "percent",
+      secondary_unit: null,
+      direction: "higher_better",
+      flow_type: "flow",
+      is_ladder: false,
+      ladder: [],
+      sort_order: 20,
+    },
+    {
+      org_id: orgId,
+      kpi_key: "production",
+      label: "Produção",
+      unit: "currency",
+      secondary_unit: "count",
+      direction: "higher_better",
+      flow_type: "flow",
+      is_ladder: false,
+      ladder: [],
+      sort_order: 30,
+    },
+    {
+      org_id: orgId,
+      kpi_key: "cash",
+      label: "Caixa",
+      unit: "currency",
+      secondary_unit: null,
+      direction: "higher_better",
+      flow_type: "stock",
+      is_ladder: true,
+      ladder: [
+        { key: "stop_bleed", label: "Estancar sangria", order: 1 },
+        { key: "operational_zero", label: "Operacional >= 0", order: 2 },
+        { key: "service_debt", label: "Aguentar a dívida", order: 3 },
+        { key: "surplus", label: "Sobrar", order: 4 },
+      ],
+      sort_order: 40,
+    },
+  ];
 }
 
 async function callEdgeFunction<TBody extends Record<string, unknown>>(name: string, body: TBody) {
@@ -758,6 +895,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const executiveKpisQuery = useQuery({
+    queryKey: ["executive_kpis", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("executive_kpis").select("*").eq("org_id", orgId).order("sort_order");
+      if (error) throw error;
+      return (data ?? []).map(mapExecutiveKpi);
+    },
+  });
+
+  const kpiValuesQuery = useQuery({
+    queryKey: ["kpi_monthly_values", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client
+        .from("kpi_monthly_values")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("year", { ascending: false })
+        .order("month", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map(mapKpiMonthlyValue);
+    },
+  });
+
   const aiSettingsQuery = useQuery({
     queryKey: ["ai_settings", orgId],
     enabled: Boolean(supabase && orgId),
@@ -855,6 +1019,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
     queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["executive_kpis", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
@@ -878,6 +1044,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "plan_documents", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "executive_kpis", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "kpi_monthly_values", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
 
     return () => {
@@ -902,6 +1070,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       chatMessagesQuery.isLoading ||
       planningSessionsQuery.isLoading ||
       planDocumentsQuery.isLoading ||
+      executiveKpisQuery.isLoading ||
+      kpiValuesQuery.isLoading ||
       aiSettingsQuery.isLoading ||
       aiFunctionSettingsQuery.isLoading ||
       aiProviderKeyStatusesQuery.isLoading ||
@@ -933,6 +1103,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       checkIns: checkInsQuery.data ?? [],
       planningSessions: planningSessionsQuery.data ?? [],
       planDocuments: planDocumentsQuery.data ?? [],
+      executiveKpis: executiveKpisQuery.data ?? [],
+      kpiValues: kpiValuesQuery.data ?? [],
       activeSession: (planningSessionsQuery.data ?? []).find((session) => session.pendingProposal) ?? planningSessionsQuery.data?.[0] ?? null,
       loading,
       ready: Boolean(session && organization),
@@ -961,8 +1133,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     currentProfileQuery.isLoading,
     evidencesQuery.data,
     evidencesQuery.isLoading,
+    executiveKpisQuery.data,
+    executiveKpisQuery.isLoading,
     keyActionsQuery.data,
     keyActionsQuery.isLoading,
+    kpiValuesQuery.data,
+    kpiValuesQuery.isLoading,
     objectivesQuery.data,
     objectivesQuery.isLoading,
     orgId,
@@ -1013,7 +1189,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const newOrgId = organizationRow.id as string;
           const { error: membershipError } = await client.from("memberships").insert({ org_id: newOrgId, user_id: userId, role: "owner" });
           if (membershipError) throw membershipError;
-          await client.from("ai_settings").insert({ org_id: newOrgId });
+          const { error: aiSettingsError } = await client.from("ai_settings").insert({ org_id: newOrgId });
+          if (aiSettingsError) throw aiSettingsError;
+          const { error: kpiSeedError } = await client.from("executive_kpis").insert(defaultExecutiveKpiRows(newOrgId));
+          if (kpiSeedError) throw kpiSeedError;
           setActiveOrgId(newOrgId);
           window.localStorage.setItem("oraculo.activeOrgId", newOrgId);
           invalidateOrg();
@@ -1265,6 +1444,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (error) throw error;
             invalidateOrg();
           });
+        return;
+      }
+
+      if (action.type === "upsert_kpi_definition") {
+        void (async () => {
+          const { error } = await client
+            .from("executive_kpis")
+            .update({
+              annual_target: action.annualTarget ?? null,
+              opening_balance: action.openingBalance ?? null,
+            })
+            .eq("id", action.kpiId)
+            .eq("org_id", orgId);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ["executive_kpis", orgId] });
+          action.onSuccess?.();
+        })().catch((error) => {
+          action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar o KPI.");
+        });
+        return;
+      }
+
+      if (action.type === "upsert_kpi_month") {
+        void (async () => {
+          const rows = action.values.map((value) => ({
+            org_id: orgId,
+            kpi_id: action.kpiId,
+            year: action.year,
+            month: value.month,
+            target_value: value.targetValue ?? null,
+            target_stage: value.targetStage ?? null,
+            actual_value: value.actualValue ?? null,
+            secondary_actual: value.secondaryActual ?? null,
+            note: value.note ?? null,
+            updated_by: userId,
+            updated_at: new Date().toISOString(),
+          }));
+          const { error } = await client.from("kpi_monthly_values").upsert(rows, { onConflict: "kpi_id,year,month" });
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
+          action.onSuccess?.();
+        })().catch((error) => {
+          action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar os lançamentos.");
+        });
         return;
       }
 

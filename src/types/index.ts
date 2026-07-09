@@ -7,6 +7,11 @@ export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month
 export type PlanningSessionStatus = "active" | "completed" | "abandoned";
 export type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
 export type PlanDocumentOrigin = "session" | "historical";
+export type KpiKey = "revenue" | "operating_margin" | "production" | "cash";
+export type KpiUnit = "currency" | "percent" | "count" | "number";
+export type KpiSecondaryUnit = "count" | "number";
+export type KpiDirection = "higher_better" | "lower_better";
+export type KpiFlowType = "flow" | "stock";
 
 export interface Organization {
   id: string;
@@ -169,9 +174,47 @@ export interface PlanDocument {
   createdAt: string;
 }
 
+export interface LadderStage {
+  key: string;
+  label: string;
+  order: number;
+}
+
+export interface ExecutiveKpi {
+  id: string;
+  orgId: string;
+  key: KpiKey;
+  label: string;
+  unit: KpiUnit;
+  secondaryUnit: KpiSecondaryUnit | null;
+  direction: KpiDirection;
+  flowType: KpiFlowType;
+  isLadder: boolean;
+  ladder: LadderStage[];
+  openingBalance: number | null;
+  annualTarget: number | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface KpiMonthlyValue {
+  id: string;
+  orgId: string;
+  kpiId: string;
+  year: number;
+  month: number;
+  targetValue: number | null;
+  targetStage: string | null;
+  actualValue: number | null;
+  secondaryActual: number | null;
+  note: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
 export type OracleMode = "normal" | "minimized" | "expanded";
 
-export type MembershipRole = "owner" | "coordinator";
+export type MembershipRole = "owner" | "admin" | "coordinator";
 
 export interface Profile {
   id: string;
@@ -306,6 +349,8 @@ export interface AppState {
   checkIns: CheckIn[];
   planningSessions: PlanningSession[];
   planDocuments: PlanDocument[];
+  executiveKpis: ExecutiveKpi[];
+  kpiValues: KpiMonthlyValue[];
   activeSession: PlanningSession | null;
   loading: boolean;
   ready: boolean;
@@ -333,4 +378,11 @@ export const LEVEL_LABEL: Record<PlanLevel, string> = {
   area_annual: "Anual da Área",
   quarterly: "Trimestral",
   monthly: "Mensal",
+};
+
+export const KPI_LABEL: Record<KpiKey, string> = {
+  revenue: "Faturamento",
+  operating_margin: "Margem operacional",
+  production: "Produção",
+  cash: "Caixa",
 };

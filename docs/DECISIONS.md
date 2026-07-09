@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-09 - Dashboard executivo com 4 KPIs e papel admin limitado
+
+Decisao: criar `executive_kpis` e `kpi_monthly_values` para o Dashboard dos 4 KPIs (Faturamento, Margem operacional, Producao e Caixa), permitindo escrita por `owner` ou `admin` via helper `is_admin(org_id)`.
+
+Contexto: o dono quer acompanhar Resultado de forma executiva, com metas e realizados mensais, sem misturar esses numeros com objetivos/plano estrategico. Tambem quer poder delegar lancamentos operacionais sem entregar controle total da empresa.
+
+Alternativas: guardar KPIs em JSON na organizacao, reaproveitar `objectives`, ou permitir apenas owner como editor.
+
+Motivo: tabelas dedicadas preservam historico mensal, RLS e realtime; separar de `objectives` evita transformar indicador executivo em objetivo de planejamento; o papel `admin` permite delegacao controlada para o Dashboard.
+
+Consequencias: `admin` nao deve ser tratado como `owner` fora do escopo dos KPIs. Fluxos de membros, areas, configuracoes, IA, WhatsApp e planejamento continuam owner-only quando ja eram owner-only. O Caixa da primeira versao usa escada de estagios e saldo realizado de fim de mes; nao ha seletor de ano na V1.
+
 ## 2026-07-08 - Configuracao de IA precisa validar contra o provedor
 
 Decisao: `save-ai-settings` passa a testar provider/modelo/chave no servidor ao salvar ou testar manualmente, e as chamadas reais de IA passam a atualizar status por funcao em `ai_function_settings`.
@@ -265,6 +277,18 @@ Alternativas: estimar manualmente, deixar custo fora do produto, ou depender ape
 Motivo: o dono da empresa precisa ver consumo no proprio Oraculo e entender o impacto financeiro do uso por WhatsApp e web.
 
 Consequencias: toda chamada de IA bem-sucedida deve registrar tokens, custo estimado, canal e modelo. Mudancas de provider/modelo precisam atualizar catalogo de pricing no frontend e na Edge Function.
+
+## 2026-07-09 - Token derivado para webhook Evo Go sem header
+
+Decisao: manter `x-oraculo-webhook-secret` como autenticacao preferencial do `whatsapp-webhook`, mas aceitar `evoGoToken` na URL para Evo Go. O token e derivado por HMAC-SHA-256 do texto `evo-go:<orgId>` usando o `webhook_secret`, em vez de colocar o segredo bruto na query string.
+
+Contexto: o Manager da Evo Go permite configurar `webhookUrl` e eventos, mas nao expoe campo de header customizado. A configuracao com apenas `orgId` faz a Evo chamar o webhook sem segredo aceito, resultando em 401 antes de gravar `chat_messages`.
+
+Alternativas: liberar webhook sem autenticacao quando houver `orgId`, voltar a aceitar `?secret=` com o segredo bruto, configurar um proxy externo para adicionar header, ou exigir ajuste manual na VPS.
+
+Motivo: o token derivado restaura o WhatsApp real sem abrir o webhook publicamente e sem duplicar o segredo bruto em URL/logs.
+
+Consequencias: a URL operacional da Evo Go deve conter `orgId` e `evoGoToken`. Se o `webhook_secret` for rotacionado, o token derivado precisa ser recalculado e salvo novamente no Manager da Evo Go.
 
 ## 2026-07-02 - WhatsApp salva mensagem antes de chamar IA
 

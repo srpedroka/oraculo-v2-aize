@@ -1,10 +1,12 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { CalendarCheck, Pencil, Plus, Sprout, Trophy, TrendingUp } from "lucide-react";
+import { CalendarCheck, Pencil, Plus, Sprout } from "lucide-react";
 import { useState } from "react";
 import { Card } from "../components/ui/Card";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { Button } from "../components/ui/Button";
+import { KpiEditorDialog } from "../features/kpi/KpiEditorDialog";
+import { KpiResultBlock } from "../features/kpi/KpiResultBlock";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveEditDialog } from "../features/objective/ObjectiveEditDialog";
 import { previousMonthPeriod } from "../lib/periods";
@@ -24,14 +26,9 @@ function canEditObjective(objective: Objective | undefined, state: ReturnType<ty
 export function Dashboard() {
   const { state, dispatch } = useAppState();
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
+  const [kpiEditorOpen, setKpiEditorOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const closePeriod = previousMonthPeriod();
-  const revenue =
-    state.objectives.find((objective) => objective.metric?.toLowerCase().includes("faturamento")) ??
-    state.objectives.find((objective) => objective.title.toLowerCase().includes("faturamento"));
-  const margin =
-    state.objectives.find((objective) => objective.metric?.toLowerCase().includes("margem")) ??
-    state.objectives.find((objective) => objective.title.toLowerCase().includes("margem"));
   const hasData = state.objectives.length > 0;
   const seedObjectives = state.objectives.filter((objective) => objective.type === "seed");
   const executiveSeeds = seedObjectives.filter((objective) => objective.level === "strategic");
@@ -46,6 +43,7 @@ export function Dashboard() {
       ].filter((item) => item.value > 0)
     : [{ name: "Sem dados", value: 1, color: "#ECECEF" }];
   const canCreateStrategicObjective = state.currentMembership?.role === "owner";
+  const canEditDashboard = ["owner", "admin"].includes(state.currentMembership?.role ?? "");
   const pendingCloseAreas = state.areas.filter((area) => {
     const hasMonthlyPlan = state.objectives.some((objective) => objective.areaId === area.id && objective.level === "monthly" && objective.period === closePeriod);
     const hasCheckIn = state.checkIns.some((checkIn) => checkIn.areaId === area.id && checkIn.period === closePeriod);
@@ -100,69 +98,7 @@ export function Dashboard() {
         </Card>
       ) : null}
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Trophy className="h-5 w-5 text-[#9A6400]" />
-          <h2 className="text-[20px] font-semibold text-text">Resultado</h2>
-          <span className="text-[18px] text-text-secondary">(Jogo Atual)</span>
-        </div>
-        <div className="rounded-[22px] border border-border bg-white/70 p-3 shadow-card">
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Card className="rounded-2xl shadow-card">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[16px] font-medium text-text">Faturamento (Mensal)</p>
-                  <p className="mt-6 text-[36px] font-semibold leading-none text-text">{revenue?.current ?? "-"}</p>
-                  <p className="mt-3 text-[15px] text-text-secondary">Meta: {revenue?.target ?? "A definir"}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {revenue ? (
-                    <span className="inline-flex items-center gap-1 rounded-[10px] bg-[#E6F4EA] px-2.5 py-1 text-sm font-medium text-[#1D7A3E]">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      {revenue.trend === "down" ? "Queda" : revenue.trend === "flat" ? "Estável" : "Alta"}
-                    </span>
-                  ) : (
-                    <span className="rounded-[10px] bg-[#ECECEF] px-2.5 py-1 text-sm font-medium text-text-secondary">A definir</span>
-                  )}
-                  {canEditObjective(revenue, state) ? (
-                    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(revenue!)}>
-                      Editar
-                    </Button>
-                  ) : !revenue && canCreateStrategicObjective ? (
-                    <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderOpen(true)}>
-                      Criar
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            </Card>
-
-            <Card className="rounded-2xl shadow-card">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[16px] font-medium text-text">Margem Operacional</p>
-                  <p className="mt-6 text-[36px] font-semibold leading-none text-text">{margin?.current ?? "-"}</p>
-                  <p className="mt-3 text-[15px] text-text-secondary">Meta: {margin?.target ?? "A definir"}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="rounded-[10px] bg-[#ECECEF] px-2.5 py-1 text-sm font-medium text-text-secondary">
-                    {margin?.trend === "up" ? "Alta" : margin?.trend === "down" ? "Queda" : "Estável"}
-                  </span>
-                  {canEditObjective(margin, state) ? (
-                    <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(margin!)}>
-                      Editar
-                    </Button>
-                  ) : !margin && canCreateStrategicObjective ? (
-                    <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderOpen(true)}>
-                      Criar
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
+      <KpiResultBlock kpis={state.executiveKpis} values={state.kpiValues} canEdit={canEditDashboard} onEdit={() => setKpiEditorOpen(true)} />
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -246,6 +182,7 @@ export function Dashboard() {
         </div>
       </section>
       {editingObjective ? <ObjectiveEditDialog objective={editingObjective} onClose={() => setEditingObjective(null)} /> : null}
+      {kpiEditorOpen ? <KpiEditorDialog onClose={() => setKpiEditorOpen(false)} /> : null}
       {builderOpen ? <ObjectiveBuilder level="strategic" onClose={() => setBuilderOpen(false)} /> : null}
     </div>
   );

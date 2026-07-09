@@ -21,6 +21,8 @@ Na tela `src/pages/QuarterlyPlans.tsx`, cada departamento com permissao de escri
 
 Na tela `src/pages/Documents.tsx`, os documentos gravados em `plan_documents` aparecem com filtros por tipo, origem, departamento e periodo. A origem separa documentos de sessao (`session`) de historicos importados (`historical`). O componente `src/components/PlanDocument.tsx` renderiza o mesmo conteudo para tela e para a rota limpa `src/pages/DocumentPrint.tsx` (`/documentos/:documentId/imprimir`), que usa CSS de impressao A4 sem sidebar nem painel lateral.
 
+Na tela `src/pages/Dashboard.tsx`, o bloco "Resultado" combina objetivos ativos com o Dashboard dos 4 KPIs executivos: Faturamento, Margem operacional, Producao e Caixa. As definicoes vivem em `executive_kpis`, os lancamentos mensais em `kpi_monthly_values`, e o frontend renderiza o ano corrente sem seletor de ano na primeira versao. Owners e admins abrem `src/features/kpi/KpiEditorDialog.tsx` para editar a grade de 12 meses; a escrita vai pelo store direto ao Supabase e depende da RLS `is_admin`.
+
 Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oraculo. `src/features/objective/ObjectiveEditDialog.tsx` permite editar tipo, resultado, indicador, meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas. O mesmo editor aparece em Plano Estrategico, Dashboard e cards de planos por area. A tela de Areas tambem permite ao owner cadastrar areas e vincular coordenadores no proprio modulo, enquanto coordenadores e demais membros ficam em leitura quando nao tiverem permissao de escrita.
 
 ### Supabase
@@ -40,6 +42,7 @@ Migrations principais:
 - `20260707170000_plan_documents_origin.sql`: adiciona `origin` em `plan_documents` para distinguir documentos de sessao e historicos importados.
 - `20260708120000_strategic_review_type.sql`: adiciona o tipo `strategic_review` a `planning_sessions` e `plan_documents`.
 - `20260708140000_ai_config_health.sql`: adiciona status da ultima validacao/uso em `ai_function_settings` e `ai_provider_key_status`.
+- `20260709123000_executive_kpis.sql`: adiciona os 4 KPIs executivos do Dashboard, lancamentos mensais, papel `admin` e helper `is_admin`.
 
 Tabelas publicas principais:
 
@@ -63,6 +66,8 @@ Tabelas publicas principais:
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
+- `executive_kpis`
+- `kpi_monthly_values`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
@@ -82,6 +87,13 @@ Fundacao V3:
 - `plan_documents`: guarda o conteudo dos documentos de plano e fechamento renderizados em tela, PDF A4 e WhatsApp. A coluna `origin` diferencia documentos canonicos gerados por sessoes (`session`) de documentos historicos importados como memoria de referencia (`historical`).
 
 Essas tabelas foram criadas na Fase 0 da V3. A partir da Fase 3, `conversations` passa a ser usada em runtime por `oracle-chat`, `oracle-session` e `whatsapp-webhook`: cada pessoa tem uma conversa ativa por canal (`web` ou `whatsapp`), `chat_messages` recebe `user_id` e `conversation_id`, e conversas longas ganham resumo em `conversations.summary`.
+
+Dashboard executivo:
+
+- `executive_kpis`: uma definicao por empresa e KPI (`revenue`, `operating_margin`, `production`, `cash`), com unidade, direcao, tipo fluxo/estoque, ordem e escada opcional para caixa.
+- `kpi_monthly_values`: valores mensais planejados e realizados por KPI, ano e mes. Faturamento e margem usam valor numerico; Producao aceita valor financeiro e quantidade secundaria; Caixa usa saldo realizado de fim de mes e pode registrar etapa-alvo da escada.
+
+As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` ou `admin`, via helper `is_admin(org_id)`. O papel `admin` foi adicionado para permitir manutencao operacional do Dashboard sem entregar permissoes de dono para configuracoes, membros ou areas.
 
 ### Edge Functions
 
@@ -206,12 +218,14 @@ Esse desenho foi ajustado em 2026-07-02 para salvar a mensagem antes da IA, perm
 Papeis:
 
 - `owner`: administra empresa, membros, areas, planos e configuracoes.
+- `admin`: administra lancamentos e definicoes dos KPIs executivos do Dashboard, sem herdar permissoes gerais de owner.
 - `coordinator`: escreve apenas no escopo da propria area quando a politica permitir.
 
 As politicas RLS seguem a regra:
 
 - membros da empresa podem ler dados da empresa;
 - owners podem escrever em dados administrativos;
+- admins podem escrever nos KPIs executivos;
 - coordenadores podem escrever em dados da propria area;
 - chaves de IA ficam fora do schema publico.
 

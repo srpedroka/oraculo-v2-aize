@@ -83,7 +83,7 @@ Senhas nao sao salvas no frontend, na documentacao ou no banco em texto puro. A 
 
 ## WhatsApp
 
-O webhook `whatsapp-webhook` so aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. Desde 2026-07-05 o segredo **nao** e mais aceito via query string (`?secret=`), porque vaza em logs de proxy/acesso, e a comparacao e feita em tempo constante. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
+O webhook `whatsapp-webhook` aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. Desde 2026-07-05 o segredo **nao** e mais aceito via query string (`?secret=`), porque vaza em logs de proxy/acesso, e a comparacao e feita em tempo constante. Excecao operacional: o Evo Go Manager nao expoe header customizado; nesse provedor, a URL pode usar `evoGoToken`, um HMAC-SHA-256 derivado do `webhook_secret` e do `orgId`, sem expor o segredo bruto. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.
 
 Download de midia (audio/documento) por URL vinda do payload passa por guarda anti-SSRF: apenas `http(s)`, com bloqueio de loopback, redes privadas, link-local (inclui o metadata `169.254.169.254` de cloud) e nomes internos; ha teto de tamanho por download; e a `apikey` da Evolution so e enviada quando o host da URL e o da propria instancia (`instance_url`), nunca para um CDN ou host arbitrario.
 
@@ -126,8 +126,11 @@ Regras principais:
 
 - membro da empresa le dados da empresa;
 - owner escreve dados administrativos e configuracoes;
+- admin escreve definicoes e lancamentos dos KPIs executivos do Dashboard;
 - coordenador escreve apenas na propria area;
 - acoes e evidencias seguem permissao do objetivo ligado.
+
+Os KPIs executivos usam duas tabelas publicas: `executive_kpis` e `kpi_monthly_values`. Membros da empresa podem ler os quatro indicadores; escrita exige `is_admin(org_id)`, que retorna verdadeiro apenas para membership `owner` ou `admin`. O papel `admin` nao deve ser usado como substituto de `owner` em configuracoes, membros, areas, IA, WhatsApp ou fluxos de planejamento.
 
 ## Dados de conta
 

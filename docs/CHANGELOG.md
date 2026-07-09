@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-09
+
+- Executadas as Fatias 0 a 3 da Onda 2 do Dashboard dos 4 KPIs: criada a fundacao de banco para `executive_kpis` e `kpi_monthly_values`, com papel `admin` limitado, RLS para leitura por membros e escrita por owner/admin, leitura no store, bloco de Resultado com quatro cards e editor de lancamentos em grade de 12 meses.
+- Ajustado `whatsapp-webhook` para aceitar, alem do header secreto, um `evoGoToken` derivado via HMAC para Evo Go, cujo Manager nao persiste headers customizados; a URL ainda precisa manter `orgId`.
+- Corrigido loop no WhatsApp: eventos enviados pela propria instancia (`fromMe`) agora sao ignorados antes de gerar resposta.
+
 ## 2026-07-08
 
 - Executada a Onda 1 do pacote de melhorias: configuração de IA agora valida provider/modelo/chave ao salvar/testar, mostra status real por função/chave e grava erros de runtime; sidebar perdeu o placeholder Analytics; logo/lema ORÁCULO foram ajustados; importação histórica não sugere mais período silencioso.

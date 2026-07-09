@@ -44,9 +44,6 @@ export function Auth() {
           <h1 className="mt-3 text-2xl font-semibold text-text">
             {mode === "signin" ? "Entrar no sistema" : "Criar primeiro acesso"}
           </h1>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">
-            A V2 salva os planos por empresa, com permissões por papel e área.
-          </p>
         </div>
 
         <form onSubmit={submit} className="space-y-4">

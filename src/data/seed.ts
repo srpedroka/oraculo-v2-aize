@@ -553,6 +553,8 @@ export const initialState: AppState = {
   checkIns: [],
   planningSessions: [],
   planDocuments: [],
+  executiveKpis: [],
+  kpiValues: [],
   activeSession: null,
   loading: false,
   ready: true,
