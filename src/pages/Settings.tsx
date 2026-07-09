@@ -21,7 +21,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
-import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult } from "../types";
+import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, MembershipRole } from "../types";
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
   openai: "gpt-5.4",
@@ -73,6 +73,12 @@ function providerLabel(provider: AiProvider) {
 function functionLabel(value: unknown) {
   const aiFunction = AI_FUNCTIONS.find((item) => item.value === value);
   return aiFunction?.title ?? "Sem função";
+}
+
+function membershipRoleLabel(role: MembershipRole) {
+  if (role === "owner") return "Dono";
+  if (role === "admin") return "Admin";
+  return "Coordenador";
 }
 
 function statusLabel(status: AiConfigStatus | null | undefined) {
@@ -145,6 +151,7 @@ export function Settings() {
   const [whatsappWebhookSecret, setWhatsappWebhookSecret] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(state.whatsappSettings?.enabled ?? false);
   const [whatsappMessage, setWhatsappMessage] = useState("");
+  const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const whatsappWebhookUrl =
@@ -241,6 +248,25 @@ export function Settings() {
     setMemberPhone("");
     setMemberAreaId("");
     setMemberMessage("Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp. Caso contrário, o envio segue por email.");
+  }
+
+  function changeMemberRole(membershipId: string, nextRole: MembershipRole) {
+    if (nextRole === "owner") return;
+    setRoleSavingId(membershipId);
+    setMemberMessage("");
+    dispatch({
+      type: "set_member_role",
+      membershipId,
+      role: nextRole,
+      onSuccess: () => {
+        setRoleSavingId(null);
+        setMemberMessage("Papel atualizado.");
+      },
+      onError: (message) => {
+        setRoleSavingId(null);
+        setMemberMessage(message);
+      },
+    });
   }
 
   async function saveProviderKey(providerValue: AiProvider) {
@@ -537,9 +563,17 @@ export function Settings() {
                       <p className="mt-1 text-xs text-text-tertiary">Área: {linkedArea?.name ?? "Sem área vinculada"}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-[10px] bg-[#F0F0F2] px-2.5 py-1 text-xs font-medium text-text-secondary">
-                        {membership.role === "owner" ? "Dono" : "Coordenador"}
-                      </span>
+                      <select
+                        value={membership.role}
+                        disabled={roleSavingId === membership.id}
+                        onChange={(event) => changeMemberRole(membership.id, event.target.value as MembershipRole)}
+                        className="h-8 rounded-[10px] border border-border bg-white px-2.5 text-xs font-medium text-text-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={`Papel de ${membership.profile?.fullName ?? membership.profile?.email ?? membership.userId}`}
+                      >
+                        {membership.role === "owner" ? <option value="owner">{membershipRoleLabel("owner")}</option> : null}
+                        <option value="admin">{membershipRoleLabel("admin")}</option>
+                        <option value="coordinator">{membershipRoleLabel("coordinator")}</option>
+                      </select>
                       <Button
                         variant="ghost"
                         size="sm"

@@ -45,6 +45,7 @@ type AppAction =
   | { type: "create_area"; name: string; coordinatorId?: string | null }
   | { type: "update_area"; areaId: string; name: string; coordinatorId?: string | null }
   | { type: "create_member"; email: string; fullName?: string; phone?: string | null; role: MembershipRole; areaId?: string | null }
+  | { type: "set_member_role"; membershipId: string; role: Exclude<MembershipRole, "owner">; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "remove_member"; membershipId: string }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
@@ -1236,6 +1237,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
           areaId: action.areaId ?? null,
           redirectTo: window.location.origin,
         }).then(invalidateOrg);
+        return;
+      }
+
+      if (action.type === "set_member_role") {
+        void callEdgeFunction("set-member-role", {
+          orgId,
+          membershipId: action.membershipId,
+          role: action.role,
+        })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível alterar o papel.");
+          });
         return;
       }
 

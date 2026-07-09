@@ -98,6 +98,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 ### Edge Functions
 
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
+- `set-member-role`: permite que owner altere membro entre `admin` e `coordinator`, ou rebaixe outro owner quando ainda existir pelo menos um owner restante. Nao promove novos owners.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `save-historical-document`: valida sessao, permissao de empresa/area, tipo, periodo e tamanho do texto antes de gravar um `plan_documents` historico. Nao chama IA e nao grava objetivos, acoes ou planos ativos.

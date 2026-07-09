@@ -37,7 +37,7 @@ export async function assertOrgMember(userId: string, orgId: string) {
 
   if (error) throw error;
   if (!data) throw new Error("Sem acesso à empresa");
-  return data as { id: string; role: "owner" | "coordinator" };
+  return data as { id: string; role: "owner" | "admin" | "coordinator" };
 }
 
 export async function assertOwner(userId: string, orgId: string) {

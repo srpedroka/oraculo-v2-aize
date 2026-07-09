@@ -132,6 +132,8 @@ Regras principais:
 
 Os KPIs executivos usam duas tabelas publicas: `executive_kpis` e `kpi_monthly_values`. Membros da empresa podem ler os quatro indicadores; escrita exige `is_admin(org_id)`, que retorna verdadeiro apenas para membership `owner` ou `admin`. O papel `admin` nao deve ser usado como substituto de `owner` em configuracoes, membros, areas, IA, WhatsApp ou fluxos de planejamento.
 
+A mudanca de papel operacional passa pela Edge Function `set-member-role`, usando service role depois de validar que o usuario autenticado e owner. Esse fluxo permite alternar membros entre `admin` e `coordinator`, e rebaixar owner somente quando nao for o ultimo owner da empresa. Ele nao promove novos owners.
+
 ## Dados de conta
 
 O email fica em `profiles.email` para administracao de convites. O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e deve ser tratado como identificador de acesso, especialmente para a futura integracao com WhatsApp. A interface edita apenas o celular da propria conta.

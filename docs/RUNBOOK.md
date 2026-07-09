@@ -813,6 +813,7 @@ Edge Functions:
 
 ```bash
 supabase functions deploy invite-member
+supabase functions deploy set-member-role
 supabase functions deploy save-ai-settings
 supabase functions deploy save-historical-document
 supabase functions deploy oracle-chat
