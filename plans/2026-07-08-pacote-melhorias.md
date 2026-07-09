@@ -19,7 +19,7 @@
 | **G · Onda 2 Fatia 4 — promover admin** | ✅ produção |
 | Catálogo de modelos (grok-4.5, gpt-5.5, fable-5, sonnet-5) | ✅ produção |
 | H · Importação com IA | ✅ produção |
-| I · Tom/persona por empresa | ⏳ pendente |
+| I · Tom/persona por empresa | ✅ produção |
 | J · Polimento de UI (transições/ritmo) | ⏳ pendente |
 | Resiliência Evo Go (investigar recorrência) | ⏳ anotado |
 
