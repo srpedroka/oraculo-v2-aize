@@ -16,7 +16,7 @@
 | E · Período da importação | ✅ produção |
 | WhatsApp (fix Evo Go + anti-loop) | ✅ produção |
 | **F · Dashboard 4 KPIs (Fatias 0–3)** | ✅ produção |
-| **G · Onda 2 Fatia 4 — promover admin** | ⏳ pendente |
+| **G · Onda 2 Fatia 4 — promover admin** | ✅ produção |
 | Catálogo de modelos (grok-4.5, gpt-5.5, fable-5, sonnet-5) | ⏳ plano pronto ([catalogo-modelos](2026-07-08-catalogo-modelos.md)) |
 | H · Importação com IA | ⏳ pendente |
 | I · Tom/persona por empresa | ⏳ pendente |
