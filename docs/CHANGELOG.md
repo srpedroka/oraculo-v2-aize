@@ -2,6 +2,7 @@
 
 ## 2026-07-09
 
+- Atualizado o catalogo de modelos de IA no frontend e no servidor com `gpt-5.5`, `claude-fable-5`, `claude-sonnet-5` e `grok-4.5`, preservando modelos legados para lookup de pricing.
 - Executada a Fatia 4 da Onda 2 do Dashboard dos 4 KPIs: criada a Edge Function `set-member-role`, ligada a UI de Configuracoes para owner promover/rebaixar `admin`, com bloqueio de promocao a owner e protecao contra rebaixar o ultimo owner.
 - Executadas as Fatias 0 a 3 da Onda 2 do Dashboard dos 4 KPIs: criada a fundacao de banco para `executive_kpis` e `kpi_monthly_values`, com papel `admin` limitado, RLS para leitura por membros e escrita por owner/admin, leitura no store, bloco de Resultado com quatro cards e editor de lancamentos em grade de 12 meses.
 - Ajustado `whatsapp-webhook` para aceitar, alem do header secreto, um `evoGoToken` derivado via HMAC para Evo Go, cujo Manager nao persiste headers customizados; a URL ainda precisa manter `orgId`.

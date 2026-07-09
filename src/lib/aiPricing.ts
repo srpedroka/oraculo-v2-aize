@@ -12,6 +12,14 @@ export interface ModelPricing {
 export const MODEL_PRICING_CATALOG: ModelPricing[] = [
   {
     provider: "openai",
+    model: "gpt-5.5",
+    inputTokenPriceUsdPerMillion: 5,
+    outputTokenPriceUsdPerMillion: 30,
+    source: "https://developers.openai.com/api/docs/pricing",
+    note: "Flagship 5.5 (snapshot gpt-5.5-2026-04-23), tier planning. Standard short-context.",
+  },
+  {
+    provider: "openai",
     model: "gpt-5.4",
     inputTokenPriceUsdPerMillion: 2.5,
     outputTokenPriceUsdPerMillion: 15,
@@ -52,6 +60,14 @@ export const MODEL_PRICING_CATALOG: ModelPricing[] = [
   },
   {
     provider: "xai",
+    model: "grok-4.5",
+    inputTokenPriceUsdPerMillion: 2,
+    outputTokenPriceUsdPerMillion: 6,
+    source: "https://docs.x.ai/developers/grok-4-5",
+    note: "Flagship xAI (lançado 2026-07-08), 500k contexto, alias grok-4.5-latest. Planning.",
+  },
+  {
+    provider: "xai",
     model: "grok-4.3",
     inputTokenPriceUsdPerMillion: 1.25,
     outputTokenPriceUsdPerMillion: 2.5,
@@ -60,11 +76,27 @@ export const MODEL_PRICING_CATALOG: ModelPricing[] = [
   },
   {
     provider: "anthropic",
+    model: "claude-fable-5",
+    inputTokenPriceUsdPerMillion: 10,
+    outputTokenPriceUsdPerMillion: 50,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Flagship Anthropic (GA 2026-06-09). Thinking sempre ligado; tokenizer novo (+~30% tokens); exige retenção 30 dias. Planning premium.",
+  },
+  {
+    provider: "anthropic",
     model: "claude-opus-4-8",
     inputTokenPriceUsdPerMillion: 5,
     outputTokenPriceUsdPerMillion: 25,
     source: "https://platform.claude.com/docs/en/about-claude/pricing",
     note: "Preço base do Claude Opus 4.8. Cache e inferência com residência podem alterar o valor final.",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-sonnet-5",
+    inputTokenPriceUsdPerMillion: 3,
+    outputTokenPriceUsdPerMillion: 15,
+    source: "https://platform.claude.com/docs/en/about-claude/pricing",
+    note: "Equilíbrio velocidade/inteligência (daily). Promo $2/$10 até 31/08/2026; padrão $3/$15 depois.",
   },
   {
     provider: "anthropic",
