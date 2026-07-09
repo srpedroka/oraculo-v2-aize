@@ -1,4 +1,4 @@
-import { Archive, ClipboardCheck, FileText, Loader2, Plus, RefreshCw, Save, Send, Upload } from "lucide-react";
+import { Archive, ClipboardCheck, FileText, Loader2, Plus, RefreshCw, Save, Send, Sparkles, Upload } from "lucide-react";
 import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -9,9 +9,10 @@ import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/file
 import { formatDate } from "../lib/format";
 import { reviewPastedPlan, type PastedPlanReview } from "../lib/oracle";
 import { useAppState } from "../state/store";
-import type { PlanDocumentType } from "../types";
+import type { HistoricalMetadataSuggestion, PlanDocumentType } from "../types";
 
 type StrategicTab = "build" | "paste" | "history";
+type HistoricalImportDocumentType = HistoricalMetadataSuggestion["documentType"];
 
 const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
   strategic: "Plano Estratégico",
@@ -21,7 +22,7 @@ const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
   quarter_close: "Fechamento Trimestral",
   strategic_review: "Revisão Estratégica",
 };
-const HISTORICAL_DOCUMENT_TYPES: PlanDocumentType[] = ["strategic", "quarterly", "monthly", "month_close", "quarter_close"];
+const HISTORICAL_DOCUMENT_TYPES: HistoricalImportDocumentType[] = ["strategic", "quarterly", "monthly"];
 
 function ListBlock({ title, items }: { title: string; items: string[] }) {
   return (
@@ -76,6 +77,14 @@ function ReviewResult({ review }: { review: PastedPlanReview }) {
   );
 }
 
+const LOW_CONFIDENCE_LABEL: Record<string, string> = {
+  documentType: "tipo",
+  area: "área",
+  areaId: "área",
+  period: "período",
+  title: "título",
+};
+
 export function Strategic() {
   const { state, dispatch } = useAppState();
   const [tab, setTab] = useState<StrategicTab>("build");
@@ -88,15 +97,18 @@ export function Strategic() {
   const [importError, setImportError] = useState<string | null>(null);
   const [sentToOracle, setSentToOracle] = useState(false);
   const [isDraggingPlan, setIsDraggingPlan] = useState(false);
-  const [historicalType, setHistoricalType] = useState<PlanDocumentType>("strategic");
+  const [historicalType, setHistoricalType] = useState<HistoricalImportDocumentType>("strategic");
   const [historicalPeriod, setHistoricalPeriod] = useState("");
   const [historicalAreaId, setHistoricalAreaId] = useState("company");
+  const [historicalTitle, setHistoricalTitle] = useState("");
   const [historicalText, setHistoricalText] = useState("");
   const [historicalFileName, setHistoricalFileName] = useState<string | null>(null);
   const [historicalNote, setHistoricalNote] = useState("");
+  const [historicalSuggestion, setHistoricalSuggestion] = useState<HistoricalMetadataSuggestion | null>(null);
   const [historicalFeedback, setHistoricalFeedback] = useState<string | null>(null);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
   const [importingHistorical, setImportingHistorical] = useState(false);
+  const [suggestingHistorical, setSuggestingHistorical] = useState(false);
   const [savingHistorical, setSavingHistorical] = useState(false);
   const [isDraggingHistorical, setIsDraggingHistorical] = useState(false);
   const plan = state.strategicPlan;
@@ -108,6 +120,11 @@ export function Strategic() {
   }, [isOwner, state.areas, state.currentMembership?.id]);
   const effectiveHistoricalAreaId =
     !isOwner && historicalAreaId === "company" ? writableHistoricalAreas[0]?.id ?? "" : historicalAreaId;
+  const historicalLowConfidenceFields = useMemo(
+    () => new Set(historicalSuggestion?.lowConfidenceFields ?? []),
+    [historicalSuggestion],
+  );
+  const historicalBusy = importingHistorical || suggestingHistorical || savingHistorical;
   const strategicObjectives = useMemo(
     () => state.objectives.filter((objective) => objective.level === "strategic"),
     [state.objectives],
@@ -141,6 +158,8 @@ export function Strategic() {
 
   function updateHistoricalText(value: string) {
     setHistoricalText(value);
+    setHistoricalSuggestion(null);
+    setHistoricalTitle("");
     setHistoricalFeedback(null);
     setHistoricalError(null);
   }
@@ -190,6 +209,8 @@ export function Strategic() {
     if (!file) return;
 
     setImportingHistorical(true);
+    setHistoricalSuggestion(null);
+    setHistoricalTitle("");
     setHistoricalError(null);
     setHistoricalFeedback(null);
 
@@ -262,10 +283,77 @@ export function Strategic() {
     void processHistoricalFile(file);
   }
 
+  function applyHistoricalSuggestion(suggestion: HistoricalMetadataSuggestion) {
+    const nextAreaId = suggestion.areaId ?? (isOwner ? "company" : writableHistoricalAreas[0]?.id ?? "company");
+    setHistoricalSuggestion(suggestion);
+    setHistoricalType(suggestion.documentType);
+    setHistoricalAreaId(nextAreaId);
+    setHistoricalPeriod(suggestion.period);
+    setHistoricalTitle(suggestion.title);
+    setHistoricalFeedback(
+      suggestion.periodFound
+        ? "Sugestão pronta para conferência. Ajuste qualquer campo antes de salvar."
+        : "Sugestão pronta, mas não encontrei período claro. Preencha o período antes de salvar.",
+    );
+  }
+
+  function suggestHistoricalMetadata() {
+    const rawText = historicalText.trim();
+
+    setHistoricalFeedback(null);
+    setHistoricalError(null);
+
+    if (!rawText) {
+      setHistoricalError("Cole ou importe o texto do histórico antes de interpretar.");
+      return;
+    }
+
+    if (!isOwner && !writableHistoricalAreas.length) {
+      setHistoricalError("Seu usuário precisa ter uma área coordenada para interpretar histórico.");
+      return;
+    }
+
+    setSuggestingHistorical(true);
+    dispatch({
+      type: "suggest_historical_metadata",
+      rawText,
+      fileName: historicalFileName,
+      onSuccess: (suggestion) => {
+        setSuggestingHistorical(false);
+        applyHistoricalSuggestion(suggestion);
+      },
+      onError: (message) => {
+        setSuggestingHistorical(false);
+        setHistoricalError(message);
+      },
+    });
+  }
+
+  function buildHistoricalClassification(areaId: string | null, period: string): Record<string, unknown> | null {
+    if (!historicalSuggestion) return null;
+    const title = historicalTitle.trim();
+    return {
+      ...historicalSuggestion,
+      confirmed: {
+        documentType: historicalType,
+        areaId,
+        period,
+        title: title || null,
+      },
+      overridden: {
+        documentType: historicalSuggestion.documentType !== historicalType,
+        areaId: (historicalSuggestion.areaId ?? null) !== areaId,
+        period: historicalSuggestion.period !== period,
+        title: historicalSuggestion.title !== title,
+      },
+    };
+  }
+
   function saveHistoricalDocument() {
     const rawText = historicalText.trim();
     const period = historicalPeriod.trim();
     const areaId = effectiveHistoricalAreaId === "company" ? null : effectiveHistoricalAreaId || null;
+    const title = historicalTitle.trim();
 
     setHistoricalFeedback(null);
     setHistoricalError(null);
@@ -294,10 +382,14 @@ export function Strategic() {
       rawText,
       source: historicalFileName ?? "Texto colado",
       note: historicalNote.trim() || null,
+      title: title || null,
+      classification: buildHistoricalClassification(areaId, period),
       onSuccess: () => {
         setSavingHistorical(false);
         setHistoricalText("");
         setHistoricalNote("");
+        setHistoricalTitle("");
+        setHistoricalSuggestion(null);
         setHistoricalFileName(null);
         setHistoricalFeedback("Histórico salvo em Documentos.");
       },
@@ -495,8 +587,11 @@ export function Strategic() {
                 Tipo
                 <select
                   value={historicalType}
-                  onChange={(event) => setHistoricalType(event.target.value as PlanDocumentType)}
-                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  onChange={(event) => setHistoricalType(event.target.value as HistoricalImportDocumentType)}
+                  className={[
+                    "h-10 rounded-xl border bg-white px-3 text-sm text-text",
+                    historicalLowConfidenceFields.has("documentType") ? "border-[#D97706]" : "border-border",
+                  ].join(" ")}
                 >
                   {HISTORICAL_DOCUMENT_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -510,7 +605,12 @@ export function Strategic() {
                 <select
                   value={effectiveHistoricalAreaId || "company"}
                   onChange={(event) => setHistoricalAreaId(event.target.value)}
-                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  className={[
+                    "h-10 rounded-xl border bg-white px-3 text-sm text-text",
+                    historicalLowConfidenceFields.has("area") || historicalLowConfidenceFields.has("areaId")
+                      ? "border-[#D97706]"
+                      : "border-border",
+                  ].join(" ")}
                   disabled={!isOwner && !writableHistoricalAreas.length}
                 >
                   {isOwner ? <option value="company">Empresa</option> : null}
@@ -527,11 +627,27 @@ export function Strategic() {
                 <input
                   value={historicalPeriod}
                   onChange={(event) => setHistoricalPeriod(event.target.value)}
-                  className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+                  className={[
+                    "h-10 rounded-xl border bg-white px-3 text-sm text-text",
+                    historicalLowConfidenceFields.has("period") ? "border-[#D97706]" : "border-border",
+                  ].join(" ")}
                   placeholder="2024, T3 2024, Jan 2024"
                 />
               </label>
             </div>
+
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-xs font-medium text-text-tertiary">Título</span>
+              <input
+                value={historicalTitle}
+                onChange={(event) => setHistoricalTitle(event.target.value)}
+                className={[
+                  "h-10 w-full rounded-xl border bg-white px-3 text-sm text-text",
+                  historicalLowConfidenceFields.has("title") ? "border-[#D97706]" : "border-border",
+                ].join(" ")}
+                placeholder="Ex.: Plano trimestral Comercial (T2 2024)"
+              />
+            </label>
 
             <label className="mt-4 block">
               <span className="mb-1.5 block text-xs font-medium text-text-tertiary">Nota</span>
@@ -560,13 +676,51 @@ export function Strategic() {
                 Texto importado de {historicalFileName}.
               </p>
             ) : null}
+            {historicalSuggestion ? (
+              <div className="mt-4 rounded-xl border border-border bg-[#FBFBFC] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-text">Sugestão do Oráculo</p>
+                    <p className="mt-1 text-xs leading-5 text-text-secondary">
+                      {DOCUMENT_TYPE_LABEL[historicalSuggestion.documentType]}
+                      {historicalSuggestion.areaName ? ` · ${historicalSuggestion.areaName}` : " · Empresa"}
+                      {historicalSuggestion.period ? ` · ${historicalSuggestion.period}` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-border bg-white px-2.5 py-1 text-xs font-medium text-text-secondary">
+                    {historicalSuggestion.source === "ai_background" ? "IA background" : "Heurística"} ·{" "}
+                    {Math.round(historicalSuggestion.confidence * 100)}%
+                  </span>
+                </div>
+                {historicalSuggestion.summary ? (
+                  <p className="mt-3 text-sm leading-6 text-text-secondary">{historicalSuggestion.summary}</p>
+                ) : null}
+                {historicalSuggestion.lowConfidenceFields.length ? (
+                  <p className="mt-3 text-xs leading-5 text-[#A16207]">
+                    Revise:{" "}
+                    {historicalSuggestion.lowConfidenceFields
+                      .map((field) => LOW_CONFIDENCE_LABEL[field] ?? field)
+                      .join(", ")}
+                    .
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {historicalFeedback ? <p className="mt-2 text-xs leading-5 text-[#1D7A3E]">{historicalFeedback}</p> : null}
             {historicalError ? <p className="mt-2 text-xs leading-5 text-[#B42318]">{historicalError}</p> : null}
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
+                variant="ghost"
+                icon={suggestingHistorical ? Loader2 : Sparkles}
+                disabled={!historicalText.trim() || historicalBusy}
+                onClick={suggestHistoricalMetadata}
+              >
+                {suggestingHistorical ? "Interpretando..." : "Interpretar com o Oráculo"}
+              </Button>
+              <Button
                 icon={savingHistorical ? Loader2 : Save}
-                disabled={!historicalText.trim() || !historicalPeriod.trim() || importingHistorical || savingHistorical}
+                disabled={!historicalText.trim() || !historicalPeriod.trim() || historicalBusy}
                 onClick={saveHistoricalDocument}
               >
                 {savingHistorical ? "Salvando..." : "Salvar histórico"}

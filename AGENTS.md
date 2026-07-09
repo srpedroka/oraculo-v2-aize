@@ -204,6 +204,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `oracle-chat`: chat web, historico por conversa, contexto do plano e inicio de sessoes.
 - `oracle-session`: motor server-side de planejamento/importacao/fechamento com proposta e confirmacao.
 - `month-turn`: virada mensal e convite de fechamento.
+- `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
 - `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas.
 
 Compartilhados criticos:
@@ -218,6 +219,7 @@ Compartilhados criticos:
 - `_shared/plan-documents.ts`: cria `plan_documents` deterministico.
 - `_shared/plan-render.ts`: renderiza documentos para WhatsApp.
 - `_shared/intent-router.ts`: classificacao operacional.
+- `_shared/historical-classifier.ts`: classificacao orientativa de historicos importados.
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
 - `_shared/transcription.ts`: transcricao de audio.
 - `_shared/usage.ts`: registro de tokens/custo.
@@ -513,4 +515,3 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Nunca registrar valores reais de chaves em README, docs, comentarios, commits ou mensagens.
 - Nunca salvar audio bruto, arquivo bruto recebido por WhatsApp, URL temporaria de midia, `mediaKey`, chave da Evolution ou chave de IA no banco.
 - Ao encontrar segredo exposto: pare, remova, avise o usuario e oriente rotacao da credencial.
-

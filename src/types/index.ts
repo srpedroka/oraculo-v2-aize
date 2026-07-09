@@ -174,6 +174,19 @@ export interface PlanDocument {
   createdAt: string;
 }
 
+export interface HistoricalMetadataSuggestion {
+  documentType: Extract<PlanDocumentType, "strategic" | "quarterly" | "monthly">;
+  areaId: string | null;
+  areaName: string | null;
+  period: string;
+  periodFound: boolean;
+  title: string;
+  summary: string;
+  confidence: number;
+  lowConfidenceFields: string[];
+  source: "ai_background" | "heuristic";
+}
+
 export interface LadderStage {
   key: string;
   label: string;

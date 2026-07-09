@@ -815,6 +815,7 @@ Edge Functions:
 supabase functions deploy invite-member
 supabase functions deploy set-member-role
 supabase functions deploy save-ai-settings
+supabase functions deploy suggest-historical-metadata
 supabase functions deploy save-historical-document
 supabase functions deploy oracle-chat
 supabase functions deploy oracle-session

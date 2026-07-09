@@ -18,6 +18,7 @@ import type {
   CheckIn,
   Evidence,
   ExecutiveKpi,
+  HistoricalMetadataSuggestion,
   KeyAction,
   KpiMonthlyValue,
   LadderStage,
@@ -53,6 +54,13 @@ type AppAction =
   | { type: "import_ready_strategic_plan"; period: string; text: string; fileName?: string | null }
   | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null }
   | {
+      type: "suggest_historical_metadata";
+      rawText: string;
+      fileName?: string | null;
+      onSuccess?: (suggestion: HistoricalMetadataSuggestion) => void;
+      onError?: (message: string) => void;
+    }
+  | {
       type: "import_historical_document";
       documentType: PlanDocumentType;
       areaId?: string | null;
@@ -61,6 +69,7 @@ type AppAction =
       source?: string | null;
       note?: string | null;
       title?: string | null;
+      classification?: Record<string, unknown> | null;
       onSuccess?: () => void;
       onError?: (message: string) => void;
     }
@@ -1352,6 +1361,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (action.type === "suggest_historical_metadata") {
+        void callEdgeFunction("suggest-historical-metadata", {
+          orgId,
+          rawText: action.rawText,
+          fileName: action.fileName ?? null,
+        })
+          .then((result) => {
+            queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+            action.onSuccess?.((result as { suggestion: HistoricalMetadataSuggestion }).suggestion);
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível interpretar o histórico.");
+          });
+        return;
+      }
+
       if (action.type === "import_historical_document") {
         void callEdgeFunction("save-historical-document", {
           orgId,
@@ -1362,6 +1387,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           source: action.source ?? null,
           note: action.note ?? null,
           title: action.title ?? null,
+          classification: action.classification ?? null,
         })
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });

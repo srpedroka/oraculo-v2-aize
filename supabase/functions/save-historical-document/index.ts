@@ -16,6 +16,7 @@ const MAX_TEXT_LENGTH = 200_000;
 const MAX_NOTE_LENGTH = 1_000;
 const MAX_SOURCE_LENGTH = 180;
 const MAX_PERIOD_LENGTH = 80;
+const MAX_LOW_CONFIDENCE_FIELDS = 8;
 
 function asText(value: unknown) {
   return String(value ?? "").trim();
@@ -24,6 +25,64 @@ function asText(value: unknown) {
 function optionalText(value: unknown, maxLength: number) {
   const text = asText(value);
   return text ? text.slice(0, maxLength) : null;
+}
+
+function optionalNumber(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.min(1, parsed));
+}
+
+function optionalBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : null;
+}
+
+function normalizeOverridden(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  return {
+    documentType: Boolean(record.documentType),
+    areaId: Boolean(record.areaId),
+    period: Boolean(record.period),
+    title: Boolean(record.title),
+  };
+}
+
+function normalizeConfirmed(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  return {
+    documentType: optionalText(record.documentType, 30),
+    areaId: optionalText(record.areaId, 80),
+    period: optionalText(record.period, MAX_PERIOD_LENGTH),
+    title: optionalText(record.title, 120),
+  };
+}
+
+function normalizeClassification(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const lowConfidenceFields = Array.isArray(record.lowConfidenceFields)
+    ? record.lowConfidenceFields
+        .map((item) => optionalText(item, 40))
+        .filter((item): item is string => Boolean(item))
+        .slice(0, MAX_LOW_CONFIDENCE_FIELDS)
+    : [];
+
+  return {
+    documentType: optionalText(record.documentType, 30),
+    areaId: optionalText(record.areaId, 80),
+    areaName: optionalText(record.areaName, 120),
+    period: optionalText(record.period, MAX_PERIOD_LENGTH),
+    periodFound: optionalBoolean(record.periodFound),
+    title: optionalText(record.title, 120),
+    summary: optionalText(record.summary, 320),
+    confidence: optionalNumber(record.confidence),
+    lowConfidenceFields,
+    source: optionalText(record.source, 40),
+    confirmed: normalizeConfirmed(record.confirmed),
+    overridden: normalizeOverridden(record.overridden),
+  };
 }
 
 function normalizeRawText(value: unknown) {
@@ -75,6 +134,7 @@ serve(async (req) => {
     const source = optionalText(payload.source, MAX_SOURCE_LENGTH);
     const note = optionalText(payload.note, MAX_NOTE_LENGTH);
     const requestedTitle = optionalText(payload.title, 120);
+    const classification = normalizeClassification(payload.classification);
 
     if (!orgId) throw new Error("Empresa ausente");
     if (!DOCUMENT_TYPES.has(documentType)) throw new Error("Tipo de documento inválido");
@@ -84,7 +144,8 @@ serve(async (req) => {
     if (rawText.length > MAX_TEXT_LENGTH) throw new Error("Texto muito longo. Divida o histórico em arquivos menores.");
 
     const client = serviceClient();
-    await assertAreaWriter(user.id, orgId, areaId);
+    const membership = await assertAreaWriter(user.id, orgId, areaId);
+    if (membership.role === "admin") throw new Error("Admin não pode importar histórico");
 
     const [{ data: organization, error: orgError }, profileResult, area] = await Promise.all([
       client.from("organizations").select("name").eq("id", orgId).maybeSingle(),
@@ -107,6 +168,7 @@ serve(async (req) => {
       raw: rawText,
       source,
       note,
+      classification,
       imported_at: importedAt,
     };
 
