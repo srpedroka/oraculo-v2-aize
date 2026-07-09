@@ -2,7 +2,63 @@
 
 Índice mestre da rodada de testes do dono + pesquisas de design. Consolida tudo que foi coletado testando a plataforma. Cada item grande tem um plano detalhado próprio (linkado abaixo); os pequenos estão inline aqui.
 
-**Como usar:** executar em **ondas** (não tudo de uma vez). A Onda 1 é correção/quick-win, pode rodar já. A Onda 2 (Dashboard) é a feature grande — revisar as "decisões abertas" antes de construir. Fechar cada mudança com `pnpm run lint && pnpm run build` (AGENTS.md).
+**Como usar:** executar em **ondas** (não tudo de uma vez), uma por vez, revisando entre elas. Fechar cada mudança com `pnpm run lint && pnpm run build` (AGENTS.md).
+
+---
+
+## 📍 STATUS (atualizado 2026-07-09)
+
+| Item | Estado |
+|---|---|
+| A+B · Validação de IA no save | ✅ produção |
+| C · Logo/lema | ✅ produção |
+| D · Analytics removido | ✅ produção |
+| E · Período da importação | ✅ produção |
+| WhatsApp (fix Evo Go + anti-loop) | ✅ produção |
+| **F · Dashboard 4 KPIs (Fatias 0–3)** | ✅ produção |
+| **G · Onda 2 Fatia 4 — promover admin** | ⏳ pendente |
+| Catálogo de modelos (grok-4.5, gpt-5.5, fable-5, sonnet-5) | ⏳ plano pronto ([catalogo-modelos](2026-07-08-catalogo-modelos.md)) |
+| H · Importação com IA | ⏳ pendente |
+| I · Tom/persona por empresa | ⏳ pendente |
+| J · Polimento de UI (transições/ritmo) | ⏳ pendente |
+| Resiliência Evo Go (investigar recorrência) | ⏳ anotado |
+
+## 🚀 Próximas ondas — prompts prontos para o Codex
+
+**Procedimento padrão (vale para TODA onda) — o Codex deve sempre:**
+1. `git pull --rebase` antes (pega os commits mais novos da main).
+2. Executar a fatia indicada do plano.
+3. `pnpm run lint && pnpm run build`.
+4. Aplicar a migration (se houver) e fazer deploy: Edge Functions afetadas **e** frontend na Netlify (se mexeu em UI).
+5. **COMMITAR e dar push** — não deixar solto no working tree (importante).
+6. Atualizar `.agents-private/handoff-para-claude.md` com o que fez.
+
+Rode **uma onda de cada vez**, nesta ordem sugerida. Entre uma e outra, me avise ("feito") que eu verifico (banco, RLS, deploy, teste) antes de seguir.
+
+**1) Onda 2 · Fatia 4 — completar o papel admin**
+```text
+Rode git pull --rebase. Leia plans/2026-07-08-dashboard-kpis.md e execute a Fatia 4: Edge Function set-member-role + UI em Configurações para o owner promover/rebaixar admin (impedindo rebaixar o último owner; admin não vira owner). Rode lint+build, deploy da function e do frontend, commite e push, e atualize .agents-private/handoff-para-claude.md.
+```
+
+**2) Catálogo de modelos (rápido)**
+```text
+Rode git pull --rebase. Leia plans/2026-07-08-catalogo-modelos.md e execute a Fatia 1: adicionar gpt-5.5, claude-fable-5, claude-sonnet-5 e grok-4.5 (ids/preços do plano) em src/lib/aiPricing.ts E supabase/functions/_shared/pricing.ts, sincronizados. Rode lint+build, deploy de save-ai-settings, commite/push, e atualize o handoff pra Claude.
+```
+
+**3) Onda 3a — Importação de histórico com IA**
+```text
+Rode git pull --rebase. Leia plans/2026-07-08-importar-historico-ia.md e execute as Fatias 1-4 (IA classifica tipo/área/período + título, com confirmação antes de gravar). Rode lint+build, deploy das Edge Functions e do frontend, commite/push, atualize o handoff pra Claude.
+```
+
+**4) Onda 3b — Tom/persona por empresa**
+```text
+Rode git pull --rebase. Leia plans/2026-07-08-config-ia.md e execute a Fatia B (tom/persona por empresa). Rode lint+build, deploy das Edge Functions afetadas e do frontend, commite/push, atualize o handoff pra Claude.
+```
+
+**5) Onda 3c — Polimento de UI**
+```text
+Rode git pull --rebase. Leia plans/2026-07-08-polimento-ui.md e execute a Fundação (tokens de conforto) + Temas 1-4. Rode lint+build, deploy do frontend na Netlify, commite/push, atualize o handoff pra Claude.
+```
 
 ---
 
