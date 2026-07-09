@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-09 - Tom/persona configurável por empresa
+
+Decisao: criar `org_ai_tone` com presets, dois eixos e preferência personalizada, lida por todos os membros e alterada somente pelo owner. A diretiva de tom é carregada server-side pelo chat web, WhatsApp e condutores de sessão.
+
+Contexto: empresas diferentes precisam do mesmo método do Oráculo com formas de comunicação distintas, sem duplicar prompts nem afrouxar regras de segurança.
+
+Alternativas: manter um tom global em `persona.ts`, guardar texto livre completo por empresa, ou configurar tom separadamente por canal/função.
+
+Motivo: presets e eixos entregam variação controlada e auditável. O texto personalizado é curto, não substitui a persona e não permite reescrever o contrato dos condutores.
+
+Consequencias: `org_ai_tone` usa RLS membro-lê/owner-escreve; o preset equilibrado é fallback e não altera o prompt existente; `toneDirective` reforça que o ajuste vale só para a forma e nunca supera uma pergunta por vez, números reais, segurança ou confirmação de gravação. O primeiro corte é por empresa, igual no app e WhatsApp.
+
 ## 2026-07-09 - Dashboard executivo com 4 KPIs e papel admin limitado
 
 Decisao: criar `executive_kpis` e `kpi_monthly_values` para o Dashboard dos 4 KPIs (Faturamento, Margem operacional, Producao e Caixa), permitindo escrita por `owner` ou `admin` via helper `is_admin(org_id)`.

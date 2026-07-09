@@ -1,5 +1,6 @@
 import { resolveAiFunction } from "./ai-router.ts";
 import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
+import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
 import {
@@ -213,9 +214,10 @@ function formatReadyStrategicPlanReply(
   ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
 }
 
-function readyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
+function readyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp", tone: string) {
   return [
     PERSONA_ORACULO,
+    tone,
     "Você está importando um Plano Estratégico pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Plano Estratégico.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -230,7 +232,7 @@ function readyPlanSystemPrompt(context: string, period: string, channel: "web" |
     `Ano/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 }
 
 function normalizeReadyQuarterlyProposal(rawProposal: any, period: string) {
@@ -342,9 +344,10 @@ function formatReadyQuarterlyPlanReply(
   ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
 }
 
-function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
+function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp", tone: string) {
   return [
     PERSONA_ORACULO,
+    tone,
     "Você está importando um Plano Trimestral pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Planos Trimestrais da área selecionada.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -358,7 +361,7 @@ function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel
     `Trimestre/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 }
 
 function normalizeReadyMonthlyProposal(rawProposal: any, period: string) {
@@ -455,9 +458,10 @@ function formatReadyMonthlyPlanReply(
   ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
 }
 
-function readyMonthlyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp") {
+function readyMonthlyPlanSystemPrompt(context: string, period: string, channel: "web" | "whatsapp", tone: string) {
   return [
     PERSONA_ORACULO,
+    tone,
     "Você está importando um Plano Mensal pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Execução Mensal.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -471,7 +475,7 @@ function readyMonthlyPlanSystemPrompt(context: string, period: string, channel: 
     `Mês/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 }
 
 async function assertCanStartSession(client: Client, orgId: string, areaId: string | null, userId: string) {
@@ -661,19 +665,21 @@ export async function processPlanningMessage(
   const ensured = await ensureSessionConversation(client, session, channel);
   await insertMessage(client, ensured.session, "user", params.message, channel);
   const conversation = await maybeSummarize(client, ensured.session.org_id, ensured.conversation);
-  const [history, context] = await Promise.all([
+  const [history, context, orgTone] = await Promise.all([
     loadConversationHistory(client, ensured.session.conversation_id),
     buildPlanContext(client, ensured.session.org_id, {
       areaId: ensured.session.area_id,
       focus: planFocusForSession(ensured.session.type),
       period: ensured.session.period,
     }),
+    loadOrgTone(client, ensured.session.org_id),
   ]);
   const conversationMemory = formatConversationMemory(history);
 
   const systemPrompt = [
     PERSONA_ORACULO,
     REGRAS_DE_SESSAO,
+    toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
     "Estado já coletado:",
     JSON.stringify(session.state ?? {}, null, 2),
@@ -793,7 +799,10 @@ export async function prepareReadyStrategicPlanProposal(
     session = data;
   }
 
-  const context = await buildPlanContext(client, params.orgId, { areaId: params.areaId ?? null, focus: "org" });
+  const [context, orgTone] = await Promise.all([
+    buildPlanContext(client, params.orgId, { areaId: params.areaId ?? null, focus: "org" }),
+    loadOrgTone(client, params.orgId),
+  ]);
   const importedText = planText.length > READY_PLAN_TEXT_LIMIT
     ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
     : planText;
@@ -811,7 +820,7 @@ export async function prepareReadyStrategicPlanProposal(
     params.orgId,
     "planning",
     aiRoute,
-    readyPlanSystemPrompt(context, params.period, channel),
+    readyPlanSystemPrompt(context, params.period, channel, toneDirective(orgTone)),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
   );
@@ -921,7 +930,10 @@ export async function prepareReadyQuarterlyPlanProposal(
     session = data;
   }
 
-  const context = await buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "quarterly", period: params.period });
+  const [context, orgTone] = await Promise.all([
+    buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "quarterly", period: params.period }),
+    loadOrgTone(client, params.orgId),
+  ]);
   const importedText = planText.length > READY_PLAN_TEXT_LIMIT
     ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
     : planText;
@@ -940,7 +952,7 @@ export async function prepareReadyQuarterlyPlanProposal(
     params.orgId,
     "planning",
     aiRoute,
-    readyQuarterlyPlanSystemPrompt(context, params.period, channel),
+    readyQuarterlyPlanSystemPrompt(context, params.period, channel, toneDirective(orgTone)),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
   );
@@ -1050,7 +1062,10 @@ export async function prepareReadyMonthlyPlanProposal(
     session = data;
   }
 
-  const context = await buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "monthly", period: params.period });
+  const [context, orgTone] = await Promise.all([
+    buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "monthly", period: params.period }),
+    loadOrgTone(client, params.orgId),
+  ]);
   const importedText = planText.length > READY_PLAN_TEXT_LIMIT
     ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
     : planText;
@@ -1069,7 +1084,7 @@ export async function prepareReadyMonthlyPlanProposal(
     params.orgId,
     "planning",
     aiRoute,
-    readyMonthlyPlanSystemPrompt(context, params.period, channel),
+    readyMonthlyPlanSystemPrompt(context, params.period, channel, toneDirective(orgTone)),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
   );

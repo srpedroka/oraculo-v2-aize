@@ -16,6 +16,7 @@ import { callModelForFunction } from "../_shared/call-for-function.ts";
 import { buildPlanContext } from "../_shared/plan-context.ts";
 import { renderPlanForWhatsApp } from "../_shared/plan-render.ts";
 import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
+import { loadOrgTone, toneDirective } from "../_shared/conductors/tone.ts";
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { handleQuickUpdate } from "../_shared/quick-updates.ts";
@@ -1438,12 +1439,16 @@ async function buildOutOfScopeReply(
   const aiRoute = await resolveAiFunction(client, orgId, "daily");
   if (!aiRoute) return fallbackOutOfScopeReply(profile, message);
 
-  const history = await loadConversationHistory(client, conversation.id, 12);
+  const [history, orgTone] = await Promise.all([
+    loadConversationHistory(client, conversation.id, 12),
+    loadOrgTone(client, orgId),
+  ]);
   const topic = outOfScopeTopicLabel(message);
   const humorGuide = outOfScopeHumorGuide(message);
   const recentReplies = recentOracleRepliesToAvoid(history);
   const systemPrompt = [
     PERSONA_ORACULO,
+    toneDirective(orgTone),
     "A mensagem mais recente do usuário está fora do escopo do Oráculo.",
     `Mensagem atual: ${message}`,
     `Assunto detectado: ${topic}`,
@@ -1626,6 +1631,7 @@ async function buildAnswer(
     { data: areas },
     history,
     planContext,
+    orgTone,
   ] =
     await Promise.all([
       client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
@@ -1633,6 +1639,7 @@ async function buildAnswer(
       client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
       loadConversationHistory(client, conversation.id),
       buildPlanContext(client, orgId, { areaId, focus: areaId ? (/(mes|mês|mensal|acao|ação|acoes|ações)/i.test(message) ? "monthly" : "area") : "org" }),
+      loadOrgTone(client, orgId),
     ]);
 
   const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
@@ -1643,6 +1650,7 @@ async function buildAnswer(
 
   const systemPrompt = [
     PERSONA_ORACULO,
+    toneDirective(orgTone),
     WHATSAPP_DAILY_FORM_RULES,
     "Dados do atendimento:",
     `- O contato atual é ${profile?.full_name ?? "usuário sem nome"} (${membership?.role ?? "sem papel"}).`,

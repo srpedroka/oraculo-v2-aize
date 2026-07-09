@@ -2,6 +2,7 @@
 
 ## 2026-07-09
 
+- Executada a Onda 3b de tom/persona por empresa: criada `org_ai_tone` com RLS membro-le/owner-escreve, presets, eixos gentil↔ácido e direto↔motivador, preferência personalizada e aplicação segura no app, WhatsApp e condutores de planejamento.
 - Executada a Onda 3a da importacao historica com IA: criada `suggest-historical-metadata`, usando a funcao `background` para sugerir tipo/area/periodo/titulo antes da gravacao, com fallback heuristico, confirmacao obrigatoria do usuario e periodo vazio quando nao houver data clara.
 - Atualizado o catalogo de modelos de IA no frontend e no servidor com `gpt-5.5`, `claude-fable-5`, `claude-sonnet-5` e `grok-4.5`, preservando modelos legados para lookup de pricing.
 - Executada a Fatia 4 da Onda 2 do Dashboard dos 4 KPIs: criada a Edge Function `set-member-role`, ligada a UI de Configuracoes para owner promover/rebaixar `admin`, com bloqueio de promocao a owner e protecao contra rebaixar o ultimo owner.

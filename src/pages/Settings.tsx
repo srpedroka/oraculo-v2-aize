@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Save,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   UserPlus,
 } from "lucide-react";
@@ -21,7 +22,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
-import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, MembershipRole } from "../types";
+import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, MembershipRole, OrgTonePreset } from "../types";
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
   openai: "gpt-5.4",
@@ -42,6 +43,36 @@ const AI_FUNCTIONS: { value: AiFunction; title: string; description: string }[] 
   { value: "daily", title: "Conversa do dia a dia", description: "Atende WhatsApp e painel com respostas rápidas; pode usar modelo mais leve." },
   { value: "background", title: "Bastidores", description: "Classifica documentos, prepara resumos e executa tarefas de apoio com custo controlado." },
 ];
+
+const TONE_PRESETS: Array<{
+  value: OrgTonePreset;
+  label: string;
+  acidity: number;
+  drive: number;
+}> = [
+  { value: "equilibrado", label: "Equilibrado", acidity: 0, drive: 0 },
+  { value: "gentil", label: "Gentil", acidity: -2, drive: 0 },
+  { value: "acido", label: "Ácido / franco", acidity: 2, drive: 0 },
+  { value: "direto", label: "Direto", acidity: 0, drive: -2 },
+  { value: "motivador", label: "Motivador", acidity: 0, drive: 2 },
+  { value: "custom", label: "Personalizado", acidity: 0, drive: 0 },
+];
+
+function acidityPreview(value: number) {
+  if (value <= -2) return "bem gentil e acolhedor";
+  if (value === -1) return "gentil nas provocações";
+  if (value === 1) return "franco e respeitoso";
+  if (value >= 2) return "franco e provocador, sem grosseria";
+  return "equilibrado entre acolhimento e franqueza";
+}
+
+function drivePreview(value: number) {
+  if (value <= -2) return "seco e objetivo";
+  if (value === -1) return "contido e focado";
+  if (value === 1) return "positivo e orientado ao próximo passo";
+  if (value >= 2) return "motivador e energético, sem exageros";
+  return "sereno e prático";
+}
 
 function normalizePhone(value: string) {
   const startsWithPlus = value.trim().startsWith("+");
@@ -117,7 +148,7 @@ function checkedAtLabel(value: string | null | undefined) {
 }
 
 export function Settings() {
-  const { state, dispatch, signOut, saveAiProviderKey, saveAiFunctionSetting, testAiProviderKey, testAiFunction } = useAppState();
+  const { state, dispatch, signOut, saveAiProviderKey, saveAiFunctionSetting, testAiProviderKey, testAiFunction, saveOrgTone } = useAppState();
   const [organizationName, setOrganizationName] = useState("");
   const [organizationSubtitle, setOrganizationSubtitle] = useState("");
   const [organizationMessage, setOrganizationMessage] = useState("");
@@ -144,6 +175,14 @@ export function Settings() {
   const [testingProvider, setTestingProvider] = useState<AiProvider | null>(null);
   const [savingFunction, setSavingFunction] = useState<AiFunction | null>(null);
   const [testingFunction, setTestingFunction] = useState<AiFunction | null>(null);
+  const [toneDraft, setToneDraft] = useState<{
+    preset: OrgTonePreset;
+    acidity: number;
+    drive: number;
+    customNote: string;
+  }>({ preset: "equilibrado", acidity: 0, drive: 0, customNote: "" });
+  const [toneMessage, setToneMessage] = useState("");
+  const [savingTone, setSavingTone] = useState(false);
   const [whatsappInstanceUrl, setWhatsappInstanceUrl] = useState(state.whatsappSettings?.instanceUrl ?? "");
   const [whatsappInstanceName, setWhatsappInstanceName] = useState(state.whatsappSettings?.instanceName ?? "");
   const [whatsappConnectedNumber, setWhatsappConnectedNumber] = useState(state.whatsappSettings?.connectedNumber ?? "");
@@ -178,6 +217,13 @@ export function Settings() {
   );
 
   const recentUsage = state.aiUsageLogs.slice(0, 5);
+  const tonePreview = useMemo(
+    () => [
+      `O Oráculo será ${acidityPreview(toneDraft.acidity)}, com um jeito ${drivePreview(toneDraft.drive)}.`,
+      toneDraft.preset === "custom" && toneDraft.customNote.trim() ? `Preferência da casa: ${toneDraft.customNote.trim()}` : "",
+    ].filter(Boolean).join(" "),
+    [toneDraft],
+  );
 
   useEffect(() => {
     const legacyProvider = state.aiSettings?.provider ?? "openai";
@@ -204,6 +250,15 @@ export function Settings() {
     setWhatsappConnectedNumber(state.whatsappSettings?.connectedNumber ?? "");
     setWhatsappEnabled(state.whatsappSettings?.enabled ?? false);
   }, [state.whatsappSettings]);
+
+  useEffect(() => {
+    setToneDraft({
+      preset: state.orgTone?.preset ?? "equilibrado",
+      acidity: state.orgTone?.acidity ?? 0,
+      drive: state.orgTone?.drive ?? 0,
+      customNote: state.orgTone?.customNote ?? "",
+    });
+  }, [state.orgTone]);
 
   function createOrganization(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -341,6 +396,35 @@ export function Settings() {
       setAiMessageTone("provider_error");
     } finally {
       setTestingFunction(null);
+    }
+  }
+
+  function selectTonePreset(preset: OrgTonePreset) {
+    const selected = TONE_PRESETS.find((item) => item.value === preset) ?? TONE_PRESETS[0];
+    setToneDraft((current) => ({
+      preset,
+      acidity: preset === "custom" ? current.acidity : selected.acidity,
+      drive: preset === "custom" ? current.drive : selected.drive,
+      customNote: preset === "custom" ? current.customNote : "",
+    }));
+    setToneMessage("");
+  }
+
+  async function saveTone() {
+    setSavingTone(true);
+    setToneMessage("");
+    try {
+      await saveOrgTone({
+        preset: toneDraft.preset,
+        acidity: toneDraft.acidity,
+        drive: toneDraft.drive,
+        customNote: toneDraft.preset === "custom" ? toneDraft.customNote : null,
+      });
+      setToneMessage("Tom salvo e já disponível para as próximas conversas.");
+    } catch (error) {
+      setToneMessage(error instanceof Error ? error.message : "Não foi possível salvar o tom.");
+    } finally {
+      setSavingTone(false);
     }
   }
 
@@ -907,6 +991,134 @@ export function Settings() {
       </div>
         </>
       )}
+
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <SlidersHorizontal className="mt-0.5 h-5 w-5 shrink-0 text-text-secondary" />
+            <div>
+              <h2 className="text-base font-semibold text-text">Tom do Oráculo</h2>
+              <p className="mt-1 text-sm leading-6 text-text-secondary">
+                Vale para o painel, WhatsApp e sessões de planejamento desta empresa.
+              </p>
+            </div>
+          </div>
+          {!isOwner ? (
+            <span className="rounded-full border border-border bg-[#FAFAFB] px-2.5 py-1 text-xs font-medium text-text-secondary">
+              Somente leitura
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-5 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="space-y-4">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-text">Preset</span>
+              <select
+                value={toneDraft.preset}
+                disabled={!isOwner}
+                onChange={(event) => selectTonePreset(event.target.value as OrgTonePreset)}
+                className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm disabled:cursor-not-allowed disabled:bg-[#FAFAFB] disabled:text-text-secondary"
+              >
+                {TONE_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>{preset.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="rounded-xl border border-border bg-[#FAFAFB] p-4">
+              <p className="text-xs font-medium uppercase text-text-tertiary">Prévia</p>
+              <p className="mt-2 text-sm leading-6 text-text">{tonePreview}</p>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <label className="block">
+              <span className="mb-2 flex items-center justify-between gap-3 text-sm font-medium text-text">
+                <span>Franqueza</span>
+                <span className="text-xs font-normal text-text-tertiary">{toneDraft.acidity}</span>
+              </span>
+              <input
+                type="range"
+                min="-2"
+                max="2"
+                step="1"
+                value={toneDraft.acidity}
+                disabled={!isOwner || toneDraft.preset !== "custom"}
+                onChange={(event) => {
+                  setToneDraft((current) => ({ ...current, acidity: Number(event.target.value) }));
+                  setToneMessage("");
+                }}
+                className="h-2 w-full cursor-pointer accent-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <span className="mt-2 flex justify-between text-xs text-text-tertiary">
+                <span>Gentil</span>
+                <span>Ácido / franco</span>
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 flex items-center justify-between gap-3 text-sm font-medium text-text">
+                <span>Energia</span>
+                <span className="text-xs font-normal text-text-tertiary">{toneDraft.drive}</span>
+              </span>
+              <input
+                type="range"
+                min="-2"
+                max="2"
+                step="1"
+                value={toneDraft.drive}
+                disabled={!isOwner || toneDraft.preset !== "custom"}
+                onChange={(event) => {
+                  setToneDraft((current) => ({ ...current, drive: Number(event.target.value) }));
+                  setToneMessage("");
+                }}
+                className="h-2 w-full cursor-pointer accent-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <span className="mt-2 flex justify-between text-xs text-text-tertiary">
+                <span>Direto / seco</span>
+                <span>Motivador</span>
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 flex items-center justify-between gap-3 text-sm font-medium text-text">
+                <span>Preferência da casa</span>
+                <span className="text-xs font-normal text-text-tertiary">{toneDraft.customNote.length}/280</span>
+              </span>
+              <textarea
+                value={toneDraft.customNote}
+                maxLength={280}
+                rows={3}
+                disabled={!isOwner || toneDraft.preset !== "custom"}
+                onChange={(event) => {
+                  setToneDraft((current) => ({ ...current, customNote: event.target.value }));
+                  setToneMessage("");
+                }}
+                placeholder="Ex.: use exemplos do nosso setor e evite linguagem de consultoria."
+                className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2 text-sm leading-6 disabled:cursor-not-allowed disabled:bg-[#FAFAFB] disabled:text-text-secondary"
+              />
+            </label>
+
+            {isOwner ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs leading-5 text-text-tertiary">
+                  Os controles finos ficam disponíveis no preset Personalizado.
+                </p>
+                <Button type="button" icon={Save} disabled={savingTone} onClick={() => void saveTone()}>
+                  {savingTone ? "Salvando..." : "Salvar tom"}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {toneMessage ? (
+          <p className="mt-4 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+            {toneMessage}
+          </p>
+        ) : null}
+      </Card>
     </div>
   );
 }

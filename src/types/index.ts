@@ -257,6 +257,7 @@ export interface AiSettings {
 
 export type AiProvider = "openai" | "anthropic" | "moonshot" | "xai";
 export type AiFunction = "planning" | "daily" | "background";
+export type OrgTonePreset = "equilibrado" | "acido" | "gentil" | "direto" | "motivador" | "custom";
 export type AiConfigStatus = "ok" | "invalid_key" | "unknown_model" | "rate_limited" | "provider_error" | "timeout" | "no_key" | "untested";
 export type AiConfigStatusSource = "save" | "manual" | "runtime";
 
@@ -317,6 +318,16 @@ export interface AiUsageLog {
   createdAt: string;
 }
 
+export interface OrgTone {
+  orgId: string;
+  preset: OrgTonePreset;
+  acidity: number;
+  drive: number;
+  customNote: string | null;
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
 export interface WhatsAppSettings {
   orgId: string;
   instanceUrl: string | null;
@@ -351,6 +362,7 @@ export interface AppState {
   aiFunctionSettings: AiFunctionSetting[];
   aiProviderKeyStatuses: AiProviderKeyStatus[];
   aiUsageLogs: AiUsageLog[];
+  orgTone: OrgTone | null;
   whatsappSettings: WhatsAppSettings | null;
   areas: Area[];
   strategicPlan: StrategicPlan | null;

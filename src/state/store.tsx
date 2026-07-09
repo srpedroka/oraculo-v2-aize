@@ -26,6 +26,7 @@ import type {
   MembershipRole,
   Objective,
   OracleMode,
+  OrgTone,
   Organization,
   PlanDocument,
   PlanDocumentType,
@@ -148,6 +149,7 @@ interface AppContextValue {
   saveAiFunctionSetting: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
   testAiProviderKey: (provider: AiProvider) => Promise<AiSettingsSaveResult>;
   testAiFunction: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
+  saveOrgTone: (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">) => Promise<OrgTone>;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -170,6 +172,7 @@ const EMPTY_STATE: AppState = {
   aiFunctionSettings: [],
   aiProviderKeyStatuses: [],
   aiUsageLogs: [],
+  orgTone: null,
   whatsappSettings: null,
   areas: [],
   strategicPlan: null,
@@ -524,6 +527,18 @@ function mapAiUsageLog(row: any): AiUsageLog {
     totalCostUsd: Number(row.total_cost_usd ?? 0),
     metadata: row.metadata ?? {},
     createdAt: row.created_at,
+  };
+}
+
+function mapOrgTone(row: any): OrgTone {
+  return {
+    orgId: row.org_id,
+    preset: row.preset,
+    acidity: Number(row.axis_acidity ?? 0),
+    drive: Number(row.axis_drive ?? 0),
+    customNote: row.custom_note ?? null,
+    updatedBy: row.updated_by ?? null,
+    updatedAt: row.updated_at ?? null,
   };
 }
 
@@ -981,6 +996,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const orgToneQuery = useQuery({
+    queryKey: ["org_ai_tone", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("org_ai_tone").select("*").eq("org_id", orgId).maybeSingle();
+      if (error) throw error;
+      return data
+        ? mapOrgTone(data)
+        : {
+            orgId: orgId as string,
+            preset: "equilibrado" as const,
+            acidity: 0,
+            drive: 0,
+            customNote: null,
+            updatedBy: null,
+            updatedAt: null,
+          };
+    },
+  });
+
   const whatsappSettingsQuery = useQuery({
     queryKey: ["whatsapp_settings", orgId],
     enabled: Boolean(supabase && orgId),
@@ -1035,6 +1071,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["org_ai_tone", orgId] });
     queryClient.invalidateQueries({ queryKey: ["whatsapp_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["check_ins", orgId] });
   }, [orgId, queryClient, userId]);
@@ -1052,6 +1089,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_function_settings", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "org_ai_tone", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "plan_documents", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "executive_kpis", filter: `org_id=eq.${orgId}` }, invalidateOrg)
@@ -1086,6 +1124,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aiFunctionSettingsQuery.isLoading ||
       aiProviderKeyStatusesQuery.isLoading ||
       aiUsageLogsQuery.isLoading ||
+      orgToneQuery.isLoading ||
       whatsappSettingsQuery.isLoading ||
       checkInsQuery.isLoading;
 
@@ -1102,6 +1141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aiFunctionSettings: aiFunctionSettingsQuery.data ?? [],
       aiProviderKeyStatuses: aiProviderKeyStatusesQuery.data ?? [],
       aiUsageLogs: aiUsageLogsQuery.data ?? [],
+      orgTone: orgToneQuery.data ?? null,
       whatsappSettings: whatsappSettingsQuery.data ?? null,
       areas,
       strategicPlan,
@@ -1129,6 +1169,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     aiSettingsQuery.isLoading,
     aiUsageLogsQuery.data,
     aiUsageLogsQuery.isLoading,
+    orgToneQuery.data,
+    orgToneQuery.isLoading,
     areaPlansQuery.data,
     areaPlansQuery.isLoading,
     areas,
@@ -1766,6 +1808,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [invalidateOrg, orgId],
   );
 
+  const saveOrgTone = useCallback(
+    async (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">) => {
+      if (!orgId) throw new Error("Empresa obrigatória");
+      if (!userId) throw new Error("Sessão obrigatória");
+      const client = requireClient();
+      const { data, error } = await client
+        .from("org_ai_tone")
+        .upsert({
+          org_id: orgId,
+          preset: tone.preset,
+          axis_acidity: Math.max(-2, Math.min(2, Math.round(tone.acidity))),
+          axis_drive: Math.max(-2, Math.min(2, Math.round(tone.drive))),
+          custom_note: tone.customNote?.trim().slice(0, 280) || null,
+          updated_at: new Date().toISOString(),
+          updated_by: userId,
+        }, { onConflict: "org_id" })
+        .select("*")
+        .single();
+      if (error) throw error;
+      const saved = mapOrgTone(data);
+      queryClient.setQueryData(["org_ai_tone", orgId], saved);
+      return saved;
+    },
+    [orgId, queryClient, userId],
+  );
+
   const value = useMemo(
     () => ({
       state,
@@ -1783,6 +1851,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveAiFunctionSetting,
       testAiProviderKey,
       testAiFunction,
+      saveOrgTone,
     }),
     [
       dispatch,
@@ -1791,6 +1860,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetPasswordForEmail,
       saveAiFunctionSetting,
       saveAiProviderKey,
+      saveOrgTone,
       session,
       signIn,
       signOut,

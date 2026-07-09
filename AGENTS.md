@@ -17,6 +17,7 @@ O app permite:
 - registrar objetivos, acoes-chave, evidencias, check-ins e fechamentos;
 - conversar com o Oraculo pelo app e pelo WhatsApp;
 - configurar provedores/modelos de IA por funcao;
+- configurar o tom/persona do Oraculo por empresa, com presets e eixos;
 - rastrear tokens e custo estimado;
 - gerar documentos canonicos de planos e fechamentos para tela, PDF e WhatsApp.
 
@@ -165,6 +166,7 @@ Migrations principais:
 - `supabase/migrations/20260702152000_ai_pricing_usage.sql`: pricing e logs de uso de IA.
 - `supabase/migrations/20260704110000_v3_intelligence_foundation.sql`: conversas, sessoes, funcoes de IA e documentos canonicos.
 - `supabase/migrations/20260704123000_v3_ai_function_router.sql`: roteador por funcao e xAI/Grok.
+- `supabase/migrations/20260709150000_org_ai_tone.sql`: tom/persona por empresa, RLS e realtime.
 
 Tabelas publicas importantes:
 
@@ -184,6 +186,7 @@ Tabelas publicas importantes:
 - `ai_function_settings`
 - `ai_provider_key_status`
 - `ai_usage_logs`
+- `org_ai_tone`
 - `whatsapp_settings`
 - `conversations`
 - `planning_sessions`
@@ -213,6 +216,7 @@ Compartilhados criticos:
 - `_shared/model.ts`: chamadas OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok.
 - `_shared/ai-router.ts`: resolve provider/modelo/chave por funcao (`planning`, `daily`, `background`).
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.
+- `_shared/conductors/tone.ts`: carrega o ajuste de tom da empresa e monta a diretiva segura para os prompts.
 - `_shared/session-engine.ts`: estado e ciclo de sessoes.
 - `_shared/proposals.ts`: aplica propostas confirmadas com validacao server-side.
 - `_shared/plan-context.ts`: contexto textual do plano para IA.
@@ -483,6 +487,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Roteador de intencao, atualizacoes rapidas e limite de escopo no WhatsApp.
 - Configuracao de IA por provedor e funcao (`planning`, `daily`, `background`).
 - Tracking de tokens e custo estimado.
+- Tom do Oraculo configuravel por empresa, com leitura para membros e edicao apenas pelo owner.
 - Documentos canonicos em `plan_documents`, tela `/documentos`, impressao/PDF A4 e resumo por WhatsApp.
 - Fase 7 da V3 concluida: removidos roteiros antigos, guia legado separado e function antiga de check-in mensal.
 

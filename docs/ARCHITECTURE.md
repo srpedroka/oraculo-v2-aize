@@ -23,6 +23,8 @@ Na tela `src/pages/Documents.tsx`, os documentos gravados em `plan_documents` ap
 
 Na tela `src/pages/Dashboard.tsx`, o bloco "Resultado" combina objetivos ativos com o Dashboard dos 4 KPIs executivos: Faturamento, Margem operacional, Producao e Caixa. As definicoes vivem em `executive_kpis`, os lancamentos mensais em `kpi_monthly_values`, e o frontend renderiza o ano corrente sem seletor de ano na primeira versao. Owners e admins abrem `src/features/kpi/KpiEditorDialog.tsx` para editar a grade de 12 meses; a escrita vai pelo store direto ao Supabase e depende da RLS `is_admin`.
 
+Na tela `src/pages/Settings.tsx`, o card "Tom do Oráculo" lê `org_ai_tone` para todos os membros da empresa e permite edição somente pelo owner. Presets preenchem os eixos gentil↔ácido/franco e direto↔motivador; o preset personalizado libera os sliders e uma preferência da casa de até 280 caracteres.
+
 Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oraculo. `src/features/objective/ObjectiveEditDialog.tsx` permite editar tipo, resultado, indicador, meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas. O mesmo editor aparece em Plano Estrategico, Dashboard e cards de planos por area. A tela de Areas tambem permite ao owner cadastrar areas e vincular coordenadores no proprio modulo, enquanto coordenadores e demais membros ficam em leitura quando nao tiverem permissao de escrita.
 
 ### Supabase
@@ -43,6 +45,7 @@ Migrations principais:
 - `20260708120000_strategic_review_type.sql`: adiciona o tipo `strategic_review` a `planning_sessions` e `plan_documents`.
 - `20260708140000_ai_config_health.sql`: adiciona status da ultima validacao/uso em `ai_function_settings` e `ai_provider_key_status`.
 - `20260709123000_executive_kpis.sql`: adiciona os 4 KPIs executivos do Dashboard, lancamentos mensais, papel `admin` e helper `is_admin`.
+- `20260709150000_org_ai_tone.sql`: adiciona tom/persona por empresa, RLS membro-le/owner-escreve e realtime.
 
 Tabelas publicas principais:
 
@@ -68,6 +71,7 @@ Tabelas publicas principais:
 - `plan_documents`
 - `executive_kpis`
 - `kpi_monthly_values`
+- `org_ai_tone`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
@@ -120,6 +124,7 @@ Funcoes compartilhadas:
 - `_shared/usage.ts`: calculo e gravacao de consumo de IA.
 - `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
 - `_shared/conductors/persona.ts`: persona, tom de conversa e guias por contexto usados pelos condutores e pelo chat web.
+- `_shared/conductors/tone.ts`: carrega `org_ai_tone`, usa o padrão equilibrado quando não há registro e gera uma diretiva de forma que não sobrepõe regras de segurança.
 - `_shared/intent-router.ts`: classifica mensagens em `smalltalk`, `status`, `quick_update`, `start_planning`, `close_period`, `document_question` ou `other`, usando a funcao de IA `background` com fallback deterministico.
 - `_shared/historical-classifier.ts`: sugere metadados para historicos importados, usando IA `background` quando configurada e fallback heuristico com periodo vazio se nao houver data clara.
 - `_shared/periods.ts`: normaliza texto e resolve ano, trimestre e mes vigentes ou citados na mensagem.
@@ -154,6 +159,8 @@ Funcoes de IA:
 O helper `_shared/ai-router.ts` resolve provider/modelo/chave por funcao. Se uma funcao ainda nao tiver configuracao especifica, ele cai no legado `ai_settings`, preservando o comportamento anterior. Na Fase 1, `oracle-chat` e `whatsapp-webhook` usam `daily`; classificacao de documentos usa `background`. A transcricao de audio continua exigindo uma chave OpenAI cadastrada.
 
 Desde 2026-07-08, salvar ou testar uma chave/modelo chama `_shared/model-probe.ts` no servidor e grava `last_status`, `last_status_detail` e `last_checked_at` em `ai_function_settings` e `ai_provider_key_status`. Em runtime, `_shared/call-for-function.ts` marca sucesso ou erro real por funcao (`planning`, `daily`, `background`), sem expor chave e sem remover os fallbacks determinísticos dos canais.
+
+Desde 2026-07-09, `org_ai_tone` permite calibrar a forma das respostas por empresa. `oracle-chat`, `whatsapp-webhook` e `_shared/session-engine.ts` carregam o ajuste uma vez por request e inserem a diretiva junto da persona/regras de sessão. Sem registro, o helper devolve o preset equilibrado e a diretiva vazia, preservando os prompts anteriores. O tom altera apenas a forma; contratos JSON, uma pergunta por vez, proibição de inventar números e confirmação de gravação continuam prioritários.
 
 Na Fase 2, `oracle-session` usa `planning` para conduzir sessoes. O modelo responde em envelope JSON com `reply`, `state_patch`, `next_phase`, `proposal` e `done`. O sistema persiste `state`, `phase` e `pending_proposal` em `planning_sessions`.
 
@@ -229,6 +236,7 @@ As politicas RLS seguem a regra:
 - membros da empresa podem ler dados da empresa;
 - owners podem escrever em dados administrativos;
 - admins podem escrever nos KPIs executivos;
+- apenas owners podem alterar o tom/persona da empresa; todos os membros podem ler;
 - coordenadores podem escrever em dados da propria area;
 - chaves de IA ficam fora do schema publico.
 

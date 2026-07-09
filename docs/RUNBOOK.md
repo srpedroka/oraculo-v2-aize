@@ -834,9 +834,23 @@ supabase functions deploy whatsapp-webhook oracle-chat --project-ref bkswkfazkji
 
 Use `--use-api` quando Docker local nao estiver disponivel.
 
-## Calibrar tom do Oraculo
+## Configurar ou calibrar o tom do Oraculo
 
-O tom e o roteiro empacotado das Edge Functions ficam em:
+O owner pode ajustar o tom em Configuracoes > Tom do Oráculo. Os presets disponíveis são Equilibrado, Gentil, Ácido/franco, Direto, Motivador e Personalizado. O personalizado libera os eixos e uma preferência da casa de até 280 caracteres. Coordenadores e admins enxergam a configuração em modo somente leitura.
+
+O valor fica em `public.org_ai_tone`. Sem linha para a empresa, o comportamento é Equilibrado e nenhuma diretiva adicional entra no prompt.
+
+Consulta de diagnóstico:
+
+```sql
+select org_id, preset, axis_acidity, axis_drive, custom_note, updated_at
+from public.org_ai_tone
+where org_id = '<ORG_ID>';
+```
+
+Se o valor foi salvo mas a resposta não mudou, publique novamente `oracle-chat`, `oracle-session` e `whatsapp-webhook`. Se a tela não permitir salvar, confirme que a membership é `owner`; a RLS bloqueia escrita por `admin` e `coordinator`.
+
+Para calibrar o comportamento-base de todas as empresas, a persona e os roteiros empacotados continuam em:
 
 ```text
 supabase/functions/_shared/conductors/persona.ts

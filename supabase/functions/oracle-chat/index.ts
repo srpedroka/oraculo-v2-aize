@@ -15,6 +15,7 @@ import { callModelForFunction } from "../_shared/call-for-function.ts";
 import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { CONVERSATION_STYLE, conversationGuideForContext } from "../_shared/conductors/persona.ts";
+import { loadOrgTone, toneDirective } from "../_shared/conductors/tone.ts";
 import { startPlanningSession } from "../_shared/session-engine.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 
@@ -133,12 +134,13 @@ serve(async (req) => {
     }
 
     const aiRoute = await resolveAiFunction(client, orgId, "daily");
-    const [{ data: objectives }, history, planContext] =
+    const [{ data: objectives }, history, planContext, orgTone] =
       await Promise.all([
         client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
         loadConversationHistory(client, conversation.id),
         buildPlanContext(client, orgId, { areaId: resolvedAreaId, focus: focusForContext(String(context), resolvedAreaId) }),
-    ]);
+        loadOrgTone(client, orgId),
+      ]);
 
     let answer = "";
     if (!aiRoute) {
@@ -150,6 +152,7 @@ serve(async (req) => {
         "Conduza o usuário com perguntas curtas e mantenha a lógica de Resultado e Evolução sem soar mecânico.",
         "Se a pergunta for ambígua, peça esclarecimento antes de analisar dados.",
         "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
+        toneDirective(orgTone),
         CONVERSATION_STYLE,
         guide,
         formatConversationMemory(history),

@@ -53,6 +53,8 @@ A tabela de chave real tem RLS habilitado, acesso revogado para `anon` e `authen
 
 Os modelos por funcao (`planning`, `daily`, `background`) ficam em `public.ai_function_settings`; essa tabela nao contem segredo e so owners podem alterar.
 
+O tom/persona por empresa fica em `public.org_ai_tone`. Não contém segredo: membros da empresa podem ler e apenas owners podem inserir, alterar ou excluir por RLS. Os eixos são limitados a `-2..2` e a preferência personalizada a 280 caracteres. A diretiva resultante altera somente a forma da resposta e inclui uma trava explícita para não substituir regras de conduta, segurança, contrato JSON ou confirmação de gravação.
+
 Ao salvar ou testar IA, `save-ai-settings` valida a combinacao provider/modelo/chave com uma chamada minima server-side. O retorno para o frontend contem apenas status, modelo, provedor, horario e detalhe truncado do erro; a chave real nunca volta ao cliente. As colunas `last_status*` tambem recebem erros de runtime por funcao, permitindo diagnosticar modelo invalido ou chave recusada sem abrir logs nem expor segredo.
 
 ## Uso, pricing e custo de IA
@@ -127,6 +129,7 @@ Regras principais:
 - membro da empresa le dados da empresa;
 - owner escreve dados administrativos e configuracoes;
 - admin escreve definicoes e lancamentos dos KPIs executivos do Dashboard;
+- owner escreve o tom/persona da empresa em `org_ai_tone`; demais membros têm somente leitura;
 - coordenador escreve apenas na propria area;
 - acoes e evidencias seguem permissao do objetivo ligado.
 
