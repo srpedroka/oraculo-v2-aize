@@ -35,7 +35,7 @@ function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
   if (!source || source.includes("@lid")) return null;
 
-  const raw = source.split("@")[0];
+  const raw = source.split("@")[0].split(":")[0];
   const digits = raw.replace(/\D/g, "");
   return digits.length >= 8 ? `+${digits}` : null;
 }
@@ -179,6 +179,49 @@ function buildEvolutionMessageKey(data: any, info: any, key: any, messageId: str
     ...(id ? { id } : {}),
     ...(participant ? { participant } : {}),
   };
+}
+
+function phonesMayMatch(a: unknown, b: unknown) {
+  const aCandidates = new Set(phoneCandidates(a).map((phone) => phone.replace(/\D/g, "")));
+  const bCandidates = phoneCandidates(b).map((phone) => phone.replace(/\D/g, ""));
+  return bCandidates.some((phone) => aCandidates.has(phone));
+}
+
+function extractSender(payload: any) {
+  const { data, info, key } = messageParts(payload);
+  const candidates = [
+    info?.Sender,
+    info?.sender,
+    info?.Participant,
+    info?.participant,
+    info?.SenderAlt,
+    key?.participant,
+    key?.Participant,
+    data?.sender,
+    data?.Sender,
+    payload?.sender,
+    payload?.Sender,
+  ];
+
+  return candidates.find((candidate) => normalizePhone(candidate)) ?? "";
+}
+
+function isMessageFromCurrentInstance(payload: any, settings: any) {
+  const { data, info, key } = messageParts(payload);
+  const fromMeValue = firstValue(
+    key?.fromMe,
+    key?.FromMe,
+    info?.IsFromMe,
+    info?.isFromMe,
+    data?.IsFromMe,
+    data?.isFromMe,
+    payload?.IsFromMe,
+    payload?.isFromMe,
+  );
+  if (toBoolean(fromMeValue)) return true;
+
+  const sender = extractSender(payload);
+  return Boolean(sender && settings?.connected_number && phonesMayMatch(sender, settings.connected_number));
 }
 
 function extractAudioInfo(payload: any) {
@@ -359,6 +402,13 @@ function timingSafeEqual(a: string, b: string) {
     mismatch |= (bufferA[i] ?? 0) ^ (bufferB[i] ?? 0);
   }
   return mismatch === 0;
+}
+
+async function deriveEvoGoWebhookToken(webhookSecret: string, orgId: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(webhookSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`evo-go:${orgId}`)));
+  return [...signature].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 // Teto de tamanho para download de midia recebida por webhook (evita esgotar memoria).
@@ -1960,13 +2010,27 @@ serve(async (req) => {
       .maybeSingle();
     if (whatsappKeyError) throw whatsappKeyError;
 
-    // Segredo aceito apenas por header (nunca por query string, que vaza em logs de proxy/acesso).
     const receivedSecret =
       req.headers.get("x-oraculo-webhook-secret") ??
       req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-    if (!whatsappKeyRow?.webhook_secret || !receivedSecret || !timingSafeEqual(receivedSecret, whatsappKeyRow.webhook_secret)) {
+    const headerAuthorized = Boolean(
+      whatsappKeyRow?.webhook_secret && receivedSecret && timingSafeEqual(receivedSecret, whatsappKeyRow.webhook_secret),
+    );
+
+    // Evo Go Manager nao expoe campo de header customizado. Para essa variante, aceitamos
+    // um bearer derivado na URL em vez do segredo bruto salvo no banco.
+    const receivedEvoGoToken = url.searchParams.get("evoGoToken") ?? "";
+    const expectedEvoGoToken =
+      !headerAuthorized && whatsappKeyRow?.webhook_secret && requestedOrgId
+        ? await deriveEvoGoWebhookToken(whatsappKeyRow.webhook_secret, whatsappSettings.org_id)
+        : "";
+    const evoGoUrlAuthorized = Boolean(expectedEvoGoToken && receivedEvoGoToken && timingSafeEqual(receivedEvoGoToken, expectedEvoGoToken));
+
+    if (!headerAuthorized && !evoGoUrlAuthorized) {
       return jsonResponse({ error: "Webhook não autorizado" }, 401);
     }
+
+    if (isMessageFromCurrentInstance(payload, whatsappSettings)) return jsonResponse({ ok: true, ignored: "from_me" });
 
     const extractedText = extractText(payload);
     const hasAudio = Boolean(extractAudioInfo(payload));

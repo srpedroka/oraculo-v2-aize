@@ -221,10 +221,12 @@ Configuracao operacional atual:
 Instancia: oraculo
 URL publica: https://143-95-217-64.sslip.io
 Numero conectado: +554691228197
-Webhook Supabase (o que FUNCIONA): https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7
+Webhook Supabase (Evo Go): https://bkswkfazkjilwfzwzthz.supabase.co/functions/v1/whatsapp-webhook?orgId=3a680b48-1ded-4bac-986f-b6e3a76297b7&evoGoToken=<token-derivado>
 ```
 
-IMPORTANTE — manter o `?orgId=` na URL. O provedor atual e o **Evo Go** (variante em Go), cujo payload aparentemente NAO traz um campo `instance` que o webhook reconheca. O `whatsapp-webhook` resolve a empresa pelo `orgId` da URL e, so se faltar, tentaria pelo `instance_name` do payload. Em 2026-07-07 tentou-se remover o `?orgId=` para "robustez": o recebimento **quebrou** (mensagens pararam de chegar ao banco por volta de 13:36 UTC) porque o fallback por `instance_name` nao resolveu com o payload do Evo Go. Correcao: reverter para a URL COM `orgId`. So considerar remover o `orgId` depois de capturar um payload real do Evo Go (nos logs do `whatsapp-webhook`) e confirmar/ajustar `extractInstanceName` para o campo correto. O `orgId` da org ativa (`3a680...`) precisa ser atualizado na Evolution se a org for recriada.
+IMPORTANTE — manter o `?orgId=` na URL. O provedor atual e o **Evo Go** (variante em Go), cujo payload aparentemente NAO traz um campo `instance` que o webhook reconheca. O `whatsapp-webhook` resolve a empresa pelo `orgId` da URL e, so se faltar, tentaria pelo `instance_name` do payload. Em 2026-07-07 tentou-se remover o `?orgId=` para "robustez": o recebimento **quebrou** (mensagens pararam de chegar ao banco por volta de 13:36 UTC) porque o fallback por `instance_name` nao resolveu com o payload do Evo Go. Correcao: usar a URL COM `orgId`. So considerar remover o `orgId` depois de capturar um payload real do Evo Go (nos logs do `whatsapp-webhook`) e confirmar/ajustar `extractInstanceName` para o campo correto. O `orgId` da org ativa (`3a680...`) precisa ser atualizado na Evolution se a org for recriada.
+
+IMPORTANTE — o Manager da Evo Go nao expoe campo de header customizado. O caminho preferencial do Oraculo continua sendo `x-oraculo-webhook-secret`, mas para essa variante a URL deve levar `evoGoToken`, um token derivado via HMAC do `webhook_secret` + `orgId`. Nao use o segredo bruto na query string.
 
 Valores secretos:
 
@@ -241,7 +243,7 @@ Se precisar recuperar:
 2. Conferir se a instancia `oraculo` esta conectada.
 3. Gerar nova chave/segredo se houver suspeita de vazamento.
 4. Abrir Configuracoes > WhatsApp no app e salvar novamente.
-5. Atualizar o webhook da Evolution com a URL e o mesmo segredo salvo no app.
+5. Atualizar o webhook da Evolution com a URL com `orgId` e `evoGoToken` derivado, ou com o header `x-oraculo-webhook-secret` se o provedor/painel suportar headers.
 
 ## Pricing e consumo de IA
 
