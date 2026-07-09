@@ -225,6 +225,24 @@ export interface KpiMonthlyValue {
   updatedAt: string;
 }
 
+export interface KpiSpreadsheetSuggestionRow {
+  kpiKey: KpiKey;
+  month: number;
+  targetValue: number | null;
+  targetStage: string | null;
+  actualValue: number | null;
+  secondaryActual: number | null;
+  note: string | null;
+}
+
+export interface KpiSpreadsheetSuggestion {
+  year: number;
+  rows: KpiSpreadsheetSuggestionRow[];
+  summary: string;
+  warnings: string[];
+  source: "ai_background" | "unavailable";
+}
+
 export type OracleMode = "normal" | "minimized" | "expanded";
 
 export type MembershipRole = "owner" | "admin" | "coordinator";

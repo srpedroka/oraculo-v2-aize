@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-09 - Importacao de planilha de KPI usa IA como proposta confirmada
+
+Decisao: ler planilhas de KPI no navegador, enviar apenas a tabela textual para a funcao de IA `background` e gravar Meta/Atingido somente depois da revisao e confirmacao da pessoa no editor.
+
+Contexto: lancamentos mensais de Faturamento, Margem operacional, Producao e Caixa costumam existir em planilhas. O produto precisa reduzir digitacao sem permitir que uma leitura ambigua de colunas altere historico executivo silenciosamente.
+
+Alternativas: enviar o arquivo bruto para o servidor, gravar automaticamente toda inferencia do modelo, ou aceitar apenas importacao CSV deterministica com layout fixo.
+
+Motivo: a leitura local protege o arquivo original; o modelo pode reconhecer layouts variados, mas sua resposta e limitada aos quatro KPIs e meses 1-12. A previa explicita torna a automacao auditavel e preserva os valores que a planilha nao informou.
+
+Consequencias: `suggest-kpi-spreadsheet` exige `owner` ou `admin`, registra uso da IA `background` e nao grava dados de KPI. A aplicacao final usa a mesma RLS `is_admin(org_id)` do editor manual. Se a IA estiver indisponivel ou a tabela for ambigua, o fluxo devolve aviso sem alterar dados.
+
 ## 2026-07-09 - Tom/persona configurável por empresa
 
 Decisao: criar `org_ai_tone` com presets, dois eixos e preferência personalizada, lida por todos os membros e alterada somente pelo owner. A diretiva de tom é carregada server-side pelo chat web, WhatsApp e condutores de sessão.

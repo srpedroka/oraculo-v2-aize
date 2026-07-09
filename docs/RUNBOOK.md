@@ -772,6 +772,18 @@ Verifique secrets no Supabase:
 
 Nunca copie esses valores para o frontend.
 
+## Importar planilha de KPIs
+
+O editor do Dashboard permite que `owner` e `admin` importem `.xlsx`, `.xls` ou `.csv` com dados de Meta e Atingido.
+
+1. Abra Dashboard > Lançar KPIs > Importar planilha.
+2. Escolha uma planilha de até 20 MB. O navegador lê as primeiras abas e linhas, sem enviar o arquivo bruto ao Supabase.
+3. A função `suggest-kpi-spreadsheet` envia apenas a tabela textual para a IA configurada em `background` e retorna a proposta de indicador, mês, Meta e Atingido.
+4. Revise a prévia. Avisos indicam dados ambíguos ou leitura limitada.
+5. Clique em `Aplicar lançamentos` para gravar. Sem essa confirmação, nada é alterado.
+
+Se não surgir uma prévia, confira se há uma IA válida configurada para a função `background` em Configurações e se as colunas da planilha deixam claro o indicador, mês, Meta e Atingido. A importação preserva valores existentes quando uma célula não foi identificada com segurança.
+
 ## Deploy frontend
 
 Build local:
@@ -815,6 +827,7 @@ Edge Functions:
 supabase functions deploy invite-member
 supabase functions deploy set-member-role
 supabase functions deploy save-ai-settings
+supabase functions deploy suggest-kpi-spreadsheet
 supabase functions deploy suggest-historical-metadata
 supabase functions deploy save-historical-document
 supabase functions deploy oracle-chat

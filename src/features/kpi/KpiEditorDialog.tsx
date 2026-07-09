@@ -1,10 +1,11 @@
-import { Save, Wand2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AlertTriangle, FileSpreadsheet, Save, Wand2, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { cashDeltas, formatKpiValue, KPI_MONTHS, movingAverage3, orderedLadder } from "../../lib/kpi";
+import { KPI_SPREADSHEET_ACCEPT, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
+import { cashDeltas, formatKpiValue, KPI_MONTHS, ladderLabel, movingAverage3, orderedLadder } from "../../lib/kpi";
 import { useAppState } from "../../state/store";
-import type { ExecutiveKpi, KpiMonthlyValue } from "../../types";
+import type { ExecutiveKpi, KpiMonthlyValue, KpiSpreadsheetSuggestion } from "../../types";
 
 interface KpiEditorDialogProps {
   onClose: () => void;
@@ -77,7 +78,7 @@ function monthValuesFromDraft(kpi: ExecutiveKpi, draft: KpiDraft, year: number) 
 }
 
 export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
-  const { state, dispatch } = useAppState();
+  const { state, dispatch, suggestKpiSpreadsheet, applyKpiSpreadsheetSuggestion } = useAppState();
   const year = new Date().getFullYear();
   const orderedKpis = useMemo(() => [...state.executiveKpis].sort((left, right) => left.sortOrder - right.sortOrder), [state.executiveKpis]);
   const [activeKpiId, setActiveKpiId] = useState(orderedKpis[0]?.id ?? "");
@@ -85,7 +86,11 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
     Object.fromEntries(orderedKpis.map((kpi) => [kpi.id, buildDraft(kpi, state.kpiValues, year)])),
   );
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [applyingImport, setApplyingImport] = useState(false);
+  const [spreadsheetSuggestion, setSpreadsheetSuggestion] = useState<KpiSpreadsheetSuggestion | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const spreadsheetInputRef = useRef<HTMLInputElement>(null);
   const activeKpi = orderedKpis.find((kpi) => kpi.id === activeKpiId) ?? orderedKpis[0] ?? null;
   const activeDraft = activeKpi ? drafts[activeKpi.id] : null;
 
@@ -156,6 +161,70 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
     });
   }
 
+  async function importSpreadsheet(file: File | null) {
+    if (!file) return;
+    setImporting(true);
+    setMessage(null);
+    setSpreadsheetSuggestion(null);
+
+    try {
+      const imported = await readKpiSpreadsheet(file);
+      const suggestion = await suggestKpiSpreadsheet(imported.rawText, imported.fileName);
+      if (!suggestion.rows.length) {
+        setMessage(suggestion.warnings[0] ?? "Não encontrei lançamentos de Meta ou Atingido na planilha.");
+        return;
+      }
+      setSpreadsheetSuggestion({
+        ...suggestion,
+        warnings: imported.truncated
+          ? ["A planilha é grande; a leitura foi limitada às primeiras abas e linhas.", ...suggestion.warnings]
+          : suggestion.warnings,
+      });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível importar esta planilha.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function applySpreadsheetSuggestion() {
+    if (!spreadsheetSuggestion) return;
+    setApplyingImport(true);
+    setMessage(null);
+
+    try {
+      const importedCount = await applyKpiSpreadsheetSuggestion(spreadsheetSuggestion);
+      if (spreadsheetSuggestion.year === year) {
+        setDrafts((current) => {
+          const next = { ...current };
+          for (const suggested of spreadsheetSuggestion.rows) {
+            const kpi = orderedKpis.find((item) => item.key === suggested.kpiKey);
+            const draft = kpi ? next[kpi.id] : null;
+            if (!kpi || !draft) continue;
+            next[kpi.id] = {
+              ...draft,
+              months: draft.months.map((month, index) => index !== suggested.month - 1 ? month : {
+                ...month,
+                targetValue: suggested.targetValue === null ? month.targetValue : numberToInput(suggested.targetValue),
+                targetStage: suggested.targetStage ?? month.targetStage,
+                actualValue: suggested.actualValue === null ? month.actualValue : numberToInput(suggested.actualValue),
+                secondaryActual: suggested.secondaryActual === null ? month.secondaryActual : numberToInput(suggested.secondaryActual),
+                note: suggested.note ?? month.note,
+              }),
+            };
+          }
+          return next;
+        });
+      }
+      setSpreadsheetSuggestion(null);
+      setMessage(`${importedCount} lançamentos de ${spreadsheetSuggestion.year} carregados.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível carregar os lançamentos da planilha.");
+    } finally {
+      setApplyingImport(false);
+    }
+  }
+
   if (!activeKpi || !activeDraft) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
@@ -188,7 +257,23 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
               <p className="text-xs font-medium text-text-tertiary">Dashboard executivo · {year}</p>
               <h2 className="text-xl font-semibold text-text">Lançar KPIs</h2>
             </div>
-            <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
+            <div className="flex items-center gap-2">
+              <input
+                ref={spreadsheetInputRef}
+                type="file"
+                accept={KPI_SPREADSHEET_ACCEPT}
+                className="hidden"
+                onChange={(event) => {
+                  const [file] = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  void importSpreadsheet(file ?? null);
+                }}
+              />
+              <Button variant="ghost" icon={FileSpreadsheet} onClick={() => spreadsheetInputRef.current?.click()} disabled={importing}>
+                {importing ? "Lendo planilha" : "Importar planilha"}
+              </Button>
+              <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -212,6 +297,61 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
         </div>
 
         <div className="space-y-5 p-6">
+          {spreadsheetSuggestion ? (
+            <section className="border border-border bg-[#F7F7F8] p-4" aria-live="polite">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-text">Prévia da importação · {spreadsheetSuggestion.year}</p>
+                  <p className="mt-1 text-sm text-text-secondary">{spreadsheetSuggestion.summary}</p>
+                </div>
+                <Button variant="quiet" size="icon" icon={X} onClick={() => setSpreadsheetSuggestion(null)} aria-label="Descartar prévia" />
+              </div>
+
+              {spreadsheetSuggestion.warnings.length ? (
+                <div className="mt-3 flex items-start gap-2 text-sm text-[#8A5A0A]">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <div>{spreadsheetSuggestion.warnings.join(" ")}</div>
+                </div>
+              ) : null}
+
+              <div className="mt-4 overflow-x-auto border border-border bg-white">
+                <table className="min-w-[620px] w-full border-collapse text-left text-sm">
+                  <thead className="bg-[#EEF1F4] text-xs uppercase tracking-[0.08em] text-text-tertiary">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Indicador</th>
+                      <th className="px-3 py-2 font-semibold">Mês</th>
+                      <th className="px-3 py-2 font-semibold">Meta</th>
+                      <th className="px-3 py-2 font-semibold">Atingido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {spreadsheetSuggestion.rows.slice(0, 12).map((suggested) => {
+                      const kpi = orderedKpis.find((item) => item.key === suggested.kpiKey);
+                      const target = suggested.targetStage && kpi ? ladderLabel(kpi.ladder, suggested.targetStage) : kpi ? formatKpiValue(suggested.targetValue, kpi.unit, { compact: true }) : "—";
+                      const actual = kpi ? formatKpiValue(suggested.actualValue, kpi.unit, { compact: true }) : "—";
+                      return (
+                        <tr key={`${suggested.kpiKey}-${suggested.month}`} className="border-t border-border">
+                          <td className="px-3 py-2 font-medium text-text">{kpi?.label ?? suggested.kpiKey}</td>
+                          <td className="px-3 py-2 text-text-secondary">{KPI_MONTHS[suggested.month - 1]}</td>
+                          <td className="px-3 py-2 text-text-secondary">{target ?? "—"}</td>
+                          <td className="px-3 py-2 text-text-secondary">{actual}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {spreadsheetSuggestion.rows.length > 12 ? <p className="mt-2 text-xs text-text-tertiary">Mais {spreadsheetSuggestion.rows.length - 12} lançamentos serão aplicados.</p> : null}
+
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <Button variant="ghost" onClick={() => setSpreadsheetSuggestion(null)} disabled={applyingImport}>Descartar</Button>
+                <Button icon={FileSpreadsheet} onClick={applySpreadsheetSuggestion} disabled={applyingImport}>
+                  {applyingImport ? "Carregando" : `Aplicar ${spreadsheetSuggestion.rows.length} lançamentos`}
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-3">
             {activeKpi.key === "cash" ? (
               <label className="block">
