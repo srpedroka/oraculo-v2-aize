@@ -1,4 +1,4 @@
-import { Archive, ArrowRight, CalendarRange, Plus, RotateCcw, ShieldCheck } from "lucide-react";
+import { Archive, ArrowRight, Plus, RotateCcw, ShieldCheck } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
@@ -235,13 +235,6 @@ export function Areas() {
                 >
                   Abrir área
                   <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/planos-trimestrais"
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border bg-transparent px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white"
-                >
-                  <CalendarRange className="h-4 w-4" />
-                  Ver trimestral
                 </Link>
               </div>
             </Card>

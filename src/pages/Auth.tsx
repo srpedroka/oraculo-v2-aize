@@ -25,7 +25,7 @@ export function Auth() {
     try {
       if (mode === "signup") {
         await signUp(email, password, fullName);
-        setMessage("Cadastro iniciado. Se o Supabase pedir confirmação por email, confirme e entre novamente.");
+        setMessage("Cadastro iniciado. Se pedirmos confirmação por email, confirme e entre novamente.");
       } else {
         await signIn(email, password);
       }

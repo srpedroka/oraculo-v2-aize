@@ -419,12 +419,6 @@ export function Strategic() {
               Revisão Estratégica
             </Button>
           ) : null}
-          <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>
-            Importar plano pronto
-          </Button>
-          <Button variant="ghost" icon={Archive} onClick={openHistoricalImport}>
-            Importar histórico
-          </Button>
         </div>
       </div>
 
@@ -532,13 +526,13 @@ export function Strategic() {
                   disabled={!pastedPlan.trim() || importingPlan}
                   onClick={sendReadyPlanToOracle}
                 >
-                  Gerar proposta e carregar no módulo
+                  Enviar ao Oráculo
                 </Button>
               </div>
             </div>
             {sentToOracle ? (
               <p className="mt-3 text-xs leading-5 text-[#1D7A3E]">
-                Plano enviado ao Oráculo. O cartão de proposta aparecerá no painel lateral; confirme para gravar objetivos e projetos no módulo.
+                Plano enviado ao Oráculo. O cartão de proposta aparecerá no painel lateral; confirme para gravar objetivos e projetos no seu plano.
               </p>
             ) : null}
           </Card>

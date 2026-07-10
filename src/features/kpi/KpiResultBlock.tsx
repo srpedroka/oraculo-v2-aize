@@ -225,7 +225,6 @@ export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiRes
           <div className="flex flex-wrap items-center gap-2">
             <Banknote className="h-5 w-5 text-[#9A6400]" />
             <h2 className="text-title-lg font-semibold text-text">Resultado</h2>
-            <span className="text-[18px] text-text-secondary">(Jogo Atual)</span>
           </div>
           <p className="mt-1 text-sm text-text-secondary">
             {hasPendingClose ? `${closedPeriod} aguardando fechamento` : `Último mês fechado: ${closedPeriod}`} · {currentPeriod} em andamento
@@ -247,7 +246,7 @@ export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiRes
       ) : (
         <Card>
           <p className="text-base font-semibold text-text">KPIs executivos ainda não configurados</p>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">As quatro definições padrão entram automaticamente quando a migration é aplicada.</p>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">As quatro definições padrão entram automaticamente.</p>
         </Card>
       )}
     </section>

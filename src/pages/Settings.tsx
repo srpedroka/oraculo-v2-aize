@@ -15,7 +15,6 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
-  ShieldCheck,
   SlidersHorizontal,
   Trash2,
   UserPlus,
@@ -207,6 +206,22 @@ export function Settings() {
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
+
+  const SECTIONS = [
+    { id: "empresa", label: "Empresa e áreas", ownerOnly: true },
+    { id: "pessoas", label: "Pessoas", ownerOnly: true },
+    { id: "ia", label: "IA do Oráculo", ownerOnly: true },
+    { id: "whatsapp", label: "WhatsApp", ownerOnly: true },
+    { id: "backups", label: "Backups", ownerOnly: true },
+    { id: "tom", label: "Tom do Oráculo", ownerOnly: false },
+    { id: "perigo", label: "Zona de perigo", ownerOnly: false },
+  ];
+  const visibleSections = SECTIONS.filter((section) => isOwner || !section.ownerOnly);
+  const [activeSection, setActiveSection] = useState("empresa");
+  const currentSection = visibleSections.some((section) => section.id === activeSection)
+    ? activeSection
+    : visibleSections[0]?.id ?? "empresa";
+  const showSection = (id: string) => currentSection === id;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const whatsappWebhookUrl =
     supabaseUrl && state.activeOrgId ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/whatsapp-webhook?orgId=${state.activeOrgId}` : "";
@@ -555,22 +570,27 @@ export function Settings() {
         </Button>
       </div>
 
-      {!isOwner ? (
-        <Card>
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 h-5 w-5 text-text-secondary" />
-            <div>
-              <p className="text-base font-semibold text-text">Administração restrita ao dono da empresa</p>
-              <p className="mt-2 text-sm leading-6 text-text-secondary">
-                Sua conta pessoal fica no rodapé da barra lateral. Convites, áreas e IA são geridos pelo dono da empresa.
-              </p>
-            </div>
-          </div>
-        </Card>
-      ) : null}
+      <nav className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" role="tablist" aria-label="Seções das configurações">
+        {visibleSections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            role="tab"
+            aria-selected={currentSection === section.id}
+            onClick={() => setActiveSection(section.id)}
+            className={[
+              "shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none",
+              currentSection === section.id
+                ? "bg-[#1D1D1F] text-white"
+                : "border border-border bg-surface text-text-secondary hover:bg-fill-hover hover:text-text",
+            ].join(" ")}
+          >
+            {section.label}
+          </button>
+        ))}
+      </nav>
 
-      {!isOwner ? null : (
-        <>
+      {showSection("empresa") ? (
       <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
         <Card>
           <div className="mb-4 flex items-center gap-2">
@@ -707,8 +727,9 @@ export function Settings() {
           {areaMessage ? <p className="mt-3 text-xs leading-5 text-text-secondary">{areaMessage}</p> : null}
         </Card>
       </div>
+      ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      {showSection("pessoas") ? (
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-text-secondary" />
@@ -810,7 +831,9 @@ export function Settings() {
             })}
           </div>
         </Card>
+      ) : null}
 
+      {showSection("ia") ? (
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <Bot className="h-5 w-5 text-text-secondary" />
@@ -1062,7 +1085,9 @@ export function Settings() {
             </div>
           ) : null}
         </Card>
+      ) : null}
 
+      {showSection("whatsapp") ? (
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-text-secondary" />
@@ -1139,11 +1164,11 @@ export function Settings() {
             </p>
           ) : null}
         </Card>
-      </div>
-      {state.activeOrgId ? <OrganizationBackupCard orgId={state.activeOrgId} /> : null}
-        </>
-      )}
+      ) : null}
 
+      {showSection("backups") && state.activeOrgId ? <OrganizationBackupCard orgId={state.activeOrgId} /> : null}
+
+      {showSection("tom") ? (
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
@@ -1271,8 +1296,9 @@ export function Settings() {
           </p>
         ) : null}
       </Card>
+      ) : null}
 
-      <CompanyDangerZone />
+      {showSection("perigo") ? <CompanyDangerZone /> : null}
 
       {areaToArchive ? (
         <AreaArchiveDialog

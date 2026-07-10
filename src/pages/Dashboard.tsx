@@ -9,7 +9,7 @@ import { KpiEditorDialog } from "../features/kpi/KpiEditorDialog";
 import { KpiResultBlock } from "../features/kpi/KpiResultBlock";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveEditDialog } from "../features/objective/ObjectiveEditDialog";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { previousMonthPeriod } from "../lib/periods";
 import { buildTrackItems, summarize } from "../lib/execution";
 import { useAppState } from "../state/store";
@@ -27,6 +27,7 @@ function canEditObjective(objective: Objective | undefined, state: ReturnType<ty
 
 export function Dashboard() {
   const { state, dispatch } = useAppState();
+  const navigate = useNavigate();
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
   const [kpiEditorOpen, setKpiEditorOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -90,6 +91,11 @@ export function Dashboard() {
           <p className="mt-2 text-sm leading-6 text-text-secondary">
             Crie o Plano Estratégico e as áreas para o Oráculo mostrar Resultado e Evolução ao vivo.
           </p>
+          <div className="mt-4">
+            <Button icon={Plus} onClick={() => navigate("/estrategico")}>
+              Criar Plano Estratégico
+            </Button>
+          </div>
         </Card>
       ) : null}
 
@@ -128,7 +134,6 @@ export function Dashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <Sprout className="h-5 w-5 text-[#9A6400]" />
           <h2 className="text-title-lg font-semibold text-text">Evolução</h2>
-          <span className="text-[18px] text-text-secondary">(Próximo Jogo)</span>
         </div>
 
         <div className="space-y-4">

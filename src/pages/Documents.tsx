@@ -31,7 +31,6 @@ function documentAreaName(document: PlanDocument, areas: { id: string; name: str
 export function Documents() {
   const { state, dispatch } = useAppState();
   const [typeFilter, setTypeFilter] = useState<"all" | PlanDocumentType>("all");
-  const [originFilter, setOriginFilter] = useState<"all" | PlanDocumentOrigin>("all");
   const [areaFilter, setAreaFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,7 +45,6 @@ export function Documents() {
     () =>
       state.planDocuments.filter((document) => {
         if (typeFilter !== "all" && document.type !== typeFilter) return false;
-        if (originFilter !== "all" && document.origin !== originFilter) return false;
         if (areaFilter !== "all") {
           if (areaFilter === "company" && document.areaId) return false;
           if (areaFilter !== "company" && document.areaId !== areaFilter) return false;
@@ -54,7 +52,7 @@ export function Documents() {
         if (periodFilter !== "all" && document.period !== periodFilter) return false;
         return true;
       }),
-    [areaFilter, originFilter, periodFilter, state.planDocuments, typeFilter],
+    [areaFilter, periodFilter, state.planDocuments, typeFilter],
   );
 
   const selectedDocument = filteredDocuments.find((document) => document.id === selectedId) ?? filteredDocuments[0] ?? null;
@@ -125,7 +123,7 @@ export function Documents() {
       </div>
 
       <Card>
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3">
           <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
             Tipo
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "all" | PlanDocumentType)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
@@ -135,14 +133,6 @@ export function Documents() {
                   {TYPE_LABEL[type]}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
-            Origem
-            <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value as "all" | PlanDocumentOrigin)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
-              <option value="all">Todas</option>
-              <option value="session">Sessão</option>
-              <option value="historical">Histórico</option>
             </select>
           </label>
           <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">

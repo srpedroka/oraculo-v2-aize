@@ -30,7 +30,7 @@ const navItems = [
   { to: "/planos-trimestrais", label: "Planos Trimestrais", icon: Waypoints },
   { to: "/documentos", label: "Documentos", icon: FileText },
   { to: "/areas", label: "Áreas", icon: Users },
-  { to: "/execucao", label: "Execução Viva", icon: PlayCircle },
+  { to: "/execucao", label: "Execução", icon: PlayCircle },
   { to: "/arquivo", label: "Arquivo", icon: Archive },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
