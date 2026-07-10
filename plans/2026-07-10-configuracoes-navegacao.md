@@ -1,6 +1,8 @@
 # Plano: Navegação e clareza (Configurações + varredura Apple/Tesla)
 
-> **STATUS: ✅ TUDO executado e publicado por Claude Code em 2026-07-10.** Onda P (polimento) + Onda 1 (abas) no commit `61d10a6`; Onda 2 (deep-link `#hash`) + Onda 3 (segmented control Chaves/Funções/Histórico na IA) no `2d781ce`. Frontend-only. A Onda 4 (sub-rotas reais) fica para quando/se alguma seção crescer.
+> **STATUS: ✅ Ondas P, 1, 2 e 3 executadas e publicadas por Claude Code em 2026-07-10.** Onda P (polimento) + Onda 1 (abas) no commit `61d10a6`; Onda 2 (deep-link `#hash`) + Onda 3 (segmented control Chaves/Funções/Histórico na IA) no `2d781ce`. Frontend-only.
+>
+> **Onda 4 (sub-rotas reais): decidido NÃO fazer** (dono, 2026-07-10). As abas + deep-link `#hash` já entregam o valor (pular pra qualquer bloco, link compartilhável); sub-rotas dariam apenas URL mais limpa + voltar/avançar entre seções, ao custo de mexer no roteamento e (na versão completa) elevar ~30 estados e perder rascunhos ao trocar de seção. Não compensa hoje — fica para se/quando uma seção crescer a ponto de justificar.
 
 **Parte 1** resolve o menu da página de Configurações (o pedido original). **Parte 2** é a varredura de clareza das demais páginas — só o que sobrou depois de uma auditoria cética com a régua "simplicidade vale ouro, Apple/Tesla, não criar monstrinho". As duas são independentes e frontend-only.
 
