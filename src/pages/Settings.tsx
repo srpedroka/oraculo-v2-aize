@@ -163,6 +163,7 @@ export function Settings() {
   const [memberEmail, setMemberEmail] = useState("");
   const [memberName, setMemberName] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
+  const [memberNotify, setMemberNotify] = useState(true);
   const [memberAreaId, setMemberAreaId] = useState("");
   const [memberMessage, setMemberMessage] = useState("");
   const [memberToRemove, setMemberToRemove] = useState<Membership | null>(null);
@@ -382,12 +383,39 @@ export function Settings() {
       phone: phone || null,
       role: "coordinator",
       areaId: memberAreaId || null,
+      notify: memberNotify,
     });
     setMemberEmail("");
     setMemberName("");
     setMemberPhone("");
     setMemberAreaId("");
-    setMemberMessage("Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp. Caso contrário, o envio segue por email.");
+    setMemberNotify(true);
+    setMemberMessage(
+      memberNotify
+        ? "Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp; caso contrário, por email."
+        : "Coordenador cadastrado sem aviso. Use “Convidar” na lista quando quiser chamá-lo no WhatsApp.",
+    );
+  }
+
+  function resendInvite(membership: Membership) {
+    const email = membership.profile?.email;
+    if (!email) {
+      setMemberMessage("Sem email registrado para convidar esta pessoa.");
+      return;
+    }
+    const area = allAreas.find((item) => item.coordinatorId === membership.id);
+    setMemberMessage("Enviando convite por WhatsApp...");
+    dispatch({
+      type: "create_member",
+      email,
+      fullName: membership.profile?.fullName ?? "",
+      phone: membership.profile?.phone ?? null,
+      role: membership.role,
+      areaId: area?.id ?? null,
+      notify: true,
+      onSuccess: () => setMemberMessage("Convite enviado por WhatsApp."),
+      onError: (message) => setMemberMessage(message),
+    });
   }
 
   function changeMemberRole(membershipId: string, nextRole: MembershipRole) {
@@ -787,8 +815,17 @@ export function Settings() {
                 </option>
               ))}
             </select>
+            <label className="flex items-start gap-2 text-sm leading-5 text-text-secondary">
+              <input
+                type="checkbox"
+                checked={memberNotify}
+                onChange={(event) => setMemberNotify(event.target.checked)}
+                className="mt-0.5 h-4 w-4"
+              />
+              Chamar no WhatsApp agora — desmarque para cadastrar sem avisar e convidar depois pela lista.
+            </label>
             <Button type="submit" icon={UserPlus}>
-              Convidar coordenador
+              {memberNotify ? "Convidar coordenador" : "Cadastrar sem avisar"}
             </Button>
           </form>
           {memberMessage ? (
@@ -825,6 +862,17 @@ export function Settings() {
                         <option value="admin">{membershipRoleLabel("admin")}</option>
                         <option value="coordinator">{membershipRoleLabel("coordinator")}</option>
                       </select>
+                      {membership.profile?.phone && state.whatsappSettings?.enabled && !isCurrentUser ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={MessageCircle}
+                          onClick={() => resendInvite(membership)}
+                          title="Enviar convite por WhatsApp"
+                        >
+                          Convidar
+                        </Button>
+                      ) : null}
                       <Button
                         variant="ghost"
                         size="sm"

@@ -56,7 +56,7 @@ type AppAction =
   | { type: "update_area"; areaId: string; name: string; coordinatorId?: string | null }
   | { type: "archive_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "restore_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
-  | { type: "create_member"; email: string; fullName?: string; phone?: string | null; role: MembershipRole; areaId?: string | null }
+  | { type: "create_member"; email: string; fullName?: string; phone?: string | null; role: MembershipRole; areaId?: string | null; notify?: boolean; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "set_member_role"; membershipId: string; role: Exclude<MembershipRole, "owner">; onSuccess?: () => void; onError?: (message: string) => void }
   | {
       type: "remove_member";
@@ -1531,8 +1531,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           phone: action.phone ?? null,
           role: action.role,
           areaId: action.areaId ?? null,
+          notify: action.notify ?? true,
           redirectTo: window.location.origin,
-        }).then(invalidateOrg);
+        })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível convidar a pessoa.");
+          });
         return;
       }
 
