@@ -19,7 +19,7 @@ const SESSION_PHASES = {
   strategic: ["abertura", "direcionadores", "swot", "tema_do_ano", "objetivos", "projetos", "rituais", "sintese"],
   quarterly: ["abertura", "alinhamento", "anual_da_area", "diagnostico", "objetivos_do_trimestre", "foco_de_aprendizado", "sintese"],
   monthly: ["abertura", "relembrar", "objetivos_do_mes", "acoes_chave", "realismo", "sintese"],
-  month_close: ["abertura", "revisao", "pendencias", "resumo", "ponte"],
+  month_close: ["abertura", "revisao", "pendencias", "pulso", "resumo", "ponte"],
   quarter_close: ["abertura", "revisao_trimestre", "aprendizado_do_time", "balanco"],
   strategic_review: ["abertura", "revisao_objetivos", "sintese"],
 };
@@ -44,6 +44,7 @@ const PHASE_LABEL: Record<string, string> = {
   realismo: "Realismo",
   revisao: "Revisão",
   pendencias: "Pendências",
+  pulso: "Pulso de gestão",
   resumo: "Resumo",
   ponte: "Ponte",
   revisao_trimestre: "Revisão do trimestre",
@@ -80,6 +81,24 @@ function asTextArray(value: unknown) {
 
 function asRecordArray(value: unknown) {
   return Array.isArray(value) ? value.map(asRecord).filter((item) => Object.keys(item).length) : [];
+}
+
+const KPI_LABEL: Record<string, string> = {
+  revenue: "Faturamento",
+  operating_margin: "Margem operacional",
+  production: "Produção",
+  cash: "Caixa",
+};
+
+function KpiLinkPreview({ objective }: { objective: Record<string, unknown> }) {
+  const links = asRecordArray(objective.kpiLinks ?? objective.kpi_links);
+  if (!links.length) return null;
+  return (
+    <p className="mt-1 text-[11px] text-[#5F6368]">
+      <span className="font-medium text-[#1D1D1F]">KPIs confirmados: </span>
+      {links.map((link) => KPI_LABEL[asText(link.kpiKey ?? link.kpi_key)] ?? asText(link.kpiKey ?? link.kpi_key)).filter(Boolean).join(", ")}
+    </p>
+  );
 }
 
 function DetailLine({ label, value }: { label: string; value: unknown }) {
@@ -186,6 +205,7 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
                 <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo ${index + 1}`}</p>
                 {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
                 {meta.length ? <p className="mt-1 text-[11px] text-[#7A7D82]">{meta.join(" · ")}</p> : null}
+                <KpiLinkPreview objective={objective} />
               </div>
             );
           })}
@@ -298,6 +318,7 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
                     asText(objective.parentTitle) ? `Vínculo anual: ${asText(objective.parentTitle)}` : "",
                   ].filter(Boolean).join(" · ") || "Sem indicador, meta, dono ou vínculo explícitos no arquivo."}
                 </p>
+                <KpiLinkPreview objective={objective} />
                 <ChipList items={deliverables} />
               </div>
             );

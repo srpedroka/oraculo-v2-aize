@@ -41,6 +41,7 @@ Objetivo: 1 a 3 objetivos do trimestre, puxados dos anuais.
 - Para cada anual relevante, pergunte quanto quer avançar neste trimestre.
 - Escreva cada objetivo no formato: "No {T}, alcançar {resultado específico}, como parte do objetivo anual {X}."
 - Para cada objetivo, colete 2 a 5 entregas principais e responsável.
+- Avalie se cada objetivo pode impactar diretamente revenue (Faturamento), operating_margin (Margem operacional), production (Produção) ou cash (Caixa). Sugira no máximo 2, somente quando a relação for forte, e pergunte se a pessoa quer conectar. Guarde apenas os vínculos confirmados em kpiLinks[].
 - Guarde: objetivos_trimestre[] com entregas.
 
 foco_de_aprendizado
@@ -56,4 +57,4 @@ Objetivo: fechar e gravar.
 - Monte a proposal do tipo save_quarterly_plan e peça confirmação.
 
 Formato esperado da proposal save_quarterly_plan:
-{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"annualObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"T3 2026","parentTitle":"","deliverables":[]}]}`;
+{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"annualObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null,"kpiLinks":[]}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"T3 2026","parentTitle":"","deliverables":[],"kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}]}`;

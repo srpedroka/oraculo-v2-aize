@@ -950,6 +950,8 @@ supabase functions deploy save-historical-document
 supabase functions deploy oracle-chat
 supabase functions deploy oracle-session
 supabase functions deploy month-turn --no-verify-jwt
+supabase functions deploy weekly-pulse --no-verify-jwt
+supabase functions deploy suggest-objective-kpis
 supabase functions deploy save-whatsapp-settings
 supabase functions deploy whatsapp-webhook --no-verify-jwt
 ```
@@ -963,6 +965,19 @@ supabase functions deploy whatsapp-webhook oracle-chat --project-ref bkswkfazkji
 ```
 
 Use `--use-api` quando Docker local nao estiver disponivel.
+
+## Pulso semanal do WhatsApp
+
+O owner ativa em `Configuracoes > WhatsApp`, escolhe dia util e horario de Sao Paulo. O cron `oraculo-weekly-pulse` roda a cada hora no minuto 5; a function so envia quando dia/hora combinam, o coordenador tem plano trimestral ou mensal ativo e nao existe sessao de planejamento em andamento.
+
+Diagnostico:
+
+```sql
+select * from cron.job where jobname = 'oraculo-weekly-pulse';
+select * from public.weekly_pulse_log order by sent_at desc limit 20;
+```
+
+Para simular sem enviar, invoque `weekly-pulse` com o segredo do cron e `{"dryRun":true}`. O pulso e deduplicado por empresa, pessoa e semana. Sem resposta, nao ha segundo envio. Uma resposta concreta recebe uma pergunta natural de confirmacao antes de usar o fluxo de atualizacao rapida.
 
 ## Configurar ou calibrar o tom do Oraculo
 

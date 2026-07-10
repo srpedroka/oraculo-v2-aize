@@ -8,6 +8,7 @@ import type { Membership, Objective, ObjectiveType, Status } from "../../types";
 import { STATUS_LABEL, TYPE_LABEL } from "../../types";
 import { formatDate } from "../../lib/format";
 import { OperationalArchiveDialog } from "../lifecycle/OperationalArchiveDialog";
+import { ObjectiveKpiSuggestionPanel } from "./ObjectiveKpiSuggestionPanel";
 
 interface ObjectiveEditDialogProps {
   objective: Objective;
@@ -46,9 +47,15 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [evidenceToArchive, setEvidenceToArchive] = useState<string | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [reviewKpis, setReviewKpis] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const evidences = state.evidences.filter((evidence) => evidence.objectiveId === objective.id);
 
   function save() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError("");
     dispatch({
       type: "update_objective",
       objective: {
@@ -71,8 +78,15 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
           .map((item) => item.trim())
           .filter(Boolean),
       },
+      onSuccess: () => {
+        setSaving(false);
+        setReviewKpis(true);
+      },
+      onError: (message) => {
+        setSaving(false);
+        setSaveError(message);
+      },
     });
-    onClose();
   }
 
   function archiveEvidence(reason: string) {
@@ -273,16 +287,18 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
               </div>
             </section>
           ) : null}
+          {saveError ? <p className="text-sm text-status-danger">{saveError}</p> : null}
+          {reviewKpis ? <ObjectiveKpiSuggestionPanel objectiveId={objective.id} onDone={onClose} /> : null}
         </div>
 
-        <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
+        {!reviewKpis ? <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button icon={Save} onClick={save}>
-            Salvar alterações
+          <Button icon={Save} onClick={save} disabled={saving}>
+            {saving ? "Salvando..." : "Salvar alterações"}
           </Button>
-        </div>
+        </div> : null}
       </Card>
       {evidenceToArchive ? (
         <OperationalArchiveDialog

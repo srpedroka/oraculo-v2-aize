@@ -9,6 +9,7 @@ import { LEVEL_LABEL, TYPE_LABEL } from "../../types";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConcretenessMeter } from "../../components/ui/ConcretenessMeter";
+import { ObjectiveKpiSuggestionPanel } from "./ObjectiveKpiSuggestionPanel";
 
 interface ObjectiveBuilderProps {
   level: PlanLevel;
@@ -63,6 +64,9 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   const [evidencePlan, setEvidencePlan] = useState("");
   const [deliverables, setDeliverables] = useState("");
   const [actions, setActions] = useState<DraftAction[]>([]);
+  const [savedObjectiveId, setSavedObjectiveId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const draftObjective: Objective = {
     id: "draft",
@@ -103,6 +107,9 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   }
 
   function saveObjective() {
+    if (saving || savedObjectiveId) return;
+    setSaving(true);
+    setSaveError("");
     const id = createObjectiveId();
     const objective: Objective = {
       ...draftObjective,
@@ -123,16 +130,27 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
         owner: action.owner.trim() || objective.owner,
       }));
 
-    dispatch({ type: "add_objective", objective, keyActions: savedActions });
     dispatch({
-      type: "add_chat_message",
-      message: {
-        id: createMessageId("oracle"),
-        author: "oracle",
-        text: buildSavedObjectiveResponse(objective),
+      type: "add_objective",
+      objective,
+      keyActions: savedActions,
+      onSuccess: (objectiveId) => {
+        dispatch({
+          type: "add_chat_message",
+          message: {
+            id: createMessageId("oracle"),
+            author: "oracle",
+            text: buildSavedObjectiveResponse(objective),
+          },
+        });
+        setSavedObjectiveId(objectiveId);
+        setSaving(false);
+      },
+      onError: (message) => {
+        setSaving(false);
+        setSaveError(message);
       },
     });
-    onClose();
   }
 
   return (
@@ -323,16 +341,18 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
               </p>
             </div>
           </section>
+          {saveError ? <p className="text-sm text-status-danger">{saveError}</p> : null}
+          {savedObjectiveId ? <ObjectiveKpiSuggestionPanel objectiveId={savedObjectiveId} onDone={onClose} /> : null}
         </div>
 
-        <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
+        {!savedObjectiveId ? <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button icon={Save} onClick={saveObjective}>
-            Salvar objetivo
+          <Button icon={Save} onClick={saveObjective} disabled={saving}>
+            {saving ? "Salvando..." : "Salvar objetivo"}
           </Button>
-        </div>
+        </div> : null}
       </Card>
     </div>
   );

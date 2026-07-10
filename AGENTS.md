@@ -214,7 +214,9 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `oracle-chat`: chat web, historico por conversa, contexto do plano e inicio de sessoes.
 - `oracle-session`: motor server-side de planejamento/importacao/fechamento com proposta e confirmacao.
 - `month-turn`: virada mensal e convite de fechamento.
+- `weekly-pulse`: convite semanal leve, configuravel e deduplicado para coordenadores com plano ativo.
 - `suggest-kpi-spreadsheet`: interpreta tabela de planilha ou imagem com a funcao `background` e propõe lançamentos de KPI para confirmação por owner/admin.
+- `suggest-objective-kpis`: sugere ate dois KPIs existentes para um objetivo e nunca grava sem confirmacao.
 - `apply-kpi-import`: valida a proposta confirmada, grava valores por ano/mês e cria um documento histórico de KPIs sem guardar o arquivo ou imagem bruta.
 - `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
@@ -487,6 +489,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Convites por email/WhatsApp.
 - Recuperacao de senha via Supabase Auth.
 - Dashboard executivo.
+- Revisao mensal com confianca, bloqueio e compromisso seguinte; pulso semanal leve opcional por WhatsApp.
+- Vinculos confirmados entre objetivos e KPIs, sugeridos pela IA e exibidos no Dashboard.
 - Backups por empresa com snapshot manual/automático, pacote portátil criptografado e restauração como clone.
 - Importacao de planilha ou imagem de KPIs (`.xlsx`, `.xls`, `.csv`, JPG, PNG e WEBP) com proposta da IA de bastidores, histórico/documento e confirmacao antes de gravar Meta/Atingido.
 - Plano Estrategico com importacao de PDF/PPTX/DOCX/TXT e proposta estruturada.

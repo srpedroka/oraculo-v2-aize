@@ -140,6 +140,10 @@ Regras principais:
 
 Os KPIs executivos usam duas tabelas publicas: `executive_kpis` e `kpi_monthly_values`. Membros da empresa podem ler os quatro indicadores; escrita exige `is_admin(org_id)`, que retorna verdadeiro apenas para membership `owner` ou `admin`. O papel `admin` nao deve ser usado como substituto de `owner` em configuracoes, membros, areas, IA, WhatsApp ou fluxos de planejamento.
 
+`objective_kpi_links` permite leitura a membros da empresa e escrita somente quando `can_write_objective(org_id, objective_id)` autoriza o mesmo objetivo. A policy tambem verifica que o KPI pertence a mesma empresa. `suggest-objective-kpis` nunca grava: valida sessao/area, limita a IA aos KPIs reais e devolve no maximo dois candidatos para confirmacao humana.
+
+O pulso semanal usa `weekly_pulse_log`, sem acesso para `anon`/`authenticated`, e o mesmo segredo protegido do cron de prazos. `conversations.pending_context` expira e serve apenas para reconhecer a resposta ao convite; nenhuma atualizacao e aplicada antes de uma confirmacao explicita.
+
 A mudanca de papel operacional passa pela Edge Function `set-member-role`, usando service role depois de validar que o usuario autenticado e owner. Esse fluxo permite alternar membros entre `admin` e `coordinator`, e rebaixar owner somente quando nao for o ultimo owner da empresa. Ele nao promove novos owners.
 
 A remoção de acesso passa pela Edge Function `remove-member`. O navegador não possui mais privilégio/policy de `DELETE` em `memberships`; a função valida owner e chama `remove_organization_member`, RPC disponível somente para `service_role`. A transação bloqueia as memberships da empresa, impede remover o último owner, valida coordenadores substitutos, reatribui ou limpa `areas.coordinator_id` e só então remove a membership. O registro de `profiles` e o usuário de Auth permanecem porque podem ter histórico ou acesso a outra empresa.

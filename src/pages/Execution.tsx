@@ -163,7 +163,19 @@ export function Execution() {
                           />
                         ) : null}
                       </div>
-                      <p className="mt-1 text-sm leading-6 text-text-secondary">{lastCheckIn.summary}</p>
+                      {lastCheckIn.details.managementPulse?.confidence ? (
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          <span className="rounded-full border border-border bg-white px-2.5 py-1 font-medium text-text">
+                            Confiança: {{ green: "verde", yellow: "amarela", red: "vermelha" }[lastCheckIn.details.managementPulse.confidence]}
+                          </span>
+                          {lastCheckIn.details.managementPulse.nextCommitment ? (
+                            <span className="rounded-full border border-border bg-white px-2.5 py-1 text-text-secondary">
+                              Próximo: {lastCheckIn.details.managementPulse.nextCommitment}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <p className="mt-2 text-sm leading-6 text-text-secondary">{lastCheckIn.summary}</p>
                     </div>
                   ) : (
                     <p className="mt-3 text-sm leading-6 text-text-secondary">

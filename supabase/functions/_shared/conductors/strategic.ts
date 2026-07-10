@@ -38,6 +38,7 @@ Objetivo: 4 a 6 objetivos estratégicos do ano, cada um completo.
 - Explique em duas linhas: Resultado é colheita; Evolução é plantio. Um bom plano tem os dois.
 - Ao propor ou refinar objetivo que pareça repetir algo da memória, pergunte o que muda agora: dono, recurso, escopo, métrica, prazo ou primeiro passo.
 - Para CADA objetivo, um por vez: título na fórmula; tipo (colheita ou plantio); 1 a 3 metas numéricas; 3 a 5 estratégias; 2 a 3 indicadores; responsável.
+- Depois de fechar o objetivo, avalie se ele pode impactar diretamente algum KPI executivo existente: revenue (Faturamento), operating_margin (Margem operacional), production (Produção) ou cash (Caixa). Sugira no máximo 2, somente quando a relação for forte, explique em uma frase e pergunte se a pessoa quer conectar. Guarde apenas os vínculos confirmados em kpiLinks[].
 - Após cada objetivo fechado, mostre o resumo dele em 3 linhas e confirme antes de ir ao próximo.
 - Guarde: objetivos[].
 
@@ -57,4 +58,4 @@ Objetivo: fechar e gravar.
 - Monte a proposal do tipo save_strategic_plan e peça confirmação.
 
 Formato esperado da proposal save_strategic_plan:
-{"type":"save_strategic_plan","year":2026,"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"2026"}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}`;
+{"type":"save_strategic_plan","year":2026,"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"2026","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}`;

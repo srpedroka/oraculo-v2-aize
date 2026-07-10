@@ -71,13 +71,14 @@ const TABLE_EXPORTS: Array<{ table: string; select: string; order: string }> = [
   { table: "ai_usage_logs", select: "*", order: "id" },
   {
     table: "whatsapp_settings",
-    select: "org_id,instance_url,instance_name,connected_number,enabled,updated_at",
+    select: "org_id,instance_url,instance_name,connected_number,enabled,weekly_pulse_enabled,weekly_pulse_weekday,weekly_pulse_hour,updated_at",
     order: "org_id",
   },
   { table: "planning_sessions", select: "*", order: "id" },
   { table: "plan_documents", select: "*", order: "id" },
   { table: "executive_kpis", select: "*", order: "id" },
   { table: "kpi_monthly_values", select: "*", order: "id" },
+  { table: "objective_kpi_links", select: "*", order: "id" },
   { table: "operational_revisions", select: "*", order: "id" },
   { table: "org_ai_tone", select: "*", order: "org_id" },
   {
@@ -168,6 +169,7 @@ function referencedProfileIds(organization: JsonRow, data: Record<string, JsonRo
     add(row.archived_by);
   });
   rowsOf(data, "kpi_monthly_values").forEach((row) => add(row.updated_by));
+  rowsOf(data, "objective_kpi_links").forEach((row) => add(row.created_by));
   rowsOf(data, "org_ai_tone").forEach((row) => add(row.updated_by));
   rowsOf(data, "operational_revisions").forEach((row) => add(row.changed_by));
   return [...ids];
@@ -759,7 +761,7 @@ export async function restoreOrganizationEnvelope(input: {
         if (!userId) return null;
         const id = crypto.randomUUID();
         conversationMap.set(String(row.id), id);
-        return { ...row, id, org_id: targetOrgId, user_id: userId, area_id: mapId(areaMap, row.area_id) };
+        return { ...row, id, org_id: targetOrgId, user_id: userId, area_id: mapId(areaMap, row.area_id), pending_context: {} };
       })
       .filter(Boolean) as JsonRow[];
     restoredCounts.conversations = await insertRows(client, "conversations", conversations);
@@ -836,6 +838,18 @@ export async function restoreOrganizationEnvelope(input: {
       })
       .filter((row) => row.kpi_id);
     restoredCounts.kpi_monthly_values = await insertRows(client, "kpi_monthly_values", kpiValues);
+
+    const objectiveKpiLinks = rowsOf(data, "objective_kpi_links")
+      .map((row) => ({
+        ...row,
+        id: crypto.randomUUID(),
+        org_id: targetOrgId,
+        objective_id: mapId(objectiveMap, row.objective_id),
+        kpi_id: mapId(kpiMap, row.kpi_id),
+        created_by: mapId(userMap, row.created_by),
+      }))
+      .filter((row) => row.objective_id && row.kpi_id);
+    restoredCounts.objective_kpi_links = await insertRows(client, "objective_kpi_links", objectiveKpiLinks);
 
     const revisionEntityMaps: Record<string, Map<string, string>> = {
       strategic_plan: strategicPlanMap,

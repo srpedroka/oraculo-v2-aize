@@ -155,6 +155,38 @@ async function insertObjective(client: Client, values: Record<string, unknown>) 
   return data;
 }
 
+async function applyProposedKpiLinks(client: Client, session: any, objectiveRow: any, source: any, userId: string) {
+  const allowedKeys = new Set(["revenue", "operating_margin", "production", "cash"]);
+  const requested = asArray<any>(source?.kpiLinks ?? source?.kpi_links)
+    .map((item) => typeof item === "string" ? { kpiKey: item, rationale: "" } : item)
+    .filter((item) => allowedKeys.has(asText(item.kpiKey ?? item.kpi_key)))
+    .slice(0, 2);
+  if (!requested.length) return;
+
+  const keys = requested.map((item) => asText(item.kpiKey ?? item.kpi_key));
+  const { data: kpis, error } = await client
+    .from("executive_kpis")
+    .select("id, kpi_key")
+    .eq("org_id", session.org_id)
+    .in("kpi_key", keys);
+  if (error) throw error;
+
+  const rows = (kpis ?? []).map((kpi: any) => {
+    const request = requested.find((item) => asText(item.kpiKey ?? item.kpi_key) === kpi.kpi_key) ?? {};
+    return {
+      org_id: session.org_id,
+      objective_id: objectiveRow.id,
+      kpi_id: kpi.id,
+      rationale: asText(request.rationale ?? request.justificativa),
+      confidence: 1,
+      created_by: userId,
+    };
+  });
+  if (!rows.length) return;
+  const { error: insertError } = await client.from("objective_kpi_links").upsert(rows, { onConflict: "objective_id,kpi_id" });
+  if (insertError) throw insertError;
+}
+
 async function findObjectiveById(client: Client, session: any, objectiveId: unknown, level?: string) {
   const id = asText(objectiveId);
   if (!id) return null;
@@ -275,22 +307,22 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
 
   const objectiveRows = [];
   for (const objective of asArray<any>(proposal.objectives)) {
-    objectiveRows.push(
-      await insertObjective(client, {
-        org_id: session.org_id,
-        area_id: null,
-        level: "strategic",
-        type: asObjectiveType(objective.type),
-        title: asText(objective.title, "Objetivo estratégico"),
-        result: asText(objective.result),
-        metric: asText(objective.metric),
-        target: asText(objective.target),
-        owner: asText(objective.owner),
-        status: "on_track",
-        progress: 0,
-        period: asText(objective.period, String(year)),
-      }),
-    );
+    const inserted = await insertObjective(client, {
+      org_id: session.org_id,
+      area_id: null,
+      level: "strategic",
+      type: asObjectiveType(objective.type),
+      title: asText(objective.title, "Objetivo estratégico"),
+      result: asText(objective.result),
+      metric: asText(objective.metric),
+      target: asText(objective.target),
+      owner: asText(objective.owner),
+      status: "on_track",
+      progress: 0,
+      period: asText(objective.period, String(year)),
+    });
+    await applyProposedKpiLinks(client, session, inserted, objective, userId);
+    objectiveRows.push(inserted);
   }
 
   for (const project of asArray<any>(proposal.projects)) {
@@ -316,23 +348,23 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
   const annualObjectives = [];
 
   for (const objective of asArray<any>(proposal.annualObjectives)) {
-    annualObjectives.push(
-      await insertObjective(client, {
-        org_id: session.org_id,
-        area_id: session.area_id,
-        level: "area_annual",
-        type: asObjectiveType(objective.type),
-        title: asText(objective.title, "Objetivo anual da área"),
-        result: asText(objective.result),
-        metric: asText(objective.metric),
-        target: asText(objective.target),
-        owner: asText(objective.owner),
-        status: "on_track",
-        progress: 0,
-        parent_id: objective.linkedStrategicObjectiveId ?? null,
-        period: asText(objective.period, String(year)),
-      }),
-    );
+    const inserted = await insertObjective(client, {
+      org_id: session.org_id,
+      area_id: session.area_id,
+      level: "area_annual",
+      type: asObjectiveType(objective.type),
+      title: asText(objective.title, "Objetivo anual da área"),
+      result: asText(objective.result),
+      metric: asText(objective.metric),
+      target: asText(objective.target),
+      owner: asText(objective.owner),
+      status: "on_track",
+      progress: 0,
+      parent_id: objective.linkedStrategicObjectiveId ?? null,
+      period: asText(objective.period, String(year)),
+    });
+    await applyProposedKpiLinks(client, session, inserted, objective, userId);
+    annualObjectives.push(inserted);
   }
 
   const learningFocus = asArray<string>(proposal.learningFocus ?? proposal.foco_aprendizado);
@@ -395,8 +427,7 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
       (await findObjectiveByTitle(client, session.org_id, session.area_id, "area_annual", asText(objective.parentTitle))) ??
       (annualObjectives[0] ?? await ensureAreaAnnualParent(client, session, proposal, asText(objective.parentTitle)));
 
-    quarterlyRows.push(
-      await insertObjective(client, {
+    const inserted = await insertObjective(client, {
         org_id: session.org_id,
         area_id: session.area_id,
         level: "quarterly",
@@ -411,14 +442,15 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
         deliverables: asArray<string>(objective.deliverables ?? objective.entregas),
         parent_id: parent.id,
         period: asText(objective.period, session.period),
-      }),
-    );
+      });
+    await applyProposedKpiLinks(client, session, inserted, objective, userId);
+    quarterlyRows.push(inserted);
   }
 
   return `Plano trimestral gravado com ${quarterlyRows.length} objetivo(s).`;
 }
 
-async function saveMonthlyPlan(client: Client, session: any, proposal: any, _userId: string) {
+async function saveMonthlyPlan(client: Client, session: any, proposal: any, userId: string) {
   if (!session.area_id) throw new Error("Plano mensal exige uma área");
   const monthlyRows = [];
   const actionRows = [];
@@ -440,6 +472,7 @@ async function saveMonthlyPlan(client: Client, session: any, proposal: any, _use
       parent_id: parent.id,
       period: asText(objective.period, session.period),
     });
+    await applyProposedKpiLinks(client, session, monthly, objective, userId);
     monthlyRows.push(monthly);
 
     for (const action of asArray<any>(objective.actions ?? objective.acoes)) {
@@ -641,18 +674,39 @@ async function saveMonthClose(client: Client, session: any, proposal: any, userI
   const reviewStats = await applyCloseReviews(client, session, proposal, userId, "monthly");
   const pendencyStats = await applyClosePendencies(client, session, proposal, nextPeriod, "monthly");
   const completionRate = clampProgress(proposal.completionRate ?? proposal.completion_rate, 0);
+  const rawPulse = proposal.managementPulse ?? proposal.management_pulse ?? {};
+  const confidenceValue = asText(rawPulse.confidence).toLowerCase();
+  const confidence = ["green", "yellow", "red"].includes(confidenceValue) ? confidenceValue : "";
+  const managementPulse = {
+    confidence,
+    confidenceReason: asText(rawPulse.confidenceReason ?? rawPulse.confidence_reason),
+    blocker: asText(rawPulse.blocker ?? rawPulse.bloqueio),
+    decisionNeeded: asText(rawPulse.decisionNeeded ?? rawPulse.decision_needed ?? rawPulse.decisao_necessaria),
+    nextCommitment: asText(rawPulse.nextCommitment ?? rawPulse.next_commitment ?? rawPulse.proximo_compromisso),
+  };
   const summary = [
     asText(proposal.summary, `Fechamento de ${session.period}`),
     `Conclusão informada: ${completionRate}%.`,
+    confidence ? `Confiança no trimestre: ${confidence}.` : "",
+    managementPulse.blocker ? `Trava: ${managementPulse.blocker}.` : "",
+    managementPulse.decisionNeeded ? `Decisão necessária: ${managementPulse.decisionNeeded}.` : "",
+    managementPulse.nextCommitment ? `Próximo compromisso: ${managementPulse.nextCommitment}.` : "",
     `Atualizados: ${reviewStats.updatedObjectives} objetivo(s), ${reviewStats.updatedActions} ação(ões), ${reviewStats.insertedEvidences} evidência(s).`,
     `Pendências: ${pendencyStats.rolled} rolada(s), ${pendencyStats.renegotiated} renegociada(s), ${pendencyStats.cut} cortada(s).`,
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 
   const { error } = await client.from("check_ins").insert({
     org_id: session.org_id,
     area_id: session.area_id,
     period: session.period,
     summary,
+    details: {
+      completionRate,
+      managementPulse,
+      reviewCount: reviewStats.updatedObjectives,
+      evidenceCount: reviewStats.insertedEvidences,
+      pendencies: pendencyStats,
+    },
     created_by: userId,
   });
   if (error) throw error;

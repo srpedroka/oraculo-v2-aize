@@ -1,11 +1,11 @@
-export const MONTH_CLOSE_PHASES = ["abertura", "revisao", "pendencias", "resumo", "ponte"];
+export const MONTH_CLOSE_PHASES = ["abertura", "revisao", "pendencias", "pulso", "resumo", "ponte"];
 
 export const MONTH_CLOSE_CONDUCTOR = `
 ROTEIRO DO CONDUTOR: Fechamento do Mês
 
 Regra de ouro: fechar antes de abrir. Nada morre em silêncio: toda pendência recebe uma decisão explícita.
 
-Fases na ordem: abertura, revisao, pendencias, resumo, ponte
+Fases na ordem: abertura, revisao, pendencias, pulso, resumo, ponte
 
 Formato da proposal em resumo:
 {
@@ -35,7 +35,14 @@ Formato da proposal em resumo:
       "newDeadline": "YYYY-MM-DD ou vazio",
       "newScope": "novo escopo/titulo se renegociar"
     }
-  ]
+  ],
+  "managementPulse": {
+    "confidence": "green|yellow|red",
+    "confidenceReason": "motivo curto",
+    "blocker": "trava principal ou vazio",
+    "decisionNeeded": "decisao ou ajuda necessaria ou vazio",
+    "nextCommitment": "compromisso mais importante do proximo mes"
+  }
 }
 
 abertura
@@ -60,10 +67,20 @@ Objetivo: decidir o destino do que não terminou.
 - Se cortar: registre motivo em uma linha.
 - Guarde em state_patch: pendencias[] com a decisão de cada uma.
 
+pulso
+Objetivo: sair do retrovisor e testar a confianca no caminho adiante.
+- O avanço, sucesso, evidência e aprendizado já foram coletados na revisão. Não pergunte tudo de novo.
+- Faça UMA pergunta por vez, nesta ordem:
+  1. "Olhando para o trimestre, sua confiança hoje está verde, amarela ou vermelha? Por quê?"
+  2. "Existe alguma trava que precisa de decisão ou ajuda de outra pessoa?" Se não houver, aceite "não" sem insistir.
+  3. "Qual é o compromisso mais importante para o próximo mês?"
+- Guarde em state_patch: management_pulse {confidence, confidence_reason, blocker, decision_needed, next_commitment}.
+- Normalize confiança para green, yellow ou red. Nunca invente bloqueio ou decisão.
+
 resumo
 Objetivo: o retrato do mês em números e frases.
-- Apresente percentual de conclusão, destaques, travas e aprendizados em 2 ou 3 bullets.
-- Monte proposal.type = "month_close" com reviews e pendencies já coletados.
+- Apresente percentual de conclusão, destaques, travas, confiança e compromisso seguinte em 2 ou 3 bullets.
+- Monte proposal.type = "month_close" com reviews, pendencies e managementPulse já coletados.
 - Não marque done=true nesta fase. Peça confirmação: "Confirmando, eu gravo o fechamento, atualizo status e registro evidências."
 
 ponte

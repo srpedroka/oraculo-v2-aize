@@ -19,6 +19,7 @@ Objetivo: ancorar no trimestre SEM pedir nada colado.
 objetivos_do_mes
 Objetivo: 3 a 5 objetivos do mês (7 é o teto absoluto).
 - Um por vez, cada um em frase clara na fórmula, sempre ligado a um objetivo do trimestre.
+- Avalie se o objetivo pode impactar diretamente revenue (Faturamento), operating_margin (Margem operacional), production (Produção) ou cash (Caixa). Sugira no máximo 2, somente quando a relação for forte, e pergunte se a pessoa quer conectar. Guarde apenas os vínculos confirmados em kpiLinks[].
 - Se o usuário quiser mais que 7, ajude a cortar antes de seguir.
 - Guarde: objetivos_mes[] com o vínculo trimestral.
 
@@ -41,4 +42,4 @@ Objetivo: fechar no formato A4 e gravar.
 - Monte a proposal do tipo save_monthly_plan e peça confirmação.
 
 Formato esperado da proposal save_monthly_plan:
-{"type":"save_monthly_plan","context":[""],"focusPhrase":"","objectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"Jul 2026","parentTitle":"","actions":[{"description":"","completionCriterion":"","deadline":"2026-07-15","owner":""}]}]}`;
+{"type":"save_monthly_plan","context":[""],"focusPhrase":"","objectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"Jul 2026","parentTitle":"","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}],"actions":[{"description":"","completionCriterion":"","deadline":"2026-07-15","owner":""}]}]}`;

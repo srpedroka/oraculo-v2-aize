@@ -1604,6 +1604,9 @@ const WHATSAPP_DAILY_FORM_RULES = [
   "- Escopo: fale sobre Oráculo, negócio, gestão, administração, estratégia, planejamento, objetivos, áreas, execução, evidências e temas claramente conectados à empresa.",
   "- Se a pessoa pedir curiosidade geral fora desse escopo, reconheça somente o assunto que ela citou, use uma leveza curta ligada a esse assunto e puxe de volta para planejamento/gestão. Não dê a resposta factual externa e não misture exemplos de outros temas.",
   "- Em papo leve ou pergunta simples, responda curto (1 a 3 frases).",
+  "- Não comece toda resposta com 'Entendi' e não repita mecanicamente o que a pessoa acabou de dizer.",
+  "- Quando a pessoa compartilhar um sucesso ou uma dificuldade, reconheça o fato com naturalidade antes de perguntar sobre registro, evidência ou próximo passo.",
+  "- Não transforme conversa casual em formulário. Menus e listas só entram quando resolvem uma escolha ou ambiguidade real.",
   "- Quando apresentar status, plano ou lista, ESTRUTURE: *títulos em negrito*, itens com hífen, uma informação por linha. Nada de parágrafo corrido com números misturados.",
   "- Resposta longa: divida em blocos separados por uma linha contendo apenas --- (no máximo 3 blocos). Cada bloco deve fazer sentido sozinho.",
   "- Sempre feche apontando o próximo passo ou com UMA pergunta que ajude a decidir.",
@@ -1623,6 +1626,7 @@ async function buildAnswer(
   profile: any,
   membership: any,
   conversation: ConversationRecord,
+  interactionInstruction = "",
 ) {
   const aiRoute = await resolveAiFunction(client, orgId, "daily");
   const [
@@ -1662,6 +1666,7 @@ async function buildAnswer(
     `- Horário local do atendimento: ${localTimestamp()}.`,
     "Se a pessoa perguntar se o sistema está funcionando, responda que recebeu a mensagem e pergunte se ela quer falar do funcionamento do Oráculo/WhatsApp ou do andamento dos planos.",
     "Se citar status do plano, objetivos, metas ou indicadores, cite itens concretos do contexto. Se pedir evidência, diga qual evidência falta.",
+    interactionInstruction,
     formatConversationMemory(history),
     "Contexto atual do plano:",
     planContext,
@@ -1684,6 +1689,18 @@ async function buildAnswer(
     console.error("Erro ao chamar IA no WhatsApp", _error instanceof Error ? _error.message : String(_error));
     return contextualFallback(profile, organization, objectives ?? [], message);
   }
+}
+
+function pendingConversationContext(conversation: ConversationRecord) {
+  const context = conversation.pending_context;
+  if (!context || typeof context !== "object") return null;
+  const expiresAt = String(context.expiresAt ?? "");
+  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) return null;
+  return context;
+}
+
+function isRejectionMessage(value: string) {
+  return /^(nao|não|agora nao|agora não|deixa|dispenso|prefiro nao|prefiro não|só compartilhar|so compartilhar)[.!\s]*$/i.test(value.trim());
 }
 
 type DocumentTarget = "strategic" | "quarterly" | "monthly" | "evidence" | "unknown";
@@ -2097,6 +2114,7 @@ serve(async (req) => {
       .eq("org_id", orgId)
       .eq("coordinator_id", membership.id)
       .is("archived_at", null)
+      .limit(1)
       .maybeSingle();
     const areaId = area?.id ?? null;
     const conversation = await getOrCreateConversation(client, {
@@ -2181,6 +2199,123 @@ serve(async (req) => {
     const storedUserText = wasTranscribedAudio ? `[Áudio transcrito] ${text}` : text;
 
     const confirmationMessage = isConfirmationMessage(text);
+    const pendingContext = pendingConversationContext(conversation);
+
+    if (pendingContext?.type === "weekly_capture") {
+      await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
+      if (confirmationMessage) {
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "user",
+          text: storedUserText,
+          channel: "whatsapp",
+        });
+        const quickUpdate = await handleQuickUpdate(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          message: String(pendingContext.originalText ?? ""),
+          channel: "whatsapp",
+        });
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: quickUpdate.reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, quickUpdate.reply);
+        return jsonResponse({ ok: true, intent: "weekly_capture_confirmed" });
+      }
+      if (isRejectionMessage(text)) {
+        const reply = "Tudo certo. Obrigado por compartilhar; fica só na conversa e seguimos daqui.";
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "user",
+          text: storedUserText,
+          channel: "whatsapp",
+        });
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "weekly_capture_declined" });
+      }
+    }
+
+    if (pendingContext?.type === "weekly_pulse") {
+      await client.from("weekly_pulse_log").update({ responded_at: new Date().toISOString() })
+        .eq("org_id", orgId)
+        .eq("membership_id", membership.id)
+        .eq("week_start", String(pendingContext.weekStart ?? ""));
+
+      const weeklyIntent = await classifyOracleIntent(client, {
+        orgId,
+        message: text,
+        channel: "whatsapp",
+        areaId,
+        conversationId: conversation.id,
+      });
+      await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
+
+      if (weeklyIntent.intent === "quick_update") {
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "user",
+          text: storedUserText,
+          channel: "whatsapp",
+        });
+        await maybeSummarize(client, orgId, conversation);
+        const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+        await client.from("conversations").update({
+          pending_context: { type: "weekly_capture", originalText: text, expiresAt },
+        }).eq("id", conversation.id);
+        const answer = await buildAnswer(
+          client,
+          orgId,
+          areaId,
+          text,
+          profile,
+          membership,
+          conversation,
+          [
+            "A pessoa está respondendo ao convite leve sobre a semana e relatou um avanço, sucesso ou dificuldade concreta.",
+            "Reconheça o que aconteceu antes de falar em registro. Responda em uma ou duas frases naturais.",
+            "Termine perguntando se ela quer que você registre isso no objetivo ou ação correspondente. Não diga que já registrou.",
+          ].join("\n"),
+        );
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: answer,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, answer);
+        return jsonResponse({ ok: true, intent: "weekly_pulse_update" });
+      }
+    }
+
     if (!confirmationMessage && isClearlyGeneralTopic(text)) {
       await insertConversationMessage(client, {
         orgId,
@@ -2274,7 +2409,7 @@ serve(async (req) => {
         userId: profile.id,
         channel: "whatsapp",
       });
-      const reply = `Vou te conduzir por aqui mesmo; se preferir tela, o app mostra a mesma sessão.\n\n${sessionResult.reply}`;
+      const reply = `Vou te conduzir por aqui mesmo.\n\n${sessionResult.reply}`;
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
       return jsonResponse({ ok: true, intent: "start_planning", sessionId: sessionResult.session.id });
     }

@@ -28,6 +28,8 @@ import type {
   Membership,
   MembershipRole,
   Objective,
+  ObjectiveKpiLink,
+  ObjectiveKpiSuggestion,
   OperationalEntityType,
   OperationalRevision,
   OracleMode,
@@ -104,8 +106,10 @@ type AppAction =
   | { type: "confirm_session_proposal"; sessionId: string }
   | { type: "abandon_session"; sessionId: string }
   | { type: "add_evidence"; evidence: Evidence }
-  | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[] }
-  | { type: "update_objective"; objective: Objective }
+  | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[]; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
+  | { type: "update_objective"; objective: Objective; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
+  | { type: "suggest_objective_kpis"; objectiveId: string; onSuccess: (suggestions: ObjectiveKpiSuggestion[]) => void; onError?: (message: string) => void }
+  | { type: "set_objective_kpi_links"; objectiveId: string; links: Array<{ kpiId: string; rationale?: string; confidence?: number }>; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "update_key_action"; keyAction: KeyAction }
   | {
       type: "set_operational_item_archived";
@@ -160,6 +164,9 @@ type AppAction =
       apiKey?: string;
       webhookSecret?: string;
       enabled: boolean;
+      weeklyPulseEnabled: boolean;
+      weeklyPulseWeekday: number;
+      weeklyPulseHour: number;
     };
 
 interface UiState {
@@ -233,6 +240,7 @@ const EMPTY_STATE: AppState = {
   operationalRevisions: [],
   executiveKpis: [],
   kpiValues: [],
+  objectiveKpiLinks: [],
   activeSession: null,
   loading: true,
   ready: false,
@@ -558,6 +566,19 @@ function mapKpiMonthlyValue(row: any): KpiMonthlyValue {
   };
 }
 
+function mapObjectiveKpiLink(row: any): ObjectiveKpiLink {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    objectiveId: row.objective_id,
+    kpiId: row.kpi_id,
+    rationale: row.rationale ?? "",
+    confidence: Number(row.confidence ?? 0),
+    createdBy: row.created_by ?? null,
+    createdAt: row.created_at,
+  };
+}
+
 function mapAiSettings(row: any): AiSettings {
   return {
     orgId: row.org_id,
@@ -641,6 +662,9 @@ function mapWhatsAppSettings(row: any): WhatsAppSettings {
     keyPreview: row.key_preview ?? null,
     hasWebhookSecret: row.has_webhook_secret ?? false,
     webhookSecretPreview: row.webhook_secret_preview ?? null,
+    weeklyPulseEnabled: row.weekly_pulse_enabled ?? false,
+    weeklyPulseWeekday: Number(row.weekly_pulse_weekday ?? 5),
+    weeklyPulseHour: Number(row.weekly_pulse_hour ?? 16),
   };
 }
 
@@ -651,6 +675,7 @@ function mapCheckIn(row: any): CheckIn {
     areaId: row.area_id ?? null,
     period: row.period,
     summary: row.summary ?? null,
+    details: row.details ?? {},
     createdBy: row.created_by ?? null,
     createdAt: row.created_at,
     ...mapOperationalLifecycle(row),
@@ -1069,6 +1094,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const objectiveKpiLinksQuery = useQuery({
+    queryKey: ["objective_kpi_links", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client.from("objective_kpi_links").select("*").eq("org_id", orgId).order("created_at");
+      if (error) throw error;
+      return (data ?? []).map(mapObjectiveKpiLink);
+    },
+  });
+
   const aiSettingsQuery = useQuery({
     queryKey: ["ai_settings", orgId],
     enabled: Boolean(supabase && orgId),
@@ -1245,6 +1281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["operational_revisions", orgId] });
     queryClient.invalidateQueries({ queryKey: ["executive_kpis", orgId] });
     queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["objective_kpi_links", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
@@ -1275,6 +1312,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "operational_revisions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "executive_kpis", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "kpi_monthly_values", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "objective_kpi_links", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
 
     return () => {
@@ -1302,6 +1340,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       operationalRevisionsQuery.isLoading ||
       executiveKpisQuery.isLoading ||
       kpiValuesQuery.isLoading ||
+      objectiveKpiLinksQuery.isLoading ||
       aiSettingsQuery.isLoading ||
       aiFunctionSettingsQuery.isLoading ||
       aiProviderKeyStatusesQuery.isLoading ||
@@ -1345,6 +1384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       operationalRevisions: operationalRevisionsQuery.data ?? [],
       executiveKpis: executiveKpisQuery.data ?? [],
       kpiValues: kpiValuesQuery.data ?? [],
+      objectiveKpiLinks: objectiveKpiLinksQuery.data ?? [],
       activeSession: activePlanningSessions.find((planningSession) => planningSession.pendingProposal) ?? activePlanningSessions[0] ?? null,
       loading,
       ready: Boolean(session && organization),
@@ -1395,6 +1435,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     keyActionsQuery.isLoading,
     kpiValuesQuery.data,
     kpiValuesQuery.isLoading,
+    objectiveKpiLinksQuery.data,
+    objectiveKpiLinksQuery.isLoading,
     objectivesQuery.data,
     objectivesQuery.isLoading,
     orgId,
@@ -1799,32 +1841,93 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (action.type === "add_objective") {
         void (async () => {
-          const objectiveRow = toObjectiveInsert(action.objective, orgId);
-          const { data: inserted, error } = await client.from("objectives").insert(objectiveRow).select("id").single();
-          if (error) throw error;
-          const objectiveId = inserted.id as string;
-          const keyActions = (action.keyActions ?? []).map((keyAction) =>
-            toKeyActionInsert({ ...keyAction, objectiveId }, orgId),
-          );
-          if (keyActions.length) {
-            const { error: keyActionsError } = await client.from("key_actions").insert(keyActions);
-            if (keyActionsError) throw keyActionsError;
+          try {
+            const objectiveRow = toObjectiveInsert(action.objective, orgId);
+            const { data: inserted, error } = await client.from("objectives").insert(objectiveRow).select("id").single();
+            if (error) throw error;
+            const objectiveId = inserted.id as string;
+            const keyActions = (action.keyActions ?? []).map((keyAction) =>
+              toKeyActionInsert({ ...keyAction, objectiveId }, orgId),
+            );
+            if (keyActions.length) {
+              const { error: keyActionsError } = await client.from("key_actions").insert(keyActions);
+              if (keyActionsError) throw keyActionsError;
+            }
+            invalidateOrg();
+            action.onSuccess?.(objectiveId);
+          } catch (error) {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível criar o objetivo.");
           }
-          invalidateOrg();
         })();
         return;
       }
 
       if (action.type === "update_objective") {
-        void client
-          .from("objectives")
-          .update(toObjectiveInsert(action.objective, orgId))
-          .eq("id", action.objective.id)
-          .eq("org_id", orgId)
-          .then(({ error }) => {
+        void (async () => {
+          try {
+            const { error } = await client
+              .from("objectives")
+              .update(toObjectiveInsert(action.objective, orgId))
+              .eq("id", action.objective.id)
+              .eq("org_id", orgId);
             if (error) throw error;
             invalidateOrg();
-          });
+            action.onSuccess?.(action.objective.id);
+          } catch (error) {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível atualizar o objetivo.");
+          }
+        })();
+        return;
+      }
+
+      if (action.type === "suggest_objective_kpis") {
+        void callEdgeFunction("suggest-objective-kpis", { orgId, objectiveId: action.objectiveId })
+          .then((result) => {
+            queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+            action.onSuccess(((result as { suggestions?: ObjectiveKpiSuggestion[] }).suggestions ?? []));
+          })
+          .catch((error) => action.onError?.(error instanceof Error ? error.message : "Não foi possível sugerir KPIs."));
+        return;
+      }
+
+      if (action.type === "set_objective_kpi_links") {
+        void (async () => {
+          try {
+            if (action.links.length) {
+              const { error: upsertError } = await client.from("objective_kpi_links").upsert(
+                action.links.map((link) => ({
+                  org_id: orgId,
+                  objective_id: action.objectiveId,
+                  kpi_id: link.kpiId,
+                  rationale: link.rationale ?? "",
+                  confidence: link.confidence ?? 1,
+                  created_by: userId,
+                })),
+                { onConflict: "objective_id,kpi_id" },
+              );
+              if (upsertError) throw upsertError;
+              const keepIds = action.links.map((link) => link.kpiId);
+              const { error: pruneError } = await client
+                .from("objective_kpi_links")
+                .delete()
+                .eq("org_id", orgId)
+                .eq("objective_id", action.objectiveId)
+                .not("kpi_id", "in", `(${keepIds.join(",")})`);
+              if (pruneError) throw pruneError;
+            } else {
+              const { error: deleteError } = await client
+                .from("objective_kpi_links")
+                .delete()
+                .eq("org_id", orgId)
+                .eq("objective_id", action.objectiveId);
+              if (deleteError) throw deleteError;
+            }
+            invalidateOrg();
+            action.onSuccess?.();
+          } catch (error) {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar os vínculos de KPI.");
+          }
+        })();
         return;
       }
 
@@ -1990,6 +2093,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           apiKey: action.apiKey ?? "",
           webhookSecret: action.webhookSecret ?? "",
           enabled: action.enabled,
+          weeklyPulseEnabled: action.weeklyPulseEnabled,
+          weeklyPulseWeekday: action.weeklyPulseWeekday,
+          weeklyPulseHour: action.weeklyPulseHour,
         }).then(invalidateOrg);
         return;
       }

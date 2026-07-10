@@ -261,6 +261,25 @@ export interface KpiMonthlyValue {
   updatedAt: string;
 }
 
+export interface ObjectiveKpiLink {
+  id: string;
+  orgId: string;
+  objectiveId: string;
+  kpiId: string;
+  rationale: string;
+  confidence: number;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ObjectiveKpiSuggestion {
+  kpiId: string;
+  kpiKey: KpiKey;
+  label: string;
+  rationale: string;
+  confidence: number;
+}
+
 export interface KpiSpreadsheetSuggestionRow {
   year: number;
   kpiKey: KpiKey;
@@ -407,6 +426,9 @@ export interface WhatsAppSettings {
   keyPreview?: string | null;
   hasWebhookSecret: boolean;
   webhookSecretPreview?: string | null;
+  weeklyPulseEnabled: boolean;
+  weeklyPulseWeekday: number;
+  weeklyPulseHour: number;
 }
 
 export interface CheckIn extends OperationalLifecycle {
@@ -415,6 +437,18 @@ export interface CheckIn extends OperationalLifecycle {
   areaId: string | null;
   period: string;
   summary: string | null;
+  details: {
+    completionRate?: number;
+    managementPulse?: {
+      confidence?: "green" | "yellow" | "red" | "";
+      confidenceReason?: string;
+      blocker?: string;
+      decisionNeeded?: string;
+      nextCommitment?: string;
+    };
+    reviewCount?: number;
+    evidenceCount?: number;
+  };
   createdBy: string | null;
   createdAt: string;
 }
@@ -453,6 +487,7 @@ export interface AppState {
   operationalRevisions: OperationalRevision[];
   executiveKpis: ExecutiveKpi[];
   kpiValues: KpiMonthlyValue[];
+  objectiveKpiLinks: ObjectiveKpiLink[];
   activeSession: PlanningSession | null;
   loading: boolean;
   ready: boolean;

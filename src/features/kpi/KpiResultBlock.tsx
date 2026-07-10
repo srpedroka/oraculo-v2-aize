@@ -1,4 +1,4 @@
-import { Activity, Banknote, Factory, Landmark, Pencil } from "lucide-react";
+import { Activity, Banknote, Factory, Landmark, Link2, Pencil } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import {
@@ -20,7 +20,8 @@ import {
   valuesForKpi,
   ytd,
 } from "../../lib/kpi";
-import type { ExecutiveKpi, KpiKey, KpiMonthlyValue } from "../../types";
+import { useAppState } from "../../state/store";
+import type { ExecutiveKpi, KpiKey, KpiMonthlyValue, Objective } from "../../types";
 import { KpiSparkline } from "./KpiSparkline";
 
 const KPI_ICON = {
@@ -65,7 +66,24 @@ function clampPct(ratio: number) {
   return Math.max(0, Math.min(100, ratio * 100));
 }
 
-function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values: KpiMonthlyValue[]; year: number; focusMonth: number }) {
+function LinkedObjectives({ objectives }: { objectives: Objective[] }) {
+  if (!objectives.length) return null;
+  return (
+    <div className="border-t border-border pt-3">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+        <Link2 className="h-3.5 w-3.5" /> Objetivos que podem impactar
+      </div>
+      <div className="mt-2 space-y-1">
+        {objectives.slice(0, 3).map((objective) => (
+          <p key={objective.id} className="truncate text-xs text-text">{objective.title}</p>
+        ))}
+        {objectives.length > 3 ? <p className="text-xs text-text-tertiary">+{objectives.length - 3} outros</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: ExecutiveKpi; values: KpiMonthlyValue[]; year: number; focusMonth: number; linkedObjectives: Objective[] }) {
   const Icon = KPI_ICON[kpi.key];
   const monthValues = valuesForKpi(values, kpi, year);
   const current = monthValues[focusMonth - 1];
@@ -138,6 +156,7 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
           <div className="mt-auto">
             <KpiSparkline data={sparklineData} showTarget={sparklineData.some((item) => item.target !== null)} />
           </div>
+          <LinkedObjectives objectives={linkedObjectives} />
         </div>
       </Card>
     );
@@ -203,12 +222,14 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
         <div className="mt-auto">
           <KpiSparkline data={sparklineData} showTarget />
         </div>
+        <LinkedObjectives objectives={linkedObjectives} />
       </div>
     </Card>
   );
 }
 
 export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiResultBlockProps) {
+  const { state } = useAppState();
   const { year, month: focusMonth } = latestClosedKpiPeriod();
   const currentPeriod = `${KPI_MONTHS[currentMonth() - 1]} ${currentYear()}`;
   const closedPeriod = `${KPI_MONTHS[focusMonth - 1]} ${year}`;
@@ -240,7 +261,17 @@ export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiRes
       {ordered.length ? (
         <div className="grid gap-4 md:grid-cols-2">
           {ordered.map((kpi) => (
-            <KpiCard key={kpi.id} kpi={kpi} values={values} year={year} focusMonth={focusMonth} />
+            <KpiCard
+              key={kpi.id}
+              kpi={kpi}
+              values={values}
+              year={year}
+              focusMonth={focusMonth}
+              linkedObjectives={state.objectiveKpiLinks
+                .filter((link) => link.kpiId === kpi.id)
+                .map((link) => state.objectives.find((objective) => objective.id === link.objectiveId))
+                .filter((objective): objective is Objective => Boolean(objective))}
+            />
           ))}
         </div>
       ) : (

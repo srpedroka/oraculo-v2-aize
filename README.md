@@ -95,6 +95,8 @@ As Edge Functions ficam em `supabase/functions/`:
 - `oracle-chat`
 - `oracle-session`
 - `month-turn`
+- `weekly-pulse`
+- `suggest-objective-kpis`
 - `suggest-kpi-spreadsheet`
 - `apply-kpi-import`
 - `organization-backup`

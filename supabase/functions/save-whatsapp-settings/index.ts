@@ -27,6 +27,9 @@ serve(async (req) => {
       apiKey = "",
       webhookSecret = "",
       enabled = false,
+      weeklyPulseEnabled = false,
+      weeklyPulseWeekday = 5,
+      weeklyPulseHour = 16,
     } = await req.json();
 
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
@@ -37,6 +40,8 @@ serve(async (req) => {
     const cleanConnectedNumber = String(connectedNumber).trim();
     const cleanApiKey = String(apiKey).trim();
     const cleanWebhookSecret = String(webhookSecret).trim();
+    const cleanPulseWeekday = Math.max(1, Math.min(7, Number(weeklyPulseWeekday) || 5));
+    const cleanPulseHour = Math.max(0, Math.min(23, Number(weeklyPulseHour) || 16));
 
     const client = serviceClient();
     const [{ data: existingSettings }, { data: existingPrivate }] = await Promise.all([
@@ -72,6 +77,9 @@ serve(async (req) => {
       key_preview: cleanApiKey ? previewSecret(cleanApiKey) : existingSettings?.key_preview ?? null,
       has_webhook_secret: cleanWebhookSecret ? true : existingSettings?.has_webhook_secret ?? false,
       webhook_secret_preview: cleanWebhookSecret ? previewSecret(cleanWebhookSecret) : existingSettings?.webhook_secret_preview ?? null,
+      weekly_pulse_enabled: Boolean(weeklyPulseEnabled),
+      weekly_pulse_weekday: cleanPulseWeekday,
+      weekly_pulse_hour: cleanPulseHour,
       updated_at: new Date().toISOString(),
     });
 

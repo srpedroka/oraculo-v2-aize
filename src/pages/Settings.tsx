@@ -204,6 +204,9 @@ export function Settings() {
   const [whatsappApiKey, setWhatsappApiKey] = useState("");
   const [whatsappWebhookSecret, setWhatsappWebhookSecret] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(state.whatsappSettings?.enabled ?? false);
+  const [weeklyPulseEnabled, setWeeklyPulseEnabled] = useState(state.whatsappSettings?.weeklyPulseEnabled ?? false);
+  const [weeklyPulseWeekday, setWeeklyPulseWeekday] = useState(state.whatsappSettings?.weeklyPulseWeekday ?? 5);
+  const [weeklyPulseHour, setWeeklyPulseHour] = useState(state.whatsappSettings?.weeklyPulseHour ?? 16);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
@@ -305,6 +308,9 @@ export function Settings() {
     setWhatsappInstanceName(state.whatsappSettings?.instanceName ?? "");
     setWhatsappConnectedNumber(state.whatsappSettings?.connectedNumber ?? "");
     setWhatsappEnabled(state.whatsappSettings?.enabled ?? false);
+    setWeeklyPulseEnabled(state.whatsappSettings?.weeklyPulseEnabled ?? false);
+    setWeeklyPulseWeekday(state.whatsappSettings?.weeklyPulseWeekday ?? 5);
+    setWeeklyPulseHour(state.whatsappSettings?.weeklyPulseHour ?? 16);
   }, [state.whatsappSettings]);
 
   useEffect(() => {
@@ -588,6 +594,9 @@ export function Settings() {
       apiKey: whatsappApiKey.trim() || undefined,
       webhookSecret: whatsappWebhookSecret.trim() || undefined,
       enabled: whatsappEnabled,
+      weeklyPulseEnabled,
+      weeklyPulseWeekday,
+      weeklyPulseHour,
     });
     setWhatsappApiKey("");
     setWhatsappWebhookSecret("");
@@ -1193,6 +1202,48 @@ export function Settings() {
               />
               Ativar webhook do WhatsApp
             </label>
+            <div className="rounded-xl border border-border bg-[#FAFAFB] p-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-text">
+                <input
+                  type="checkbox"
+                  checked={weeklyPulseEnabled}
+                  onChange={(event) => setWeeklyPulseEnabled(event.target.checked)}
+                  className="h-4 w-4"
+                />
+                Pulso semanal leve
+              </label>
+              <p className="mt-1 text-xs leading-5 text-text-secondary">
+                Abre uma conversa natural com coordenadores que têm plano ativo. Sem resposta, o Oráculo não insiste.
+              </p>
+              {weeklyPulseEnabled ? (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <label>
+                    <span className="mb-1 block text-xs font-medium text-text-secondary">Dia</span>
+                    <select
+                      value={weeklyPulseWeekday}
+                      onChange={(event) => setWeeklyPulseWeekday(Number(event.target.value))}
+                      className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                    >
+                      <option value={1}>Segunda</option>
+                      <option value={2}>Terça</option>
+                      <option value={3}>Quarta</option>
+                      <option value={4}>Quinta</option>
+                      <option value={5}>Sexta</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-xs font-medium text-text-secondary">Horário</span>
+                    <select
+                      value={weeklyPulseHour}
+                      onChange={(event) => setWeeklyPulseHour(Number(event.target.value))}
+                      className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                    >
+                      {[8, 9, 10, 11, 14, 15, 16, 17].map((hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}
+                    </select>
+                  </label>
+                </div>
+              ) : null}
+            </div>
             <input
               value={whatsappInstanceUrl}
               onChange={(event) => setWhatsappInstanceUrl(event.target.value)}

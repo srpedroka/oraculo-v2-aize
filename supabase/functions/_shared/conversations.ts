@@ -15,6 +15,7 @@ export interface ConversationRecord {
   status: "active" | "archived";
   summary: string | null;
   summary_upto: string | null;
+  pending_context?: Record<string, unknown> | null;
   last_message_at: string | null;
   created_at: string;
 }

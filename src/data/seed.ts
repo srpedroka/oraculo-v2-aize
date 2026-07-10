@@ -572,6 +572,7 @@ export const initialState: AppState = {
   operationalRevisions: [],
   executiveKpis: [],
   kpiValues: [],
+  objectiveKpiLinks: [],
   activeSession: null,
   loading: false,
   ready: true,

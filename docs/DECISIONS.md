@@ -1,5 +1,15 @@
 # Decisoes tecnicas
 
+## 2026-07-10 - Mensal estruturado, semanal leve e KPI sugerido
+
+Decisao: manter o fechamento mensal como ritual estruturado de gestao; adicionar um convite semanal opcional, natural e sem insistencia; preservar planejamento completo pelo WhatsApp; e permitir que a IA sugira ate dois vinculos entre objetivo e KPI existente, sempre com confirmacao humana.
+
+Contexto: um formulario semanal completo aumentaria atrito para coordenadores. Ao mesmo tempo, esperar o fechamento mensal sem abrir conversa durante a execucao reduz a chance de capturar avancos e travas cedo. Os quatro KPIs executivos tambem estavam separados dos objetivos que podem influencia-los.
+
+Motivo: o mensal sustenta responsabilidade e decisao; o semanal funciona como porta aberta. O WhatsApp continua canal completo de planejamento, enquanto o app oferece visao e configuracao. Vinculos de KPI sao orientacao, nao causalidade automatica.
+
+Consequencias: `check_ins.details` guarda confianca/bloqueio/compromisso; `weekly-pulse` usa contexto temporario e deduplicacao; `objective_kpi_links` tem RLS por objetivo; sugestoes fracas somem e nenhuma relacao e gravada sem confirmacao.
+
 ## 2026-07-10 - Governança e exclusão definitiva de empresa
 
 Decisao: separar `Sair da empresa` de `Encerrar empresa`; tornar o encerramento um arquivamento reversível e blindar a exclusão permanente atrás de Edge Function, backup recente obrigatório, confirmação pelo nome e auditoria que sobrevive à exclusão. Remover o `DELETE` direto de `organizations` do navegador.

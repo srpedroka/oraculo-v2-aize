@@ -94,6 +94,27 @@ function asTextArray(value: unknown) {
   return text ? [text] : [];
 }
 
+function normalizeKpiLinks(value: unknown) {
+  const allowed = new Set(["revenue", "operating_margin", "production", "cash"]);
+  return asArray<any>(value)
+    .map((item) => typeof item === "string" ? { kpiKey: asText(item), rationale: "" } : {
+      kpiKey: asText(item?.kpiKey ?? item?.kpi_key),
+      rationale: asText(item?.rationale ?? item?.justificativa),
+    })
+    .filter((item) => allowed.has(item.kpiKey))
+    .slice(0, 2);
+}
+
+function kpiLinkLabels(value: unknown) {
+  const labels: Record<string, string> = {
+    revenue: "Faturamento",
+    operating_margin: "Margem operacional",
+    production: "Produção",
+    cash: "Caixa",
+  };
+  return normalizeKpiLinks(value).map((item) => labels[item.kpiKey]).filter(Boolean);
+}
+
 function normalizeReadyStrategicProposal(rawProposal: any, period: string) {
   const year = Number(rawProposal?.year ?? currentYearFromPeriod(period));
   const drivers = rawProposal?.drivers && typeof rawProposal.drivers === "object" ? rawProposal.drivers : {};
@@ -126,6 +147,7 @@ function normalizeReadyStrategicProposal(rawProposal: any, period: string) {
         target: asText(objective?.target ?? objective?.meta),
         owner: asText(objective?.owner ?? objective?.responsavel),
         period: asText(objective?.period ?? objective?.periodo, String(year)),
+        kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
       }))
       .filter((objective) => objective.title)
       .slice(0, 8),
@@ -181,6 +203,7 @@ function formatReadyStrategicPlanReply(
       objective.metric ? `Indicador: ${objective.metric}` : "",
       objective.target ? `Meta: ${objective.target}` : "",
       objective.owner ? `Dono: ${objective.owner}` : "",
+      objective.kpiLinks.length ? `KPIs sugeridos: ${kpiLinkLabels(objective.kpiLinks).join(", ")}` : "",
     ].filter(Boolean).join(" | ");
     return details ? `${objective.title} - ${details}` : objective.title;
   });
@@ -222,13 +245,14 @@ function readyPlanSystemPrompt(context: string, period: string, channel: "web" |
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Plano Estratégico.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
     "Não faça apenas uma revisão textual. Gere uma proposal completa do tipo save_strategic_plan.",
-    "Fidelidade ao plano aprovado é mais importante que completar campos. Não acrescente KPI, meta, prazo, responsável, diagnóstico ou projeto que não esteja no texto.",
+    "Fidelidade ao plano aprovado é mais importante que completar campos. Não acrescente indicador próprio, meta, prazo, responsável, diagnóstico ou projeto que não esteja no texto.",
+    "Como orientação separada, você pode sugerir em kpiLinks até 2 KPIs executivos que o objetivo pode impactar: revenue, operating_margin, production ou cash. Só sugira relação forte, explique em rationale e deixe visível para confirmação.",
     "Se houver lacunas, use string vazia ou lista vazia. Quando um objetivo estiver implícito, transforme o próprio trecho do plano em um objetivo curto, sem inventar indicador, meta ou responsável.",
     "Metas podem ficar como texto quando o plano original trouxer texto; se o plano não trouxer meta, deixe target vazio.",
     "Agrupe objetivos parecidos. Prefira 3 a 6 objetivos estratégicos e até 7 projetos prioritários.",
     "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se não houver prazo, use string vazia.",
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
-    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026"}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
     `Ano/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
@@ -271,6 +295,7 @@ function normalizeReadyQuarterlyProposal(rawProposal: any, period: string) {
         owner: asText(objective?.owner ?? objective?.responsavel),
         period: asText(objective?.period ?? objective?.periodo, String(year)),
         linkedStrategicObjectiveId: asText(objective?.linkedStrategicObjectiveId ?? objective?.objetivo_estrategico_id),
+        kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
       }))
       .filter((objective) => objective.title)
       .slice(0, 6),
@@ -285,6 +310,7 @@ function normalizeReadyQuarterlyProposal(rawProposal: any, period: string) {
         period: asText(objective?.period ?? objective?.periodo, period),
         parentTitle: asText(objective?.parentTitle ?? objective?.objetivo_anual_vinculado ?? objective?.vinculo),
         deliverables: asTextArray(objective?.deliverables ?? objective?.entregas).slice(0, 6),
+        kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
       }))
       .filter((objective) => objective.title)
       .slice(0, 8),
@@ -322,6 +348,7 @@ function formatReadyQuarterlyPlanReply(
       objective.owner ? `Dono: ${objective.owner}` : "",
       objective.parentTitle ? `Vínculo anual: ${objective.parentTitle}` : "",
       objective.deliverables.length ? `Entregas: ${objective.deliverables.join("; ")}` : "",
+      objective.kpiLinks.length ? `KPIs sugeridos: ${kpiLinkLabels(objective.kpiLinks).join(", ")}` : "",
     ].filter(Boolean).join(" | ");
     return details ? `${objective.title} - ${details}` : objective.title;
   });
@@ -352,12 +379,13 @@ function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Planos Trimestrais da área selecionada.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
     "Não faça apenas uma revisão textual. Gere uma proposal completa do tipo save_quarterly_plan.",
-    "Fidelidade ao arquivo é mais importante que completar campos. Não acrescente KPI, meta, prazo, responsável, diagnóstico, entregas ou objetivo anual que não esteja explícito ou fortemente implícito no texto/contexto.",
+    "Fidelidade ao arquivo é mais importante que completar campos. Não acrescente indicador próprio, meta, prazo, responsável, diagnóstico, entregas ou objetivo anual que não esteja explícito ou fortemente implícito no texto/contexto.",
+    "Como orientação separada, você pode sugerir em kpiLinks até 2 KPIs executivos que o objetivo pode impactar: revenue, operating_margin, production ou cash. Só sugira relação forte e explique em rationale.",
     "Se houver lacunas, use string vazia ou lista vazia. Quando algo estiver implícito, preserve o texto original como base curta e sinalize lacunas na resposta.",
     "Monte 1 a 4 objetivos trimestrais e até 5 entregas principais por objetivo. Se o arquivo trouxer plano anual da área, inclua em annualObjectives; se não trouxer, use annualObjectives vazio e parentTitle vazio.",
     "Use o período recebido exatamente como padrão para objetivos trimestrais.",
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
-    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_trimestral_pronto":true},"next_phase":"sintese","proposal":{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"linkedStrategicObjectiveIds":[],"annualObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","deliverables":[]}]}}',
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_trimestral_pronto":true},"next_phase":"sintese","proposal":{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"linkedStrategicObjectiveIds":[],"annualObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null,"kpiLinks":[]}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","deliverables":[],"kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}]}}',
     `Trimestre/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
@@ -390,6 +418,7 @@ function normalizeReadyMonthlyProposal(rawProposal: any, period: string) {
         owner: asText(objective?.owner ?? objective?.responsavel),
         period: asText(objective?.period ?? objective?.periodo, period),
         parentTitle: asText(objective?.parentTitle ?? objective?.objetivo_trimestral_vinculado ?? objective?.vinculo),
+        kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
         actions: asArray<any>(objective?.actions ?? objective?.acoes)
           .map((action) => ({
             description: asText(action?.description ?? action?.descricao, "Ação-chave"),
@@ -435,6 +464,7 @@ function formatReadyMonthlyPlanReply(
       objective.target ? `Meta: ${objective.target}` : "",
       objective.owner ? `Dono: ${objective.owner}` : "",
       objective.parentTitle ? `Vínculo trimestral: ${objective.parentTitle}` : "",
+      objective.kpiLinks.length ? `KPIs sugeridos: ${kpiLinkLabels(objective.kpiLinks).join(", ")}` : "",
       objective.actions.length ? `Ações: ${objective.actions.map((action) => action.description).join("; ")}` : "",
     ].filter(Boolean).join(" | ");
     return details ? `${objective.title} - ${details}` : objective.title;
@@ -466,12 +496,13 @@ function readyMonthlyPlanSystemPrompt(context: string, period: string, channel: 
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Execução Mensal.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
     "Não faça apenas uma revisão textual. Gere uma proposal completa do tipo save_monthly_plan.",
-    "Fidelidade ao arquivo é mais importante que completar campos. Não invente KPI, meta, dono, prazo ou ação que não esteja explícita ou muito fortemente implícita.",
+    "Fidelidade ao arquivo é mais importante que completar campos. Não invente indicador próprio, meta, dono, prazo ou ação que não esteja explícita ou muito fortemente implícita.",
+    "Como orientação separada, você pode sugerir em kpiLinks até 2 KPIs executivos que o objetivo pode impactar: revenue, operating_margin, production ou cash. Só sugira relação forte e explique em rationale.",
     "Se houver lacunas, use string vazia ou lista vazia. Preserve a linguagem do plano original quando transformar trechos em objetivos e ações.",
     "Monte 1 a 5 objetivos mensais, cada um com 1 a 5 ações-chave. Se houver vínculo trimestral, preencha parentTitle; se não houver, deixe vazio.",
     "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se o texto trouxer só 'até dia 15', converta usando o mês/período recebido.",
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
-    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_mensal_pronto":true},"next_phase":"sintese","proposal":{"type":"save_monthly_plan","period":"' + period + '","context":[],"learningFocus":[],"focusPhrase":"","realism":{"fits":true,"firstToRemove":""},"objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","actions":[{"description":"","completionCriterion":"","deadline":"","owner":""}]}]}}',
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_mensal_pronto":true},"next_phase":"sintese","proposal":{"type":"save_monthly_plan","period":"' + period + '","context":[],"learningFocus":[],"focusPhrase":"","realism":{"fits":true,"firstToRemove":""},"objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}],"actions":[{"description":"","completionCriterion":"","deadline":"","owner":""}]}]}}',
     `Mês/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,
