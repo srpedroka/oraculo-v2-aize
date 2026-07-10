@@ -415,3 +415,6 @@ enabled = true
 
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+[functions.organization-backup]
+verify_jwt = false

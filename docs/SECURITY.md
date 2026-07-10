@@ -29,6 +29,7 @@ Secrets das Edge Functions:
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `MONTH_TURN_SECRET` para proteger chamadas agendadas da funcao `month-turn`. **Obrigatorio**: desde 2026-07-05 a funcao falha fechada (retorna erro) se o segredo nao estiver configurado, e o segredo e comparado em tempo constante. Configurar o secret antes de habilitar o cron.
+- `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` e `BACKUP_S3_REGION` são opcionais e habilitam réplica automática fora do projeto principal. Nunca enviá-los ao frontend.
 
 Segredos operacionais salvos pelo app:
 
@@ -152,6 +153,18 @@ Ao criar nova tabela:
 3. adicione indices por `org_id` quando aplicavel;
 4. documente a tabela em `ARCHITECTURE.md`;
 5. rode build e teste manual do fluxo.
+
+## Backups por empresa
+
+- Somente owner pode listar, criar, baixar, remover ou restaurar backups da empresa.
+- `organization_backup_secrets` e `organization_backup_requests` têm RLS, grants revogados para `anon`/`authenticated` e acesso operacional apenas por `service_role`/Postgres.
+- O cron chama `organization-backup` sem JWT apenas porque valida `x-oraculo-backup-cron-secret` em tempo constante contra um segredo aleatório gerado no banco.
+- O bucket `organization-backups` é privado e não possui policies para o navegador; acesso ao objeto passa pela Edge Function depois de validar owner.
+- Pacotes excluem `auth.users`, hashes de senha, `ai_model_keys`, `ai_provider_key_status`, `whatsapp_instance_keys`, eventos técnicos do WhatsApp e mídia temporária.
+- O pacote portátil é cifrado no navegador com PBKDF2/SHA-256 e AES-256-GCM. A senha não é transmitida nem armazenada; perdê-la torna o arquivo portátil irrecuperável.
+- A restauração usa modo `clone`: cria outro `org_id`, remapeia FKs, desativa WhatsApp, zera status de chaves de IA e exige reinformar credenciais. Qualquer falha remove a empresa parcial por cascata.
+- Importação sem `org_id` só é aceita para usuário autenticado sem nenhuma membership, permitindo recuperação após perda da única empresa sem abrir uma rota geral de criação em massa.
+- O Storage interno não substitui uma cópia externa. Quando S3 não está configurado, a tela sinaliza a pendência e o owner deve guardar o pacote portátil em local independente.
 
 ## Fundacao V3
 

@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-10 - Backup recuperável por empresa em camadas
+
+Decisao: tratar cada empresa como projeto recuperável, com snapshot lógico versionado por `org_id`, armazenamento privado, arquivo portátil criptografado e restauração somente como clone. Manter backup geral da plataforma e réplica externa como camadas independentes.
+
+Contexto: o dono começará testes práticos e precisa preservar planos, execução, KPIs, documentos, memória e configurações mesmo diante de exclusão acidental ou falha de ambiente.
+
+Alternativas: confiar apenas no backup diário do Supabase, exportar tabelas manualmente ou salvar cópias dentro da própria empresa sem fluxo de restauração.
+
+Motivo: o backup global não recupera uma empresa isolada sem afetar outros tenants. O pacote por empresa permite validar checksum, baixar uma cópia cifrada e restaurar sem sobrescrever a origem. O bucket interno dá recuperação rápida; S3 opcional reduz o risco de perder dados e backup no mesmo incidente.
+
+Consequencias: novas tabelas de domínio com `org_id` precisam entrar no catálogo explícito de `_shared/organization-backup.ts`. Secrets e Auth nunca entram no pacote. A restauração remapeia IDs, relaciona usuários por email, desativa WhatsApp e exige recadastrar credenciais. Contas sem nenhuma empresa podem importar o pacote no onboarding; contas com membership precisam usar a área owner da empresa ativa. O cron roda a cada 15 minutos para coalescer marcos e garante um snapshot agendado após 03:00 de São Paulo.
+
 ## 2026-07-09 - Importacao de KPI aceita imagem e registra histórico estruturado
 
 Decisao: ampliar a importacao de KPI para planilhas e imagens, usando visao da IA somente para propor os quatro indicadores permitidos; a confirmacao grava anos passados em `kpi_monthly_values` e cria um documento `kpi_history` em Documentos.

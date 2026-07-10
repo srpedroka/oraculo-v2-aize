@@ -118,6 +118,7 @@ O Supabase guarda:
 - secrets de servidor das Edge Functions;
 - chaves de IA e WhatsApp em tabelas bloqueadas para leitura do navegador.
 - sessoes de planejamento da V3 em `public.planning_sessions`.
+- snapshots por empresa no bucket privado `organization-backups`, com metadados em `public.organization_backups`.
 
 ### Secrets das Edge Functions
 
@@ -130,6 +131,18 @@ SUPABASE_SERVICE_ROLE_KEY
 MONTH_TURN_SECRET
 ```
 
+Secrets opcionais para réplica externa dos backups por empresa:
+
+```text
+BACKUP_S3_ENDPOINT
+BACKUP_S3_BUCKET
+BACKUP_S3_ACCESS_KEY_ID
+BACKUP_S3_SECRET_ACCESS_KEY
+BACKUP_S3_REGION
+```
+
+Use um bucket S3 compatível fora do projeto Supabase principal, privado e com versionamento/retenção habilitados. Sem todos os quatro campos obrigatórios, o backup interno continua funcionando e a UI marca a cópia externa como pendente.
+
 Esses valores ficam no painel/CLI do Supabase, nao no repositorio.
 
 Por que assim: Edge Functions rodam no servidor e podem usar service role com seguranca. O navegador nao pode receber service role. `MONTH_TURN_SECRET` protege a chamada agendada da virada de mes quando a funcao `month-turn` for exposta sem JWT.
@@ -137,6 +150,8 @@ Por que assim: Edge Functions rodam no servidor e podem usar service role com se
 `oracle-session` usa esses mesmos secrets server-side para conduzir planejamento e aplicar propostas confirmadas. Ela nao cria novo segredo; apenas grava estado em `planning_sessions` e dados confirmados nas tabelas de plano.
 
 Estado operacional em 2026-07-04: `MONTH_TURN_SECRET` foi configurado no Supabase para a funcao `month-turn`. O valor real nao fica neste repositorio.
+
+O segredo do cron de backup é gerado em `public.organization_backup_secrets`, tabela bloqueada para navegador. Ele não deve ser copiado para documentação ou frontend.
 
 ### Banco de dados
 

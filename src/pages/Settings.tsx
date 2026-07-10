@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { OrganizationBackupCard } from "../features/backups/OrganizationBackupCard";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
 import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, MembershipRole, OrgTonePreset } from "../types";
@@ -1016,6 +1017,7 @@ export function Settings() {
           ) : null}
         </Card>
       </div>
+      {state.activeOrgId ? <OrganizationBackupCard orgId={state.activeOrgId} /> : null}
         </>
       )}
 

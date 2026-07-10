@@ -25,6 +25,8 @@ Na tela `src/pages/Dashboard.tsx`, o bloco "Resultado" combina objetivos ativos 
 
 Na tela `src/pages/Settings.tsx`, o card "Tom do Oráculo" lê `org_ai_tone` para todos os membros da empresa e permite edição somente pelo owner. Presets preenchem os eixos gentil↔ácido/franco e direto↔motivador; o preset personalizado libera os sliders e uma preferência da casa de até 280 caracteres.
 
+Na mesma tela, owners administram `Segurança e backups`. Cada empresa tem uma política em `organization_backup_policies`; snapshots concluídos são registrados em `organization_backups` e armazenados como JSON versionado e comprimido no bucket privado `organization-backups`. O pacote inclui dados do domínio, configurações não secretas, perfis públicos ligados à empresa, manifesto, contagem por tabela e SHA-256. Chaves, senhas, mídia bruta e metadados de backups anteriores ficam fora. O download portátil é criptografado no navegador com AES-256-GCM e senha que não sai do dispositivo. A restauração sempre cria uma nova empresa, remapeia IDs e usuários existentes por email, abandona sessões que estavam ativas e mantém a origem intacta. Se a conta não tiver mais nenhuma empresa, `Onboarding.tsx` oferece a importação do pacote; o servidor só libera essa rota sem `org_id` quando o usuário autenticado realmente não possui membership.
+
 Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oraculo. `src/features/objective/ObjectiveEditDialog.tsx` permite editar tipo, resultado, indicador, meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas. O mesmo editor aparece em Plano Estrategico, Dashboard e cards de planos por area. A tela de Areas tambem permite ao owner cadastrar areas e vincular coordenadores no proprio modulo, enquanto coordenadores e demais membros ficam em leitura quando nao tiverem permissao de escrita.
 
 ### Supabase
@@ -47,6 +49,8 @@ Migrations principais:
 - `20260709123000_executive_kpis.sql`: adiciona os 4 KPIs executivos do Dashboard, lancamentos mensais, papel `admin` e helper `is_admin`.
 - `20260709150000_org_ai_tone.sql`: adiciona tom/persona por empresa, RLS membro-le/owner-escreve e realtime.
 - `20260709180000_kpi_history_documents.sql`: adiciona `kpi_history` aos tipos de `plan_documents` e indice para documentos históricos de importação de KPIs.
+- `20260710120000_organization_backups.sql`: adiciona políticas, snapshots, auditoria de restauração, bucket privado, fila de marcos e cron protegido para backups por empresa.
+- `20260710133000_portable_restore_without_org.sql`: permite restaurar pacote portátil pelo onboarding quando a conta ficou sem empresa.
 
 Tabelas publicas principais:
 
@@ -73,6 +77,9 @@ Tabelas publicas principais:
 - `executive_kpis`
 - `kpi_monthly_values`
 - `org_ai_tone`
+- `organization_backup_policies`
+- `organization_backups`
+- `organization_restore_runs`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
@@ -110,6 +117,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `apply-kpi-import`: recebe somente a proposta confirmada, revalida os quatro KPIs/anos/meses no servidor, preserva campos antigos ausentes da proposta, grava `kpi_monthly_values` e cria um `plan_documents.kpi_history` para auditoria em Documentos.
 - `suggest-historical-metadata`: valida sessao/permissao, restringe areas candidatas ao owner ou ao coordenador da propria area, usa a funcao de IA `background` para sugerir tipo, area, periodo e titulo do historico e cai para heuristica segura se a IA nao estiver disponivel. Nunca inventa periodo quando nao ha data clara.
 - `save-historical-document`: valida sessao, permissao de empresa/area, tipo, periodo e tamanho do texto antes de gravar um `plan_documents` historico. Pode guardar em `content.classification` a sugestao revisada pelo usuario, mas nao cria objetivos, acoes ou planos ativos.
+- `organization-backup`: owner cria, lista, baixa, remove e restaura snapshots por empresa; o cron usa segredo próprio gerado no banco. O arquivo interno fica em Storage privado e pode ser replicado para S3 compatível quando os secrets opcionais estiverem configurados.
 - `oracle-chat`: usa a conversa web da pessoa, grava pergunta e resposta com `user_id`/`conversation_id`, monta contexto legivel do plano e responde com fallback deterministico ou modelo configurado. Tambem classifica a intencao da mensagem para iniciar planejamento anual/trimestral/mensal ou fechamento mensal/trimestral pelo app.
 - `oracle-session`: motor de condução da Fase 2 da V3. Inicia sessoes estruturadas, processa mensagens com a funcao de IA `planning`, importa plano estrategico pronto via `import_ready_plan`, importa plano trimestral pronto via `import_ready_quarterly_plan`, conduz a Revisao Estrategica `strategic_review`, persiste fase/estado/proposta pendente e grava planos, revisoes ou fechamentos apenas depois de confirmacao.
 - `month-turn`: funcao de virada de mes. Verifica areas com plano mensal encerrado sem check-in e envia convite por WhatsApp para owner/coordenador quando a integracao estiver ativa.

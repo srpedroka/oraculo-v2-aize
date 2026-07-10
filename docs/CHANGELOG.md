@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-10
+
+- Adicionado sistema de backup por empresa: política owner-only, snapshot manual/diário/por marcos, retenção diária/semanal/mensal, manifesto com contagem por tabela e SHA-256, bucket privado e réplica S3 compatível opcional.
+- Configurações ganhou `Segurança e backups`, com histórico, alerta após 26 horas sem backup válido, pacote portátil cifrado no navegador e restauração sempre como uma nova empresa.
+- A restauração remapeia relações, reaproveita usuários existentes por email, desativa WhatsApp, remove chaves da IA e abandona sessões que estavam em andamento; falhas limpam automaticamente a empresa parcial.
+- Contas que perderam a única empresa agora podem importar o pacote portátil diretamente no onboarding; o servidor restringe essa recuperação a usuário autenticado sem memberships.
+
 ## 2026-07-09
 
 - Ampliada a importação de KPIs: o editor agora aceita planilhas e imagens JPG/PNG/WEBP; a IA extrai somente Faturamento, Margem operacional, Produção e Caixa por ano/mês. Ao confirmar, valores históricos entram em `kpi_monthly_values` e um documento `Histórico de KPIs` é salvo para auditoria, sem armazenar a mídia original.

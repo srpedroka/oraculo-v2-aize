@@ -784,6 +784,52 @@ O editor do Dashboard permite que `owner` e `admin` importem `.xlsx`, `.xls`, `.
 
 Se não surgir uma prévia, confira se há uma IA válida configurada para a função `background` em Configurações e se as colunas da planilha ou a imagem deixam claros indicador, ano, mês, Meta e Atingido. Para imagem, use OpenAI, Anthropic ou xAI como modelo de bastidores. A importação preserva valores existentes quando uma célula não foi identificada com segurança.
 
+## Backups e restauração por empresa
+
+Fluxo normal para owner:
+
+1. Abra Configurações > Segurança e backups.
+2. Confirme que `Backup diário` e `Snapshot após marcos importantes` estão ativos.
+3. Use `Criar backup agora` antes de uma operação sensível.
+4. Informe uma senha de arquivo com pelo menos 10 caracteres e use o ícone de download para gerar o pacote portátil criptografado.
+5. Para recuperar, use o ícone de restauração de um snapshot interno ou `Importar pacote`. O sistema cria uma nova empresa e nunca sobrescreve a atual. Se a conta ficou sem nenhuma empresa, importe o pacote diretamente no onboarding.
+
+Diagnóstico no banco:
+
+```sql
+select kind, status, record_count, size_bytes, external_status, error_message, created_at, completed_at
+from public.organization_backups
+where org_id = '<ORG_ID>'
+order by created_at desc
+limit 30;
+```
+
+```sql
+select automatic_enabled, event_snapshots_enabled, last_success_at, last_failure_at, last_failure_message
+from public.organization_backup_policies
+where org_id = '<ORG_ID>';
+```
+
+```sql
+select jobname, schedule, active
+from cron.job
+where jobname = 'oraculo-organization-backups';
+```
+
+Se não houver backup válido há mais de 26 horas:
+
+- confira `organization_backup_policies.last_failure_message`;
+- confira logs da Edge Function `organization-backup`;
+- confirme que o cron está ativo;
+- execute um backup manual pela tela;
+- confira o bucket privado `organization-backups` no Storage.
+
+Para réplica externa, configure todos os secrets `BACKUP_S3_*` descritos em `docs/ACCESS.md` e publique `organization-backup` novamente. A coluna `external_status` deve passar a `completed`. Sem S3, gere periodicamente o pacote portátil e guarde-o fora do projeto Supabase.
+
+Teste de recuperação recomendado: mensalmente restaure o snapshot mais recente como nova empresa, confira planos, documentos, KPIs e membros, e depois remova a empresa de teste pela administração apropriada. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone.
+
+O dump lógico geral via `supabase db dump` é uma camada separada e, no ambiente local atual, exige Docker Desktop ou um `pg_dump` compatível. O backup por empresa não depende de Docker.
+
 ## Deploy frontend
 
 Build local:
@@ -829,6 +875,7 @@ supabase functions deploy set-member-role
 supabase functions deploy save-ai-settings
 supabase functions deploy suggest-kpi-spreadsheet
 supabase functions deploy apply-kpi-import
+supabase functions deploy organization-backup --no-verify-jwt
 supabase functions deploy suggest-historical-metadata
 supabase functions deploy save-historical-document
 supabase functions deploy oracle-chat

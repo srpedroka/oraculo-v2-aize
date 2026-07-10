@@ -94,6 +94,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - `month-turn`
 - `suggest-kpi-spreadsheet`
 - `apply-kpi-import`
+- `organization-backup`
 - `whatsapp-webhook`
 
 ## Documentacao
