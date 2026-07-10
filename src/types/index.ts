@@ -62,6 +62,7 @@ export interface KeyAction extends OperationalLifecycle {
   completionCriterion: string;
   deadline: string | null;
   owner: string;
+  ownerMembershipId?: string | null;
   status?: Status;
 }
 
@@ -78,6 +79,7 @@ export interface Objective extends OperationalLifecycle {
   trend?: "up" | "down" | "flat";
   deadline: string | null;
   owner: string;
+  ownerMembershipId?: string | null;
   evidencePlan: string;
   status: Status;
   progress?: number;
@@ -93,6 +95,7 @@ export interface StrategicProject extends OperationalLifecycle {
   planId?: string | null;
   name: string;
   owner: string;
+  ownerMembershipId?: string | null;
   deadline: string | null;
   status?: Status;
   linkedObjectiveId: string | null;

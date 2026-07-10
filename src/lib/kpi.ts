@@ -89,3 +89,45 @@ export function cashTargetStatus(ma3: number | null, targetValue: number | null 
   if (ma3 === null || targetValue === null || targetValue === undefined) return null;
   return ma3 >= targetValue;
 }
+
+// --- Acumulado do ano (YTD) e projeção run-rate ---
+// "Onde chego no ritmo atual", honesto por tipo de KPI: fluxo soma, margem faz
+// média, caixa acumula geração. Sem forecast estatístico.
+
+function finiteNumbers(values: Array<number | null | undefined>): number[] {
+  return values.filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value));
+}
+
+export function closedMonths(monthValues: Array<KpiMonthlyValue | null>, upToMonth: number) {
+  return finiteNumbers(monthValues.slice(0, upToMonth).map((value) => value?.actualValue)).length;
+}
+
+export function ytd(monthValues: Array<KpiMonthlyValue | null>, upToMonth: number, mode: "sum" | "average" = "sum") {
+  const values = finiteNumbers(monthValues.slice(0, upToMonth).map((value) => value?.actualValue));
+  if (!values.length) return null;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return mode === "average" ? total / values.length : total;
+}
+
+export function ytdTargetTotal(monthValues: Array<KpiMonthlyValue | null>, upToMonth: number, mode: "sum" | "average" = "sum") {
+  const values = finiteNumbers(monthValues.slice(0, upToMonth).map((value) => value?.targetValue));
+  if (!values.length) return null;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return mode === "average" ? total / values.length : total;
+}
+
+export function sumDeltas(deltas: Array<number | null>, upToMonth: number) {
+  const values = finiteNumbers(deltas.slice(0, upToMonth));
+  if (!values.length) return null;
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+export function runRateProjection(ytdValue: number | null, closed: number) {
+  if (ytdValue === null || closed <= 0) return null;
+  return (ytdValue / closed) * 12;
+}
+
+export function onPace(projected: number | null, annualTarget: number | null | undefined, direction: KpiDirection) {
+  if (projected === null || annualTarget === null || annualTarget === undefined || annualTarget === 0) return null;
+  return direction === "lower_better" ? projected <= annualTarget * 1.02 : projected >= annualTarget * 0.98;
+}

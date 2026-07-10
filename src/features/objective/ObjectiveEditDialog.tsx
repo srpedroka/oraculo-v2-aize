@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { useAppState } from "../../state/store";
-import type { Objective, ObjectiveType, Status } from "../../types";
+import type { Membership, Objective, ObjectiveType, Status } from "../../types";
 import { STATUS_LABEL, TYPE_LABEL } from "../../types";
 import { formatDate } from "../../lib/format";
 import { OperationalArchiveDialog } from "../lifecycle/OperationalArchiveDialog";
@@ -22,6 +22,10 @@ function clampProgress(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function memberName(membership: Membership) {
+  return membership.profile?.fullName || membership.profile?.email || "Membro";
+}
+
 export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogProps) {
   const { state, dispatch } = useAppState();
   const [type, setType] = useState<ObjectiveType>(objective.type);
@@ -33,7 +37,9 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [trend, setTrend] = useState<"up" | "down" | "flat">(objective.trend ?? "flat");
   const [deadline, setDeadline] = useState(objective.deadline ?? "");
   const [owner, setOwner] = useState(objective.owner);
+  const [ownerMembershipId, setOwnerMembershipId] = useState<string | null>(objective.ownerMembershipId ?? null);
   const [status, setStatus] = useState<Status>(objective.status);
+  const members = state.memberships;
   const [progress, setProgress] = useState(objective.progress ?? 0);
   const [evidencePlan, setEvidencePlan] = useState(objective.evidencePlan);
   const [deliverables, setDeliverables] = useState((objective.deliverables ?? []).join("\n"));
@@ -56,6 +62,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
         trend,
         deadline: deadline || null,
         owner: owner.trim(),
+        ownerMembershipId,
         status,
         progress: clampProgress(progress),
         evidencePlan: evidencePlan.trim(),
@@ -155,7 +162,35 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-text">Responsável</span>
-              <input value={owner} onChange={(event) => setOwner(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-text" />
+              <select
+                value={ownerMembershipId ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (!value) {
+                    setOwnerMembershipId(null);
+                    return;
+                  }
+                  setOwnerMembershipId(value);
+                  const member = members.find((item) => item.id === value);
+                  if (member) setOwner(memberName(member));
+                }}
+                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-text"
+              >
+                <option value="">Responsável externo (texto)</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {memberName(member)}
+                  </option>
+                ))}
+              </select>
+              {ownerMembershipId === null ? (
+                <input
+                  value={owner}
+                  onChange={(event) => setOwner(event.target.value)}
+                  placeholder="Nome do responsável"
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-text"
+                />
+              ) : null}
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-text">Status</span>

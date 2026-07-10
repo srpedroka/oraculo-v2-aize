@@ -5,6 +5,7 @@ import {
   attainment,
   cashDeltas,
   cashTargetStatus,
+  closedMonths,
   currentMonth,
   currentYear,
   formatAttainment,
@@ -13,7 +14,11 @@ import {
   ladderLabel,
   latestClosedKpiPeriod,
   movingAverage3,
+  onPace,
+  runRateProjection,
+  sumDeltas,
   valuesForKpi,
+  ytd,
 } from "../../lib/kpi";
 import type { ExecutiveKpi, KpiKey, KpiMonthlyValue } from "../../types";
 import { KpiSparkline } from "./KpiSparkline";
@@ -47,6 +52,19 @@ function cashBadgeClass(status: boolean | null, ma3: number | null) {
   return "bg-fill-active text-text-secondary";
 }
 
+function paceTone(pace: boolean | null) {
+  return pace === null ? "text-text-tertiary" : pace ? "text-status-success" : "text-status-danger";
+}
+
+function paceLabel(pace: boolean | null) {
+  return pace === null ? "" : pace ? "no ritmo" : "abaixo do ritmo";
+}
+
+function clampPct(ratio: number) {
+  if (!Number.isFinite(ratio)) return 0;
+  return Math.max(0, Math.min(100, ratio * 100));
+}
+
 function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values: KpiMonthlyValue[]; year: number; focusMonth: number }) {
   const Icon = KPI_ICON[kpi.key];
   const monthValues = valuesForKpi(values, kpi, year);
@@ -62,6 +80,16 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
     const reportedAverage = hasActual ? currentAverage : null;
     const targetStage = ladderLabel(kpi.ladder, current?.targetStage);
     const targetMet = cashTargetStatus(reportedAverage, current?.targetValue);
+    const generationYtd = sumDeltas(deltas, focusMonth);
+    const closed = closedMonths(monthValues, focusMonth);
+    const cashActuals = monthValues
+      .slice(0, focusMonth)
+      .map((value) => value?.actualValue)
+      .filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value));
+    const latestBalance = cashActuals.length ? cashActuals[cashActuals.length - 1] : null;
+    const avgGeneration = generationYtd !== null && closed > 0 ? generationYtd / closed : null;
+    const projectedBalance = latestBalance !== null && avgGeneration !== null ? latestBalance + avgGeneration * (12 - closed) : null;
+    const cashPace = onPace(projectedBalance, kpi.annualTarget, kpi.direction);
     const sparklineData = KPI_MONTHS.map((month, index) => ({
       month,
       actual: deltas[index],
@@ -93,6 +121,20 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
             </div>
           </div>
 
+          {generationYtd !== null ? (
+            <div className="border-t border-border pt-3 text-label text-text-secondary">
+              <p>
+                Geração no ano: <span className="font-medium text-text">{formatKpiValue(generationYtd, "currency", { compact: true })}</span>
+              </p>
+              {projectedBalance !== null ? (
+                <p className="mt-1">
+                  Projeção de saldo (dez): <span className="font-medium text-text">{formatKpiValue(projectedBalance, "currency", { compact: true })}</span>
+                  {cashPace !== null ? <span className={`ml-1 font-medium ${paceTone(cashPace)}`}>· {paceLabel(cashPace)}</span> : null}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="mt-auto">
             <KpiSparkline data={sparklineData} showTarget={sparklineData.some((item) => item.target !== null)} />
           </div>
@@ -102,6 +144,12 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
   }
 
   const attained = attainment(current?.actualValue, current?.targetValue, kpi.direction);
+  const ytdMode = kpi.unit === "percent" ? "average" : "sum";
+  const ytdValue = ytd(monthValues, focusMonth, ytdMode);
+  const annual = kpi.annualTarget;
+  const closed = closedMonths(monthValues, focusMonth);
+  const projection = ytdMode === "sum" ? runRateProjection(ytdValue, closed) : ytdValue;
+  const pace = onPace(projection, annual, kpi.direction);
   const sparklineData = KPI_MONTHS.map((month, index) => ({
     month,
     actual: monthValues[index]?.actualValue ?? null,
@@ -131,6 +179,26 @@ function KpiCard({ kpi, values, year, focusMonth }: { kpi: ExecutiveKpi; values:
             ) : null}
           </div>
         </div>
+
+        {annual !== null && annual !== undefined && ytdValue !== null ? (
+          <div className="border-t border-border pt-3">
+            <div className="flex items-center justify-between gap-2 text-label">
+              <span className="text-text-secondary">
+                Ano{ytdMode === "average" ? " (média)" : ""}: <span className="font-medium text-text">{formatKpiValue(ytdValue, kpi.unit, { compact: true })}</span>
+                <span className="text-text-tertiary">{ytdMode === "sum" ? ` de ${formatKpiValue(annual, kpi.unit, { compact: true })}` : ` · meta ${formatKpiValue(annual, kpi.unit, { compact: true })}`}</span>
+              </span>
+              {pace !== null ? <span className={`shrink-0 font-medium ${paceTone(pace)}`}>{paceLabel(pace)}</span> : null}
+            </div>
+            {ytdMode === "sum" ? (
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-fill-active">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${clampPct(ytdValue / annual)}%` }} />
+              </div>
+            ) : null}
+            {ytdMode === "sum" && projection !== null ? (
+              <p className="mt-1 text-xs text-text-tertiary">Projeção do ano: {formatKpiValue(projection, kpi.unit, { compact: true })}</p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-auto">
           <KpiSparkline data={sparklineData} showTarget />

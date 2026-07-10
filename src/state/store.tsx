@@ -328,6 +328,7 @@ function mapProject(row: any): StrategicProject {
     planId: row.plan_id ?? null,
     name: row.name,
     owner: row.owner ?? "",
+    ownerMembershipId: row.owner_membership_id ?? null,
     deadline: row.deadline ?? null,
     status: row.status ?? "on_track",
     linkedObjectiveId: row.linked_objective_id ?? null,
@@ -404,6 +405,7 @@ function mapObjective(row: any): Objective {
     trend: row.trend ?? undefined,
     deadline: row.deadline ?? null,
     owner: row.owner ?? "",
+    ownerMembershipId: row.owner_membership_id ?? null,
     evidencePlan: row.evidence_plan ?? "",
     status: row.status,
     progress: row.progress ?? 0,
@@ -423,6 +425,7 @@ function mapKeyAction(row: any): KeyAction {
     completionCriterion: row.completion_criterion ?? "",
     deadline: row.deadline ?? null,
     owner: row.owner ?? "",
+    ownerMembershipId: row.owner_membership_id ?? null,
     status: row.status ?? "on_track",
     ...mapOperationalLifecycle(row),
   };
@@ -669,6 +672,7 @@ function toObjectiveInsert(objective: Objective, orgId: string) {
     trend: objective.trend ?? null,
     deadline: objective.deadline,
     owner: objective.owner,
+    owner_membership_id: objective.ownerMembershipId ?? null,
     evidence_plan: objective.evidencePlan,
     status: objective.status,
     progress: objective.progress ?? 0,
@@ -687,6 +691,7 @@ function toKeyActionInsert(keyAction: KeyAction, orgId: string) {
     completion_criterion: keyAction.completionCriterion,
     deadline: keyAction.deadline,
     owner: keyAction.owner,
+    owner_membership_id: keyAction.ownerMembershipId ?? null,
     status: keyAction.status ?? "on_track",
   };
 }

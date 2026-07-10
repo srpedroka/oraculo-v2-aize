@@ -1,5 +1,8 @@
 # Plano: Testabilidade + Cockpit de acompanhamento
 
+> **STATUS: ✅ TUDO executado e publicado por Claude Code em 2026-07-10.** A (navegação mobile) + B (cockpit) no commit `c729197`; D (YTD/projeção) + C (dono=membro + cron `deadline-nudges` 08:00 SP) em seguida. Migration `20260710223000_owner_membership_and_nudges.sql` aplicada + registrada; função `deadline-nudges` deployada (dry-run OK, 401 sem segredo); frontend publicado. Fica de fora, consciente: seletor de membro para ações-chave (só objetivos têm hoje; o cron casa por nome) e carência automática.
+
+
 Quatro melhorias que tiram o Oráculo de "forte no planejamento, fraco no acompanhamento" e destravam o teste prático. Ordenadas por alavanca e dependência. Cada frente é uma fatia independente, fatiável em ondas para o Codex (ou execução direta).
 
 Fonte da avaliação: revisão geral de 2026-07-10 (7 lentes lendo o código). Diagnóstico já validado no código real.
