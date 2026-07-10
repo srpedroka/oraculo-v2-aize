@@ -25,6 +25,7 @@ import { Card } from "../components/ui/Card";
 import { OrganizationBackupCard } from "../features/backups/OrganizationBackupCard";
 import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../features/members/MemberRemovalDialog";
+import { CompanyDangerZone } from "../features/lifecycle/CompanyDangerZone";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
 import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, Area, Membership, MembershipRole, OrgTonePreset } from "../types";
@@ -588,6 +589,7 @@ export function Settings() {
                   <option key={organization.id} value={organization.id}>
                     {organization.name}
                     {organization.subtitle ? ` / ${organization.subtitle}` : ""}
+                    {organization.archivedAt ? " (arquivada)" : ""}
                   </option>
                 ))}
               </select>
@@ -1269,6 +1271,8 @@ export function Settings() {
           </p>
         ) : null}
       </Card>
+
+      <CompanyDangerZone />
 
       {areaToArchive ? (
         <AreaArchiveDialog

@@ -88,7 +88,10 @@ serve(async (req) => {
     const period = previousMonthPeriod();
     const quarterPeriod = previousQuarterPeriod();
     const includeQuarter = /^(Mar|Jun|Set|Dez)\s+/i.test(period);
-    const { data: orgs, error: orgError } = await client.from("organizations").select("id, name");
+    const { data: orgs, error: orgError } = await client
+      .from("organizations")
+      .select("id, name")
+      .is("archived_at", null);
     if (orgError) throw orgError;
 
     let areasChecked = 0;

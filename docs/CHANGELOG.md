@@ -2,6 +2,8 @@
 
 ## 2026-07-10
 
+- Implementada a Fatia 3 (governança e exclusão definitiva de empresa): separadas as ações de `Sair da empresa` e `Encerrar empresa`; o encerramento arquiva de forma reversível (sai da virada mensal e pausa o WhatsApp, sem apagar nada) e a exclusão definitiva só ocorre com a empresa arquivada, backup completo recente e o nome digitado. A exclusão revoga chaves de IA, apaga as credenciais de WhatsApp, limpa os objetos de backup no storage e mantém um registro em `organization_lifecycle_audit` que sobrevive à remoção da empresa.
+- Fechada uma brecha real: `authenticated` deixou de poder apagar `organizations` direto pelo cliente (policy `organizations_delete_owner` removida e `delete` revogado); toda operação definitiva passa pela Edge Function `organization-lifecycle` com RPCs `set_organization_archived`/`delete_organization_permanently` (service_role). `month-turn` passou a ignorar empresas arquivadas.
 - Implementada a Fatia 2 do ciclo de vida operacional: objetivos, ações, projetos, evidências, check-ins e documentos podem ser arquivados/restaurados pelo novo Arquivo; planos e KPIs agora mantêm snapshots antes/depois em `operational_revisions`, e itens retirados saem do app ativo, WhatsApp e contexto da IA sem perder histórico.
 - Adicionados arquivamento/restauração de áreas e remoção segura de pessoas: áreas arquivadas saem da operação sem perder histórico; `remove-member` reatribui coordenações em transação, preserva perfil/registros e impede remover o último owner.
 - Adicionado sistema de backup por empresa: política owner-only, snapshot manual/diário/por marcos, retenção diária/semanal/mensal, manifesto com contagem por tabela e SHA-256, bucket privado e réplica S3 compatível opcional.

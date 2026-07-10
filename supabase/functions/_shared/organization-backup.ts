@@ -964,6 +964,28 @@ export async function deleteOrganizationBackup(orgId: string, backupId: string) 
   if (error) throw error;
 }
 
+// Remove every stored backup object (internal + external) for an organization.
+// Used before permanently deleting the org — the DB rows themselves cascade away
+// with the organization, so this only clears storage that has no FK/cascade.
+export async function purgeOrganizationBackupObjects(
+  objects: Array<{ object_path?: string | null; external_object_key?: string | null }>,
+) {
+  const client = serviceClient();
+  const paths = objects.map((item) => item.object_path).filter((path): path is string => Boolean(path));
+  if (paths.length) {
+    const { error } = await client.storage.from(STORAGE_BUCKET).remove(paths);
+    if (error) throw error;
+  }
+  for (const item of objects) {
+    try {
+      await deleteExternal(item.external_object_key);
+    } catch {
+      // Best effort: the org is being deleted; leave a stray external object rather than abort.
+      continue;
+    }
+  }
+}
+
 export async function cleanupExpiredOrganizationBackups(orgId: string) {
   const client = serviceClient();
   const { data, error } = await client

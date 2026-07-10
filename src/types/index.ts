@@ -32,6 +32,7 @@ export interface Organization {
   name: string;
   subtitle?: string;
   createdBy?: string | null;
+  archivedAt?: string | null;
 }
 
 export interface Area {

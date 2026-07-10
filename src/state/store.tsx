@@ -62,6 +62,16 @@ type AppAction =
       onSuccess?: () => void;
       onError?: (message: string) => void;
     }
+  | { type: "leave_organization"; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "archive_organization"; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "restore_organization"; onSuccess?: () => void; onError?: (message: string) => void }
+  | {
+      type: "delete_organization";
+      confirmName: string;
+      reason?: string | null;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
   | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
@@ -254,6 +264,7 @@ function mapOrganization(row: any): Organization {
     name: row.name,
     subtitle: row.subtitle ?? undefined,
     createdBy: row.created_by ?? null,
+    archivedAt: row.archived_at ?? null,
   };
 }
 
@@ -826,7 +837,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: Boolean(supabase && orgIds.length),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("organizations").select("id, name, subtitle, created_by").in("id", orgIds);
+      const { data, error } = await client.from("organizations").select("id, name, subtitle, created_by, archived_at").in("id", orgIds);
       if (error) throw error;
       return (data ?? []).map(mapOrganization);
     },
@@ -1536,6 +1547,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível remover a pessoa.");
+          });
+        return;
+      }
+
+      if (action.type === "leave_organization") {
+        void callEdgeFunction("organization-lifecycle", { action: "leave", orgId, reason: action.reason ?? null })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível sair da empresa.");
+          });
+        return;
+      }
+
+      if (action.type === "archive_organization") {
+        void callEdgeFunction("organization-lifecycle", { action: "archive", orgId, reason: action.reason ?? null })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível encerrar a empresa.");
+          });
+        return;
+      }
+
+      if (action.type === "restore_organization") {
+        void callEdgeFunction("organization-lifecycle", { action: "restore", orgId })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível restaurar a empresa.");
+          });
+        return;
+      }
+
+      if (action.type === "delete_organization") {
+        void callEdgeFunction("organization-lifecycle", {
+          action: "permanent_delete",
+          orgId,
+          confirmName: action.confirmName,
+          reason: action.reason ?? null,
+        })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível excluir a empresa.");
           });
         return;
       }

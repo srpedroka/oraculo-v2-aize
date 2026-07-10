@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-10 - Governança e exclusão definitiva de empresa
+
+Decisao: separar `Sair da empresa` de `Encerrar empresa`; tornar o encerramento um arquivamento reversível e blindar a exclusão permanente atrás de Edge Function, backup recente obrigatório, confirmação pelo nome e auditoria que sobrevive à exclusão. Remover o `DELETE` direto de `organizations` do navegador.
+
+Contexto: as Fatias 1 e 2 tornaram áreas, membros e itens operacionais reversíveis, mas `authenticated` ainda podia apagar a empresa inteira direto pelo cliente (policy `organizations_delete_owner`), e não havia caminho seguro para encerrar ou excluir de fato.
+
+Alternativas: manter só o arquivamento sem exclusão; exclusão imediata com uma confirmação; exclusão agendada com carência automática (grace period).
+
+Motivo: um negócio precisa poder encerrar e, eventualmente, apagar de vez — mas exclusão é irreversível, então as travas (arquivada + backup recente + nome digitado) e a auditoria persistente reduzem o risco de perda acidental sem burocratizar o caso comum. A carência automática ficou de fora por ora para não adicionar estado/tempo ao fluxo.
+
+Consequencias: nova Edge Function `organization-lifecycle` e RPCs `set_organization_archived`/`delete_organization_permanently` (service_role); `organization_lifecycle_audit` sem FK para `organizations`; `month-turn` ignora empresas arquivadas; o WhatsApp é pausado no arquivamento; a limpeza do storage de backup é explícita (não há cascade). O webhook do Evo Go precisa ser removido manualmente após a exclusão.
+
 ## 2026-07-10 - Operação usa arquivo reversível e revisão imutável
 
 Decisao: retirar objetivos, ações-chave, projetos, evidências, check-ins e documentos por arquivamento reversível; registrar atualizações de planos e KPIs como snapshots antes/depois em `operational_revisions`. Não oferecer hard delete desses registros ao navegador.

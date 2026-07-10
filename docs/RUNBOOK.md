@@ -119,6 +119,25 @@ limit 50;
 
 Se a restauração de ação/evidência disser que depende do objetivo, restaure o objetivo raiz do lote. Se a função falhar, confira logs de `operational-lifecycle`, a RPC `set_operational_item_archived` e a membership do usuário.
 
+## Sair, encerrar ou excluir uma empresa
+
+Todas as ações ficam em Configurações › Zona de perigo e passam pela Edge Function `organization-lifecycle`.
+
+1. **Sair da empresa**: qualquer pessoa retira o próprio acesso. Se você coordena áreas, elas ficam sem coordenador. O único owner não consegue sair — precisa transferir a titularidade (promover outro owner) ou encerrar a empresa.
+2. **Encerrar (arquivar)**: só owner. Arquiva a empresa de forma reversível — ela sai da virada mensal e o WhatsApp é pausado (`enabled=false`), mas nada é apagado. Restaure quando quiser.
+3. **Excluir definitivamente**: só owner e só com a empresa já arquivada. Exige um backup `completed` dos últimos 7 dias e digitar o nome exato da empresa. Apaga chaves de IA, credenciais de WhatsApp, os objetos de backup no storage e todos os dados; sobra apenas a linha em `organization_lifecycle_audit`.
+
+Antes de excluir, gere e **baixe o pacote portátil cifrado** no cartão de Backups — é a única forma de recuperar depois (as linhas de `organization_backups` somem junto com a empresa). O webhook do Evo Go continua apontando para uma empresa inexistente após a exclusão; remova a instância/webhook no Evo Go Manager manualmente.
+
+Diagnóstico:
+
+```sql
+select id, name, archived_at, archived_by, archive_reason from public.organizations where id = '<org_id>';
+select action, actor_email, reason, created_at from public.organization_lifecycle_audit where org_id = '<org_id>' order by created_at desc;
+```
+
+Se a exclusão falhar, confira logs de `organization-lifecycle`, as RPCs `set_organization_archived`/`delete_organization_permanently` e se existe backup `completed` recente.
+
 ## Recuperacao de senha
 
 A tela de entrada tem o link "Esqueci minha senha".
