@@ -2,6 +2,7 @@
 
 ## 2026-07-10
 
+- Convidar coordenador ficou opcional no ato: um checkbox "Chamar no WhatsApp agora" (ligado por padrão) permite cadastrar a pessoa em silêncio (cria o acesso, sem WhatsApp nem email) e convidá-la depois pelo botão "Convidar" na lista de Pessoas. O reenvio de convite passou a ser robusto para quem já existe (link de convite ou magic link). O tom da IA continua único por empresa (decisão do dono).
 - Configurações virou navegação por abas: um menu de seções (Empresa e áreas, Pessoas, IA, WhatsApp, Backups, Tom, Zona de perigo) mostra uma seção por vez, sem rolar; some o card de restrição redundante e as abas aparecem conforme o papel. Cada aba tem deep-link (`/configuracoes#backups`) e o bloco de IA ganhou um controle interno Chaves/Funções/Histórico.
 - Polimento de clareza (Apple/Tesla): removidos jargões e ruídos sem perder função — "(Jogo Atual)/(Próximo Jogo)" e "migration"/"módulo" saíram da tela; empty state do Dashboard ganhou botão "Criar Plano Estratégico"; header do Plano Estratégico perdeu os botões que duplicavam as abas; Áreas perdeu o "Ver trimestral" que tirava do contexto; Documentos perdeu o filtro "Origem" redundante; "Execução Viva" virou "Execução"; a tela de acesso não cita mais "Supabase".
 - Corrigida a navegação no celular: o menu agora abre num painel deslizante (drawer) com fundo escuro, fecha ao navegar/tocar fora/Esc e trava o scroll; os controles de recolher/redimensionar ficam só no desktop.
