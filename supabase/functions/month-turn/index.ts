@@ -112,6 +112,7 @@ serve(async (req) => {
           .eq("area_id", area.id)
           .eq("level", "monthly")
           .eq("period", period)
+          .is("archived_at", null)
           .limit(1);
         if (objectivesError) throw objectivesError;
         if (!(objectives ?? []).length) continue;
@@ -122,6 +123,7 @@ serve(async (req) => {
           .eq("org_id", org.id)
           .eq("area_id", area.id)
           .eq("period", period)
+          .is("archived_at", null)
           .limit(1)
           .maybeSingle();
         if (checkInError) throw checkInError;

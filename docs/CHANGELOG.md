@@ -2,6 +2,7 @@
 
 ## 2026-07-10
 
+- Implementada a Fatia 2 do ciclo de vida operacional: objetivos, ações, projetos, evidências, check-ins e documentos podem ser arquivados/restaurados pelo novo Arquivo; planos e KPIs agora mantêm snapshots antes/depois em `operational_revisions`, e itens retirados saem do app ativo, WhatsApp e contexto da IA sem perder histórico.
 - Adicionados arquivamento/restauração de áreas e remoção segura de pessoas: áreas arquivadas saem da operação sem perder histórico; `remove-member` reatribui coordenações em transação, preserva perfil/registros e impede remover o último owner.
 - Adicionado sistema de backup por empresa: política owner-only, snapshot manual/diário/por marcos, retenção diária/semanal/mensal, manifesto com contagem por tabela e SHA-256, bucket privado e réplica S3 compatível opcional.
 - Configurações ganhou `Segurança e backups`, com histórico, alerta após 26 horas sem backup válido, pacote portátil cifrado no navegador e restauração sempre como uma nova empresa.

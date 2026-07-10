@@ -136,7 +136,7 @@ serve(async (req) => {
     const aiRoute = await resolveAiFunction(client, orgId, "daily");
     const [{ data: objectives }, { data: areas }, history, planContext, orgTone] =
       await Promise.all([
-        client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
+        client.from("objectives").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
         client.from("areas").select("id").eq("org_id", orgId).is("archived_at", null),
         loadConversationHistory(client, conversation.id),
         buildPlanContext(client, orgId, { areaId: resolvedAreaId, focus: focusForContext(String(context), resolvedAreaId) }),

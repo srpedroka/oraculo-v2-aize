@@ -208,6 +208,7 @@ export async function buildPlanContext(
       .select("id, area_id, type, period, title, content, version, created_at")
       .eq("org_id", orgId)
       .eq("origin", "historical")
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(12)
     : Promise.resolve({ data: [] });
@@ -229,11 +230,11 @@ export async function buildPlanContext(
     client.from("memberships").select("id, user_id, role").eq("org_id", orgId),
     client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
     client.from("area_plans").select("*").eq("org_id", orgId),
-    client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
-    client.from("key_actions").select("*").eq("org_id", orgId).order("created_at"),
-    client.from("evidences").select("*").eq("org_id", orgId).order("created_at", { ascending: false }).limit(30),
-    client.from("check_ins").select("*").eq("org_id", orgId).order("created_at", { ascending: false }).limit(12),
-    client.from("strategic_projects").select("*").eq("org_id", orgId).order("created_at"),
+    client.from("objectives").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
+    client.from("key_actions").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
+    client.from("evidences").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false }).limit(30),
+    client.from("check_ins").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false }).limit(12),
+    client.from("strategic_projects").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     historicalDocumentsQuery,
   ]);
 

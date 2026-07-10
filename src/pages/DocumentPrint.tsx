@@ -6,7 +6,7 @@ import { useAppState } from "../state/store";
 export function DocumentPrint() {
   const { documentId } = useParams();
   const { state } = useAppState();
-  const document = state.planDocuments.find((item) => item.id === documentId);
+  const document = [...state.planDocuments, ...state.archivedPlanDocuments].find((item) => item.id === documentId);
 
   if (!document && !state.loading) return <Navigate to="/documentos" replace />;
   if (!document) return null;
@@ -14,9 +14,9 @@ export function DocumentPrint() {
   return (
     <main className="min-h-screen bg-white px-5 py-5 text-text print:p-0">
       <div className="mx-auto mb-5 flex max-w-[210mm] items-center justify-between gap-3 print:hidden">
-        <Link to="/documentos" className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text">
+        <Link to={document.archivedAt ? "/arquivo" : "/documentos"} className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text">
           <ArrowLeft className="h-4 w-4" />
-          Documentos
+          {document.archivedAt ? "Arquivo" : "Documentos"}
         </Link>
         <button
           type="button"

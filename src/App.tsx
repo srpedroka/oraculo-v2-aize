@@ -9,6 +9,7 @@ import { DocumentPrint } from "./pages/DocumentPrint";
 import { Documents } from "./pages/Documents";
 import { Execution } from "./pages/Execution";
 import { Onboarding } from "./pages/Onboarding";
+import { OperationalArchive } from "./pages/OperationalArchive";
 import { PasswordRecovery } from "./pages/PasswordRecovery";
 import { QuarterlyPlans } from "./pages/QuarterlyPlans";
 import { Settings } from "./pages/Settings";
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="/areas" element={<Areas />} />
         <Route path="/areas/:areaId" element={<AreaDetail />} />
         <Route path="/execucao" element={<Execution />} />
+        <Route path="/arquivo" element={<OperationalArchive />} />
         <Route path="/configuracoes" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

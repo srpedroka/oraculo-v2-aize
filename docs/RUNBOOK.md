@@ -91,6 +91,34 @@ Arquivar área:
 
 Uma área arquivada não deve aparecer no Dashboard, em seletores operacionais, virada mensal, WhatsApp ou contexto ativo da IA. Documentos e backups continuam reconhecendo seu nome e conteúdo histórico.
 
+## Retirar e restaurar registros operacionais
+
+Fluxo esperado:
+
+1. Em um card de objetivo, use o ícone de arquivo para retirar o objetivo. Seus desdobramentos, ações e evidências ativos entram no mesmo lote.
+2. Ações-chave podem ser retiradas no próprio card; evidências, no editor do objetivo; projetos e check-ins, em Execução Viva; documentos, em Documentos.
+3. Informe um motivo curto quando isso ajudar a auditoria.
+4. Abra `Arquivo` na navegação lateral para restaurar um registro ou consultar o histórico de alterações.
+
+Owners restauram registros gerais e da empresa. Coordenadores só restauram itens da própria área ativa. Se uma área também estiver arquivada, restaure primeiro a área. Itens retirados não devem aparecer nos fluxos ativos, no WhatsApp, na virada mensal nem no contexto da IA.
+
+Diagnóstico:
+
+```sql
+select id, title, archived_at, archived_by, archive_reason, archive_batch_id
+from public.objectives
+where org_id = '<org_id>'
+order by archived_at desc nulls last;
+
+select entity_type, entity_id, action, changed_by, created_at
+from public.operational_revisions
+where org_id = '<org_id>'
+order by created_at desc
+limit 50;
+```
+
+Se a restauração de ação/evidência disser que depende do objetivo, restaure o objetivo raiz do lote. Se a função falhar, confira logs de `operational-lifecycle`, a RPC `set_operational_item_archived` e a membership do usuário.
+
 ## Recuperacao de senha
 
 A tela de entrada tem o link "Esqueci minha senha".
@@ -893,6 +921,7 @@ Edge Functions:
 supabase functions deploy invite-member
 supabase functions deploy set-member-role
 supabase functions deploy remove-member
+supabase functions deploy operational-lifecycle
 supabase functions deploy save-ai-settings
 supabase functions deploy suggest-kpi-spreadsheet
 supabase functions deploy apply-kpi-import

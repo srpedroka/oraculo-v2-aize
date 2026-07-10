@@ -1,16 +1,43 @@
-import { CalendarCheck, ClipboardList, RefreshCcw } from "lucide-react";
+import { Archive, CalendarCheck, ClipboardList, RefreshCcw } from "lucide-react";
+import { useState } from "react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { formatDate } from "../lib/format";
 import { previousMonthPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
+import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 
 export function Execution() {
   const { state, dispatch } = useAppState();
   const projects = state.strategicPlan?.projects ?? [];
   const rituals = state.strategicPlan?.rituals ?? [];
   const closePeriod = previousMonthPeriod();
+  const [archiveTarget, setArchiveTarget] = useState<{ type: "strategic_project" | "check_in"; id: string; title: string } | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const isOwner = state.currentMembership?.role === "owner";
+
+  function archive(reason: string) {
+    if (!archiveTarget) return;
+    setArchiveBusy(true);
+    setArchiveError(null);
+    dispatch({
+      type: "set_operational_item_archived",
+      entityType: archiveTarget.type,
+      entityId: archiveTarget.id,
+      archived: true,
+      reason,
+      onSuccess: () => {
+        setArchiveBusy(false);
+        setArchiveTarget(null);
+      },
+      onError: (message) => {
+        setArchiveBusy(false);
+        setArchiveError(message);
+      },
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -35,7 +62,22 @@ export function Execution() {
                       <p className="mt-1 text-sm text-text-secondary">Dono: {project.owner || "A definir"}</p>
                       <p className="mt-1 text-sm text-text-secondary">Prazo: {formatDate(project.deadline)}</p>
                     </div>
-                    <StatusBadge status={project.status ?? "on_track"} />
+                    <div className="flex items-center gap-1">
+                      <StatusBadge status={project.status ?? "on_track"} />
+                      {isOwner ? (
+                        <Button
+                          variant="quiet"
+                          size="icon"
+                          icon={Archive}
+                          onClick={() => {
+                            setArchiveError(null);
+                            setArchiveTarget({ type: "strategic_project", id: project.id, title: project.name });
+                          }}
+                          aria-label={`Arquivar projeto ${project.name}`}
+                          title="Retirar projeto da operação"
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               ))
@@ -102,7 +144,22 @@ export function Execution() {
                   </div>
                   {lastCheckIn ? (
                     <div className="mt-3 rounded-xl border border-[#D9EADF] bg-[#F5FBF7] px-3 py-2">
-                      <p className="text-xs font-medium text-[#1D7A3E]">Check-in salvo</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-medium text-[#1D7A3E]">Check-in salvo</p>
+                        {isOwner || (state.currentMembership?.role === "coordinator" && area.coordinatorId === state.currentMembership.id) ? (
+                          <Button
+                            variant="quiet"
+                            size="icon"
+                            icon={Archive}
+                            onClick={() => {
+                              setArchiveError(null);
+                              setArchiveTarget({ type: "check_in", id: lastCheckIn.id, title: `${area.name} · ${lastCheckIn.period}` });
+                            }}
+                            aria-label="Estornar check-in"
+                            title="Estornar check-in"
+                          />
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-sm leading-6 text-text-secondary">{lastCheckIn.summary}</p>
                     </div>
                   ) : (
@@ -122,6 +179,26 @@ export function Execution() {
           )}
         </div>
       </Card>
+      {archiveTarget ? (
+        <OperationalArchiveDialog
+          eyebrow={archiveTarget.type === "strategic_project" ? "Projeto prioritário" : "Check-in"}
+          title={archiveTarget.type === "strategic_project" ? `Retirar ${archiveTarget.title} da operação?` : `Estornar ${archiveTarget.title}?`}
+          description={
+            archiveTarget.type === "strategic_project"
+              ? "O projeto deixa a lista ativa da Execução Viva e pode ser restaurado pelo Arquivo."
+              : "O check-in deixa de ser considerado no fechamento ativo, mas seu conteúdo e autoria permanecem no histórico."
+          }
+          confirmLabel={archiveTarget.type === "check_in" ? "Estornar check-in" : "Retirar projeto"}
+          busy={archiveBusy}
+          error={archiveError}
+          onClose={() => {
+            if (archiveBusy) return;
+            setArchiveTarget(null);
+            setArchiveError(null);
+          }}
+          onConfirm={archive}
+        />
+      ) : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 Oraculo e um sistema de execucao estrategica. Ele ajuda a empresa a enxergar se esta ganhando o jogo atual, pelo Resultado, e se esta construindo o proximo jogo, pela Evolucao.
 
-A V2 inclui autenticacao, empresas, membros, areas, planos estrategicos, planos trimestrais, execucao mensal, evidencias, check-ins e um painel de IA estrategica com Supabase e Netlify.
+A V2 inclui autenticacao, empresas, membros, areas, planos estrategicos, planos trimestrais, execucao mensal, evidencias, check-ins, arquivo operacional reversivel e um painel de IA estrategica com Supabase e Netlify.
 
 ## Stack
 
@@ -89,6 +89,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - `invite-member`
 - `set-member-role`
 - `remove-member`
+- `operational-lifecycle`
 - `save-ai-settings`
 - `save-whatsapp-settings`
 - `oracle-chat`

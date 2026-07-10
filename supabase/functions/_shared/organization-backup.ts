@@ -78,6 +78,7 @@ const TABLE_EXPORTS: Array<{ table: string; select: string; order: string }> = [
   { table: "plan_documents", select: "*", order: "id" },
   { table: "executive_kpis", select: "*", order: "id" },
   { table: "kpi_monthly_values", select: "*", order: "id" },
+  { table: "operational_revisions", select: "*", order: "id" },
   { table: "org_ai_tone", select: "*", order: "org_id" },
   {
     table: "organization_backup_policies",
@@ -146,14 +147,29 @@ function referencedProfileIds(organization: JsonRow, data: Record<string, JsonRo
   add(organization.created_by);
   rowsOf(data, "memberships").forEach((row) => add(row.user_id));
   rowsOf(data, "areas").forEach((row) => add(row.archived_by));
-  rowsOf(data, "evidences").forEach((row) => add(row.created_by));
+  rowsOf(data, "strategic_plans").forEach((row) => add(row.updated_by));
+  rowsOf(data, "area_plans").forEach((row) => add(row.updated_by));
+  rowsOf(data, "objectives").forEach((row) => add(row.archived_by));
+  rowsOf(data, "key_actions").forEach((row) => add(row.archived_by));
+  rowsOf(data, "strategic_projects").forEach((row) => add(row.archived_by));
+  rowsOf(data, "evidences").forEach((row) => {
+    add(row.created_by);
+    add(row.archived_by);
+  });
   rowsOf(data, "conversations").forEach((row) => add(row.user_id));
   rowsOf(data, "chat_messages").forEach((row) => add(row.user_id));
-  rowsOf(data, "check_ins").forEach((row) => add(row.created_by));
+  rowsOf(data, "check_ins").forEach((row) => {
+    add(row.created_by);
+    add(row.archived_by);
+  });
   rowsOf(data, "planning_sessions").forEach((row) => add(row.user_id));
-  rowsOf(data, "plan_documents").forEach((row) => add(row.created_by));
+  rowsOf(data, "plan_documents").forEach((row) => {
+    add(row.created_by);
+    add(row.archived_by);
+  });
   rowsOf(data, "kpi_monthly_values").forEach((row) => add(row.updated_by));
   rowsOf(data, "org_ai_tone").forEach((row) => add(row.updated_by));
+  rowsOf(data, "operational_revisions").forEach((row) => add(row.changed_by));
   return [...ids];
 }
 
@@ -629,7 +645,7 @@ export async function restoreOrganizationEnvelope(input: {
     const strategicPlans = rowsOf(data, "strategic_plans").map((row) => {
       const id = crypto.randomUUID();
       strategicPlanMap.set(String(row.id), id);
-      return { ...row, id, org_id: targetOrgId };
+      return { ...row, id, org_id: targetOrgId, updated_by: mapId(userMap, row.updated_by) };
     });
     restoredCounts.strategic_plans = await insertRows(client, "strategic_plans", strategicPlans);
 
@@ -637,7 +653,14 @@ export async function restoreOrganizationEnvelope(input: {
     const objectives = rowsOf(data, "objectives").map((row) => {
       const id = crypto.randomUUID();
       objectiveMap.set(String(row.id), id);
-      return { ...row, id, org_id: targetOrgId, area_id: mapId(areaMap, row.area_id), parent_id: null };
+      return {
+        ...row,
+        id,
+        org_id: targetOrgId,
+        area_id: mapId(areaMap, row.area_id),
+        parent_id: null,
+        archived_by: mapId(userMap, row.archived_by),
+      };
     });
     restoredCounts.objectives = await insertRows(client, "objectives", objectives);
     for (const sourceObjective of rowsOf(data, "objectives")) {
@@ -648,50 +671,85 @@ export async function restoreOrganizationEnvelope(input: {
       if (error) throw new Error(`Falha ao restaurar hierarquia de objetivos: ${error.message}`);
     }
 
-    const areaPlans = rowsOf(data, "area_plans").map((row) => ({
-      ...row,
-      id: crypto.randomUUID(),
-      org_id: targetOrgId,
-      area_id: mapId(areaMap, row.area_id),
-      main_annual_objective_id: mapId(objectiveMap, row.main_annual_objective_id),
-      linked_strategic_objective_ids: Array.isArray(row.linked_strategic_objective_ids)
-        ? row.linked_strategic_objective_ids.map((id: string) => objectiveMap.get(id)).filter(Boolean)
-        : [],
-    }));
+    const areaPlanMap = new Map<string, string>();
+    const areaPlans = rowsOf(data, "area_plans").map((row) => {
+      const id = crypto.randomUUID();
+      areaPlanMap.set(String(row.id), id);
+      return {
+        ...row,
+        id,
+        org_id: targetOrgId,
+        area_id: mapId(areaMap, row.area_id),
+        main_annual_objective_id: mapId(objectiveMap, row.main_annual_objective_id),
+        linked_strategic_objective_ids: Array.isArray(row.linked_strategic_objective_ids)
+          ? row.linked_strategic_objective_ids.map((objectiveId: string) => objectiveMap.get(objectiveId)).filter(Boolean)
+          : [],
+        updated_by: mapId(userMap, row.updated_by),
+      };
+    });
     restoredCounts.area_plans = await insertRows(client, "area_plans", areaPlans);
 
+    const keyActionMap = new Map<string, string>();
     const keyActions = rowsOf(data, "key_actions")
-      .map((row) => ({ ...row, id: crypto.randomUUID(), org_id: targetOrgId, objective_id: mapId(objectiveMap, row.objective_id) }))
+      .map((row) => {
+        const id = crypto.randomUUID();
+        keyActionMap.set(String(row.id), id);
+        return {
+          ...row,
+          id,
+          org_id: targetOrgId,
+          objective_id: mapId(objectiveMap, row.objective_id),
+          archived_by: mapId(userMap, row.archived_by),
+        };
+      })
       .filter((row) => row.objective_id);
     restoredCounts.key_actions = await insertRows(client, "key_actions", keyActions);
 
-    const strategicProjects = rowsOf(data, "strategic_projects").map((row) => ({
-      ...row,
-      id: crypto.randomUUID(),
-      org_id: targetOrgId,
-      plan_id: mapId(strategicPlanMap, row.plan_id),
-      linked_objective_id: mapId(objectiveMap, row.linked_objective_id),
-    }));
+    const strategicProjectMap = new Map<string, string>();
+    const strategicProjects = rowsOf(data, "strategic_projects").map((row) => {
+      const id = crypto.randomUUID();
+      strategicProjectMap.set(String(row.id), id);
+      return {
+        ...row,
+        id,
+        org_id: targetOrgId,
+        plan_id: mapId(strategicPlanMap, row.plan_id),
+        linked_objective_id: mapId(objectiveMap, row.linked_objective_id),
+        archived_by: mapId(userMap, row.archived_by),
+      };
+    });
     restoredCounts.strategic_projects = await insertRows(client, "strategic_projects", strategicProjects);
 
+    const evidenceMap = new Map<string, string>();
     const evidences = rowsOf(data, "evidences")
-      .map((row) => ({
-        ...row,
-        id: crypto.randomUUID(),
-        org_id: targetOrgId,
-        objective_id: mapId(objectiveMap, row.objective_id),
-        created_by: mapId(userMap, row.created_by),
-      }))
+      .map((row) => {
+        const id = crypto.randomUUID();
+        evidenceMap.set(String(row.id), id);
+        return {
+          ...row,
+          id,
+          org_id: targetOrgId,
+          objective_id: mapId(objectiveMap, row.objective_id),
+          created_by: mapId(userMap, row.created_by),
+          archived_by: mapId(userMap, row.archived_by),
+        };
+      })
       .filter((row) => row.objective_id);
     restoredCounts.evidences = await insertRows(client, "evidences", evidences);
 
-    const checkIns = rowsOf(data, "check_ins").map((row) => ({
-      ...row,
-      id: crypto.randomUUID(),
-      org_id: targetOrgId,
-      area_id: mapId(areaMap, row.area_id),
-      created_by: mapId(userMap, row.created_by),
-    }));
+    const checkInMap = new Map<string, string>();
+    const checkIns = rowsOf(data, "check_ins").map((row) => {
+      const id = crypto.randomUUID();
+      checkInMap.set(String(row.id), id);
+      return {
+        ...row,
+        id,
+        org_id: targetOrgId,
+        area_id: mapId(areaMap, row.area_id),
+        created_by: mapId(userMap, row.created_by),
+        archived_by: mapId(userMap, row.archived_by),
+      };
+    });
     restoredCounts.check_ins = await insertRows(client, "check_ins", checkIns);
 
     const conversationMap = new Map<string, string>();
@@ -739,14 +797,20 @@ export async function restoreOrganizationEnvelope(input: {
       .filter(Boolean) as JsonRow[];
     restoredCounts.planning_sessions = await insertRows(client, "planning_sessions", planningSessions);
 
-    const planDocuments = rowsOf(data, "plan_documents").map((row) => ({
-      ...row,
-      id: crypto.randomUUID(),
-      org_id: targetOrgId,
-      area_id: mapId(areaMap, row.area_id),
-      session_id: mapId(sessionMap, row.session_id),
-      created_by: mapId(userMap, row.created_by),
-    }));
+    const planDocumentMap = new Map<string, string>();
+    const planDocuments = rowsOf(data, "plan_documents").map((row) => {
+      const id = crypto.randomUUID();
+      planDocumentMap.set(String(row.id), id);
+      return {
+        ...row,
+        id,
+        org_id: targetOrgId,
+        area_id: mapId(areaMap, row.area_id),
+        session_id: mapId(sessionMap, row.session_id),
+        created_by: mapId(userMap, row.created_by),
+        archived_by: mapId(userMap, row.archived_by),
+      };
+    });
     restoredCounts.plan_documents = await insertRows(client, "plan_documents", planDocuments);
 
     const kpiMap = new Map<string, string>();
@@ -757,16 +821,48 @@ export async function restoreOrganizationEnvelope(input: {
     });
     restoredCounts.executive_kpis = await insertRows(client, "executive_kpis", executiveKpis);
 
+    const kpiValueMap = new Map<string, string>();
     const kpiValues = rowsOf(data, "kpi_monthly_values")
-      .map((row) => ({
-        ...row,
-        id: crypto.randomUUID(),
-        org_id: targetOrgId,
-        kpi_id: mapId(kpiMap, row.kpi_id),
-        updated_by: mapId(userMap, row.updated_by),
-      }))
+      .map((row) => {
+        const id = crypto.randomUUID();
+        kpiValueMap.set(String(row.id), id);
+        return {
+          ...row,
+          id,
+          org_id: targetOrgId,
+          kpi_id: mapId(kpiMap, row.kpi_id),
+          updated_by: mapId(userMap, row.updated_by),
+        };
+      })
       .filter((row) => row.kpi_id);
     restoredCounts.kpi_monthly_values = await insertRows(client, "kpi_monthly_values", kpiValues);
+
+    const revisionEntityMaps: Record<string, Map<string, string>> = {
+      strategic_plan: strategicPlanMap,
+      area_plan: areaPlanMap,
+      objective: objectiveMap,
+      key_action: keyActionMap,
+      strategic_project: strategicProjectMap,
+      evidence: evidenceMap,
+      check_in: checkInMap,
+      plan_document: planDocumentMap,
+      executive_kpi: kpiMap,
+      kpi_monthly_value: kpiValueMap,
+    };
+    const operationalRevisions = rowsOf(data, "operational_revisions")
+      .map((row) => {
+        const entityId = revisionEntityMaps[String(row.entity_type)]?.get(String(row.entity_id));
+        if (!entityId) return null;
+        return {
+          ...row,
+          id: crypto.randomUUID(),
+          org_id: targetOrgId,
+          entity_id: entityId,
+          changed_by: mapId(userMap, row.changed_by),
+        };
+      })
+      .filter(Boolean) as JsonRow[];
+    restoredCounts.operational_revisions = await insertRows(client, "operational_revisions", operationalRevisions);
 
     const aiSettings = rowsOf(data, "ai_settings").map((row) => ({
       ...row,

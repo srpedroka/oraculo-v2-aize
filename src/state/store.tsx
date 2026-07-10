@@ -28,6 +28,8 @@ import type {
   Membership,
   MembershipRole,
   Objective,
+  OperationalEntityType,
+  OperationalRevision,
   OracleMode,
   OrgTone,
   Organization,
@@ -92,6 +94,15 @@ type AppAction =
   | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[] }
   | { type: "update_objective"; objective: Objective }
   | { type: "update_key_action"; keyAction: KeyAction }
+  | {
+      type: "set_operational_item_archived";
+      entityType: OperationalEntityType;
+      entityId: string;
+      archived: boolean;
+      reason?: string;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | {
       type: "upsert_kpi_definition";
       kpiId: string;
@@ -190,14 +201,21 @@ const EMPTY_STATE: AppState = {
   areas: [],
   archivedAreas: [],
   strategicPlan: null,
+  archivedProjects: [],
   areaPlans: [],
   objectives: [],
+  archivedObjectives: [],
   keyActions: [],
+  archivedKeyActions: [],
   evidences: [],
+  archivedEvidences: [],
   chatMessages: [],
   checkIns: [],
+  archivedCheckIns: [],
   planningSessions: [],
   planDocuments: [],
+  archivedPlanDocuments: [],
+  operationalRevisions: [],
   executiveKpis: [],
   kpiValues: [],
   activeSession: null,
@@ -271,6 +289,15 @@ function mapArea(row: any, memberships: Membership[]): Area {
   };
 }
 
+function mapOperationalLifecycle(row: any) {
+  return {
+    archivedAt: row.archived_at ?? null,
+    archivedBy: row.archived_by ?? null,
+    archiveReason: row.archive_reason ?? null,
+    archiveBatchId: row.archive_batch_id ?? null,
+  };
+}
+
 function mapProject(row: any): StrategicProject {
   return {
     id: row.id,
@@ -281,6 +308,7 @@ function mapProject(row: any): StrategicProject {
     deadline: row.deadline ?? null,
     status: row.status ?? "on_track",
     linkedObjectiveId: row.linked_objective_id ?? null,
+    ...mapOperationalLifecycle(row),
   };
 }
 
@@ -359,6 +387,7 @@ function mapObjective(row: any): Objective {
     deliverables: row.deliverables ?? [],
     parentId: row.parent_id ?? null,
     period: row.period,
+    ...mapOperationalLifecycle(row),
   };
 }
 
@@ -372,6 +401,7 @@ function mapKeyAction(row: any): KeyAction {
     deadline: row.deadline ?? null,
     owner: row.owner ?? "",
     status: row.status ?? "on_track",
+    ...mapOperationalLifecycle(row),
   };
 }
 
@@ -383,6 +413,7 @@ function mapEvidence(row: any): Evidence {
     text: row.text,
     date: row.created_at,
     createdBy: row.created_by ?? null,
+    ...mapOperationalLifecycle(row),
   };
 }
 
@@ -431,6 +462,21 @@ function mapPlanDocument(row: any): PlanDocument {
     content: row.content ?? {},
     version: Number(row.version ?? 1),
     createdBy: row.created_by ?? null,
+    createdAt: row.created_at,
+    ...mapOperationalLifecycle(row),
+  };
+}
+
+function mapOperationalRevision(row: any): OperationalRevision {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    action: row.action,
+    beforeData: row.before_data ?? {},
+    afterData: row.after_data ?? {},
+    changedBy: row.changed_by ?? null,
     createdAt: row.created_at,
   };
 }
@@ -581,6 +627,7 @@ function mapCheckIn(row: any): CheckIn {
     summary: row.summary ?? null,
     createdBy: row.created_by ?? null,
     createdAt: row.created_at,
+    ...mapOperationalLifecycle(row),
   };
 }
 
@@ -951,6 +998,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const operationalRevisionsQuery = useQuery({
+    queryKey: ["operational_revisions", orgId],
+    enabled: Boolean(supabase && orgId),
+    queryFn: async () => {
+      const client = requireClient();
+      const { data, error } = await client
+        .from("operational_revisions")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return (data ?? []).map(mapOperationalRevision);
+    },
+  });
+
   const executiveKpisQuery = useQuery({
     queryKey: ["executive_kpis", orgId],
     enabled: Boolean(supabase && orgId),
@@ -1078,11 +1141,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const areas = useMemo(() => allAreas.filter((area) => !area.archivedAt), [allAreas]);
   const archivedAreas = useMemo(() => allAreas.filter((area) => Boolean(area.archivedAt)), [allAreas]);
   const activeAreaIds = useMemo(() => new Set(areas.map((area) => area.id)), [areas]);
+  const allObjectives = objectivesQuery.data ?? [];
   const activeObjectives = useMemo(
-    () => (objectivesQuery.data ?? []).filter((objective) => !objective.areaId || activeAreaIds.has(objective.areaId)),
-    [activeAreaIds, objectivesQuery.data],
+    () => allObjectives.filter((objective) => !objective.archivedAt && (!objective.areaId || activeAreaIds.has(objective.areaId))),
+    [activeAreaIds, allObjectives],
   );
+  const archivedObjectives = useMemo(() => allObjectives.filter((objective) => Boolean(objective.archivedAt)), [allObjectives]);
   const activeObjectiveIds = useMemo(() => new Set(activeObjectives.map((objective) => objective.id)), [activeObjectives]);
+  const activeProjects = useMemo(
+    () => (strategicProjectsQuery.data ?? []).filter((project) => !project.archivedAt),
+    [strategicProjectsQuery.data],
+  );
+  const archivedProjects = useMemo(
+    () => (strategicProjectsQuery.data ?? []).filter((project) => Boolean(project.archivedAt)),
+    [strategicProjectsQuery.data],
+  );
+  const activeKeyActions = useMemo(
+    () => (keyActionsQuery.data ?? []).filter((keyAction) => !keyAction.archivedAt && activeObjectiveIds.has(keyAction.objectiveId)),
+    [activeObjectiveIds, keyActionsQuery.data],
+  );
+  const archivedKeyActions = useMemo(
+    () => (keyActionsQuery.data ?? []).filter((keyAction) => Boolean(keyAction.archivedAt)),
+    [keyActionsQuery.data],
+  );
+  const activeEvidences = useMemo(
+    () => (evidencesQuery.data ?? []).filter((evidence) => !evidence.archivedAt && activeObjectiveIds.has(evidence.objectiveId)),
+    [activeObjectiveIds, evidencesQuery.data],
+  );
+  const archivedEvidences = useMemo(
+    () => (evidencesQuery.data ?? []).filter((evidence) => Boolean(evidence.archivedAt)),
+    [evidencesQuery.data],
+  );
+  const activeCheckIns = useMemo(
+    () => (checkInsQuery.data ?? []).filter((checkIn) => !checkIn.archivedAt && (!checkIn.areaId || activeAreaIds.has(checkIn.areaId))),
+    [activeAreaIds, checkInsQuery.data],
+  );
+  const archivedCheckIns = useMemo(
+    () => (checkInsQuery.data ?? []).filter((checkIn) => Boolean(checkIn.archivedAt)),
+    [checkInsQuery.data],
+  );
+  const activePlanDocuments = useMemo(
+    () => (planDocumentsQuery.data ?? []).filter((document) => !document.archivedAt),
+    [planDocumentsQuery.data],
+  );
+  const archivedPlanDocuments = useMemo(
+    () => (planDocumentsQuery.data ?? []).filter((document) => Boolean(document.archivedAt)),
+    [planDocumentsQuery.data],
+  );
   const activePlanningSessions = useMemo(
     () => (planningSessionsQuery.data ?? []).filter((planningSession) => !planningSession.areaId || activeAreaIds.has(planningSession.areaId)),
     [activeAreaIds, planningSessionsQuery.data],
@@ -1090,8 +1195,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const strategicPlan = useMemo(() => {
     if (!strategicPlanQuery.data) return null;
-    return mapStrategicPlan(strategicPlanQuery.data, strategicProjectsQuery.data ?? []);
-  }, [strategicPlanQuery.data, strategicProjectsQuery.data]);
+    return mapStrategicPlan(strategicPlanQuery.data, activeProjects);
+  }, [activeProjects, strategicPlanQuery.data]);
 
   const invalidateOrg = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["memberships"] });
@@ -1109,6 +1214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
     queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
     queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["operational_revisions", orgId] });
     queryClient.invalidateQueries({ queryKey: ["executive_kpis", orgId] });
     queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
     queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
@@ -1129,6 +1235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "areas", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "objectives", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "key_actions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "strategic_projects", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "evidences", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "check_ins", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, invalidateOrg)
@@ -1137,6 +1244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "org_ai_tone", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "plan_documents", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "operational_revisions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "executive_kpis", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "kpi_monthly_values", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .subscribe();
@@ -1163,6 +1271,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       chatMessagesQuery.isLoading ||
       planningSessionsQuery.isLoading ||
       planDocumentsQuery.isLoading ||
+      operationalRevisionsQuery.isLoading ||
       executiveKpisQuery.isLoading ||
       kpiValuesQuery.isLoading ||
       aiSettingsQuery.isLoading ||
@@ -1191,14 +1300,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       areas,
       archivedAreas,
       strategicPlan,
+      archivedProjects,
       areaPlans: (areaPlansQuery.data ?? []).filter((plan) => activeAreaIds.has(plan.areaId)),
       objectives: activeObjectives,
-      keyActions: (keyActionsQuery.data ?? []).filter((keyAction) => activeObjectiveIds.has(keyAction.objectiveId)),
-      evidences: (evidencesQuery.data ?? []).filter((evidence) => activeObjectiveIds.has(evidence.objectiveId)),
+      archivedObjectives,
+      keyActions: activeKeyActions,
+      archivedKeyActions,
+      evidences: activeEvidences,
+      archivedEvidences,
       chatMessages: chatMessagesQuery.data ?? [],
-      checkIns: (checkInsQuery.data ?? []).filter((checkIn) => !checkIn.areaId || activeAreaIds.has(checkIn.areaId)),
+      checkIns: activeCheckIns,
+      archivedCheckIns,
       planningSessions: activePlanningSessions,
-      planDocuments: planDocumentsQuery.data ?? [],
+      planDocuments: activePlanDocuments,
+      archivedPlanDocuments,
+      operationalRevisions: operationalRevisionsQuery.data ?? [],
       executiveKpis: executiveKpisQuery.data ?? [],
       kpiValues: kpiValuesQuery.data ?? [],
       activeSession: activePlanningSessions.find((planningSession) => planningSession.pendingProposal) ?? activePlanningSessions[0] ?? null,
@@ -1218,13 +1334,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     orgToneQuery.data,
     orgToneQuery.isLoading,
     activeAreaIds,
-    activeObjectiveIds,
+    activeCheckIns,
+    activeEvidences,
+    activeKeyActions,
     activeObjectives,
+    activePlanDocuments,
     activePlanningSessions,
     areaPlansQuery.data,
     areaPlansQuery.isLoading,
     areas,
     archivedAreas,
+    archivedCheckIns,
+    archivedEvidences,
+    archivedKeyActions,
+    archivedObjectives,
+    archivedPlanDocuments,
+    archivedProjects,
     areasQuery.isLoading,
     authLoading,
     chatMessagesQuery.data,
@@ -1254,6 +1379,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     planningSessionsQuery.isLoading,
     planDocumentsQuery.data,
     planDocumentsQuery.isLoading,
+    operationalRevisionsQuery.data,
+    operationalRevisionsQuery.isLoading,
     rawMembershipsQuery.isLoading,
     session,
     strategicPlan,
@@ -1625,6 +1752,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (action.type === "set_operational_item_archived") {
+        void callEdgeFunction("operational-lifecycle", {
+          orgId,
+          entityType: action.entityType,
+          entityId: action.entityId,
+          archived: action.archived,
+          reason: action.reason ?? "",
+        })
+          .then(() => {
+            invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível atualizar o registro.");
+          });
+        return;
+      }
+
       if (action.type === "upsert_kpi_definition") {
         void (async () => {
           const { error } = await client
@@ -1682,6 +1827,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             themes: action.plan.themes,
             rituals: action.plan.rituals,
             executive_summary: action.plan.executiveSummary,
+            updated_by: userId,
+            updated_at: new Date().toISOString(),
           })
           .then(({ error }) => {
             if (error) throw error;
@@ -1703,6 +1850,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             diagnosis: action.plan.diagnosis,
             main_annual_objective_id: action.plan.mainAnnualObjectiveId,
             learning_focus: action.plan.learningFocus,
+            updated_by: userId,
+            updated_at: new Date().toISOString(),
           })
           .then(({ error }) => {
             if (error) throw error;

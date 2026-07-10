@@ -109,8 +109,8 @@ function formatCandidate(candidate: QuickCandidate) {
 
 async function loadCandidates(client: Client, orgId: string, areaId: string | null): Promise<QuickCandidate[]> {
   const [{ data: objectives }, { data: keyActions }, { data: areas }] = await Promise.all([
-    client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
-    client.from("key_actions").select("*").eq("org_id", orgId).order("created_at"),
+    client.from("objectives").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
+    client.from("key_actions").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     client.from("areas").select("id").eq("org_id", orgId).is("archived_at", null),
   ]);
 

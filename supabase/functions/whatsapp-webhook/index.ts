@@ -1635,7 +1635,7 @@ async function buildAnswer(
   ] =
     await Promise.all([
       client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
-      client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
+      client.from("objectives").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
       client.from("areas").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
       loadConversationHistory(client, conversation.id),
       buildPlanContext(client, orgId, { areaId, focus: areaId ? (/(mes|mês|mensal|acao|ação|acoes|ações)/i.test(message) ? "monthly" : "area") : "org" }),
@@ -1776,7 +1776,7 @@ async function resolveDocumentAreaId(client: ReturnType<typeof serviceClient>, o
 }
 
 async function latestDocumentByQuery(client: ReturnType<typeof serviceClient>, orgId: string, type: PlanDocumentType, areaId: string | null, period: string | null) {
-  let query = client.from("plan_documents").select("*").eq("org_id", orgId).eq("type", type).order("created_at", { ascending: false }).limit(1);
+  let query = client.from("plan_documents").select("*").eq("org_id", orgId).eq("type", type).is("archived_at", null).order("created_at", { ascending: false }).limit(1);
   if (areaId) query = query.eq("area_id", areaId);
   if (period) query = query.eq("period", period);
   const { data, error } = await query.maybeSingle();
@@ -1827,7 +1827,7 @@ async function classifyImportedDocument(
       client.from("areas").select("id, name").eq("org_id", orgId).is("archived_at", null).order("created_at"),
       client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
       client.from("area_plans").select("*").eq("org_id", orgId),
-      client.from("objectives").select("id, title, level, area_id, period").eq("org_id", orgId).order("created_at"),
+      client.from("objectives").select("id, title, level, area_id, period").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     ]);
 
   const activeAreaIds = new Set((areas ?? []).map((area: any) => area.id));

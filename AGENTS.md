@@ -144,6 +144,7 @@ Para funcoes sem JWT, como `whatsapp-webhook` e `month-turn`, preserve as flags 
   - `/areas`: Areas;
   - `/areas/:areaId`: detalhe da area;
   - `/execucao`: Execucao Viva;
+  - `/arquivo`: arquivo operacional e historico de alteracoes;
   - `/configuracoes`: configuracoes de conta, empresa, IA, WhatsApp e membros;
   - `/redefinir-senha`: recuperacao de senha.
 - `src/state/store.tsx`: principal ponte entre frontend e Supabase.
@@ -168,6 +169,7 @@ Migrations principais:
 - `supabase/migrations/20260704123000_v3_ai_function_router.sql`: roteador por funcao e xAI/Grok.
 - `supabase/migrations/20260709150000_org_ai_tone.sql`: tom/persona por empresa, RLS e realtime.
 - `supabase/migrations/20260710170000_area_lifecycle_member_removal.sql`: arquivamento reversivel de areas e remocao transacional de memberships.
+- `supabase/migrations/20260710193000_operational_lifecycle.sql`: arquivamento reversivel de registros operacionais e snapshots antes/depois de planos e KPIs.
 
 Tabelas publicas importantes:
 
@@ -192,6 +194,7 @@ Tabelas publicas importantes:
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
+- `operational_revisions`
 
 Tabelas com segredos reais, bloqueadas para `anon` e `authenticated`:
 
@@ -205,6 +208,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `invite-member`: convites por email ou WhatsApp.
 - `set-member-role`: altera papel de membros com proteção do último owner.
 - `remove-member`: revoga o acesso de uma pessoa, reatribui áreas em transação e preserva perfil/histórico.
+- `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.
 - `save-ai-settings`: salva chaves de IA, provider/modelo e configuracoes por funcao.
 - `save-whatsapp-settings`: salva configuracao publica e segredos da Evolution API/Evo Go.
 - `oracle-chat`: chat web, historico por conversa, contexto do plano e inicio de sessoes.
@@ -477,6 +481,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Supabase conectado com Auth, banco, RLS, realtime e Edge Functions.
 - Login, onboarding, empresas, membros, areas e configuracoes.
 - Arquivamento reversivel de areas e remocao segura de membros, com reatribuicao de coordenacao e bloqueio do ultimo owner.
+- Arquivo operacional reversivel para objetivos, acoes, projetos, evidencias, check-ins e documentos, com auditoria antes/depois de planos e KPIs.
 - Criacao e alternancia de empresas.
 - Cadastro de celular no perfil e identificacao por WhatsApp.
 - Convites por email/WhatsApp.

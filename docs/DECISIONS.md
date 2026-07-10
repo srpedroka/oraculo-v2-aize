@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-10 - Operação usa arquivo reversível e revisão imutável
+
+Decisao: retirar objetivos, ações-chave, projetos, evidências, check-ins e documentos por arquivamento reversível; registrar atualizações de planos e KPIs como snapshots antes/depois em `operational_revisions`. Não oferecer hard delete desses registros ao navegador.
+
+Contexto: o produto permitia criar e atualizar a execução, mas não retirar registros incorretos ou obsoletos. KPIs e planos podiam ser sobrescritos sem uma trilha uniforme, enquanto excluir objetivos diretamente apagaria ações e evidências em cascata.
+
+Alternativas: liberar delete direto, transformar todo registro em documento histórico ou criar tabelas de versão específicas para cada entidade.
+
+Motivo: o arquivo mantém a operação limpa sem perder memória, e uma auditoria genérica reduz duplicação mantendo o estado anterior completo. O lote de arquivamento do objetivo preserva retiradas independentes feitas antes dele.
+
+Consequencias: a Edge Function `operational-lifecycle` valida permissão e usa RPC exclusiva de `service_role`; registros arquivados saem do app ativo, WhatsApp, virada mensal e contexto da IA. A rota `/arquivo` permite restauração e leitura da auditoria. Backups incluem campos de ciclo de vida e `operational_revisions`. Exclusão definitiva continua reservada para a camada futura de governança.
+
 ## 2026-07-10 - Retirada operacional preserva histórico
 
 Decisao: tratar retirada de pessoa como revogação da membership e retirada de área como arquivamento reversível. Não usar hard delete de área no fluxo normal.

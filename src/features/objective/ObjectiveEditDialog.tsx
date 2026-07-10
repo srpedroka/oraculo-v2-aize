@@ -1,4 +1,4 @@
-import { Save, X } from "lucide-react";
+import { Archive, Save, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -6,6 +6,8 @@ import { ProgressBar } from "../../components/ui/ProgressBar";
 import { useAppState } from "../../state/store";
 import type { Objective, ObjectiveType, Status } from "../../types";
 import { STATUS_LABEL, TYPE_LABEL } from "../../types";
+import { formatDate } from "../../lib/format";
+import { OperationalArchiveDialog } from "../lifecycle/OperationalArchiveDialog";
 
 interface ObjectiveEditDialogProps {
   objective: Objective;
@@ -21,7 +23,7 @@ function clampProgress(value: number) {
 }
 
 export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogProps) {
-  const { dispatch } = useAppState();
+  const { state, dispatch } = useAppState();
   const [type, setType] = useState<ObjectiveType>(objective.type);
   const [title, setTitle] = useState(objective.title);
   const [result, setResult] = useState(objective.result);
@@ -35,6 +37,10 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [progress, setProgress] = useState(objective.progress ?? 0);
   const [evidencePlan, setEvidencePlan] = useState(objective.evidencePlan);
   const [deliverables, setDeliverables] = useState((objective.deliverables ?? []).join("\n"));
+  const [evidenceToArchive, setEvidenceToArchive] = useState<string | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const evidences = state.evidences.filter((evidence) => evidence.objectiveId === objective.id);
 
   function save() {
     dispatch({
@@ -60,6 +66,27 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
       },
     });
     onClose();
+  }
+
+  function archiveEvidence(reason: string) {
+    if (!evidenceToArchive) return;
+    setArchiveBusy(true);
+    setArchiveError(null);
+    dispatch({
+      type: "set_operational_item_archived",
+      entityType: "evidence",
+      entityId: evidenceToArchive,
+      archived: true,
+      reason,
+      onSuccess: () => {
+        setArchiveBusy(false);
+        setEvidenceToArchive(null);
+      },
+      onError: (message) => {
+        setArchiveBusy(false);
+        setArchiveError(message);
+      },
+    });
   }
 
   return (
@@ -184,6 +211,33 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
               />
             </label>
           ) : null}
+
+          {evidences.length ? (
+            <section>
+              <p className="mb-2 text-sm font-medium text-text">Evidências registradas</p>
+              <div className="divide-y divide-border border-y border-border">
+                {evidences.map((evidence) => (
+                  <div key={evidence.id} className="flex items-start justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm leading-6 text-text-secondary">{evidence.text}</p>
+                      <p className="mt-1 text-xs text-text-tertiary">{formatDate(evidence.date)}</p>
+                    </div>
+                    <Button
+                      variant="quiet"
+                      size="icon"
+                      icon={Archive}
+                      onClick={() => {
+                        setArchiveError(null);
+                        setEvidenceToArchive(evidence.id);
+                      }}
+                      aria-label="Estornar evidência"
+                      title="Estornar evidência"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
 
         <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">
@@ -195,6 +249,22 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
           </Button>
         </div>
       </Card>
+      {evidenceToArchive ? (
+        <OperationalArchiveDialog
+          eyebrow="Evidência"
+          title="Estornar esta evidência?"
+          description="A evidência deixa de contar na execução ativa e permanece registrada no Arquivo com o motivo do estorno."
+          confirmLabel="Estornar evidência"
+          busy={archiveBusy}
+          error={archiveError}
+          onClose={() => {
+            if (archiveBusy) return;
+            setEvidenceToArchive(null);
+            setArchiveError(null);
+          }}
+          onConfirm={archiveEvidence}
+        />
+      ) : null}
     </div>
   );
 }

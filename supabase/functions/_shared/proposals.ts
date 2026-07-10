@@ -158,7 +158,7 @@ async function insertObjective(client: Client, values: Record<string, unknown>) 
 async function findObjectiveById(client: Client, session: any, objectiveId: unknown, level?: string) {
   const id = asText(objectiveId);
   if (!id) return null;
-  let query = client.from("objectives").select("*").eq("id", id).eq("org_id", session.org_id);
+  let query = client.from("objectives").select("*").eq("id", id).eq("org_id", session.org_id).is("archived_at", null);
   if (level) query = query.eq("level", level);
   if (session.area_id) query = query.eq("area_id", session.area_id);
   const { data, error } = await query.maybeSingle();
@@ -174,6 +174,7 @@ async function findActionById(client: Client, session: any, actionId: unknown) {
     .select("*")
     .eq("id", id)
     .eq("org_id", session.org_id)
+    .is("archived_at", null)
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -181,7 +182,7 @@ async function findActionById(client: Client, session: any, actionId: unknown) {
 
 async function findObjectiveByTitle(client: Client, orgId: string, areaId: string | null, level: string, title: string) {
   if (!title) return null;
-  let query = client.from("objectives").select("*").eq("org_id", orgId).eq("level", level).ilike("title", title);
+  let query = client.from("objectives").select("*").eq("org_id", orgId).eq("level", level).is("archived_at", null).ilike("title", title);
   query = areaId ? query.eq("area_id", areaId) : query.is("area_id", null);
   const { data, error } = await query.limit(1).maybeSingle();
   if (error) throw error;
@@ -224,6 +225,7 @@ async function ensureQuarterlyParent(client: Client, session: any, titleHint: st
     .eq("area_id", session.area_id)
     .eq("level", "quarterly")
     .eq("period", session.period)
+    .is("archived_at", null)
     .limit(1)
     .maybeSingle();
   if (error) throw error;
@@ -262,6 +264,8 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
         themes,
         rituals: asArray<string>(proposal.rituals),
         executive_summary: asText(proposal.executiveSummary ?? proposal.executive_summary),
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
       },
       { onConflict: "org_id,year" },
     )
@@ -306,7 +310,7 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
   return `Plano estratégico ${year} gravado com ${objectiveRows.length} objetivo(s).`;
 }
 
-async function saveQuarterlyPlan(client: Client, session: any, proposal: any, _userId: string) {
+async function saveQuarterlyPlan(client: Client, session: any, proposal: any, userId: string) {
   if (!session.area_id) throw new Error("Plano trimestral exige uma área");
   const year = yearFromPeriod(session.period);
   const annualObjectives = [];
@@ -377,6 +381,8 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, _u
       },
       main_annual_objective_id: annualObjectives[0]?.id ?? existingAreaPlan?.main_annual_objective_id ?? null,
       learning_focus: mergedLearningFocus,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
     },
     { onConflict: "area_id,year" },
   );
@@ -464,6 +470,7 @@ async function copyOpenActionsToObjective(client: Client, session: any, sourceOb
     .select("*")
     .eq("org_id", session.org_id)
     .eq("objective_id", sourceObjectiveId)
+    .is("archived_at", null)
     .neq("status", "done");
   if (error) throw error;
 
@@ -690,7 +697,11 @@ async function saveQuarterClose(client: Client, session: any, proposal: any, use
     if (areaPlan) {
       const { error: updateError } = await client
         .from("area_plans")
-        .update({ learning_focus: { ...(areaPlan.learning_focus ?? {}), [nextKey]: nextLearningFocus } })
+        .update({
+          learning_focus: { ...(areaPlan.learning_focus ?? {}), [nextKey]: nextLearningFocus },
+          updated_by: userId,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", areaPlan.id);
       if (updateError) throw updateError;
     }
@@ -723,6 +734,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .eq("org_id", session.org_id)
     .is("area_id", null)
     .eq("level", "strategic")
+    .is("archived_at", null)
     .order("created_at");
   if (objectivesError) throw objectivesError;
   if (!(strategicObjectives ?? []).length) throw new Error("Não há objetivos estratégicos para revisar");
@@ -791,6 +803,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .eq("org_id", session.org_id)
     .is("area_id", null)
     .eq("level", "strategic")
+    .is("archived_at", null)
     .order("created_at");
   if (updatedError) throw updatedError;
 

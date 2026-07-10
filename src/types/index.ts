@@ -12,6 +12,20 @@ export type KpiUnit = "currency" | "percent" | "count" | "number";
 export type KpiSecondaryUnit = "count" | "number";
 export type KpiDirection = "higher_better" | "lower_better";
 export type KpiFlowType = "flow" | "stock";
+export type OperationalEntityType = "objective" | "key_action" | "strategic_project" | "evidence" | "check_in" | "plan_document";
+export type OperationalRevisionEntityType =
+  | "strategic_plan"
+  | "area_plan"
+  | OperationalEntityType
+  | "executive_kpi"
+  | "kpi_monthly_value";
+
+export interface OperationalLifecycle {
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  archiveReason?: string | null;
+  archiveBatchId?: string | null;
+}
 
 export interface Organization {
   id: string;
@@ -30,7 +44,7 @@ export interface Area {
   archivedBy?: string | null;
 }
 
-export interface Evidence {
+export interface Evidence extends OperationalLifecycle {
   id: string;
   orgId?: string;
   objectiveId: string;
@@ -39,7 +53,7 @@ export interface Evidence {
   createdBy?: string | null;
 }
 
-export interface KeyAction {
+export interface KeyAction extends OperationalLifecycle {
   id: string;
   orgId?: string;
   objectiveId: string;
@@ -50,7 +64,7 @@ export interface KeyAction {
   status?: Status;
 }
 
-export interface Objective {
+export interface Objective extends OperationalLifecycle {
   id: string;
   orgId?: string;
   level: PlanLevel;
@@ -72,7 +86,7 @@ export interface Objective {
   period: string;
 }
 
-export interface StrategicProject {
+export interface StrategicProject extends OperationalLifecycle {
   id: string;
   orgId?: string;
   planId?: string | null;
@@ -173,6 +187,22 @@ export interface PlanDocument {
   content: Record<string, unknown>;
   version: number;
   createdBy: string | null;
+  createdAt: string;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  archiveReason?: string | null;
+  archiveBatchId?: string | null;
+}
+
+export interface OperationalRevision {
+  id: string;
+  orgId: string;
+  entityType: OperationalRevisionEntityType;
+  entityId: string;
+  action: "update" | "archive" | "restore";
+  beforeData: Record<string, unknown>;
+  afterData: Record<string, unknown>;
+  changedBy: string | null;
   createdAt: string;
 }
 
@@ -375,7 +405,7 @@ export interface WhatsAppSettings {
   webhookSecretPreview?: string | null;
 }
 
-export interface CheckIn {
+export interface CheckIn extends OperationalLifecycle {
   id: string;
   orgId: string;
   areaId: string | null;
@@ -402,14 +432,21 @@ export interface AppState {
   areas: Area[];
   archivedAreas: Area[];
   strategicPlan: StrategicPlan | null;
+  archivedProjects: StrategicProject[];
   areaPlans: AreaPlan[];
   objectives: Objective[];
+  archivedObjectives: Objective[];
   keyActions: KeyAction[];
+  archivedKeyActions: KeyAction[];
   evidences: Evidence[];
+  archivedEvidences: Evidence[];
   chatMessages: ChatMessage[];
   checkIns: CheckIn[];
+  archivedCheckIns: CheckIn[];
   planningSessions: PlanningSession[];
   planDocuments: PlanDocument[];
+  archivedPlanDocuments: PlanDocument[];
+  operationalRevisions: OperationalRevision[];
   executiveKpis: ExecutiveKpi[];
   kpiValues: KpiMonthlyValue[];
   activeSession: PlanningSession | null;

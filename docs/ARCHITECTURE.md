@@ -29,6 +29,8 @@ Na mesma tela, owners administram `Segurança e backups`. Cada empresa tem uma p
 
 Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oraculo. `src/features/objective/ObjectiveEditDialog.tsx` permite editar tipo, resultado, indicador, meta, valor atual, tendencia, status, progresso, responsavel, prazo, evidencia e entregas. O mesmo editor aparece em Plano Estrategico, Dashboard e cards de planos por area. A tela de Areas tambem permite ao owner cadastrar areas e vincular coordenadores no proprio modulo, enquanto coordenadores e demais membros ficam em leitura quando nao tiverem permissao de escrita.
 
+A rota `/arquivo` concentra o ciclo de vida reversível da operação. Objetivos podem ser arquivados com seus desdobramentos, ações e evidências ainda ativas; ações-chave, projetos prioritários, evidências, check-ins e documentos também podem ser retirados individualmente e restaurados. Registros arquivados saem das telas ativas, do WhatsApp e do contexto da IA. Atualizações em planos, objetivos, execução e KPIs geram snapshots antes/depois em `operational_revisions`, permitindo corrigir sem sobrescrever silenciosamente o histórico.
+
 ### Supabase
 
 Migrations principais:
@@ -52,6 +54,7 @@ Migrations principais:
 - `20260710120000_organization_backups.sql`: adiciona políticas, snapshots, auditoria de restauração, bucket privado, fila de marcos e cron protegido para backups por empresa.
 - `20260710133000_portable_restore_without_org.sql`: permite restaurar pacote portátil pelo onboarding quando a conta ficou sem empresa.
 - `20260710170000_area_lifecycle_member_removal.sql`: adiciona arquivamento reversível de áreas, bloqueia delete direto de memberships, desvincula coordenador por `on delete set null` e cria a função transacional de remoção de membro.
+- `20260710193000_operational_lifecycle.sql`: adiciona ciclo de vida reversível aos registros operacionais, histórico imutável de revisões e bloqueio de delete direto no navegador.
 
 Tabelas publicas principais:
 
@@ -77,6 +80,7 @@ Tabelas publicas principais:
 - `plan_documents`
 - `executive_kpis`
 - `kpi_monthly_values`
+- `operational_revisions`
 - `org_ai_tone`
 - `organization_backup_policies`
 - `organization_backups`
@@ -85,6 +89,8 @@ Tabelas publicas principais:
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
 `areas.archived_at` separa estrutura ativa de histórico. Áreas arquivadas continuam no banco, em backups e na resolução de nomes de documentos, mas saem do Dashboard, planejamentos, seletores operacionais, virada mensal, WhatsApp e contexto ativo da IA. `areas.archived_by` registra quem executou a ação, e a restauração limpa os dois campos.
+
+`objectives`, `key_actions`, `strategic_projects`, `evidences`, `check_ins` e `plan_documents` usam `archived_at`, `archived_by`, `archive_reason` e `archive_batch_id`. O lote permite que um objetivo arquive/restaure somente os descendentes que estavam ativos naquele momento, sem reativar itens retirados anteriormente por outra decisão. `operational_revisions` recebe snapshots antes/depois por trigger para mudanças nesses registros, nos planos e nos KPIs; membros leem a auditoria e somente triggers/service role gravam nela.
 
 Tabelas de segredo com acesso apenas por service role:
 
@@ -115,6 +121,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
 - `set-member-role`: permite que owner altere membro entre `admin` e `coordinator`, ou rebaixe outro owner quando ainda existir pelo menos um owner restante. Nao promove novos owners.
 - `remove-member`: valida owner, impede autoexclusão e remoção do último owner, aplica reatribuições de coordenação e remove somente a membership em uma transação PostgreSQL. Perfil, Auth e histórico da pessoa não são apagados.
+- `operational-lifecycle`: valida sessão e permissão por empresa/área, chama a RPC transacional de arquivamento/restauração e impede que um coordenador restaure um lote iniciado por objetivo fora do seu escopo.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `suggest-kpi-spreadsheet`: valida sessao e papel `owner`/`admin`, carrega as definicoes dos quatro KPIs e usa a funcao de IA `background` para sugerir Meta/Atingido por indicador, mes e ano a partir de planilha ou imagem. A funcao nao grava valores.

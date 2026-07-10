@@ -1149,6 +1149,7 @@ async function loadLatestDocumentForProposal(client: Client, session: any, propo
     .eq("org_id", session.org_id)
     .eq("type", documentType)
     .eq("period", period)
+    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(1);
   query = session.area_id ? query.eq("area_id", session.area_id) : query.is("area_id", null);

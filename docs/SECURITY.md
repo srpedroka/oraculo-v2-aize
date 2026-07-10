@@ -146,6 +146,10 @@ A remoção de acesso passa pela Edge Function `remove-member`. O navegador não
 
 Áreas usam arquivamento reversível por `archived_at`/`archived_by`. O arquivamento não apaga relações em cascata. Helpers RLS de coordenador, Edge Functions, WhatsApp e contexto da IA aceitam apenas áreas ativas; owners podem restaurar a área. Backups exportam também áreas arquivadas e remapeiam `archived_by` na restauração.
 
+O ciclo operacional segue a mesma regra de preservação. `objectives`, `key_actions`, `strategic_projects`, `evidences`, `check_ins` e `plan_documents` não podem mais receber `DELETE` do papel `authenticated`; a retirada passa por `operational-lifecycle`, que autentica o usuário, valida owner/coordenador e usa a RPC `set_operational_item_archived` exclusiva de `service_role`. Arquivar um objetivo usa um lote transacional para retirar seus descendentes, ações e evidências ativos. A restauração usa o mesmo lote e não reativa registros que já estavam arquivados antes.
+
+`operational_revisions` é somente leitura para membros da empresa e não aceita escrita do navegador. Triggers `SECURITY DEFINER` com `search_path` fixo registram estado anterior/posterior de planos, objetivos, ações, projetos, evidências, check-ins, documentos e KPIs. O histórico entra no backup por empresa; `changed_by` e os IDs de entidade são remapeados na restauração. Nenhum segredo é incluído nos snapshots porque as tabelas de chaves não participam desse mecanismo.
+
 ## Dados de conta
 
 O email fica em `profiles.email` para administracao de convites. O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e deve ser tratado como identificador de acesso, especialmente para a futura integracao com WhatsApp. A interface edita apenas o celular da propria conta.

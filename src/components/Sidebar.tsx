@@ -1,5 +1,6 @@
 import {
   Building2,
+  Archive,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -30,6 +31,7 @@ const navItems = [
   { to: "/documentos", label: "Documentos", icon: FileText },
   { to: "/areas", label: "Áreas", icon: Users },
   { to: "/execucao", label: "Execução Viva", icon: PlayCircle },
+  { to: "/arquivo", label: "Arquivo", icon: Archive },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 

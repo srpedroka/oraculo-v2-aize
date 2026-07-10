@@ -1,10 +1,12 @@
-import { FileText, Printer } from "lucide-react";
+import { Archive, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PlanDocumentView } from "../components/PlanDocument";
 import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
 import { useAppState } from "../state/store";
 import type { PlanDocument, PlanDocumentOrigin, PlanDocumentType } from "../types";
+import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 
 const TYPE_LABEL: Record<PlanDocumentType, string> = {
   strategic: "Plano Estratégico",
@@ -27,12 +29,15 @@ function documentAreaName(document: PlanDocument, areas: { id: string; name: str
 }
 
 export function Documents() {
-  const { state } = useAppState();
+  const { state, dispatch } = useAppState();
   const [typeFilter, setTypeFilter] = useState<"all" | PlanDocumentType>("all");
   const [originFilter, setOriginFilter] = useState<"all" | PlanDocumentOrigin>("all");
   const [areaFilter, setAreaFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const knownAreas = useMemo(() => [...state.areas, ...state.archivedAreas], [state.areas, state.archivedAreas]);
   const periods = useMemo(() => [...new Set(state.planDocuments.map((document) => document.period))], [state.planDocuments]);
@@ -53,6 +58,35 @@ export function Documents() {
   );
 
   const selectedDocument = filteredDocuments.find((document) => document.id === selectedId) ?? filteredDocuments[0] ?? null;
+  const canManageSelected = Boolean(
+    selectedDocument &&
+      (state.currentMembership?.role === "owner" ||
+        (selectedDocument.areaId &&
+          state.currentMembership?.role === "coordinator" &&
+          state.areas.some((area) => area.id === selectedDocument.areaId && area.coordinatorId === state.currentMembership?.id))),
+  );
+
+  function archiveDocument(reason: string) {
+    if (!selectedDocument) return;
+    setArchiveBusy(true);
+    setArchiveError(null);
+    dispatch({
+      type: "set_operational_item_archived",
+      entityType: "plan_document",
+      entityId: selectedDocument.id,
+      archived: true,
+      reason,
+      onSuccess: () => {
+        setArchiveBusy(false);
+        setArchiveOpen(false);
+        setSelectedId(null);
+      },
+      onError: (message) => {
+        setArchiveBusy(false);
+        setArchiveError(message);
+      },
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -65,13 +99,28 @@ export function Documents() {
           </p>
         </div>
         {selectedDocument ? (
-          <Link
-            to={`/documentos/${selectedDocument.id}/imprimir`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border bg-transparent px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white"
-          >
-            <Printer className="h-4 w-4" />
-            Exportar PDF
-          </Link>
+          <div className="flex items-center gap-2">
+            {canManageSelected ? (
+              <Button
+                variant="quiet"
+                size="icon"
+                icon={Archive}
+                onClick={() => {
+                  setArchiveError(null);
+                  setArchiveOpen(true);
+                }}
+                aria-label="Arquivar documento"
+                title="Retirar documento da lista ativa"
+              />
+            ) : null}
+            <Link
+              to={`/documentos/${selectedDocument.id}/imprimir`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border bg-transparent px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white"
+            >
+              <Printer className="h-4 w-4" />
+              Exportar PDF
+            </Link>
+          </div>
         ) : null}
       </div>
 
@@ -167,6 +216,22 @@ export function Documents() {
           </p>
         </Card>
       )}
+      {archiveOpen && selectedDocument ? (
+        <OperationalArchiveDialog
+          eyebrow="Documento"
+          title={`Arquivar ${selectedDocument.title}?`}
+          description="O documento deixa a lista principal e o contexto ativo do Oráculo, mas permanece disponível no Arquivo, na auditoria e nos backups."
+          confirmLabel="Arquivar documento"
+          busy={archiveBusy}
+          error={archiveError}
+          onClose={() => {
+            if (archiveBusy) return;
+            setArchiveOpen(false);
+            setArchiveError(null);
+          }}
+          onConfirm={archiveDocument}
+        />
+      ) : null}
     </div>
   );
 }
