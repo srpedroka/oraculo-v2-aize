@@ -222,6 +222,14 @@ export function Settings() {
     ? activeSection
     : visibleSections[0]?.id ?? "empresa";
   const showSection = (id: string) => currentSection === id;
+
+  // Deep-link por hash: /configuracoes#backups abre direto na seção.
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (hash && SECTIONS.some((section) => section.id === hash)) setActiveSection(hash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [iaTab, setIaTab] = useState<"chaves" | "funcoes" | "historico">("chaves");
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const whatsappWebhookUrl =
     supabaseUrl && state.activeOrgId ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/whatsapp-webhook?orgId=${state.activeOrgId}` : "";
@@ -577,7 +585,10 @@ export function Settings() {
             type="button"
             role="tab"
             aria-selected={currentSection === section.id}
-            onClick={() => setActiveSection(section.id)}
+            onClick={() => {
+              setActiveSection(section.id);
+              window.history.replaceState(null, "", `#${section.id}`);
+            }}
             className={[
               "shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none",
               currentSection === section.id
@@ -843,7 +854,28 @@ export function Settings() {
             Planejamento usa o melhor modelo; Dia a dia pode usar um modelo leve e barato; Bastidores cuida de classificação e resumos.
           </p>
 
+          <div className="mb-4 inline-flex gap-1 rounded-xl border border-border bg-surface-muted p-1">
+            {([
+              { id: "chaves", label: "Chaves" },
+              { id: "funcoes", label: "Funções" },
+              { id: "historico", label: "Histórico" },
+            ] as const).map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setIaTab(sub.id)}
+                className={[
+                  "rounded-[9px] px-3 py-1.5 text-sm font-medium transition-colors motion-reduce:transition-none",
+                  iaTab === sub.id ? "bg-white text-text shadow-card" : "text-text-secondary hover:text-text",
+                ].join(" ")}
+              >
+                {sub.label}
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-3">
+            {iaTab === "chaves" ? (
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-text-secondary" />
@@ -913,7 +945,9 @@ export function Settings() {
                 })}
               </div>
             </div>
+            ) : null}
 
+            {iaTab === "funcoes" ? (
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <Bot className="h-4 w-4 text-text-secondary" />
@@ -1032,6 +1066,7 @@ export function Settings() {
                 })}
               </div>
             </div>
+            ) : null}
           </div>
           {aiMessage ? (
             <p className={["mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm leading-6", statusClasses(aiMessageTone)].join(" ")}>
@@ -1039,6 +1074,8 @@ export function Settings() {
               {aiMessage}
             </p>
           ) : null}
+          {iaTab === "historico" ? (
+          <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-[#FAFAFB] p-4">
               <div className="mb-2 flex items-center gap-2">
@@ -1083,6 +1120,8 @@ export function Settings() {
                 </div>
               ))}
             </div>
+          ) : null}
+          </>
           ) : null}
         </Card>
       ) : null}
