@@ -2,6 +2,8 @@
 
 ## 2026-07-10
 
+- Configurações virou navegação por abas: um menu de seções (Empresa e áreas, Pessoas, IA, WhatsApp, Backups, Tom, Zona de perigo) mostra uma seção por vez, sem rolar; some o card de restrição redundante e as abas aparecem conforme o papel.
+- Polimento de clareza (Apple/Tesla): removidos jargões e ruídos sem perder função — "(Jogo Atual)/(Próximo Jogo)" e "migration"/"módulo" saíram da tela; empty state do Dashboard ganhou botão "Criar Plano Estratégico"; header do Plano Estratégico perdeu os botões que duplicavam as abas; Áreas perdeu o "Ver trimestral" que tirava do contexto; Documentos perdeu o filtro "Origem" redundante; "Execução Viva" virou "Execução"; a tela de acesso não cita mais "Supabase".
 - Corrigida a navegação no celular: o menu agora abre num painel deslizante (drawer) com fundo escuro, fecha ao navegar/tocar fora/Esc e trava o scroll; os controles de recolher/redimensionar ficam só no desktop.
 - Adicionado o Painel de execução na Execução Viva: "atrasado" é derivado do prazo (nunca do status salvo), com % no prazo, lista de atrasados e corte por responsável; selo Atrasado nos cards e uma linha-resumo com atalho no Dashboard.
 - Dashboard de KPIs ganhou acumulado do ano (YTD) e projeção run-rate por card, coerente com o tipo: faturamento/produção somam, margem faz média e caixa mostra geração/projeção de saldo; a linha some quando não há meta anual.

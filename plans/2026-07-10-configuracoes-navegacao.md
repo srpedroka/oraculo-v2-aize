@@ -1,5 +1,7 @@
 # Plano: Navegação e clareza (Configurações + varredura Apple/Tesla)
 
+> **STATUS: ✅ Onda P (polimento) + Onda 1 (abas de Configurações) executadas e publicadas por Claude Code em 2026-07-10 (commit `61d10a6`, frontend-only).** Faltam, se você quiser: Onda 2 (deep-link `#hash`) e Onda 3 (sub-abas da IA).
+
 **Parte 1** resolve o menu da página de Configurações (o pedido original). **Parte 2** é a varredura de clareza das demais páginas — só o que sobrou depois de uma auditoria cética com a régua "simplicidade vale ouro, Apple/Tesla, não criar monstrinho". As duas são independentes e frontend-only.
 
 ---
