@@ -45,18 +45,23 @@ async function assertQuickUpdatePermission(client: Client, orgId: string, userId
     .maybeSingle();
   if (error) throw error;
   if (!membership) throw new Error("Sem acesso à empresa");
-  if (membership.role === "owner") return membership;
-  if (!areaId) throw new Error("Coordenador só pode atualizar a própria área");
+  if (!areaId) {
+    if (membership.role === "owner") return membership;
+    throw new Error("Coordenador só pode atualizar a própria área");
+  }
 
   const { data: area, error: areaError } = await client
     .from("areas")
-    .select("id")
+    .select("id, coordinator_id")
     .eq("id", areaId)
     .eq("org_id", orgId)
-    .eq("coordinator_id", membership.id)
+    .is("archived_at", null)
     .maybeSingle();
   if (areaError) throw areaError;
-  if (!area) throw new Error("Coordenador só pode atualizar a própria área");
+  if (!area) throw new Error("Área arquivada ou não encontrada");
+  if (membership.role !== "owner" && area.coordinator_id !== membership.id) {
+    throw new Error("Coordenador só pode atualizar a própria área");
+  }
   return membership;
 }
 
@@ -103,12 +108,17 @@ function formatCandidate(candidate: QuickCandidate) {
 }
 
 async function loadCandidates(client: Client, orgId: string, areaId: string | null): Promise<QuickCandidate[]> {
-  const [{ data: objectives }, { data: keyActions }] = await Promise.all([
+  const [{ data: objectives }, { data: keyActions }, { data: areas }] = await Promise.all([
     client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
     client.from("key_actions").select("*").eq("org_id", orgId).order("created_at"),
+    client.from("areas").select("id").eq("org_id", orgId).is("archived_at", null),
   ]);
 
-  const scopedObjectives = (objectives ?? []).filter((objective: any) => !areaId || objective.area_id === areaId);
+  const activeAreaIds = new Set((areas ?? []).map((area: any) => area.id));
+  const scopedObjectives = (objectives ?? []).filter((objective: any) => {
+    if (objective.area_id && !activeAreaIds.has(objective.area_id)) return false;
+    return !areaId || objective.area_id === areaId;
+  });
   const month = currentMonthPeriod();
   let monthlyObjectives = scopedObjectives.filter((objective: any) => objective.level === "monthly" && String(objective.period ?? "").toLowerCase() === month.toLowerCase());
   if (!monthlyObjectives.length) monthlyObjectives = scopedObjectives.filter((objective: any) => objective.level === "monthly");

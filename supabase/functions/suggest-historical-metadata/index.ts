@@ -11,7 +11,12 @@ function asText(value: unknown, maxLength = 10_000) {
 }
 
 async function loadCandidateAreas(client: ReturnType<typeof serviceClient>, params: { orgId: string; membership: { id: string; role: string } }) {
-  let query = client.from("areas").select("id, name, coordinator_id").eq("org_id", params.orgId).order("name");
+  let query = client
+    .from("areas")
+    .select("id, name, coordinator_id")
+    .eq("org_id", params.orgId)
+    .is("archived_at", null)
+    .order("name");
   if (params.membership.role !== "owner") query = query.eq("coordinator_id", params.membership.id);
 
   const { data, error } = await query;

@@ -167,6 +167,7 @@ Migrations principais:
 - `supabase/migrations/20260704110000_v3_intelligence_foundation.sql`: conversas, sessoes, funcoes de IA e documentos canonicos.
 - `supabase/migrations/20260704123000_v3_ai_function_router.sql`: roteador por funcao e xAI/Grok.
 - `supabase/migrations/20260709150000_org_ai_tone.sql`: tom/persona por empresa, RLS e realtime.
+- `supabase/migrations/20260710170000_area_lifecycle_member_removal.sql`: arquivamento reversivel de areas e remocao transacional de memberships.
 
 Tabelas publicas importantes:
 
@@ -202,6 +203,8 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 ### Edge Functions
 
 - `invite-member`: convites por email ou WhatsApp.
+- `set-member-role`: altera papel de membros com proteção do último owner.
+- `remove-member`: revoga o acesso de uma pessoa, reatribui áreas em transação e preserva perfil/histórico.
 - `save-ai-settings`: salva chaves de IA, provider/modelo e configuracoes por funcao.
 - `save-whatsapp-settings`: salva configuracao publica e segredos da Evolution API/Evo Go.
 - `oracle-chat`: chat web, historico por conversa, contexto do plano e inicio de sessoes.
@@ -473,6 +476,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - V2 publicada em producao no Netlify.
 - Supabase conectado com Auth, banco, RLS, realtime e Edge Functions.
 - Login, onboarding, empresas, membros, areas e configuracoes.
+- Arquivamento reversivel de areas e remocao segura de membros, com reatribuicao de coordenacao e bloqueio do ultimo owner.
 - Criacao e alternancia de empresas.
 - Cadastro de celular no perfil e identificacao por WhatsApp.
 - Convites por email/WhatsApp.

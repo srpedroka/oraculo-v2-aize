@@ -87,6 +87,8 @@ As migrations ficam em `supabase/migrations/`.
 As Edge Functions ficam em `supabase/functions/`:
 
 - `invite-member`
+- `set-member-role`
+- `remove-member`
 - `save-ai-settings`
 - `save-whatsapp-settings`
 - `oracle-chat`

@@ -71,6 +71,26 @@ O app usa a Edge Function `invite-member`, que chama `inviteUserByEmail` no Supa
 
 Sem SMTP, o vinculo pode ser criado no banco, mas o email de convite pode nao ser entregue.
 
+## Remover pessoa ou arquivar área
+
+Remover pessoa:
+
+1. Abra Configurações > Pessoas como owner.
+2. Clique em `Remover` na pessoa desejada.
+3. Se ela coordenar áreas, escolha um substituto em cada uma ou deixe sem coordenador.
+4. Confirme `Remover acesso`. A membership é removida; perfil, Auth, conversas e registros permanecem.
+
+O próprio acesso usa um fluxo separado e o último owner não pode ser removido. Se a operação falhar, confira logs de `remove-member`, a RPC `remove_organization_member` e se os substitutos continuam com papel `coordinator` na mesma empresa.
+
+Arquivar área:
+
+1. Abra Áreas ou Configurações > Áreas como owner.
+2. Use o ícone de arquivo e confira o impacto apresentado.
+3. Confirme. A área sai da operação, mas nenhum plano, objetivo, documento ou check-in é apagado.
+4. Para reativar, use `Restaurar` em Áreas arquivadas.
+
+Uma área arquivada não deve aparecer no Dashboard, em seletores operacionais, virada mensal, WhatsApp ou contexto ativo da IA. Documentos e backups continuam reconhecendo seu nome e conteúdo histórico.
+
 ## Recuperacao de senha
 
 A tela de entrada tem o link "Esqueci minha senha".
@@ -872,6 +892,7 @@ Edge Functions:
 ```bash
 supabase functions deploy invite-member
 supabase functions deploy set-member-role
+supabase functions deploy remove-member
 supabase functions deploy save-ai-settings
 supabase functions deploy suggest-kpi-spreadsheet
 supabase functions deploy apply-kpi-import

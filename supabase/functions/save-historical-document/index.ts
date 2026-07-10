@@ -95,7 +95,13 @@ function normalizeRawText(value: unknown) {
 
 async function loadArea(client: any, orgId: string, areaId: string | null) {
   if (!areaId) return null;
-  const { data, error } = await client.from("areas").select("id, name").eq("id", areaId).eq("org_id", orgId).maybeSingle();
+  const { data, error } = await client
+    .from("areas")
+    .select("id, name")
+    .eq("id", areaId)
+    .eq("org_id", orgId)
+    .is("archived_at", null)
+    .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Área inválida para esta empresa");
   return data as { id: string; name: string };

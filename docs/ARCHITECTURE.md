@@ -51,6 +51,7 @@ Migrations principais:
 - `20260709180000_kpi_history_documents.sql`: adiciona `kpi_history` aos tipos de `plan_documents` e indice para documentos históricos de importação de KPIs.
 - `20260710120000_organization_backups.sql`: adiciona políticas, snapshots, auditoria de restauração, bucket privado, fila de marcos e cron protegido para backups por empresa.
 - `20260710133000_portable_restore_without_org.sql`: permite restaurar pacote portátil pelo onboarding quando a conta ficou sem empresa.
+- `20260710170000_area_lifecycle_member_removal.sql`: adiciona arquivamento reversível de áreas, bloqueia delete direto de memberships, desvincula coordenador por `on delete set null` e cria a função transacional de remoção de membro.
 
 Tabelas publicas principais:
 
@@ -83,6 +84,8 @@ Tabelas publicas principais:
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
+`areas.archived_at` separa estrutura ativa de histórico. Áreas arquivadas continuam no banco, em backups e na resolução de nomes de documentos, mas saem do Dashboard, planejamentos, seletores operacionais, virada mensal, WhatsApp e contexto ativo da IA. `areas.archived_by` registra quem executou a ação, e a restauração limpa os dois campos.
+
 Tabelas de segredo com acesso apenas por service role:
 
 - `public.ai_model_keys`: guarda chaves de provedores de IA. Tem RLS habilitado, acesso revogado para `anon` e `authenticated`, e grant para `service_role`.
@@ -111,6 +114,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 
 - `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
 - `set-member-role`: permite que owner altere membro entre `admin` e `coordinator`, ou rebaixe outro owner quando ainda existir pelo menos um owner restante. Nao promove novos owners.
+- `remove-member`: valida owner, impede autoexclusão e remoção do último owner, aplica reatribuições de coordenação e remove somente a membership em uma transação PostgreSQL. Perfil, Auth e histórico da pessoa não são apagados.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `suggest-kpi-spreadsheet`: valida sessao e papel `owner`/`admin`, carrega as definicoes dos quatro KPIs e usa a funcao de IA `background` para sugerir Meta/Atingido por indicador, mes e ano a partir de planilha ou imagem. A funcao nao grava valores.

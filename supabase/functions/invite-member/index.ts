@@ -72,12 +72,16 @@ async function saveMembership(params: {
   if (membershipError) throw membershipError;
 
   if (params.areaId) {
-    const { error: areaError } = await params.client
+    const { data: area, error: areaError } = await params.client
       .from("areas")
       .update({ coordinator_id: membership.id })
       .eq("id", params.areaId)
-      .eq("org_id", params.orgId);
+      .eq("org_id", params.orgId)
+      .is("archived_at", null)
+      .select("id")
+      .maybeSingle();
     if (areaError) throw areaError;
+    if (!area) throw new Error("Área arquivada ou não encontrada");
   }
 }
 

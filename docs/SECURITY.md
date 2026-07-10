@@ -142,6 +142,10 @@ Os KPIs executivos usam duas tabelas publicas: `executive_kpis` e `kpi_monthly_v
 
 A mudanca de papel operacional passa pela Edge Function `set-member-role`, usando service role depois de validar que o usuario autenticado e owner. Esse fluxo permite alternar membros entre `admin` e `coordinator`, e rebaixar owner somente quando nao for o ultimo owner da empresa. Ele nao promove novos owners.
 
+A remoção de acesso passa pela Edge Function `remove-member`. O navegador não possui mais privilégio/policy de `DELETE` em `memberships`; a função valida owner e chama `remove_organization_member`, RPC disponível somente para `service_role`. A transação bloqueia as memberships da empresa, impede remover o último owner, valida coordenadores substitutos, reatribui ou limpa `areas.coordinator_id` e só então remove a membership. O registro de `profiles` e o usuário de Auth permanecem porque podem ter histórico ou acesso a outra empresa.
+
+Áreas usam arquivamento reversível por `archived_at`/`archived_by`. O arquivamento não apaga relações em cascata. Helpers RLS de coordenador, Edge Functions, WhatsApp e contexto da IA aceitam apenas áreas ativas; owners podem restaurar a área. Backups exportam também áreas arquivadas e remapeiam `archived_by` na restauração.
+
 ## Dados de conta
 
 O email fica em `profiles.email` para administracao de convites. O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e deve ser tratado como identificador de acesso, especialmente para a futura integracao com WhatsApp. A interface edita apenas o celular da propria conta.

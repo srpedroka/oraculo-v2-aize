@@ -34,6 +34,7 @@ export function Documents() {
   const [periodFilter, setPeriodFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const knownAreas = useMemo(() => [...state.areas, ...state.archivedAreas], [state.areas, state.archivedAreas]);
   const periods = useMemo(() => [...new Set(state.planDocuments.map((document) => document.period))], [state.planDocuments]);
 
   const filteredDocuments = useMemo(
@@ -100,9 +101,9 @@ export function Documents() {
             <select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
               <option value="all">Todos</option>
               <option value="company">Empresa</option>
-              {state.areas.map((area) => (
+              {knownAreas.map((area) => (
                 <option key={area.id} value={area.id}>
-                  {area.name}
+                  {area.name}{area.archivedAt ? " (arquivada)" : ""}
                 </option>
               ))}
             </select>
@@ -141,7 +142,7 @@ export function Documents() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-text">{document.title}</p>
                       <p className="mt-1 text-xs leading-5 text-text-secondary">
-                        {TYPE_LABEL[document.type]} · {documentAreaName(document, state.areas)} · {document.period}
+                        {TYPE_LABEL[document.type]} · {documentAreaName(document, knownAreas)} · {document.period}
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
                         <span>{ORIGIN_LABEL[document.origin]}</span>

@@ -134,17 +134,22 @@ serve(async (req) => {
     }
 
     const aiRoute = await resolveAiFunction(client, orgId, "daily");
-    const [{ data: objectives }, history, planContext, orgTone] =
+    const [{ data: objectives }, { data: areas }, history, planContext, orgTone] =
       await Promise.all([
         client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
+        client.from("areas").select("id").eq("org_id", orgId).is("archived_at", null),
         loadConversationHistory(client, conversation.id),
         buildPlanContext(client, orgId, { areaId: resolvedAreaId, focus: focusForContext(String(context), resolvedAreaId) }),
         loadOrgTone(client, orgId),
       ]);
+    const activeAreaIds = new Set((areas ?? []).map((area: any) => area.id));
+    const activeObjectives = (objectives ?? []).filter((objective: any) =>
+      !objective.area_id || activeAreaIds.has(objective.area_id)
+    );
 
     let answer = "";
     if (!aiRoute) {
-      answer = fallbackReview(objectives ?? []);
+      answer = fallbackReview(activeObjectives);
     } else {
       const guide = conversationGuideForContext(String(context));
       const systemPrompt = [

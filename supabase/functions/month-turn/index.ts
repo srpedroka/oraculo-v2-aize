@@ -100,7 +100,8 @@ serve(async (req) => {
       const { data: areas, error: areasError } = await client
         .from("areas")
         .select("id, name, coordinator_id")
-        .eq("org_id", org.id);
+        .eq("org_id", org.id)
+        .is("archived_at", null);
       if (areasError) throw areasError;
 
       for (const area of areas ?? []) {

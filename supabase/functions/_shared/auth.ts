@@ -49,18 +49,23 @@ export async function assertOwner(userId: string, orgId: string) {
 export async function assertAreaWriter(userId: string, orgId: string, areaId: string | null) {
   const client = serviceClient();
   const membership = await assertOrgMember(userId, orgId);
-  if (membership.role === "owner") return membership;
-  if (!areaId) throw new Error("Coordenador só pode alterar a própria área");
+  if (!areaId) {
+    if (membership.role === "owner") return membership;
+    throw new Error("Coordenador só pode alterar a própria área");
+  }
 
   const { data, error } = await client
     .from("areas")
-    .select("id")
+    .select("id, coordinator_id")
     .eq("id", areaId)
     .eq("org_id", orgId)
-    .eq("coordinator_id", membership.id)
+    .is("archived_at", null)
     .maybeSingle();
 
   if (error) throw error;
-  if (!data) throw new Error("Coordenador só pode alterar a própria área");
+  if (!data) throw new Error("Área arquivada ou não encontrada");
+  if (membership.role !== "owner" && data.coordinator_id !== membership.id) {
+    throw new Error("Coordenador só pode alterar a própria área");
+  }
   return membership;
 }

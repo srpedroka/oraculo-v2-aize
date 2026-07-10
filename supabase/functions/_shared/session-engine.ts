@@ -487,17 +487,20 @@ async function assertCanStartSession(client: Client, orgId: string, areaId: stri
     .maybeSingle();
   if (error) throw error;
   if (!membership) throw new Error("Sem acesso à empresa");
-  if (membership.role === "owner" || !areaId) return membership;
+  if (!areaId) return membership;
 
   const { data: area, error: areaError } = await client
     .from("areas")
-    .select("id")
+    .select("id, coordinator_id")
     .eq("id", areaId)
     .eq("org_id", orgId)
-    .eq("coordinator_id", membership.id)
+    .is("archived_at", null)
     .maybeSingle();
   if (areaError) throw areaError;
-  if (!area) throw new Error("Coordenador só pode iniciar sessão da própria área");
+  if (!area) throw new Error("Área arquivada ou não encontrada");
+  if (membership.role !== "owner" && area.coordinator_id !== membership.id) {
+    throw new Error("Coordenador só pode iniciar sessão da própria área");
+  }
   return membership;
 }
 

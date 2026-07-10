@@ -2,6 +2,7 @@
 
 ## 2026-07-10
 
+- Adicionados arquivamento/restauração de áreas e remoção segura de pessoas: áreas arquivadas saem da operação sem perder histórico; `remove-member` reatribui coordenações em transação, preserva perfil/registros e impede remover o último owner.
 - Adicionado sistema de backup por empresa: política owner-only, snapshot manual/diário/por marcos, retenção diária/semanal/mensal, manifesto com contagem por tabela e SHA-256, bucket privado e réplica S3 compatível opcional.
 - Configurações ganhou `Segurança e backups`, com histórico, alerta após 26 horas sem backup válido, pacote portátil cifrado no navegador e restauração sempre como uma nova empresa.
 - A restauração remapeia relações, reaproveita usuários existentes por email, desativa WhatsApp, remove chaves da IA e abandona sessões que estavam em andamento; falhas limpam automaticamente a empresa parcial.

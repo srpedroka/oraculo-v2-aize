@@ -26,6 +26,8 @@ export interface Area {
   name: string;
   coordinator: string;
   coordinatorId?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
 }
 
 export interface Evidence {
@@ -398,6 +400,7 @@ export interface AppState {
   orgTone: OrgTone | null;
   whatsappSettings: WhatsAppSettings | null;
   areas: Area[];
+  archivedAreas: Area[];
   strategicPlan: StrategicPlan | null;
   areaPlans: AreaPlan[];
   objectives: Objective[];

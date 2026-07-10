@@ -1,11 +1,12 @@
-import { ArrowRight, CalendarRange, Plus, ShieldCheck } from "lucide-react";
+import { Archive, ArrowRight, CalendarRange, Plus, RotateCcw, ShieldCheck } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
+import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
 import { useAppState } from "../state/store";
-import type { PlanLevel, Status } from "../types";
+import type { Area, PlanLevel, Status } from "../types";
 
 function levelCount(level: PlanLevel, count: number) {
   const label =
@@ -23,6 +24,10 @@ export function Areas() {
   const { state, dispatch } = useAppState();
   const [areaName, setAreaName] = useState("");
   const [areaCoordinatorId, setAreaCoordinatorId] = useState("");
+  const [areaToArchive, setAreaToArchive] = useState<Area | null>(null);
+  const [areaBusy, setAreaBusy] = useState(false);
+  const [areaError, setAreaError] = useState("");
+  const [areaMessage, setAreaMessage] = useState("");
   const isOwner = state.currentMembership?.role === "owner";
   const coordinators = useMemo(
     () => state.memberships.filter((membership) => membership.role === "coordinator"),
@@ -35,6 +40,44 @@ export function Areas() {
     dispatch({ type: "create_area", name: areaName.trim(), coordinatorId: areaCoordinatorId || null });
     setAreaName("");
     setAreaCoordinatorId("");
+  }
+
+  const archiveImpact = useMemo(() => {
+    if (!areaToArchive) return { objectives: 0, documents: 0, checkIns: 0 };
+    return {
+      objectives: state.objectives.filter((objective) => objective.areaId === areaToArchive.id).length,
+      documents: state.planDocuments.filter((document) => document.areaId === areaToArchive.id).length,
+      checkIns: state.checkIns.filter((checkIn) => checkIn.areaId === areaToArchive.id).length,
+    };
+  }, [areaToArchive, state.checkIns, state.objectives, state.planDocuments]);
+
+  function archiveArea() {
+    if (!areaToArchive) return;
+    setAreaBusy(true);
+    setAreaError("");
+    dispatch({
+      type: "archive_area",
+      areaId: areaToArchive.id,
+      onSuccess: () => {
+        setAreaBusy(false);
+        setAreaMessage(`${areaToArchive.name} foi arquivada. O histórico continua disponível.`);
+        setAreaToArchive(null);
+      },
+      onError: (message) => {
+        setAreaBusy(false);
+        setAreaError(message);
+      },
+    });
+  }
+
+  function restoreArea(area: Area) {
+    setAreaMessage("");
+    dispatch({
+      type: "restore_area",
+      areaId: area.id,
+      onSuccess: () => setAreaMessage(`${area.name} voltou para a operação.`),
+      onError: (message) => setAreaMessage(message),
+    });
   }
 
   return (
@@ -79,6 +122,8 @@ export function Areas() {
           </form>
         </Card>
       ) : null}
+
+      {areaMessage ? <p className="text-sm text-text-secondary">{areaMessage}</p> : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
         {!state.areas.length ? (
@@ -128,23 +173,36 @@ export function Areas() {
               </div>
 
               {isOwner ? (
-                <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-text-tertiary">Coordenador</span>
-                  <select
-                    value={area.coordinatorId ?? ""}
-                    onChange={(event) =>
-                      dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: event.target.value || null })
-                    }
-                    className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
-                  >
-                    <option value="">Sem coordenador</option>
-                    {coordinators.map((membership) => (
-                      <option key={membership.id} value={membership.id}>
-                        {membership.profile?.fullName ?? membership.userId}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="flex items-end gap-2">
+                  <label className="min-w-0 flex-1">
+                    <span className="mb-2 block text-xs font-medium text-text-tertiary">Coordenador</span>
+                    <select
+                      value={area.coordinatorId ?? ""}
+                      onChange={(event) =>
+                        dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: event.target.value || null })
+                      }
+                      className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                    >
+                      <option value="">Sem coordenador</option>
+                      {coordinators.map((membership) => (
+                        <option key={membership.id} value={membership.id}>
+                          {membership.profile?.fullName ?? membership.userId}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button
+                    variant="quiet"
+                    size="icon"
+                    icon={Archive}
+                    onClick={() => {
+                      setAreaError("");
+                      setAreaToArchive(area);
+                    }}
+                    aria-label={`Arquivar ${area.name}`}
+                    title={`Arquivar ${area.name}`}
+                  />
+                </div>
               ) : null}
 
               <div>
@@ -190,6 +248,43 @@ export function Areas() {
           );
         })}
       </div>
+
+      {isOwner && state.archivedAreas.length ? (
+        <section className="border-t border-border pt-5">
+          <div className="mb-3">
+            <p className="text-xs font-medium text-text-tertiary">Histórico</p>
+            <h2 className="mt-1 text-base font-semibold text-text">Áreas arquivadas</h2>
+          </div>
+          <div className="divide-y divide-border border-y border-border">
+            {state.archivedAreas.map((area) => (
+              <div key={area.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm font-medium text-text">{area.name}</p>
+                  <p className="mt-1 text-xs text-text-secondary">Planos e registros preservados</p>
+                </div>
+                <Button variant="ghost" size="sm" icon={RotateCcw} onClick={() => restoreArea(area)}>
+                  Restaurar
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {areaToArchive ? (
+        <AreaArchiveDialog
+          area={areaToArchive}
+          impact={archiveImpact}
+          busy={areaBusy}
+          error={areaError}
+          onClose={() => {
+            if (areaBusy) return;
+            setAreaToArchive(null);
+            setAreaError("");
+          }}
+          onConfirm={archiveArea}
+        />
+      ) : null}
     </div>
   );
 }

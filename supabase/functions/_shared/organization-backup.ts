@@ -145,6 +145,7 @@ function referencedProfileIds(organization: JsonRow, data: Record<string, JsonRo
 
   add(organization.created_by);
   rowsOf(data, "memberships").forEach((row) => add(row.user_id));
+  rowsOf(data, "areas").forEach((row) => add(row.archived_by));
   rowsOf(data, "evidences").forEach((row) => add(row.created_by));
   rowsOf(data, "conversations").forEach((row) => add(row.user_id));
   rowsOf(data, "chat_messages").forEach((row) => add(row.user_id));
@@ -619,6 +620,7 @@ export async function restoreOrganizationEnvelope(input: {
         id,
         org_id: targetOrgId,
         coordinator_id: mapId(membershipMap, row.coordinator_id),
+        archived_by: mapId(userMap, row.archived_by),
       };
     });
     restoredCounts.areas = await insertRows(client, "areas", areas);

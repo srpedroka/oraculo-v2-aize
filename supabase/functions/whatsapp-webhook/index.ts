@@ -1636,16 +1636,20 @@ async function buildAnswer(
     await Promise.all([
       client.from("organizations").select("name, subtitle").eq("id", orgId).maybeSingle(),
       client.from("objectives").select("*").eq("org_id", orgId).order("created_at"),
-      client.from("areas").select("*").eq("org_id", orgId).order("created_at"),
+      client.from("areas").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
       loadConversationHistory(client, conversation.id),
       buildPlanContext(client, orgId, { areaId, focus: areaId ? (/(mes|mês|mensal|acao|ação|acoes|ações)/i.test(message) ? "monthly" : "area") : "org" }),
       loadOrgTone(client, orgId),
     ]);
 
   const currentArea = (areas ?? []).find((area: any) => area.id === areaId) ?? null;
+  const activeAreaIds = new Set((areas ?? []).map((area: any) => area.id));
+  const activeObjectives = (objectives ?? []).filter((objective: any) =>
+    !objective.area_id || activeAreaIds.has(objective.area_id)
+  );
 
   if (!aiRoute) {
-    return isOpeningMessage(message) ? openingAnswer(profile, organization) : contextualFallback(profile, organization, objectives ?? [], message);
+    return isOpeningMessage(message) ? openingAnswer(profile, organization) : contextualFallback(profile, organization, activeObjectives, message);
   }
 
   const systemPrompt = [
@@ -1757,7 +1761,12 @@ function periodForDocument(type: PlanDocumentType, hint: string | null | undefin
 
 async function resolveDocumentAreaId(client: ReturnType<typeof serviceClient>, orgId: string, message: string, currentAreaId: string | null) {
   const normalized = normalizeText(message);
-  const { data: areas, error } = await client.from("areas").select("id, name").eq("org_id", orgId).order("created_at");
+  const { data: areas, error } = await client
+    .from("areas")
+    .select("id, name")
+    .eq("org_id", orgId)
+    .is("archived_at", null)
+    .order("created_at");
   if (error) throw error;
   const match = (areas ?? []).find((area: any) => {
     const name = normalizeText(String(area.name ?? ""));
@@ -1815,11 +1824,17 @@ async function classifyImportedDocument(
   const aiRoute = await resolveAiFunction(client, orgId, "background");
   const [{ data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: objectives }] =
     await Promise.all([
-      client.from("areas").select("id, name").eq("org_id", orgId).order("created_at"),
+      client.from("areas").select("id, name").eq("org_id", orgId).is("archived_at", null).order("created_at"),
       client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
       client.from("area_plans").select("*").eq("org_id", orgId),
       client.from("objectives").select("id, title, level, area_id, period").eq("org_id", orgId).order("created_at"),
     ]);
+
+  const activeAreaIds = new Set((areas ?? []).map((area: any) => area.id));
+  const activeAreaPlans = (areaPlans ?? []).filter((plan: any) => activeAreaIds.has(plan.area_id));
+  const activeObjectives = (objectives ?? []).filter((objective: any) =>
+    !objective.area_id || activeAreaIds.has(objective.area_id)
+  );
 
   if (!aiRoute) return classifyDocumentFallback(extractedText);
 
@@ -1834,7 +1849,7 @@ async function classifyImportedDocument(
     "Se não houver segurança, use unknown.",
     "Formato obrigatório: {\"target\":\"strategic|quarterly|monthly|evidence|unknown\",\"confidence\":0.0,\"reason\":\"curto\",\"areaName\":\"ou null\",\"period\":\"ou null\",\"nextQuestion\":\"uma pergunta curta\"}",
     "Contexto atual:",
-    JSON.stringify({ areas, strategicPlan, areaPlans, objectives, currentAreaId: areaId, contact: profile?.full_name ?? null }, null, 2),
+    JSON.stringify({ areas, strategicPlan, areaPlans: activeAreaPlans, objectives: activeObjectives, currentAreaId: areaId, contact: profile?.full_name ?? null }, null, 2),
   ].join("\n\n");
 
   const result = await callModelForFunction(
@@ -2076,7 +2091,13 @@ serve(async (req) => {
       return jsonResponse({ ok: true, rejected: "no_membership" });
     }
 
-    const { data: area } = await client.from("areas").select("id").eq("org_id", orgId).eq("coordinator_id", membership.id).maybeSingle();
+    const { data: area } = await client
+      .from("areas")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("coordinator_id", membership.id)
+      .is("archived_at", null)
+      .maybeSingle();
     const areaId = area?.id ?? null;
     const conversation = await getOrCreateConversation(client, {
       orgId,

@@ -49,9 +49,17 @@ type AppAction =
   | { type: "create_organization"; name: string; subtitle?: string }
   | { type: "create_area"; name: string; coordinatorId?: string | null }
   | { type: "update_area"; areaId: string; name: string; coordinatorId?: string | null }
+  | { type: "archive_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "restore_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "create_member"; email: string; fullName?: string; phone?: string | null; role: MembershipRole; areaId?: string | null }
   | { type: "set_member_role"; membershipId: string; role: Exclude<MembershipRole, "owner">; onSuccess?: () => void; onError?: (message: string) => void }
-  | { type: "remove_member"; membershipId: string }
+  | {
+      type: "remove_member";
+      membershipId: string;
+      areaReassignments: Record<string, string | null>;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
   | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
@@ -180,6 +188,7 @@ const EMPTY_STATE: AppState = {
   orgTone: null,
   whatsappSettings: null,
   areas: [],
+  archivedAreas: [],
   strategicPlan: null,
   areaPlans: [],
   objectives: [],
@@ -257,6 +266,8 @@ function mapArea(row: any, memberships: Membership[]): Area {
     name: row.name,
     coordinator: membership?.profile?.fullName ?? "Sem coordenador",
     coordinatorId: row.coordinator_id ?? null,
+    archivedAt: row.archived_at ?? null,
+    archivedBy: row.archived_by ?? null,
   };
 }
 
@@ -671,7 +682,22 @@ function defaultExecutiveKpiRows(orgId: string) {
 async function callEdgeFunction<TBody extends Record<string, unknown>>(name: string, body: TBody) {
   const client = requireClient();
   const { data, error } = await client.functions.invoke(name, { body });
-  if (error) throw error;
+  if (error) {
+    const response = (error as { context?: unknown }).context;
+    if (response instanceof Response) {
+      let payload: { error?: unknown } | null = null;
+      try {
+        payload = await response.clone().json() as { error?: unknown };
+      } catch {
+        payload = null;
+      }
+      if (typeof payload?.error === "string" && payload.error.trim()) throw new Error(payload.error);
+    }
+    throw error;
+  }
+  if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
+    throw new Error(data.error);
+  }
   return data;
 }
 
@@ -1044,9 +1070,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const areas = useMemo(
+  const allAreas = useMemo(
     () => (areasQuery.data ?? []).map((row: any) => mapArea(row, orgMemberships)),
     [areasQuery.data, orgMemberships],
+  );
+
+  const areas = useMemo(() => allAreas.filter((area) => !area.archivedAt), [allAreas]);
+  const archivedAreas = useMemo(() => allAreas.filter((area) => Boolean(area.archivedAt)), [allAreas]);
+  const activeAreaIds = useMemo(() => new Set(areas.map((area) => area.id)), [areas]);
+  const activeObjectives = useMemo(
+    () => (objectivesQuery.data ?? []).filter((objective) => !objective.areaId || activeAreaIds.has(objective.areaId)),
+    [activeAreaIds, objectivesQuery.data],
+  );
+  const activeObjectiveIds = useMemo(() => new Set(activeObjectives.map((objective) => objective.id)), [activeObjectives]);
+  const activePlanningSessions = useMemo(
+    () => (planningSessionsQuery.data ?? []).filter((planningSession) => !planningSession.areaId || activeAreaIds.has(planningSession.areaId)),
+    [activeAreaIds, planningSessionsQuery.data],
   );
 
   const strategicPlan = useMemo(() => {
@@ -1087,6 +1126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const channel = client
       .channel(`oraculo-org-${orgId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "areas", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "objectives", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "key_actions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
       .on("postgres_changes", { event: "*", schema: "public", table: "evidences", filter: `org_id=eq.${orgId}` }, invalidateOrg)
@@ -1149,18 +1189,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       orgTone: orgToneQuery.data ?? null,
       whatsappSettings: whatsappSettingsQuery.data ?? null,
       areas,
+      archivedAreas,
       strategicPlan,
-      areaPlans: areaPlansQuery.data ?? [],
-      objectives: objectivesQuery.data ?? [],
-      keyActions: keyActionsQuery.data ?? [],
-      evidences: evidencesQuery.data ?? [],
+      areaPlans: (areaPlansQuery.data ?? []).filter((plan) => activeAreaIds.has(plan.areaId)),
+      objectives: activeObjectives,
+      keyActions: (keyActionsQuery.data ?? []).filter((keyAction) => activeObjectiveIds.has(keyAction.objectiveId)),
+      evidences: (evidencesQuery.data ?? []).filter((evidence) => activeObjectiveIds.has(evidence.objectiveId)),
       chatMessages: chatMessagesQuery.data ?? [],
-      checkIns: checkInsQuery.data ?? [],
-      planningSessions: planningSessionsQuery.data ?? [],
+      checkIns: (checkInsQuery.data ?? []).filter((checkIn) => !checkIn.areaId || activeAreaIds.has(checkIn.areaId)),
+      planningSessions: activePlanningSessions,
       planDocuments: planDocumentsQuery.data ?? [],
       executiveKpis: executiveKpisQuery.data ?? [],
       kpiValues: kpiValuesQuery.data ?? [],
-      activeSession: (planningSessionsQuery.data ?? []).find((session) => session.pendingProposal) ?? planningSessionsQuery.data?.[0] ?? null,
+      activeSession: activePlanningSessions.find((planningSession) => planningSession.pendingProposal) ?? activePlanningSessions[0] ?? null,
       loading,
       ready: Boolean(session && organization),
       ui,
@@ -1176,9 +1217,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     aiUsageLogsQuery.isLoading,
     orgToneQuery.data,
     orgToneQuery.isLoading,
+    activeAreaIds,
+    activeObjectiveIds,
+    activeObjectives,
+    activePlanningSessions,
     areaPlansQuery.data,
     areaPlansQuery.isLoading,
     areas,
+    archivedAreas,
     areasQuery.isLoading,
     authLoading,
     chatMessagesQuery.data,
@@ -1283,6 +1329,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (action.type === "archive_area") {
+        void (async () => {
+          const { data, error } = await client
+            .from("areas")
+            .update({ archived_at: new Date().toISOString(), archived_by: userId })
+            .eq("id", action.areaId)
+            .eq("org_id", orgId)
+            .is("archived_at", null)
+            .select("id")
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) throw new Error("Área não encontrada ou já arquivada.");
+          invalidateOrg();
+          action.onSuccess?.();
+        })().catch((error) => {
+          action.onError?.(error instanceof Error ? error.message : "Não foi possível arquivar a área.");
+        });
+        return;
+      }
+
+      if (action.type === "restore_area") {
+        void (async () => {
+          const { data, error } = await client
+            .from("areas")
+            .update({ archived_at: null, archived_by: null })
+            .eq("id", action.areaId)
+            .eq("org_id", orgId)
+            .select("id")
+            .maybeSingle();
+          if (error) throw error;
+          if (!data) throw new Error("Área arquivada não encontrada.");
+          invalidateOrg();
+          action.onSuccess?.();
+        })().catch((error) => {
+          action.onError?.(error instanceof Error ? error.message : "Não foi possível restaurar a área.");
+        });
+        return;
+      }
+
       if (action.type === "create_member") {
         void callEdgeFunction("invite-member", {
           orgId,
@@ -1313,14 +1398,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       if (action.type === "remove_member") {
-        void client
-          .from("memberships")
-          .delete()
-          .eq("id", action.membershipId)
-          .eq("org_id", orgId)
-          .then(({ error }) => {
-            if (error) throw error;
+        void callEdgeFunction("remove-member", {
+          orgId,
+          membershipId: action.membershipId,
+          areaReassignments: action.areaReassignments,
+        })
+          .then(() => {
             invalidateOrg();
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível remover a pessoa.");
           });
         return;
       }

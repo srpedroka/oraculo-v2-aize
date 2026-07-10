@@ -553,6 +553,7 @@ export const initialState: AppState = {
   },
   whatsappSettings: null,
   areas,
+  archivedAreas: [],
   strategicPlan,
   areaPlans,
   objectives,

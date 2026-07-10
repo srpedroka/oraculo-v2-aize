@@ -225,7 +225,7 @@ export async function buildPlanContext(
     { data: historicalDocuments },
   ] = await Promise.all([
     client.from("organizations").select("id, name, subtitle").eq("id", orgId).maybeSingle(),
-    client.from("areas").select("id, name, coordinator_id").eq("org_id", orgId).order("created_at"),
+    client.from("areas").select("id, name, coordinator_id, archived_at").eq("org_id", orgId).order("created_at"),
     client.from("memberships").select("id, user_id, role").eq("org_id", orgId),
     client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
     client.from("area_plans").select("*").eq("org_id", orgId),
@@ -242,8 +242,12 @@ export async function buildPlanContext(
     ? await client.from("profiles").select("id, full_name").in("id", profileIds)
     : { data: [] };
 
-  const allAreas = areas ?? [];
-  const allObjectives = objectives ?? [];
+  const knownAreas = areas ?? [];
+  const allAreas = knownAreas.filter((item: any) => !item.archived_at);
+  const activeAreaIds = new Set(allAreas.map((item: any) => item.id));
+  const allObjectives = (objectives ?? []).filter((objective: any) =>
+    !objective.area_id || activeAreaIds.has(objective.area_id)
+  );
   const allActions = keyActions ?? [];
   const area = options.areaId ? allAreas.find((item: any) => item.id === options.areaId) ?? null : null;
   const strategicObjectives = allObjectives.filter((objective: any) => objective.level === "strategic");
@@ -263,7 +267,7 @@ export async function buildPlanContext(
     );
   }
 
-  lines.push(...historicalMemoryLines(historicalDocuments ?? [], allAreas, {
+  lines.push(...historicalMemoryLines(historicalDocuments ?? [], knownAreas, {
     focus,
     areaId: area?.id ?? options.areaId ?? null,
   }));

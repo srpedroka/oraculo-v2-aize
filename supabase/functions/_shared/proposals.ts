@@ -128,19 +128,24 @@ async function assertProposalPermission(client: Client, session: any, userId: st
 
   if (error) throw error;
   if (!membership) throw new Error("Sem acesso à empresa");
-  if (membership.role === "owner") return membership;
-  if (!session.area_id) throw new Error("Coordenador só pode gravar plano da própria área");
+  if (!session.area_id) {
+    if (membership.role === "owner") return membership;
+    throw new Error("Coordenador só pode gravar plano da própria área");
+  }
 
   const { data: area, error: areaError } = await client
     .from("areas")
-    .select("id")
+    .select("id, coordinator_id")
     .eq("id", session.area_id)
     .eq("org_id", session.org_id)
-    .eq("coordinator_id", membership.id)
+    .is("archived_at", null)
     .maybeSingle();
 
   if (areaError) throw areaError;
-  if (!area) throw new Error("Coordenador só pode gravar plano da própria área");
+  if (!area) throw new Error("Área arquivada ou não encontrada");
+  if (membership.role !== "owner" && area.coordinator_id !== membership.id) {
+    throw new Error("Coordenador só pode gravar plano da própria área");
+  }
   return membership;
 }
 

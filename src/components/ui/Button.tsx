@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader2, type LucideIcon } from "lucide-react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "ghost" | "quiet";
+  variant?: "primary" | "ghost" | "quiet" | "danger";
   size?: "sm" | "md" | "icon";
   icon?: LucideIcon;
   loading?: boolean;
@@ -24,6 +24,7 @@ export function Button({
     primary: "border-accent bg-accent text-white hover:bg-[#1D1D1F] active:bg-[#161618]",
     ghost: "border-border bg-transparent text-text hover:border-accent/30 hover:bg-white active:bg-surface-muted",
     quiet: "border-transparent bg-transparent text-text-secondary hover:bg-fill-hover hover:text-text active:bg-fill-press",
+    danger: "border-status-danger bg-status-danger text-white hover:border-[#8F1C13] hover:bg-[#8F1C13] active:bg-[#74170F]",
   };
   const sizes = {
     sm: "h-8 gap-1.5 rounded-control px-3 text-label",

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  Archive,
   Bot,
   Building2,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   Phone,
   Plus,
   RefreshCw,
+  RotateCcw,
   Save,
   ShieldCheck,
   SlidersHorizontal,
@@ -21,9 +23,11 @@ import {
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { OrganizationBackupCard } from "../features/backups/OrganizationBackupCard";
+import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
+import { MemberRemovalDialog } from "../features/members/MemberRemovalDialog";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { useAppState } from "../state/store";
-import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, MembershipRole, OrgTonePreset } from "../types";
+import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, Area, Membership, MembershipRole, OrgTonePreset } from "../types";
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
   openai: "gpt-5.4",
@@ -161,6 +165,13 @@ export function Settings() {
   const [memberPhone, setMemberPhone] = useState("");
   const [memberAreaId, setMemberAreaId] = useState("");
   const [memberMessage, setMemberMessage] = useState("");
+  const [memberToRemove, setMemberToRemove] = useState<Membership | null>(null);
+  const [memberRemovalBusy, setMemberRemovalBusy] = useState(false);
+  const [memberRemovalError, setMemberRemovalError] = useState("");
+  const [areaToArchive, setAreaToArchive] = useState<Area | null>(null);
+  const [areaLifecycleBusy, setAreaLifecycleBusy] = useState(false);
+  const [areaLifecycleError, setAreaLifecycleError] = useState("");
+  const [areaMessage, setAreaMessage] = useState("");
   const [providerApiKeys, setProviderApiKeys] = useState<Record<AiProvider, string>>({
     openai: "",
     anthropic: "",
@@ -203,6 +214,23 @@ export function Settings() {
     () => state.memberships.filter((membership) => membership.role === "coordinator"),
     [state.memberships],
   );
+  const allAreas = useMemo(() => [...state.areas, ...state.archivedAreas], [state.areas, state.archivedAreas]);
+  const ownerCount = useMemo(
+    () => state.memberships.filter((membership) => membership.role === "owner").length,
+    [state.memberships],
+  );
+  const impactedMemberAreas = useMemo(
+    () => memberToRemove ? allAreas.filter((area) => area.coordinatorId === memberToRemove.id) : [],
+    [allAreas, memberToRemove],
+  );
+  const archiveImpact = useMemo(() => {
+    if (!areaToArchive) return { objectives: 0, documents: 0, checkIns: 0 };
+    return {
+      objectives: state.objectives.filter((objective) => objective.areaId === areaToArchive.id).length,
+      documents: state.planDocuments.filter((document) => document.areaId === areaToArchive.id).length,
+      checkIns: state.checkIns.filter((checkIn) => checkIn.areaId === areaToArchive.id).length,
+    };
+  }, [areaToArchive, state.checkIns, state.objectives, state.planDocuments]);
 
   const usageSummary = useMemo(
     () =>
@@ -282,6 +310,36 @@ export function Settings() {
     if (!areaName.trim()) return;
     dispatch({ type: "create_area", name: areaName.trim() });
     setAreaName("");
+    setAreaMessage("");
+  }
+
+  function archiveArea() {
+    if (!areaToArchive) return;
+    setAreaLifecycleBusy(true);
+    setAreaLifecycleError("");
+    dispatch({
+      type: "archive_area",
+      areaId: areaToArchive.id,
+      onSuccess: () => {
+        setAreaLifecycleBusy(false);
+        setAreaMessage(`${areaToArchive.name} foi arquivada. O histórico continua disponível.`);
+        setAreaToArchive(null);
+      },
+      onError: (message) => {
+        setAreaLifecycleBusy(false);
+        setAreaLifecycleError(message);
+      },
+    });
+  }
+
+  function restoreArea(area: Area) {
+    setAreaMessage("");
+    dispatch({
+      type: "restore_area",
+      areaId: area.id,
+      onSuccess: () => setAreaMessage(`${area.name} voltou para a operação.`),
+      onError: (message) => setAreaMessage(message),
+    });
   }
 
   function inviteMember(event: FormEvent<HTMLFormElement>) {
@@ -323,6 +381,33 @@ export function Settings() {
       onError: (message) => {
         setRoleSavingId(null);
         setMemberMessage(message);
+      },
+    });
+  }
+
+  function openMemberRemoval(membership: Membership) {
+    setMemberMessage("");
+    setMemberRemovalError("");
+    setMemberToRemove(membership);
+  }
+
+  function removeMember(areaReassignments: Record<string, string | null>) {
+    if (!memberToRemove) return;
+    setMemberRemovalBusy(true);
+    setMemberRemovalError("");
+    dispatch({
+      type: "remove_member",
+      membershipId: memberToRemove.id,
+      areaReassignments,
+      onSuccess: () => {
+        const removedName = memberToRemove.profile?.fullName ?? memberToRemove.profile?.email ?? "A pessoa";
+        setMemberRemovalBusy(false);
+        setMemberMessage(`${removedName} não tem mais acesso a esta empresa.`);
+        setMemberToRemove(null);
+      },
+      onError: (message) => {
+        setMemberRemovalBusy(false);
+        setMemberRemovalError(message);
       },
     });
   }
@@ -563,20 +648,33 @@ export function Settings() {
                       <p className="text-sm font-semibold text-text">{area.name}</p>
                       <p className="text-xs text-text-secondary">Coordenador: {area.coordinator}</p>
                     </div>
-                    <select
-                      value={area.coordinatorId ?? ""}
-                      onChange={(event) =>
-                        dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: event.target.value || null })
-                      }
-                      className="h-9 rounded-xl border border-border bg-white px-3 text-sm"
-                    >
-                      <option value="">Sem coordenador</option>
-                      {coordinators.map((membership) => (
-                        <option key={membership.id} value={membership.id}>
-                          {membership.profile?.fullName ?? membership.userId}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={area.coordinatorId ?? ""}
+                        onChange={(event) =>
+                          dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: event.target.value || null })
+                        }
+                        className="h-9 min-w-0 rounded-control border border-border bg-white px-3 text-sm"
+                      >
+                        <option value="">Sem coordenador</option>
+                        {coordinators.map((membership) => (
+                          <option key={membership.id} value={membership.id}>
+                            {membership.profile?.fullName ?? membership.userId}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="quiet"
+                        size="icon"
+                        icon={Archive}
+                        onClick={() => {
+                          setAreaLifecycleError("");
+                          setAreaToArchive(area);
+                        }}
+                        aria-label={`Arquivar ${area.name}`}
+                        title={`Arquivar ${area.name}`}
+                      />
+                    </div>
                   </div>
                 </div>
               ))
@@ -586,6 +684,25 @@ export function Settings() {
               </p>
             )}
           </div>
+          {state.archivedAreas.length ? (
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="mb-2 text-xs font-medium text-text-tertiary">Áreas arquivadas</p>
+              <div className="space-y-2">
+                {state.archivedAreas.map((area) => (
+                  <div key={area.id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-text-secondary">{area.name}</p>
+                      <p className="text-xs text-text-tertiary">Histórico preservado</p>
+                    </div>
+                    <Button variant="ghost" size="sm" icon={RotateCcw} onClick={() => restoreArea(area)}>
+                      Restaurar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {areaMessage ? <p className="mt-3 text-xs leading-5 text-text-secondary">{areaMessage}</p> : null}
         </Card>
       </div>
 
@@ -647,8 +764,9 @@ export function Settings() {
           ) : null}
           <div className="mt-4 space-y-2">
             {state.memberships.map((membership) => {
-              const linkedArea = state.areas.find((area) => area.coordinatorId === membership.id);
+              const linkedAreas = allAreas.filter((area) => area.coordinatorId === membership.id);
               const isCurrentUser = membership.userId === state.sessionUserId;
+              const isLastOwner = membership.role === "owner" && ownerCount <= 1;
               return (
                 <div key={membership.id} className="rounded-2xl border border-border bg-[#FAFAFB] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -657,7 +775,9 @@ export function Settings() {
                         {membership.profile?.fullName ?? membership.profile?.email ?? membership.userId}
                       </p>
                       <p className="truncate text-xs text-text-secondary">{membership.profile?.email ?? "Email não registrado"}</p>
-                      <p className="mt-1 text-xs text-text-tertiary">Área: {linkedArea?.name ?? "Sem área vinculada"}</p>
+                      <p className="mt-1 text-xs text-text-tertiary">
+                        Áreas: {linkedAreas.length ? linkedAreas.map((area) => area.name).join(", ") : "Sem área vinculada"}
+                      </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select
@@ -675,8 +795,9 @@ export function Settings() {
                         variant="ghost"
                         size="sm"
                         icon={Trash2}
-                        disabled={isCurrentUser}
-                        onClick={() => dispatch({ type: "remove_member", membershipId: membership.id })}
+                        disabled={isCurrentUser || isLastOwner}
+                        onClick={() => openMemberRemoval(membership)}
+                        title={isCurrentUser ? "O próprio acesso usa um fluxo separado" : isLastOwner ? "O último dono não pode ser removido" : "Remover acesso"}
                       >
                         Remover
                       </Button>
@@ -1148,6 +1269,38 @@ export function Settings() {
           </p>
         ) : null}
       </Card>
+
+      {areaToArchive ? (
+        <AreaArchiveDialog
+          area={areaToArchive}
+          impact={archiveImpact}
+          busy={areaLifecycleBusy}
+          error={areaLifecycleError}
+          onClose={() => {
+            if (areaLifecycleBusy) return;
+            setAreaToArchive(null);
+            setAreaLifecycleError("");
+          }}
+          onConfirm={archiveArea}
+        />
+      ) : null}
+
+      {memberToRemove ? (
+        <MemberRemovalDialog
+          key={memberToRemove.id}
+          membership={memberToRemove}
+          impactedAreas={impactedMemberAreas}
+          replacements={coordinators.filter((membership) => membership.id !== memberToRemove.id)}
+          busy={memberRemovalBusy}
+          error={memberRemovalError}
+          onClose={() => {
+            if (memberRemovalBusy) return;
+            setMemberToRemove(null);
+            setMemberRemovalError("");
+          }}
+          onConfirm={removeMember}
+        />
+      ) : null}
     </div>
   );
 }

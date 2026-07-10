@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-10 - Retirada operacional preserva histórico
+
+Decisao: tratar retirada de pessoa como revogação da membership e retirada de área como arquivamento reversível. Não usar hard delete de área no fluxo normal.
+
+Contexto: pessoas e áreas podiam ser adicionadas, mas a remoção de um coordenador falhava pela FK e a exclusão direta de uma área apagaria em cascata planos, objetivos, ações, evidências, check-ins e documentos.
+
+Alternativas: habilitar botões de delete direto, apagar também perfil/Auth da pessoa ou manter áreas antigas misturadas na operação corrente.
+
+Motivo: membership representa acesso e pode ser removida sem apagar autoria/histórico; área representa contexto estratégico e precisa continuar disponível para memória, documentos, backup e eventual restauração.
+
+Consequencias: `remove-member` valida owner e usa RPC transacional exclusiva de `service_role`, com proteção do último owner e reatribuição de áreas. `areas.archived_at` retira a área de telas e contextos operacionais, enquanto documentos e backups preservam os dados. Exclusão definitiva de empresa/estrutura continua reservada para uma futura camada de governança.
+
 ## 2026-07-10 - Backup recuperável por empresa em camadas
 
 Decisao: tratar cada empresa como projeto recuperável, com snapshot lógico versionado por `org_id`, armazenamento privado, arquivo portátil criptografado e restauração somente como clone. Manter backup geral da plataforma e réplica externa como camadas independentes.
