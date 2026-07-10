@@ -578,6 +578,7 @@ export const initialState: AppState = {
   ui: {
     sidebarCollapsed: false,
     sidebarWidth: 260,
+    mobileNavOpen: false,
     oracleMode: "normal",
   },
 };

@@ -7,6 +7,7 @@ import { formatDate } from "../lib/format";
 import { previousMonthPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
 import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
+import { ExecutionCockpit } from "../features/execution/ExecutionCockpit";
 
 export function Execution() {
   const { state, dispatch } = useAppState();
@@ -45,6 +46,8 @@ export function Execution() {
         <p className="text-sm font-medium text-text-tertiary">Projetos, rituais e fechamento mensal</p>
         <h1 className="text-2xl font-semibold text-text">Execução Viva</h1>
       </div>
+
+      <ExecutionCockpit />
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card>

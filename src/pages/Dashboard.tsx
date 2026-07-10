@@ -9,7 +9,9 @@ import { KpiEditorDialog } from "../features/kpi/KpiEditorDialog";
 import { KpiResultBlock } from "../features/kpi/KpiResultBlock";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveEditDialog } from "../features/objective/ObjectiveEditDialog";
+import { Link } from "react-router-dom";
 import { previousMonthPeriod } from "../lib/periods";
+import { buildTrackItems, summarize } from "../lib/execution";
 import { useAppState } from "../state/store";
 import type { Objective } from "../types";
 
@@ -49,6 +51,8 @@ export function Dashboard() {
     const hasCheckIn = state.checkIns.some((checkIn) => checkIn.areaId === area.id && checkIn.period === closePeriod);
     return hasMonthlyPlan && !hasCheckIn;
   });
+  const execSummary = summarize(buildTrackItems(state.objectives, state.keyActions));
+  const execOnTime = execSummary.onTimePct === null ? "—" : `${Math.round(execSummary.onTimePct * 100)}%`;
 
   return (
     <div className="mx-auto max-w-[820px] space-y-8">
@@ -59,6 +63,26 @@ export function Dashboard() {
         </p>
         <h1 className="text-2xl font-semibold text-text">Dashboard executivo</h1>
       </div>
+
+      {execSummary.total ? (
+        <Link
+          to="/execucao"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-border bg-surface px-4 py-3 transition-colors hover:bg-surface-muted"
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span className="font-medium text-text">Execução</span>
+            {execSummary.late ? (
+              <span className="font-semibold text-status-danger">
+                {execSummary.late} atrasado{execSummary.late === 1 ? "" : "s"}
+              </span>
+            ) : (
+              <span className="font-medium text-[#1D7A3E]">nada atrasado</span>
+            )}
+            <span className="text-text-secondary tabular-nums">{execOnTime} no prazo</span>
+          </div>
+          <span className="text-sm font-medium text-accent">Ver painel →</span>
+        </Link>
+      ) : null}
 
       {!hasData ? (
         <Card>

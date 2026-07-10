@@ -46,6 +46,9 @@ import type {
 type AppAction =
   | { type: "toggle_sidebar" }
   | { type: "set_sidebar_width"; width: number }
+  | { type: "toggle_mobile_nav" }
+  | { type: "open_mobile_nav" }
+  | { type: "close_mobile_nav" }
   | { type: "set_oracle_mode"; mode: OracleMode }
   | { type: "set_active_org"; orgId: string }
   | { type: "create_organization"; name: string; subtitle?: string }
@@ -162,6 +165,7 @@ type AppAction =
 interface UiState {
   sidebarCollapsed: boolean;
   sidebarWidth: number;
+  mobileNavOpen: boolean;
   oracleMode: OracleMode;
 }
 
@@ -191,6 +195,7 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 const INITIAL_UI: UiState = {
   sidebarCollapsed: false,
   sidebarWidth: 240,
+  mobileNavOpen: false,
   oracleMode: "minimized",
 };
 
@@ -244,6 +249,13 @@ function uiReducer(state: UiState, action: AppAction): UiState {
         sidebarWidth: Math.max(188, Math.min(320, action.width)),
         sidebarCollapsed: false,
       };
+    // O drawer mobile sempre abre expandido (sidebarCollapsed é só do desktop).
+    case "toggle_mobile_nav":
+      return { ...state, mobileNavOpen: !state.mobileNavOpen, sidebarCollapsed: false };
+    case "open_mobile_nav":
+      return { ...state, mobileNavOpen: true, sidebarCollapsed: false };
+    case "close_mobile_nav":
+      return { ...state, mobileNavOpen: false };
     case "set_oracle_mode":
       return { ...state, oracleMode: action.mode };
     default:
@@ -1405,7 +1417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const dispatch = useCallback(
     (action: AppAction) => {
-      if (["toggle_sidebar", "set_sidebar_width", "set_oracle_mode"].includes(action.type)) {
+      if (["toggle_sidebar", "set_sidebar_width", "toggle_mobile_nav", "open_mobile_nav", "close_mobile_nav", "set_oracle_mode"].includes(action.type)) {
         uiDispatch(action);
         return;
       }

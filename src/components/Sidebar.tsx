@@ -17,8 +17,8 @@ import {
   Waypoints,
   X,
 } from "lucide-react";
-import { FormEvent, MouseEvent as ReactMouseEvent, useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAppState } from "../state/store";
 import { Button } from "./ui/Button";
 
@@ -75,6 +75,8 @@ export function Sidebar() {
   const [accountSaved, setAccountSaved] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
   const collapsed = state.ui.sidebarCollapsed;
+  const mobileNavOpen = state.ui.mobileNavOpen;
+  const location = useLocation();
   const width = collapsed ? COMPACT_WIDTH : state.ui.sidebarWidth;
   const currentProfile = state.currentProfile ?? state.currentMembership?.profile ?? null;
   const accountEmail = currentProfile?.email ?? session?.user.email ?? "";
@@ -115,6 +117,26 @@ export function Sidebar() {
     setAccountSaved(false);
   }, [accountEmail, currentProfile?.fullName, currentProfile?.phone]);
 
+  // Fecha o drawer mobile ao trocar de rota.
+  useEffect(() => {
+    dispatch({ type: "close_mobile_nav" });
+  }, [location.pathname, dispatch]);
+
+  // Trava o scroll do body e fecha no Esc enquanto o drawer mobile está aberto.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") dispatch({ type: "close_mobile_nav" });
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileNavOpen, dispatch]);
+
   function startResize(event: ReactMouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     if (collapsed) {
@@ -151,13 +173,25 @@ export function Sidebar() {
   }
 
   return (
-    <aside
-      className={[
-        "relative hidden min-h-screen shrink-0 border-r border-border bg-surface sm:flex sm:flex-col",
-        dragging ? "transition-none" : "transition-[width] duration-200 motion-reduce:transition-none",
-      ].join(" ")}
-      style={{ width }}
-    >
+    <>
+      {mobileNavOpen ? (
+        <div
+          className="fixed inset-0 z-30 bg-black/30 sm:hidden"
+          onClick={() => dispatch({ type: "close_mobile_nav" })}
+          aria-hidden="true"
+        />
+      ) : null}
+      <aside
+        role="navigation"
+        aria-label="Menu principal"
+        className={[
+          "fixed inset-y-0 left-0 z-40 flex min-h-screen w-[86vw] max-w-[320px] flex-col border-r border-border bg-surface shadow-overlay transition-transform duration-200 motion-reduce:transition-none",
+          "sm:static sm:z-auto sm:w-[var(--sidebar-w)] sm:max-w-none sm:translate-x-0 sm:shadow-none",
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+          dragging ? "sm:transition-none" : "sm:transition-[width] sm:duration-200",
+        ].join(" ")}
+        style={{ ["--sidebar-w"]: `${width}px` } as CSSProperties}
+      >
       <div className="flex h-20 items-center justify-between px-5">
         <div className="min-w-0 overflow-hidden">
           <div className="text-[22px] font-bold leading-[1.05] tracking-[0.01em] text-text" title={collapsed ? "Ad astra per aspera" : undefined}>
@@ -169,13 +203,24 @@ export function Sidebar() {
             </div>
           ) : null}
         </div>
-        <Button
-          variant="quiet"
-          size="icon"
-          icon={collapsed ? PanelLeftOpen : PanelLeftClose}
-          onClick={() => dispatch({ type: "toggle_sidebar" })}
-          aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
-        />
+        <span className="hidden sm:inline-flex">
+          <Button
+            variant="quiet"
+            size="icon"
+            icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+            onClick={() => dispatch({ type: "toggle_sidebar" })}
+            aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+          />
+        </span>
+        <span className="inline-flex sm:hidden">
+          <Button
+            variant="quiet"
+            size="icon"
+            icon={X}
+            onClick={() => dispatch({ type: "close_mobile_nav" })}
+            aria-label="Fechar menu"
+          />
+        </span>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">
@@ -184,6 +229,7 @@ export function Sidebar() {
             key={item.to}
             to={item.to}
             title={collapsed ? item.label : undefined}
+            onClick={() => dispatch({ type: "close_mobile_nav" })}
             className={({ isActive }) =>
               [
                 "group flex h-12 items-center gap-3 rounded-control text-body font-medium transition-colors motion-reduce:transition-none",
@@ -336,7 +382,7 @@ export function Sidebar() {
         <button
           type="button"
           onMouseDown={startResize}
-          className="absolute right-[-5px] top-0 h-full w-2 cursor-col-resize bg-transparent transition-colors hover:bg-accent/10 motion-reduce:transition-none"
+          className="absolute right-[-5px] top-0 hidden h-full w-2 cursor-col-resize bg-transparent transition-colors hover:bg-accent/10 motion-reduce:transition-none sm:block"
           aria-label="Redimensionar barra lateral"
         >
           <span className="sr-only">Redimensionar barra lateral</span>
@@ -345,7 +391,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => dispatch({ type: "toggle_sidebar" })}
-          className="absolute right-[-12px] top-7 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card transition hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+          className="absolute right-[-12px] top-7 hidden h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card transition hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 sm:flex"
           aria-label="Expandir barra lateral"
         >
           <ChevronRight className="h-4 w-4" />
@@ -356,12 +402,13 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => dispatch({ type: "toggle_sidebar" })}
-          className="absolute right-[-12px] top-7 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card transition hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+          className="absolute right-[-12px] top-7 hidden h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-text-secondary shadow-card transition hover:bg-fill-hover hover:text-text active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 sm:flex"
           aria-label="Recolher barra lateral"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
       ) : null}
-    </aside>
+      </aside>
+    </>
   );
 }

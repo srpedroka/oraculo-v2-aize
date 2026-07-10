@@ -20,7 +20,7 @@ export function Layout() {
             {state.organization?.subtitle ? ` · ${state.organization.subtitle}` : ""}
           </p>
         </div>
-        <Button variant="quiet" size="icon" icon={Menu} onClick={() => dispatch({ type: "toggle_sidebar" })} aria-label="Menu" />
+        <Button variant="quiet" size="icon" icon={Menu} onClick={() => dispatch({ type: "toggle_mobile_nav" })} aria-label="Abrir menu" />
       </header>
 
       <main className="min-w-0 flex-1">

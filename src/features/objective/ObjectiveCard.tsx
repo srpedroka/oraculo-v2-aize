@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { KeyAction, Objective } from "../../types";
 import { TYPE_LABEL } from "../../types";
 import { formatDate, shortDate } from "../../lib/format";
+import { isOverdue } from "../../lib/execution";
 import { Card } from "../../components/ui/Card";
 import { ConcretenessMeter } from "../../components/ui/ConcretenessMeter";
 import { LineageTag } from "../../components/ui/LineageTag";
@@ -86,6 +87,9 @@ export function ObjectiveCard({ objective, parent, keyActions = [], highlighted 
                 {TYPE_LABEL[objective.type]}
               </span>
               <StatusBadge status={objective.status} />
+              {isOverdue(objective) && objective.status !== "late" ? (
+                <span className="rounded-full bg-status-danger-bg px-2 py-0.5 text-xs font-semibold text-status-danger">Atrasado</span>
+              ) : null}
               {highlighted ? (
                 <span className="rounded-[10px] bg-[#E8F2FF] px-2.5 py-1 text-xs font-medium text-accent">
                   Principal
@@ -155,7 +159,10 @@ export function ObjectiveCard({ objective, parent, keyActions = [], highlighted 
                     <div className="flex items-center gap-2 text-left text-xs text-text-secondary md:text-right">
                       <div>
                         <p>{action.owner}</p>
-                        <p>{shortDate(action.deadline)}</p>
+                        <p className={isOverdue(action) ? "font-semibold text-status-danger" : undefined}>
+                          {shortDate(action.deadline)}
+                          {isOverdue(action) ? " · atrasada" : ""}
+                        </p>
                       </div>
                       {canEdit ? (
                         <Button

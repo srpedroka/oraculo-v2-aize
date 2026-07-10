@@ -456,6 +456,7 @@ export interface AppState {
   ui: {
     sidebarCollapsed: boolean;
     sidebarWidth: number;
+    mobileNavOpen: boolean;
     oracleMode: OracleMode;
   };
 }
