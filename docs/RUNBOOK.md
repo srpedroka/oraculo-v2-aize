@@ -860,15 +860,16 @@ Nunca copie esses valores para o frontend.
 
 1. Abra **Documentos** e clique **Importar histórico** (owner, ou coordenador com ao menos uma área ativa). O Plano Estratégico **não** tem mais esta entrada.
 2. Ao selecionar PDF/PPTX/DOCX/TXT ou imagem, aguarde a leitura e a organização automática. Tipo, escopo, período e título devem ser preenchidos sem um segundo clique; ano, trimestre, responsável e versão aparecem como metadados quando identificados.
-2. Cole texto **ou** use **Importar arquivo** / arraste: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP. Nada é gravado só por escolher o arquivo.
-3. Imagem: o navegador redimensiona e envia à leitura do Oráculo; o texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
-4. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia antes de salvar.
-5. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; entra em Documentos como histórico. A mídia da imagem **não** é guardada. Após salvar, o novo documento fica selecionado.
-5b. Se houver conflitos (ex.: duas tabelas do mesmo período com valores diferentes), o diálogo pede escolha com rádio e **bloqueia Salvar** até decidir. O texto da tabela escolhida entra em `content.raw`; as alternativas ficam em `content.import_backup` (sem base64/arquivo bruto).
-5c. Em um documento com backup, use **Reabrir importação** para trocar a leitura e salvar **nova versão** (a anterior permanece). Mensagem: “Nova versão salva. A anterior continua no histórico.”
-5d. Período multi-ano só aparece quando a tabela foi expandida — menção a `2025` e `2030` numa visão não vira faixa sozinha.
-6. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
-7. Se o objetivo for alimentar os cards de Resultado (KPI), use o import de planilha/imagem no Dashboard — o histórico não grava `kpi_monthly_values`.
+3. Nomes equivalentes de área podem ser associados automaticamente quando houver um único destino seguro, como `Industrial` para a área cadastrada `Produção`. Se duas áreas forem igualmente plausíveis, escolha manualmente; o Oráculo não decide o empate.
+4. Cole texto **ou** use **Importar arquivo** / arraste: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP. Nada é gravado só por escolher o arquivo.
+5. Imagem: o navegador redimensiona e envia à leitura do Oráculo; o texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
+6. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia antes de salvar.
+7. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; entra em Documentos como histórico. A mídia da imagem **não** é guardada. Após salvar, o novo documento fica selecionado.
+8. Se houver conflitos (ex.: duas tabelas do mesmo período com valores diferentes), o diálogo pede escolha e **bloqueia Salvar** até decidir. As alternativas ficam em `content.import_backup` (sem base64/arquivo bruto).
+9. Em um documento com backup, use **Reabrir importação** para trocar a leitura e salvar **nova versão**; a anterior permanece.
+10. Período multi-ano só aparece quando a tabela foi expandida; menção a `2025` e `2030` numa visão não vira faixa sozinha.
+11. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
+12. Se o objetivo for alimentar os cards de Resultado (KPI), use o import de planilha/imagem no Dashboard; o histórico não grava `kpi_monthly_values`.
 
 ## Numeros do Dashboard (Resultado)
 

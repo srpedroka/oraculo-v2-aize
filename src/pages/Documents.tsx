@@ -214,8 +214,8 @@ export function Documents() {
       </Card>
 
       {selectedDocument ? (
-        <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
-          <aside className="space-y-2">
+        <div className="grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="max-h-80 space-y-2 overflow-y-auto pr-1 xl:sticky xl:top-8 xl:max-h-[calc(100vh-4rem)]">
             {filteredDocuments.map((document) => {
               const active = document.id === selectedDocument.id;
               return (
@@ -248,7 +248,9 @@ export function Documents() {
               );
             })}
           </aside>
-          <PlanDocumentView document={selectedDocument} />
+          <div className="min-w-0 md:max-h-[70vh] md:overflow-y-auto md:pr-1 xl:sticky xl:top-8 xl:max-h-[calc(100vh-4rem)]">
+            <PlanDocumentView document={selectedDocument} />
+          </div>
         </div>
       ) : (
         <Card className="text-center">

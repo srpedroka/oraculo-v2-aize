@@ -239,6 +239,7 @@ Compartilhados criticos:
 - `_shared/plan-render.ts`: renderiza documentos para WhatsApp.
 - `_shared/intent-router.ts`: classificacao operacional.
 - `_shared/historical-classifier.ts`: classificacao orientativa de historicos importados.
+- `_shared/area-matching.ts`: correspondencia conservadora entre nomes equivalentes de areas; aliases semanticos so vinculam quando existe um unico candidato seguro.
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
 - `_shared/transcription.ts`: transcricao de audio.
 - `_shared/usage.ts`: registro de tokens/custo.

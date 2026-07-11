@@ -6,6 +6,7 @@ import {
   type HistoricalDocumentCandidate,
   type HistoricalImportSuggestion,
 } from "./historical-import-structure.ts";
+import { matchAreaCandidate, normalizeAreaName } from "./area-matching.ts";
 import {
   extractHistoricalHeaderMetadata,
   type HistoricalHeaderMetadata,
@@ -404,7 +405,7 @@ const TABLE_NORMALIZATION_RULES = [
 ].join("\n");
 
 function normalizeAreaToken(value: unknown) {
-  return normalizeTextForRouting(value).replace(/[^a-z0-9]+/g, " ").trim();
+  return normalizeAreaName(value);
 }
 
 function resolveArea(value: unknown, areas: AreaCandidate[]) {
@@ -416,11 +417,7 @@ function resolveArea(value: unknown, areas: AreaCandidate[]) {
     return areas[numericIndex - 1];
   }
 
-  return (
-    areas.find((area) => normalizeAreaToken(area.name) === token) ??
-    areas.find((area) => token.includes(normalizeAreaToken(area.name)) || normalizeAreaToken(area.name).includes(token)) ??
-    null
-  );
+  return matchAreaCandidate(token, areas).area;
 }
 
 function inferAreaFromText(text: string, areas: AreaCandidate[]) {

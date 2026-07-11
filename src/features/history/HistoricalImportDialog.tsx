@@ -1,5 +1,6 @@
 import { FileText, Loader2, Save, Sparkles, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { HISTORICAL_FILE_ACCEPT, importStrategicPlanFile, isHistoricalImageFile } from "../../lib/fileImport";
@@ -113,6 +114,15 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     selectedCandidateIds.length > 0 &&
     unresolvedRequiredConflicts.length === 0 &&
     !historicalBusy;
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open || !initialBackup) return;
@@ -584,7 +594,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     });
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
       <Card
         className={[
@@ -936,6 +946,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           </Button>
         </div>
       </Card>
-    </div>
+    </div>,
+    document.body,
   );
 }

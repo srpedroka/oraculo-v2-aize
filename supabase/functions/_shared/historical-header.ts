@@ -1,3 +1,5 @@
+import { matchAreaCandidate } from "./area-matching.ts";
+
 export type HistoricalHeaderDocumentType = "strategic" | "quarterly" | "monthly";
 
 export interface HistoricalHeaderEvidence {
@@ -86,19 +88,7 @@ function monthYear(value: string | null) {
 }
 
 function matchArea(label: string | null, areas: AreaCandidate[]) {
-  if (!label) return null;
-  const target = normalize(label).replace(/^(departamento|area|setor|unidade)\s+(de\s+)?/, "");
-  const exact = areas.find((area) => normalize(area.name) === target);
-  if (exact) return exact;
-  const targetTokens = new Set(target.split(" ").filter((token) => token.length > 2));
-  let best: { area: AreaCandidate; score: number } | null = null;
-  for (const area of areas) {
-    const tokens = normalize(area.name).split(" ").filter((token) => token.length > 2);
-    const shared = tokens.filter((token) => targetTokens.has(token)).length;
-    const score = shared / Math.max(tokens.length, targetTokens.size, 1);
-    if (score >= 0.75 && (!best || score > best.score)) best = { area, score };
-  }
-  return best?.area ?? null;
+  return matchAreaCandidate(label, areas).area;
 }
 
 function titleFromHeader(header: string, areaLabel: string | null) {

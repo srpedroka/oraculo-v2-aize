@@ -2,6 +2,8 @@
 
 ## 2026-07-11
 
+- Documentos: lista e leitor ganharam rolagem contida no desktop; o modal de importação passou a usar portal no `body`, ficando centralizado na viewport mesmo com sidebar e transição de página.
+- Importação histórica reconhece equivalências empresariais de área, incluindo `Industrial` como `Produção`, mas mantém confirmação manual quando mais de uma área é plausível.
 - Histórico: prévia de conflitos no diálogo (radio para escolha de tabela; salvamento bloqueado até decidir), backup recuperável em `content.import_backup` (sem arquivo/base64 bruto), **Reabrir importação** em Documentos (nova versão, anterior preservada) e badge **Importado com revisão**.
 - Classificação de histórico estruturada (`suggest-historical-metadata` / `historical-import-structure`): devolve candidatos, tabelas com fingerprint, conflitos e avisos; período multi-ano só quando a tabela realmente expandiu (narrativa `2025`+`2030` não vira faixa); uso de IA como `historical_import_classification`. UI de conflitos fica na fatia seguinte.
 - **Importar histórico** saiu do Plano Estratégico e passou a morar em **Documentos** (`HistoricalImportDialog`): botão no cabeçalho (e no estado vazio) para owner/coordenador com área gravável; admin não importa histórico. O fluxo (arquivo/imagem, interpretar, confirmar) não grava ao só selecionar o arquivo; após salvar, o novo documento é selecionado.

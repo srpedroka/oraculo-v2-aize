@@ -1,8 +1,20 @@
 import assert from "node:assert/strict";
 import { extractHistoricalHeaderMetadata } from "../supabase/functions/_shared/historical-header.ts";
 import { buildHistoricalImportSuggestion } from "../supabase/functions/_shared/historical-import-structure.ts";
+import { matchAreaCandidate } from "../supabase/functions/_shared/area-matching.ts";
 
 const areas = [{ id: "marketing", name: "Marketing" }];
+
+const industrialMatch = matchAreaCandidate("Industrial", [{ id: "production", name: "Produção" }]);
+assert.equal(industrialMatch.area?.id, "production");
+assert.equal(industrialMatch.strategy, "semantic");
+
+const ambiguousOperations = matchAreaCandidate("Industrial", [
+  { id: "production", name: "Produção" },
+  { id: "operations", name: "Operações" },
+]);
+assert.equal(ambiguousOperations.area, null);
+assert.deepEqual(ambiguousOperations.ambiguous.map((area) => area.id), ["production", "operations"]);
 
 const realCase = extractHistoricalHeaderMetadata(
   "PLANO MENSAL DE OBJETIVOS E AÇÕES – MARKETING – ABRIL/2026 (VERSÃO FINAL AJUSTADA)\n1. CONTEXTO RÁPIDO ● Empresa: GAAM Gabinetes ● Departamento: Marketing ● Gestora: Larissa ● Mês/Ano: Abril/2026 ● Trimestre (T2 – Ativação): validar materiais\n2. OBJETIVOS DO MÊS",
