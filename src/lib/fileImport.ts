@@ -8,6 +8,15 @@ export const STRATEGIC_PLAN_FILE_ACCEPT =
 
 export const PLAN_FILE_ACCEPT = STRATEGIC_PLAN_FILE_ACCEPT;
 
+/** Histórico: mesmos documentos de texto + imagens (OCR via IA de bastidores). */
+export const HISTORICAL_FILE_ACCEPT =
+  `${STRATEGIC_PLAN_FILE_ACCEPT},.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp`;
+
+export function isHistoricalImageFile(file: File) {
+  const extension = getExtension(file.name);
+  return [".jpg", ".jpeg", ".png", ".webp"].includes(extension) || file.type.startsWith("image/");
+}
+
 interface ImportedPlanText {
   fileName: string;
   text: string;

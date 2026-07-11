@@ -1,6 +1,7 @@
 import { resolveAiFunction } from "./ai-router.ts";
-import { callModelForFunction } from "./call-for-function.ts";
+import { callModelForFunction, callModelWithImageForFunction } from "./call-for-function.ts";
 import { parseJsonObject } from "./json.ts";
+import type { ModelImageInput } from "./model.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
 
@@ -248,5 +249,101 @@ export async function suggestHistoricalMetadata(
   } catch (error) {
     console.error("Erro ao sugerir metadados historicos", error instanceof Error ? error.message : String(error));
     return fallbackSuggestion(text, params.areas, "heuristic");
+  }
+}
+
+function imageSystemPrompt(areas: AreaCandidate[]) {
+  return [
+    systemPrompt(areas),
+    "",
+    "A entrada e uma IMAGEM (foto ou captura de tela) de um documento historico.",
+    "1) Transcreva o texto legivel da imagem em portugues, sem inventar trechos ilegíveis (use [ilegivel] se precisar).",
+    "2) Com base no texto lido, preencha os metadados.",
+    'Inclua no JSON o campo "extractedText" com a transcricao completa (ate ~12000 caracteres).',
+    'Formato: {"extractedText":"...","documentType":"strategic|quarterly|monthly","area":"...","period":"...","periodFound":true|false,"title":"...","summary":"...","confidence":0.0,"lowConfidenceFields":[]}',
+  ].join("\n");
+}
+
+export async function suggestHistoricalMetadataFromImage(
+  client: Client,
+  params: {
+    orgId: string;
+    image: ModelImageInput;
+    fileName?: string | null;
+    areas: AreaCandidate[];
+  },
+): Promise<{ suggestion: HistoricalMetadataSuggestion; extractedText: string }> {
+  const aiRoute = await resolveAiFunction(client, params.orgId, "background");
+  if (!aiRoute) {
+    throw new Error("Configure a função de IA de bastidores (background) com um provedor que leia imagem (OpenAI, Anthropic ou xAI).");
+  }
+
+  const userText = [
+    `Arquivo: ${params.fileName ?? "Imagem histórica"}`,
+    "Transcreva o documento da imagem e devolva o JSON pedido no system prompt.",
+  ].join("\n");
+
+  try {
+    const result = await callModelWithImageForFunction(
+      client,
+      params.orgId,
+      "background",
+      aiRoute,
+      imageSystemPrompt(params.areas),
+      userText,
+      params.image,
+      { ...aiRoute.limits, maxTokens: Math.max(aiRoute.limits.maxTokens ?? 2000, 3500) },
+    );
+
+    await recordAiUsage({
+      client,
+      orgId: params.orgId,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
+      channel: "web",
+      usage: result.usage,
+      settings: aiRoute.legacySettings,
+      metadata: {
+        aiFunction: "background",
+        action: "historical_image_import",
+        fileName: params.fileName ?? null,
+      },
+    });
+
+    const parsed = parseJsonObject(result.text);
+    const rawExtracted = String(parsed?.extractedText ?? parsed?.extracted_text ?? "").trim() || String(result.text ?? "").trim();
+    const normalizedExtracted = rawExtracted
+      .replace(/\r\n?/g, "\n")
+      .replace(/\u00a0/g, " ")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{4,}/g, "\n\n\n")
+      .trim()
+      .slice(0, 120_000);
+
+    if (!normalizedExtracted) {
+      throw new Error("Não consegui ler texto nesta imagem. Envie uma foto mais nítida ou um PDF/DOCX com texto.");
+    }
+
+    if (!parsed) {
+      return {
+        extractedText: normalizedExtracted,
+        suggestion: fallbackSuggestion(normalizedExtracted, params.areas, "heuristic"),
+      };
+    }
+
+    return {
+      extractedText: normalizedExtracted,
+      suggestion: sanitizeAiSuggestion(parsed, normalizedExtracted, params.areas),
+    };
+  } catch (error) {
+    if (error instanceof Error && /imagem|image|vision|não aceita|indispon/i.test(error.message)) {
+      throw error;
+    }
+    console.error("Erro ao importar historico por imagem", error instanceof Error ? error.message : String(error));
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Não foi possível ler a imagem do histórico. Use JPG, PNG ou WEBP, ou importe PDF/DOCX.",
+    );
   }
 }

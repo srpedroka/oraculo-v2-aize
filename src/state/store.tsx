@@ -96,9 +96,10 @@ type AppAction =
   | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null }
   | {
       type: "suggest_historical_metadata";
-      rawText: string;
+      rawText?: string;
       fileName?: string | null;
-      onSuccess?: (suggestion: HistoricalMetadataSuggestion) => void;
+      image?: { mimeType: "image/jpeg" | "image/png"; base64: string } | null;
+      onSuccess?: (result: { suggestion: HistoricalMetadataSuggestion; extractedText?: string }) => void;
       onError?: (message: string) => void;
     }
   | {
@@ -1793,12 +1794,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (action.type === "suggest_historical_metadata") {
         void callEdgeFunction("suggest-historical-metadata", {
           orgId,
-          rawText: action.rawText,
+          rawText: action.rawText ?? "",
           fileName: action.fileName ?? null,
+          image: action.image ?? null,
         })
           .then((result) => {
             queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
-            action.onSuccess?.((result as { suggestion: HistoricalMetadataSuggestion }).suggestion);
+            const payload = result as { suggestion: HistoricalMetadataSuggestion; extractedText?: string };
+            action.onSuccess?.(payload);
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível interpretar o histórico.");

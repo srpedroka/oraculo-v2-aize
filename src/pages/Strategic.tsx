@@ -5,7 +5,8 @@ import { Button } from "../components/ui/Button";
 import { LineageTag } from "../components/ui/LineageTag";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
-import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/fileImport";
+import { HISTORICAL_FILE_ACCEPT, importStrategicPlanFile, isHistoricalImageFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/fileImport";
+import { readKpiImage } from "../lib/kpiSpreadsheet";
 import { formatDate } from "../lib/format";
 import { reviewPastedPlan, type PastedPlanReview } from "../lib/oracle";
 import { useAppState } from "../state/store";
@@ -217,6 +218,36 @@ export function Strategic() {
     setHistoricalFeedback(null);
 
     try {
+      if (isHistoricalImageFile(file)) {
+        if (!isOwner && !writableHistoricalAreas.length) {
+          throw new Error("Seu usuário precisa ter uma área coordenada para importar histórico.");
+        }
+        const imported = await readKpiImage(file);
+        setHistoricalFileName(imported.fileName);
+        setHistoricalFeedback("Lendo a imagem com o Oráculo...");
+        await new Promise<void>((resolve, reject) => {
+          dispatch({
+            type: "suggest_historical_metadata",
+            rawText: "",
+            fileName: imported.fileName,
+            image: imported.image,
+            onSuccess: (result) => {
+              const text = String(result.extractedText ?? "").trim();
+              if (!text) {
+                reject(new Error("Não consegui ler texto nesta imagem. Tente outra foto ou um PDF/DOCX."));
+                return;
+              }
+              setHistoricalText(text);
+              applyHistoricalSuggestion(result.suggestion);
+              setHistoricalFeedback("Imagem lida. Confira o texto e a sugestão antes de salvar.");
+              resolve();
+            },
+            onError: (message) => reject(new Error(message)),
+          });
+        });
+        return;
+      }
+
       const imported = await importStrategicPlanFile(file);
       setHistoricalText(imported.text);
       setHistoricalFileName(imported.fileName);
@@ -320,9 +351,9 @@ export function Strategic() {
       type: "suggest_historical_metadata",
       rawText,
       fileName: historicalFileName,
-      onSuccess: (suggestion) => {
+      onSuccess: (result) => {
         setSuggestingHistorical(false);
-        applyHistoricalSuggestion(suggestion);
+        applyHistoricalSuggestion(result.suggestion);
       },
       onError: (message) => {
         setSuggestingHistorical(false);
@@ -551,7 +582,7 @@ export function Strategic() {
               <div>
                 <p className="text-sm font-semibold text-text">Documento histórico</p>
                 <p className="mt-1 text-xs leading-5 text-text-secondary">
-                  O histórico fica em Documentos e não cria objetivos ativos.
+                  O histórico fica em Documentos e não cria objetivos ativos. Aceita PDF, PPTX, DOCX, TXT e imagens JPG/PNG/WEBP.
                 </p>
               </div>
               <label
@@ -569,8 +600,8 @@ export function Strategic() {
                 <input
                   className="sr-only"
                   type="file"
-                  accept={STRATEGIC_PLAN_FILE_ACCEPT}
-                  disabled={importingHistorical}
+                  accept={HISTORICAL_FILE_ACCEPT}
+                  disabled={importingHistorical || historicalBusy}
                   onChange={(event) => {
                     void handleHistoricalFileImport(event);
                   }}

@@ -867,6 +867,14 @@ Verifique secrets no Supabase:
 
 Nunca copie esses valores para o frontend.
 
+## Importar histórico (Plano Estratégico)
+
+1. Abra **Plano Estratégico › Histórico** (ou a aba de importar histórico).
+2. Cole texto **ou** use **Importar arquivo**: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP.
+3. Imagem: o navegador redimensiona e envia JPEG à `suggest-historical-metadata`; a IA de bastidores precisa ser OpenAI, Anthropic ou xAI (visão). O texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
+4. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; só entra em Documentos como `origin = historical`. A mídia da imagem **não** é guardada.
+5. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
+
 ## Importar planilha de KPIs
 
 O editor do Dashboard permite que `owner` e `admin` importem `.xlsx`, `.xls`, `.csv`, JPG, PNG ou WEBP com dados de Meta e Atingido.
