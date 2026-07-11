@@ -311,7 +311,7 @@ export interface KpiSpreadsheetSuggestion {
   source: "ai_background" | "unavailable";
 }
 
-export type KpiImportKind = "spreadsheet" | "image";
+export type KpiImportKind = "spreadsheet" | "image" | "history";
 
 export interface KpiImportImage {
   mimeType: "image/jpeg" | "image/png";
@@ -323,6 +323,18 @@ export interface KpiImportInput {
   fileName: string;
   rawText?: string;
   image?: KpiImportImage;
+  /** Varre plan_documents históricos da empresa em busca de números de KPI. */
+  fromHistory?: boolean;
+  /** No resgate do histórico, só propõe meses ainda sem Meta/Atingido (padrão true no servidor). */
+  onlyGaps?: boolean;
+}
+
+export interface KpiHistoryDocumentRef {
+  id: string;
+  title: string;
+  period: string | null;
+  type: string | null;
+  excerptChars: number;
 }
 
 export type OracleMode = "normal" | "minimized" | "expanded";

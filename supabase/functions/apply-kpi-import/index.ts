@@ -28,7 +28,9 @@ function asText(value: unknown, maxLength = 10_000) {
 }
 
 function inputKind(value: unknown): KpiImportKind {
-  return value === "image" ? "image" : "spreadsheet";
+  if (value === "image") return "image";
+  if (value === "history") return "history";
+  return "spreadsheet";
 }
 
 function mapDefinition(row: any): KpiDefinition {
@@ -58,7 +60,7 @@ function historyPeriod(rows: AppliedKpiRow[]) {
 }
 
 function historyRaw(rows: AppliedKpiRow[], fileName: string, kind: KpiImportKind) {
-  const source = kind === "image" ? "imagem" : "planilha";
+  const source = kind === "image" ? "imagem" : kind === "history" ? "históricos da empresa" : "planilha";
   const lines = rows.map((row) => {
     const target = row.targetStageLabel ?? displayValue(row.targetValue, row.unit);
     return `${KPI_MONTHS[row.month - 1]} ${row.year} · ${row.label} · Meta: ${target} · Atingido: ${displayValue(row.actualValue, row.unit)}`;

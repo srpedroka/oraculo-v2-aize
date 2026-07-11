@@ -30,6 +30,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
   const [kpiEditorOpen, setKpiEditorOpen] = useState(false);
+  const [kpiEditorScanHistory, setKpiEditorScanHistory] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const closePeriod = previousMonthPeriod();
   const hasData = state.objectives.length > 0;
@@ -128,7 +129,19 @@ export function Dashboard() {
         </Card>
       ) : null}
 
-      <KpiResultBlock kpis={state.executiveKpis} values={state.kpiValues} canEdit={canEditDashboard} onEdit={() => setKpiEditorOpen(true)} />
+      <KpiResultBlock
+        kpis={state.executiveKpis}
+        values={state.kpiValues}
+        canEdit={canEditDashboard}
+        onEdit={() => {
+          setKpiEditorScanHistory(false);
+          setKpiEditorOpen(true);
+        }}
+        onRescueHistory={() => {
+          setKpiEditorScanHistory(true);
+          setKpiEditorOpen(true);
+        }}
+      />
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -211,7 +224,15 @@ export function Dashboard() {
         </div>
       </section>
       {editingObjective ? <ObjectiveEditDialog objective={editingObjective} onClose={() => setEditingObjective(null)} /> : null}
-      {kpiEditorOpen ? <KpiEditorDialog onClose={() => setKpiEditorOpen(false)} /> : null}
+      {kpiEditorOpen ? (
+        <KpiEditorDialog
+          autoScanHistory={kpiEditorScanHistory}
+          onClose={() => {
+            setKpiEditorOpen(false);
+            setKpiEditorScanHistory(false);
+          }}
+        />
+      ) : null}
       {builderOpen ? <ObjectiveBuilder level="strategic" onClose={() => setBuilderOpen(false)} /> : null}
     </div>
   );

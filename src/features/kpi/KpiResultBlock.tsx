@@ -1,4 +1,4 @@
-import { Activity, Banknote, Factory, Landmark, Link2, Pencil } from "lucide-react";
+import { Activity, Banknote, Factory, History, Landmark, Link2, Pencil } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import {
@@ -36,6 +36,8 @@ interface KpiResultBlockProps {
   values: KpiMonthlyValue[];
   canEdit?: boolean;
   onEdit?: () => void;
+  /** Abre o editor já varrendo documentos históricos em busca de números. */
+  onRescueHistory?: () => void;
 }
 
 function badgeClass(value: number | null) {
@@ -228,7 +230,7 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
   );
 }
 
-export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiResultBlockProps) {
+export function KpiResultBlock({ kpis, values, canEdit = false, onEdit, onRescueHistory }: KpiResultBlockProps) {
   const { state } = useAppState();
   const { year, month: focusMonth } = latestClosedKpiPeriod();
   const currentPeriod = `${KPI_MONTHS[currentMonth() - 1]} ${currentYear()}`;
@@ -238,6 +240,7 @@ export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiRes
     const value = values.find((item) => item.kpiId === kpi.id && item.year === year && item.month === focusMonth);
     return value?.actualValue === null || value?.actualValue === undefined;
   });
+  const historicalCount = state.planDocuments.filter((document) => document.origin === "historical" && !document.archivedAt).length;
 
   return (
     <section className="space-y-4">
@@ -249,12 +252,22 @@ export function KpiResultBlock({ kpis, values, canEdit = false, onEdit }: KpiRes
           </div>
           <p className="mt-1 text-sm text-text-secondary">
             {hasPendingClose ? `${closedPeriod} aguardando fechamento` : `Último mês fechado: ${closedPeriod}`} · {currentPeriod} em andamento
+            {historicalCount ? ` · ${historicalCount} histórico(s) disponível(is) para resgate` : ""}
           </p>
         </div>
-        {canEdit && onEdit ? (
-          <Button variant="ghost" size="sm" icon={Pencil} onClick={onEdit}>
-            Lançar / Editar
-          </Button>
+        {canEdit ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {onRescueHistory ? (
+              <Button variant="ghost" size="sm" icon={History} onClick={onRescueHistory} title="Lê documentos históricos e propõe lançamentos que ainda faltam">
+                Resgatar do histórico
+              </Button>
+            ) : null}
+            {onEdit ? (
+              <Button variant="ghost" size="sm" icon={Pencil} onClick={onEdit}>
+                Lançar / Editar
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

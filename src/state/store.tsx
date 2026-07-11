@@ -225,7 +225,9 @@ interface AppContextValue {
   testAiProviderKey: (provider: AiProvider) => Promise<AiSettingsSaveResult>;
   testAiFunction: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
   saveOrgTone: (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">) => Promise<OrgTone>;
-  suggestKpiSpreadsheet: (input: KpiImportInput) => Promise<KpiSpreadsheetSuggestion>;
+  suggestKpiSpreadsheet: (
+    input: KpiImportInput,
+  ) => Promise<{ suggestion: KpiSpreadsheetSuggestion; historyDocuments?: import("../types").KpiHistoryDocumentRef[]; fromHistory?: boolean }>;
   applyKpiSpreadsheetSuggestion: (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind }) => Promise<number>;
 }
 
@@ -2276,10 +2278,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!orgId) throw new Error("Empresa obrigatória");
       const result = await callEdgeFunction("suggest-kpi-spreadsheet", {
         orgId,
-        ...input,
-      }) as { suggestion: KpiSpreadsheetSuggestion };
+        inputKind: input.kind,
+        fileName: input.fileName,
+        rawText: input.rawText,
+        image: input.image,
+        fromHistory: input.fromHistory ?? false,
+        onlyGaps: input.onlyGaps,
+      }) as {
+        suggestion: KpiSpreadsheetSuggestion;
+        historyDocuments?: import("../types").KpiHistoryDocumentRef[];
+        fromHistory?: boolean;
+      };
       queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
-      return result.suggestion;
+      return result;
     },
     [orgId, queryClient],
   );

@@ -877,6 +877,14 @@ Nunca copie esses valores para o frontend.
 6. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
 7. Se o objetivo for alimentar os cards de Resultado (KPI), use o import de planilha/imagem no Dashboard — o histórico não grava `kpi_monthly_values`.
 
+## Resgatar KPIs a partir do histórico
+
+1. Importe documentos com números (ex. faturamento mensal multi-ano) em **Plano Estratégico › Histórico** e salve.
+2. No **Dashboard › Resultado**, owner/admin clica **Resgatar do histórico** (ou em Lançar KPIs › mesmo botão).
+3. O servidor lê até 30 históricos com texto, a IA de bastidores extrai linhas de KPI e **omite o que já tem Meta/Atingido** no Dashboard.
+4. Confira a prévia (anos, indicadores, valores) e **Aplique**. Nada grava sem confirmação.
+5. Se não achar nada: confira se o histórico tem texto expandido (`Janeiro 2025 | R$ …`) e se o KPI correspondente existe (Faturamento, Margem, Produção, Caixa).
+
 ## Importar planilha de KPIs
 
 O editor do Dashboard permite que `owner` e `admin` importem `.xlsx`, `.xls`, `.csv`, JPG, PNG ou WEBP com dados de Meta e Atingido.

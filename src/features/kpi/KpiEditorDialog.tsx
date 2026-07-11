@@ -1,14 +1,16 @@
-import { AlertTriangle, FileSpreadsheet, Save, Wand2, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { AlertTriangle, FileSpreadsheet, History, Save, Wand2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { isKpiImageFile, KPI_IMPORT_ACCEPT, readKpiImage, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
 import { cashDeltas, formatKpiValue, KPI_MONTHS, ladderLabel, movingAverage3, orderedLadder } from "../../lib/kpi";
 import { useAppState } from "../../state/store";
-import type { ExecutiveKpi, KpiImportKind, KpiMonthlyValue, KpiSpreadsheetSuggestion } from "../../types";
+import type { ExecutiveKpi, KpiHistoryDocumentRef, KpiImportKind, KpiMonthlyValue, KpiSpreadsheetSuggestion } from "../../types";
 
 interface KpiEditorDialogProps {
   onClose: () => void;
+  /** Abre já disparando varredura dos plan_documents históricos. */
+  autoScanHistory?: boolean;
 }
 
 interface MonthDraft {
@@ -81,7 +83,7 @@ function monthValuesFromDraft(kpi: ExecutiveKpi, draft: KpiDraft, year: number) 
   }));
 }
 
-export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
+export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorDialogProps) {
   const { state, dispatch, suggestKpiSpreadsheet, applyKpiSpreadsheetSuggestion } = useAppState();
   const year = new Date().getFullYear();
   const orderedKpis = useMemo(() => [...state.executiveKpis].sort((left, right) => left.sortOrder - right.sortOrder), [state.executiveKpis]);
@@ -94,8 +96,10 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
   const [applyingImport, setApplyingImport] = useState(false);
   const [spreadsheetSuggestion, setSpreadsheetSuggestion] = useState<KpiSpreadsheetSuggestion | null>(null);
   const [importSource, setImportSource] = useState<{ fileName: string; kind: KpiImportKind } | null>(null);
+  const [historyDocs, setHistoryDocs] = useState<KpiHistoryDocumentRef[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const spreadsheetInputRef = useRef<HTMLInputElement>(null);
+  const historyScanStarted = useRef(false);
   const activeKpi = orderedKpis.find((kpi) => kpi.id === activeKpiId) ?? orderedKpis[0] ?? null;
   const activeDraft = activeKpi ? drafts[activeKpi.id] : null;
 
@@ -169,6 +173,7 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
   function discardImportSuggestion() {
     setSpreadsheetSuggestion(null);
     setImportSource(null);
+    setHistoryDocs([]);
   }
 
   async function importKpiFile(file: File | null) {
@@ -182,16 +187,17 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
         ? await readKpiImage(file)
         : await readKpiSpreadsheet(file);
       const image = "image" in imported;
-      const suggestion = image
+      const result = image
         ? await suggestKpiSpreadsheet({ kind: "image", fileName: imported.fileName, image: imported.image })
         : await suggestKpiSpreadsheet({ kind: "spreadsheet", fileName: imported.fileName, rawText: imported.rawText });
+      const suggestion = result.suggestion;
       if (!suggestion.rows.length) {
         setMessage(suggestion.warnings[0] ?? "Não encontrei lançamentos de Meta ou Atingido no arquivo.");
         return;
       }
       setSpreadsheetSuggestion({
         ...suggestion,
-        warnings: !image && imported.truncated
+        warnings: !image && "truncated" in imported && imported.truncated
           ? ["A planilha é grande; a leitura foi limitada às primeiras abas e linhas.", ...suggestion.warnings]
           : suggestion.warnings,
       });
@@ -202,6 +208,46 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
       setImporting(false);
     }
   }
+
+  async function scanHistoryForKpis() {
+    setImporting(true);
+    setMessage(null);
+    discardImportSuggestion();
+    try {
+      const result = await suggestKpiSpreadsheet({
+        kind: "history",
+        fileName: "Históricos da empresa",
+        fromHistory: true,
+        onlyGaps: true,
+      });
+      setHistoryDocs(result.historyDocuments ?? []);
+      if (!result.suggestion.rows.length) {
+        setMessage(
+          result.suggestion.warnings[0]
+            ?? (result.historyDocuments?.length
+              ? "Li os históricos, mas não achei lançamentos novos de KPI (ou já estão no Dashboard)."
+              : "Não há documentos históricos com texto para analisar."),
+        );
+        return;
+      }
+      setSpreadsheetSuggestion(result.suggestion);
+      setImportSource({ fileName: "Históricos da empresa", kind: "history" });
+      setMessage(
+        `Encontrei ${result.suggestion.rows.length} lançamento(s) possível(is) em ${result.historyDocuments?.length ?? 0} histórico(s). Confira a prévia antes de aplicar.`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível analisar os históricos.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!autoScanHistory || historyScanStarted.current) return;
+    historyScanStarted.current = true;
+    void scanHistoryForKpis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScanHistory]);
 
   async function applySpreadsheetSuggestion() {
     if (!spreadsheetSuggestion || !importSource) return;
@@ -286,8 +332,11 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
                   void importKpiFile(file ?? null);
                 }}
               />
+              <Button variant="ghost" icon={History} onClick={() => void scanHistoryForKpis()} disabled={importing}>
+                {importing && importSource?.kind === "history" ? "Lendo históricos" : "Resgatar do histórico"}
+              </Button>
               <Button variant="ghost" icon={FileSpreadsheet} onClick={() => spreadsheetInputRef.current?.click()} disabled={importing}>
-                {importing ? "Lendo arquivo" : "Importar planilha ou imagem"}
+                {importing && importSource?.kind !== "history" ? "Lendo arquivo" : "Importar planilha ou imagem"}
               </Button>
               <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
             </div>
@@ -320,9 +369,15 @@ export function KpiEditorDialog({ onClose }: KpiEditorDialogProps) {
                 <div>
                   <p className="text-sm font-semibold text-text">
                     Prévia da importação · {suggestionYears(spreadsheetSuggestion).join(", ")}
-                    {importSource?.kind === "image" ? " · Imagem" : " · Planilha"}
+                    {importSource?.kind === "image" ? " · Imagem" : importSource?.kind === "history" ? " · Históricos" : " · Planilha"}
                   </p>
                   <p className="mt-1 text-sm text-text-secondary">{spreadsheetSuggestion.summary}</p>
+                  {historyDocs.length ? (
+                    <p className="mt-1 text-xs text-text-tertiary">
+                      Fontes: {historyDocs.slice(0, 4).map((doc) => doc.title).join(" · ")}
+                      {historyDocs.length > 4 ? ` · +${historyDocs.length - 4}` : ""}
+                    </p>
+                  ) : null}
                 </div>
                 <Button variant="quiet" size="icon" icon={X} onClick={discardImportSuggestion} aria-label="Descartar prévia" />
               </div>

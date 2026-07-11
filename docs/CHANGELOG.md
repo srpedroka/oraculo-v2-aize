@@ -9,6 +9,7 @@
 - Histórico normaliza tabelas multi-ano (ex.: Mês | TOTAL 2025 | TOTAL 2026) para linhas `Janeiro 2025 | valor` / `Janeiro 2026 | valor` antes de gravar, com período em faixa (`2025–2026`) e prévia editável — a visualização em colunas fica no arquivo original; o texto canônico do histórico fica separado por ano.
 - Corrigido bug na importação de histórico por imagem: se a IA devolvia `normalizedText: ""`, a UI mostrava o JSON de metadados em vez da tabela; agora campos vazios são ignorados, JSON de metadados não entra no texto canônico, e a expansão multi-ano exige separador tabular real.
 - Histórico multi-ano: removida duplicação de ano no rótulo (`Janeiro 2025 2025` → `Janeiro 2025`); se o texto já vem expandido, não reprocessa a tabela.
+- Dashboard › Resultado: botão **Resgatar do histórico** varre `plan_documents` históricos, propõe lançamentos de KPI ainda em lacuna e reutiliza a prévia/confirmação do editor (sem redigitar o que já está no histórico).
 
 ## 2026-07-10
 
