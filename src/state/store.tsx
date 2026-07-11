@@ -131,8 +131,11 @@ type AppAction =
       source?: string | null;
       note?: string | null;
       title?: string | null;
+      summary?: string | null;
       classification?: Record<string, unknown> | null;
-      onSuccess?: (result?: { document?: { id: string } }) => void;
+      importBackup?: Record<string, unknown> | null;
+      savedCandidateId?: string | null;
+      onSuccess?: (result?: { document?: { id: string }; warning?: string | null }) => void;
       onError?: (message: string) => void;
     }
   | {
@@ -1866,11 +1869,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           source: action.source ?? null,
           note: action.note ?? null,
           title: action.title ?? null,
+          summary: action.summary ?? null,
           classification: action.classification ?? null,
+          importBackup: action.importBackup ?? null,
+          savedCandidateId: action.savedCandidateId ?? null,
         })
           .then((result) => {
             queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
-            action.onSuccess?.(result as { document?: { id: string } } | undefined);
+            action.onSuccess?.(result as { document?: { id: string }; warning?: string | null } | undefined);
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível importar o histórico.");

@@ -17,6 +17,8 @@ const MAX_NOTE_LENGTH = 1_000;
 const MAX_SOURCE_LENGTH = 180;
 const MAX_PERIOD_LENGTH = 80;
 const MAX_LOW_CONFIDENCE_FIELDS = 8;
+const MAX_BACKUP_CHARS = 200_000;
+const MAX_BATCH_DOCS = 12;
 
 function asText(value: unknown) {
   return String(value ?? "").trim();
@@ -93,6 +95,136 @@ function normalizeRawText(value: unknown) {
     .trim();
 }
 
+function stripUnsafeBinary(value: unknown) {
+  const text = String(value ?? "");
+  // Nunca persistir base64/data-url de imagem.
+  if (/^data:image\//i.test(text) || /base64,/i.test(text.slice(0, 200))) return "";
+  return text;
+}
+
+function normalizeImportBackup(value: unknown, savedCandidateId: string): { backup: Record<string, unknown> | null; warning: string | null } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { backup: null, warning: null };
+  const record = value as Record<string, unknown>;
+
+  const candidates = Array.isArray(record.candidates)
+    ? record.candidates
+        .slice(0, MAX_BATCH_DOCS)
+        .map((item, index) => {
+          if (!item || typeof item !== "object") return null;
+          const row = item as Record<string, unknown>;
+          return {
+            id: optionalText(row.id, 80) ?? `doc_${index + 1}`,
+            title: optionalText(row.title, 100),
+            normalizedText: normalizeRawText(stripUnsafeBinary(row.normalizedText)).slice(0, 40_000),
+            tableIds: Array.isArray(row.tableIds)
+              ? row.tableIds.map((id) => optionalText(id, 40)).filter((id): id is string => Boolean(id)).slice(0, 20)
+              : [],
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    : [];
+
+  const tables = Array.isArray(record.tables)
+    ? record.tables.slice(0, 20).map((item, index) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        return {
+          id: optionalText(row.id, 40) ?? `table_${index + 1}`,
+          label: optionalText(row.label, 120) ?? `Tabela ${index + 1}`,
+          headers: Array.isArray(row.headers)
+            ? row.headers.map((h) => optionalText(h, 80)).filter((h): h is string => Boolean(h)).slice(0, 12)
+            : [],
+          normalizedText: normalizeRawText(stripUnsafeBinary(row.normalizedText)).slice(0, 12_000),
+          years: Array.isArray(row.years)
+            ? row.years.map((y) => Number(y)).filter((y) => Number.isInteger(y) && y >= 2000 && y <= 2100).slice(0, 20)
+            : [],
+          rowCount: Math.max(0, Math.min(500, Number(row.rowCount) || 0)),
+          fingerprint: optionalText(row.fingerprint, 40) ?? "",
+        };
+      }).filter((item): item is NonNullable<typeof item> => Boolean(item))
+    : [];
+
+  const conflicts = Array.isArray(record.conflicts)
+    ? record.conflicts.slice(0, 30).map((item, index) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        return {
+          id: optionalText(row.id, 60) ?? `conflict_${index + 1}`,
+          kind: optionalText(row.kind, 40) ?? "value",
+          message: optionalText(row.message, 320) ?? "Conflito a revisar",
+          candidateIds: Array.isArray(row.candidateIds)
+            ? row.candidateIds.map((id) => optionalText(id, 40)).filter((id): id is string => Boolean(id)).slice(0, 12)
+            : [],
+          tableIds: Array.isArray(row.tableIds)
+            ? row.tableIds.map((id) => optionalText(id, 40)).filter((id): id is string => Boolean(id)).slice(0, 20)
+            : [],
+          required: Boolean(row.required),
+        };
+      }).filter((item): item is NonNullable<typeof item> => Boolean(item))
+    : [];
+
+  const decisions = Array.isArray(record.decisions)
+    ? record.decisions.slice(0, 30).map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        return {
+          conflictId: optionalText(row.conflictId, 60),
+          selectedCandidateId: optionalText(row.selectedCandidateId, 40) ?? undefined,
+          selectedTableId: optionalText(row.selectedTableId, 40) ?? undefined,
+        };
+      }).filter((item): item is NonNullable<typeof item> => Boolean(item && item.conflictId))
+    : [];
+
+  let extractedText = normalizeRawText(stripUnsafeBinary(record.extractedText)).slice(0, MAX_TEXT_LENGTH);
+  const sourceKindRaw = optionalText(record.sourceKind, 20);
+  const sourceKind = sourceKindRaw === "image" || sourceKindRaw === "document" || sourceKindRaw === "text" ? sourceKindRaw : "text";
+
+  const backup: Record<string, unknown> = {
+    schemaVersion: 1,
+    batchId: optionalText(record.batchId, 80) ?? crypto.randomUUID(),
+    sourceName: optionalText(record.sourceName, MAX_SOURCE_LENGTH),
+    sourceKind,
+    extractedText,
+    candidates,
+    tables,
+    conflicts,
+    decisions,
+    savedCandidateId: optionalText(record.savedCandidateId, 40) ?? savedCandidateId,
+  };
+
+  let serialized = JSON.stringify(backup);
+  let warning: string | null = null;
+  if (serialized.length > MAX_BACKUP_CHARS) {
+    // Trunca prévias de tabelas/candidatos e preserva decisões + fingerprints.
+    backup.extractedText = extractedText.slice(0, 40_000);
+    backup.tables = tables.map((table) => ({
+      ...table,
+      normalizedText: table.normalizedText.slice(0, 800),
+    }));
+    backup.candidates = candidates.map((candidate) => ({
+      ...candidate,
+      normalizedText: candidate.normalizedText.slice(0, 2_000),
+    }));
+    serialized = JSON.stringify(backup);
+    warning = "Backup truncado para caber no limite; decisões e fingerprints preservados.";
+    if (serialized.length > MAX_BACKUP_CHARS) {
+      backup.extractedText = String(backup.extractedText).slice(0, 10_000);
+      backup.tables = (backup.tables as Array<Record<string, unknown>>).map((table) => ({
+        id: table.id,
+        label: table.label,
+        years: table.years,
+        rowCount: table.rowCount,
+        fingerprint: table.fingerprint,
+        headers: table.headers,
+        normalizedText: "",
+      }));
+      warning = "Backup truncado de forma agressiva; decisões e fingerprints preservados.";
+    }
+  }
+
+  return { backup, warning };
+}
+
 async function loadArea(client: any, orgId: string, areaId: string | null) {
   if (!areaId) return null;
   const { data, error } = await client
@@ -136,11 +268,14 @@ serve(async (req) => {
     const areaId = payload.areaId ? asText(payload.areaId) : null;
     const documentType = asText(payload.documentType) as PlanDocumentType;
     const period = asText(payload.period);
-    const rawText = normalizeRawText(payload.rawText);
+    const rawText = normalizeRawText(stripUnsafeBinary(payload.rawText));
     const source = optionalText(payload.source, MAX_SOURCE_LENGTH);
     const note = optionalText(payload.note, MAX_NOTE_LENGTH);
     const requestedTitle = optionalText(payload.title, 120);
+    const summary = optionalText(payload.summary, 320);
     const classification = normalizeClassification(payload.classification);
+    const savedCandidateId = optionalText(payload.savedCandidateId, 40) ?? "doc_1";
+    const { backup: importBackup, warning: backupWarning } = normalizeImportBackup(payload.importBackup, savedCandidateId);
 
     if (!orgId) throw new Error("Empresa ausente");
     if (!DOCUMENT_TYPES.has(documentType)) throw new Error("Tipo de documento inválido");
@@ -166,7 +301,7 @@ serve(async (req) => {
     const areaLabel = area?.name ? ` · ${area.name}` : "";
     const title = requestedTitle ?? `${TYPE_LABEL[documentType]} histórico${areaLabel} · ${period}`;
     const importedAt = new Date().toISOString();
-    const content = {
+    const content: Record<string, unknown> = {
       empresa: organization.name ?? "Empresa",
       area: area?.name ?? null,
       periodo: period,
@@ -174,9 +309,14 @@ serve(async (req) => {
       raw: rawText,
       source,
       note,
+      summary,
       classification,
       imported_at: importedAt,
     };
+    if (importBackup) {
+      content.import_backup = importBackup;
+      if (backupWarning) content.import_backup_warning = backupWarning;
+    }
 
     const { data, error } = await client
       .from("plan_documents")
@@ -196,7 +336,7 @@ serve(async (req) => {
       .single();
     if (error) throw error;
 
-    return jsonResponse({ document: data });
+    return jsonResponse({ document: data, warning: backupWarning });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Não foi possível salvar o histórico" }, 400);
   }

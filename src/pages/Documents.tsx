@@ -1,4 +1,4 @@
-import { Archive, FileText, Printer, Upload } from "lucide-react";
+import { Archive, FileText, Printer, RefreshCw, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PlanDocumentView } from "../components/PlanDocument";
@@ -40,6 +40,8 @@ export function Documents() {
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [reopenBackup, setReopenBackup] = useState<Record<string, unknown> | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const isOwner = state.currentMembership?.role === "owner";
   const canImportHistory = useMemo(() => {
@@ -74,6 +76,15 @@ export function Documents() {
           state.currentMembership?.role === "coordinator" &&
           state.areas.some((area) => area.id === selectedDocument.areaId && area.coordinatorId === state.currentMembership?.id))),
   );
+  const selectedImportBackup =
+    selectedDocument?.origin === "historical" &&
+    selectedDocument.content &&
+    typeof selectedDocument.content === "object" &&
+    selectedDocument.content.import_backup &&
+    typeof selectedDocument.content.import_backup === "object"
+      ? (selectedDocument.content.import_backup as Record<string, unknown>)
+      : null;
+  const canReopenImport = Boolean(canImportHistory && selectedImportBackup);
 
   function archiveDocument(reason: string) {
     if (!selectedDocument) return;
@@ -112,12 +123,30 @@ export function Documents() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canImportHistory ? (
-            <Button icon={Upload} onClick={() => setImportOpen(true)}>
+            <Button
+              icon={Upload}
+              onClick={() => {
+                setReopenBackup(null);
+                setImportOpen(true);
+              }}
+            >
               Importar histórico
             </Button>
           ) : null}
           {selectedDocument ? (
             <>
+              {canReopenImport ? (
+                <Button
+                  variant="ghost"
+                  icon={RefreshCw}
+                  onClick={() => {
+                    setReopenBackup(selectedImportBackup);
+                    setImportOpen(true);
+                  }}
+                >
+                  Reabrir importação
+                </Button>
+              ) : null}
               {canManageSelected ? (
                 <Button
                   variant="quiet"
@@ -142,6 +171,8 @@ export function Documents() {
           ) : null}
         </div>
       </div>
+
+      {statusMessage ? <p className="text-sm leading-6 text-[#1D7A3E]">{statusMessage}</p> : null}
 
       <Card>
         <div className="grid gap-3 md:grid-cols-3">
@@ -228,7 +259,13 @@ export function Documents() {
           </p>
           {canImportHistory ? (
             <div className="mt-4 flex justify-center">
-              <Button icon={Upload} onClick={() => setImportOpen(true)}>
+              <Button
+                icon={Upload}
+                onClick={() => {
+                  setReopenBackup(null);
+                  setImportOpen(true);
+                }}
+              >
                 Importar histórico
               </Button>
             </div>
@@ -253,9 +290,18 @@ export function Documents() {
       ) : null}
       <HistoricalImportDialog
         open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onSaved={(documentId) => {
+        initialBackup={reopenBackup}
+        onClose={() => {
+          setImportOpen(false);
+          setReopenBackup(null);
+        }}
+        onSaved={(documentId, options) => {
           if (documentId) setSelectedId(documentId);
+          setStatusMessage(
+            options?.newVersion
+              ? "Nova versão salva. A anterior continua no histórico."
+              : "Histórico salvo em Documentos.",
+          );
         }}
       />
     </div>

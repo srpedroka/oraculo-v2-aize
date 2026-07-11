@@ -167,6 +167,8 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
   const rawHistory = asText(content.raw);
   const historicalSource = asText(content.source);
   const historicalNote = asText(content.note);
+  const historicalSummary = asText(content.summary) || asText(asRecord(content.classification).summary);
+  const hasImportBackup = Boolean(content.import_backup && typeof content.import_backup === "object");
   const objectives = asArray<Record<string, unknown>>(content.objetivos);
   const context = asArray<string>(content.contexto_rapido);
   const focus = asArray<string>(content.foco_aprendizado);
@@ -184,10 +186,17 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
               <p className="mt-2 text-sm text-text-secondary">
                 {DOCUMENT_TYPE_LABEL[type]} · {asText(content.area, "Empresa")} · {asText(content.periodo, document.period)}
               </p>
+              {historicalSummary ? <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{historicalSummary}</p> : null}
+              {hasImportBackup ? (
+                <span className="mt-3 inline-flex rounded-full bg-[#F0F0F2] px-2.5 py-1 text-xs font-medium text-text-secondary">
+                  Importado com revisão
+                </span>
+              ) : null}
             </div>
             <div className="text-left text-xs leading-5 text-text-tertiary sm:text-right">
               <p>Versão {document.version}</p>
               <p>Importado como histórico</p>
+              {historicalSource ? <p className="mt-1">Fonte: {historicalSource}</p> : null}
             </div>
           </div>
         </header>
