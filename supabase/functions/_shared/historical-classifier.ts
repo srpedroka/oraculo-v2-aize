@@ -188,8 +188,39 @@ function looksLikeMonthLabel(cell: string) {
   if (!token) return false;
   if (MONTH_LABEL_BY_NORMALIZED[token]) return true;
   if (/^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/.test(token)) return true;
+  // "Janeiro 2025" ainda conta como rotulo de mes
+  const withoutYear = token.replace(/20\d{2}/g, "");
+  if (MONTH_LABEL_BY_NORMALIZED[withoutYear]) return true;
+  if (/^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/.test(withoutYear)) return true;
   const asNum = Number(token);
   return Number.isInteger(asNum) && asNum >= 1 && asNum <= 12;
+}
+
+/** Remove anos do rotulo para nao gerar "Janeiro 2025 2025". */
+function monthLabelOnly(label: string) {
+  const cleaned = String(label ?? "")
+    .replace(/\b20\d{2}\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || String(label ?? "").trim();
+}
+
+/** Ja esta no formato canonico "Janeiro 2025 | valor". */
+function looksAlreadyExpandedLine(line: string) {
+  const t = line.trim();
+  if (!t || t.startsWith("[")) return false;
+  // Mes (ou nome) + ano + pipe + valor — sem segundo ano colado no rotulo
+  return /^.+?\s+20\d{2}\s*\|\s*.+$/.test(t) && !/20\d{2}\s+20\d{2}\s*\|/.test(t);
+}
+
+function textMostlyAlreadyExpanded(text: string) {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("[Tabela expandida"));
+  if (lines.length < 2) return false;
+  const expandedCount = lines.filter((line) => looksAlreadyExpandedLine(line)).length;
+  return expandedCount >= Math.ceil(lines.length * 0.5);
 }
 
 /**
@@ -199,6 +230,15 @@ function looksLikeMonthLabel(cell: string) {
 export function expandMultiYearTables(rawText: string): { text: string; expanded: boolean; years: number[] } {
   const source = normalizeDocumentText(rawText);
   if (!source) return { text: "", expanded: false, years: [] };
+
+  // Se a IA ja devolveu mes+ano por linha, nao reprocessa (evita "Janeiro 2025 2025").
+  if (textMostlyAlreadyExpanded(source)) {
+    return {
+      text: source,
+      expanded: true,
+      years: yearsMentionedInText(source),
+    };
+  }
 
   const lines = source.split("\n");
   const out: string[] = [];
@@ -266,8 +306,19 @@ export function expandMultiYearTables(rawText: string): { text: string; expanded
             break;
           }
         }
-        const label = cells[labelIndex] ?? cells[0] ?? "";
+        // Linha ja expandida: repassa sem acrescentar outro ano.
+        if (looksAlreadyExpandedLine(rowTrim) || (cells.length === 2 && yearInHeader(cells[0] ?? "") && looksLikeMonthLabel(cells[0] ?? ""))) {
+          const cleaned = rowTrim.replace(/\b(20\d{2})\s+\1\b/g, "$1");
+          out.push(cleaned);
+          const y = yearInHeader(cells[0] ?? "") ?? yearInHeader(rowTrim);
+          if (y) yearsFound.add(y);
+          i += 1;
+          continue;
+        }
+
+        const label = monthLabelOnly(cells[labelIndex] ?? cells[0] ?? "");
         const yearsInOrder = yearColumns.map((item) => item.year);
+        // Valores: se o rotulo ja tinha ano (Janeiro 2025 | v1 | v2), cells[0] inteiro nao e so mes.
         const valueCells = cells.filter((_, index) => index !== labelIndex);
         let rowExpanded = false;
 
@@ -292,7 +343,10 @@ export function expandMultiYearTables(rawText: string): { text: string; expanded
             expandedAny = true;
           }
         }
-        if (!rowExpanded) out.push(row);
+        if (!rowExpanded) {
+          // Limpa duplicata residual "2025 2025" se a linha ja vinha quase certa.
+          out.push(row.replace(/\b(20\d{2})\s+\1\b/g, "$1"));
+        }
         i += 1;
       }
       continue;
@@ -504,7 +558,13 @@ function finalizeHistoricalText(rawCandidate: string, originalFallback: string) 
   const onlyMarker = /^\[Tabela expandida por ano[^\]]*\]\s*$/m.test(expanded.text.trim()) &&
     !/\b(20\d{2})\s*\|/.test(expanded.text) &&
     expanded.text.split("\n").filter((line) => line.trim() && !line.startsWith("[Tabela")).length === 0;
-  const text = onlyMarker ? base : expanded.text;
+  // Remove duplicata residual "Janeiro 2025 2025 |" se ainda sobrar.
+  const text = (onlyMarker ? base : expanded.text)
+    .split("\n")
+    .map((line) => line.replace(/\b(20\d{2})\s+\1\b/g, "$1").replace(/\s{2,}/g, " ").trimEnd())
+    .join("\n")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
   const years = expanded.years.length ? expanded.years : yearsMentionedInText(text);
   return {
     text,
