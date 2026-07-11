@@ -59,9 +59,21 @@ Diagnostico:
 3. verificar tabelas `organizations` e `memberships` no Supabase;
 4. confirmar se o usuario tem linha em `profiles`.
 
-## Convites por email
+## Convites e lista de Pessoas
 
-O app usa a Edge Function `invite-member`, que chama `inviteUserByEmail` no Supabase Auth. Para o email chegar de verdade, configure SMTP no painel do Supabase:
+Fluxo na tela **Configurações › Pessoas** (somente owner):
+
+1. **Cadastrar sem avisar**: desmarque “Chamar no WhatsApp agora”. Cria acesso/membership sem enviar mensagem.
+2. **Convidar na lista**: botão **Convidar** em cada pessoa (exceto você). Ordem: WhatsApp (se celular + WhatsApp da empresa ligados) → email Auth → se a conta já existir, a UI mostra um **link copiável**.
+3. **Editar**: nome e celular. Campo de celular vazio **não apaga** o número já salvo.
+4. **Área**: select na linha vincula a pessoa como coordenador da área (ou “Sem área”).
+5. **Papel**: admin/coordenador (e dono só se já for dono).
+
+A Edge Function `invite-member` é idempotente: gera link (invite ou magiclink), faz upsert de membership/perfil e **preserva `profiles.phone`** se o request não trouxer celular novo.
+
+### Convites por email (SMTP)
+
+Para o email chegar de verdade, configure SMTP no painel do Supabase:
 
 1. Acesse Supabase Auth > Emails/SMTP.
 2. Conecte um provedor transacional, por exemplo Resend, Postmark ou SendGrid.
@@ -69,7 +81,7 @@ O app usa a Edge Function `invite-member`, que chama `inviteUserByEmail` no Supa
 4. Envie um convite pela tela Configuracoes > Pessoas.
 5. Confira logs de Auth e da Edge Function `invite-member` se o email nao chegar.
 
-Sem SMTP, o vinculo pode ser criado no banco, mas o email de convite pode nao ser entregue.
+Sem SMTP, o vinculo pode ser criado no banco e o app pode devolver link copiável, mas o email de convite pode nao ser entregue.
 
 ## Remover pessoa ou arquivar área
 

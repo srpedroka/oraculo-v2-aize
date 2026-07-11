@@ -606,13 +606,15 @@ export function Settings() {
       setMemberMessage("Use o celular em formato internacional, por exemplo +5546999990000.");
       return;
     }
+    // Campo vazio = manter o celular já cadastrado (nunca apagar por omissão).
+    const phoneToSave = phone || membership.profile?.phone || null;
     const area = state.areas.find((item) => item.coordinatorId === membership.id);
     setMemberEditBusy(true);
     dispatch({
       type: "create_member",
       email,
       fullName: memberEditName.trim() || email,
-      phone: phone || null,
+      phone: phoneToSave,
       role: membership.role,
       areaId: area?.id ?? null,
       notify: false,

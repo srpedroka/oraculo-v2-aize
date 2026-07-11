@@ -2,7 +2,9 @@
 
 ## 2026-07-11
 
-- Adicionado o Perfil da empresa: o dono pesquisa a internet a partir de Configurações › Empresa, revisa uma prévia editável com fontes desmarcáveis e só grava ao confirmar. O resumo confirmado fica em `plan_documents` (`type = company_profile`) e entra como bloco permanente "PERFIL DA EMPRESA" no contexto do Oráculo (app, WhatsApp e sessões). A Edge Function `company-research` só sugere (nunca grava); a busca web usa Anthropic ou OpenAI.
+- Adicionado o Perfil da empresa: o dono pesquisa a internet a partir de Configurações › Empresa, revisa uma prévia editável com fontes desmarcáveis e só grava ao confirmar. O resumo confirmado fica em `plan_documents` (`type = company_profile`) e entra como bloco permanente "PERFIL DA EMPRESA" no contexto do Oráculo (app, WhatsApp e sessões). A Edge Function `company-research` só sugere (nunca grava); a busca web usa Anthropic ou OpenAI. Links sem protocolo (`www.gaam.com.br`) passam a ser normalizados para `https://`.
+- Aba Pessoas: botão **Convidar** sempre visível (WhatsApp se houver celular + WA ativo; senão email; se a conta já existe, devolve link copiável). Lista permite **vincular área**, **editar nome/celular** e convidar depois de cadastro silencioso.
+- Corrigido bug em que o celular dos membros parecia “apagado”: a query de `profiles` da org não carregava `phone`, e o upsert de `invite-member` agora **nunca sobrescreve** um celular existente com vazio/null.
 
 ## 2026-07-10
 

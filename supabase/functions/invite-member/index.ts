@@ -77,12 +77,24 @@ async function saveMembership(params: {
   role: string;
   areaId: string | null;
 }) {
+  // Nunca apagar celular existente: só grava phone se veio valor novo;
+  // se o request veio sem phone, reaproveita o que já está no perfil.
+  const { data: existingProfile, error: existingProfileError } = await params.client
+    .from("profiles")
+    .select("phone")
+    .eq("id", params.userId)
+    .maybeSingle();
+  if (existingProfileError) throw existingProfileError;
+
+  const nextPhone = params.phone || existingProfile?.phone || null;
+
   const profilePayload: Record<string, unknown> = {
     id: params.userId,
     full_name: params.fullName || params.email,
     email: params.email,
   };
-  if (params.phone) profilePayload.phone = params.phone;
+  // Só inclui a coluna phone quando há valor — evita limpar com null em upserts parciais.
+  if (nextPhone) profilePayload.phone = nextPhone;
 
   const { error: profileError } = await params.client.from("profiles").upsert(profilePayload);
   if (profileError) throw profileError;

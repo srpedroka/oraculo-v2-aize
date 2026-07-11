@@ -896,7 +896,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: Boolean(supabase && profileIds.length),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("profiles").select("id, full_name, email").in("id", profileIds);
+      const { data, error } = await client.from("profiles").select("id, full_name, email, phone").in("id", profileIds);
       if (error) throw error;
       return (data ?? []).map(mapProfile);
     },
