@@ -60,7 +60,17 @@ type AppAction =
   | { type: "update_area"; areaId: string; name: string; coordinatorId?: string | null }
   | { type: "archive_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "restore_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
-  | { type: "create_member"; email: string; fullName?: string; phone?: string | null; role: MembershipRole; areaId?: string | null; notify?: boolean; onSuccess?: () => void; onError?: (message: string) => void }
+  | {
+      type: "create_member";
+      email: string;
+      fullName?: string;
+      phone?: string | null;
+      role: MembershipRole;
+      areaId?: string | null;
+      notify?: boolean;
+      onSuccess?: (result?: { channel?: string; inviteLink?: string; detail?: string }) => void;
+      onError?: (message: string) => void;
+    }
   | { type: "set_member_role"; membershipId: string; role: Exclude<MembershipRole, "owner">; onSuccess?: () => void; onError?: (message: string) => void }
   | {
       type: "remove_member";
@@ -1602,9 +1612,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           notify: action.notify ?? true,
           redirectTo: window.location.origin,
         })
-          .then(() => {
+          .then((result) => {
             invalidateOrg();
-            action.onSuccess?.();
+            action.onSuccess?.(result as { channel?: string; inviteLink?: string; detail?: string } | undefined);
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível convidar a pessoa.");

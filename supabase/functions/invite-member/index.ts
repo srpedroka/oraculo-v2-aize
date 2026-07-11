@@ -114,7 +114,16 @@ serve(async (req) => {
 
   try {
     const user = await getUser(req);
-    const { orgId, email, fullName, phone = null, role = "coordinator", areaId = null, redirectTo = null, notify = true } = await req.json();
+    const {
+      orgId,
+      email,
+      fullName,
+      phone = null,
+      role = "coordinator",
+      areaId = null,
+      redirectTo = null,
+      notify = true,
+    } = await req.json();
     if (!orgId || !email) return jsonResponse({ error: "Empresa e email são obrigatórios" }, 400);
     if (phone && !/^\+[1-9][0-9]{7,14}$/.test(phone)) {
       return jsonResponse({ error: "Celular deve estar no formato internacional, por exemplo +5546999990000" }, 400);
@@ -124,56 +133,75 @@ serve(async (req) => {
     const client = serviceClient();
     const cleanFullName = String(fullName || email).trim();
     const cleanPhone = phone ? String(phone).trim() : null;
+    const cleanEmail = String(email).trim().toLowerCase();
     const inviteData = { full_name: cleanFullName, phone: cleanPhone || undefined };
     const cleanRedirect = cleanRedirectTo(redirectTo);
     const [{ data: organization, error: organizationError }, whatsappConfig] = await Promise.all([
       client.from("organizations").select("name").eq("id", orgId).maybeSingle(),
-      cleanPhone ? getWhatsAppConfig(client, orgId) : Promise.resolve(null),
+      // WhatsApp config se a org tiver WhatsApp ligado (telefone é opcional na checagem de config).
+      getWhatsAppConfig(client, orgId),
     ]);
     if (organizationError) throw organizationError;
 
-    // Convite por WhatsApp agora — precisa de telefone + WhatsApp ligado.
-    if (notify && cleanPhone && whatsappConfig) {
-      const linkData = await generateInviteLink(client, email, inviteData, cleanRedirect);
-      const invitedUser = linkData.user;
-      const inviteLink = linkData.properties?.action_link;
-      if (!invitedUser || !inviteLink) throw new Error("Link de convite não retornado");
+    // Sempre garante usuário + membership + perfil (idempotente).
+    // Assim "cadastrar sem avisar" e "convidar depois" funcionam para usuário novo ou já existente.
+    const linkData = await generateInviteLink(client, cleanEmail, inviteData, cleanRedirect);
+    const invitedUser = linkData.user;
+    const inviteLink = linkData.properties?.action_link ?? null;
+    if (!invitedUser) throw new Error("Não foi possível criar ou localizar o acesso");
 
-      await saveMembership({ client, orgId, userId: invitedUser.id, email, fullName: cleanFullName, phone: cleanPhone, role, areaId });
+    await saveMembership({
+      client,
+      orgId,
+      userId: invitedUser.id,
+      email: cleanEmail,
+      fullName: cleanFullName,
+      phone: cleanPhone,
+      role,
+      areaId,
+    });
 
+    // Apenas atualizar cadastro (sem avisar).
+    if (!notify) {
+      return jsonResponse({ ok: true, channel: "none" });
+    }
+
+    // Preferência: WhatsApp quando houver celular + integração ativa.
+    if (cleanPhone && whatsappConfig && inviteLink) {
       await sendWhatsAppText(
         whatsappConfig.settings,
         whatsappConfig.keyRow,
         cleanPhone,
-        buildInviteMessage({ organizationName: organization?.name ?? "sua empresa", fullName: cleanFullName, link: inviteLink }),
+        buildInviteMessage({
+          organizationName: organization?.name ?? "sua empresa",
+          fullName: cleanFullName,
+          link: inviteLink,
+        }),
       );
-
       return jsonResponse({ ok: true, channel: "whatsapp" });
     }
 
-    // Cadastrar sem avisar agora: a pessoa entra na estrutura; convide depois.
-    if (!notify) {
-      const linkData = await generateInviteLink(client, email, inviteData, cleanRedirect);
-      const invitedUser = linkData.user;
-      if (!invitedUser) throw new Error("Não foi possível criar o acesso");
-
-      await saveMembership({ client, orgId, userId: invitedUser.id, email, fullName: cleanFullName, phone: cleanPhone, role, areaId });
-      return jsonResponse({ ok: true, channel: "none" });
-    }
-
-    // Convite por email (padrão quando não há WhatsApp).
-    const invite = await client.auth.admin.inviteUserByEmail(email, {
+    // Tenta convite por email do Auth (funciona bem para usuário ainda sem conta enviada).
+    // Se a pessoa já existe (cadastro silencioso prévio), o invite falha — devolvemos o link para o dono copiar.
+    const invite = await client.auth.admin.inviteUserByEmail(cleanEmail, {
       data: inviteData,
       redirectTo: cleanRedirect,
     });
 
-    if (invite.error) throw invite.error;
-    const invitedUser = invite.data.user;
-    if (!invitedUser) throw new Error("Usuário não retornado pelo convite");
+    if (!invite.error) {
+      return jsonResponse({ ok: true, channel: "email" });
+    }
 
-    await saveMembership({ client, orgId, userId: invitedUser.id, email, fullName: cleanFullName, phone: cleanPhone, role, areaId });
+    if (inviteLink) {
+      return jsonResponse({
+        ok: true,
+        channel: "link",
+        inviteLink,
+        detail: "A pessoa já tem acesso cadastrado. Copie o link e envie por email ou WhatsApp.",
+      });
+    }
 
-    return jsonResponse({ ok: true, channel: "email" });
+    throw invite.error;
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao convidar pessoa" }, 400);
   }

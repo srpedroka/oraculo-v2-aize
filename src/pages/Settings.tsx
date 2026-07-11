@@ -221,6 +221,12 @@ export function Settings() {
   const [weeklyPulseHour, setWeeklyPulseHour] = useState(state.whatsappSettings?.weeklyPulseHour ?? 16);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
+  const [memberInviteBusyId, setMemberInviteBusyId] = useState<string | null>(null);
+  const [memberAreaBusyId, setMemberAreaBusyId] = useState<string | null>(null);
+  const [memberEditId, setMemberEditId] = useState<string | null>(null);
+  const [memberEditName, setMemberEditName] = useState("");
+  const [memberEditPhone, setMemberEditPhone] = useState("");
+  const [memberEditBusy, setMemberEditBusy] = useState(false);
   const [profileLinksText, setProfileLinksText] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileResearching, setProfileResearching] = useState(false);
@@ -482,6 +488,16 @@ export function Settings() {
     });
   }
 
+  function inviteChannelMessage(result?: { channel?: string; inviteLink?: string; detail?: string }) {
+    if (result?.channel === "whatsapp") return "Convite enviado por WhatsApp.";
+    if (result?.channel === "email") return "Convite enviado por email.";
+    if (result?.channel === "link" && result.inviteLink) {
+      return `${result.detail ?? "A pessoa já tem cadastro."} Link de acesso:\n${result.inviteLink}`;
+    }
+    if (result?.channel === "none") return "Cadastro atualizado sem enviar convite.";
+    return "Convite processado.";
+  }
+
   function inviteMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!memberEmail.trim()) return;
@@ -491,6 +507,7 @@ export function Settings() {
       return;
     }
 
+    const willNotify = memberNotify;
     dispatch({
       type: "create_member",
       email: memberEmail.trim(),
@@ -498,18 +515,22 @@ export function Settings() {
       phone: phone || null,
       role: "coordinator",
       areaId: memberAreaId || null,
-      notify: memberNotify,
+      notify: willNotify,
+      onSuccess: (result) => {
+        setMemberMessage(
+          willNotify
+            ? inviteChannelMessage(result)
+            : "Coordenador cadastrado sem aviso. Use “Convidar” na lista para chamar por WhatsApp ou email (ou copiar o link).",
+        );
+      },
+      onError: (message) => setMemberMessage(message),
     });
     setMemberEmail("");
     setMemberName("");
     setMemberPhone("");
     setMemberAreaId("");
     setMemberNotify(true);
-    setMemberMessage(
-      memberNotify
-        ? "Convite solicitado. Com WhatsApp ativo e celular preenchido, a pessoa recebe pelo WhatsApp; caso contrário, por email."
-        : "Coordenador cadastrado sem aviso. Use “Convidar” na lista quando quiser chamá-lo no WhatsApp.",
-    );
+    setMemberMessage(willNotify ? "Enviando convite..." : "Cadastrando sem avisar...");
   }
 
   function resendInvite(membership: Membership) {
@@ -518,8 +539,9 @@ export function Settings() {
       setMemberMessage("Sem email registrado para convidar esta pessoa.");
       return;
     }
-    const area = allAreas.find((item) => item.coordinatorId === membership.id);
-    setMemberMessage("Enviando convite por WhatsApp...");
+    const area = state.areas.find((item) => item.coordinatorId === membership.id);
+    setMemberInviteBusyId(membership.id);
+    setMemberMessage("Enviando convite...");
     dispatch({
       type: "create_member",
       email,
@@ -528,8 +550,81 @@ export function Settings() {
       role: membership.role,
       areaId: area?.id ?? null,
       notify: true,
-      onSuccess: () => setMemberMessage("Convite enviado por WhatsApp."),
-      onError: (message) => setMemberMessage(message),
+      onSuccess: (result) => {
+        setMemberInviteBusyId(null);
+        setMemberMessage(inviteChannelMessage(result));
+      },
+      onError: (message) => {
+        setMemberInviteBusyId(null);
+        setMemberMessage(message);
+      },
+    });
+  }
+
+  function assignMemberArea(membership: Membership, nextAreaId: string) {
+    const currentAreas = state.areas.filter((area) => area.coordinatorId === membership.id);
+    setMemberAreaBusyId(membership.id);
+    setMemberMessage("");
+
+    // Limpa áreas atuais deste coordenador e atribui a escolhida (uma área principal na lista).
+    for (const area of currentAreas) {
+      if (area.id !== nextAreaId) {
+        dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: null });
+      }
+    }
+
+    if (nextAreaId) {
+      const area = state.areas.find((item) => item.id === nextAreaId);
+      if (!area) {
+        setMemberAreaBusyId(null);
+        setMemberMessage("Área não encontrada.");
+        return;
+      }
+      dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: membership.id });
+      setMemberMessage(`${membership.profile?.fullName ?? "Pessoa"} vinculada a ${area.name}.`);
+    } else {
+      setMemberMessage("Área desvinculada desta pessoa.");
+    }
+    setMemberAreaBusyId(null);
+  }
+
+  function openMemberEdit(membership: Membership) {
+    setMemberEditId(membership.id);
+    setMemberEditName(membership.profile?.fullName ?? "");
+    setMemberEditPhone(membership.profile?.phone ?? "");
+    setMemberMessage("");
+  }
+
+  function saveMemberEdit(membership: Membership) {
+    const email = membership.profile?.email;
+    if (!email) {
+      setMemberMessage("Sem email registrado para atualizar esta pessoa.");
+      return;
+    }
+    const phone = memberEditPhone.trim();
+    if (phone && !isValidInternationalPhone(phone)) {
+      setMemberMessage("Use o celular em formato internacional, por exemplo +5546999990000.");
+      return;
+    }
+    const area = state.areas.find((item) => item.coordinatorId === membership.id);
+    setMemberEditBusy(true);
+    dispatch({
+      type: "create_member",
+      email,
+      fullName: memberEditName.trim() || email,
+      phone: phone || null,
+      role: membership.role,
+      areaId: area?.id ?? null,
+      notify: false,
+      onSuccess: () => {
+        setMemberEditBusy(false);
+        setMemberEditId(null);
+        setMemberMessage("Dados da pessoa atualizados (sem reenviar convite).");
+      },
+      onError: (message) => {
+        setMemberEditBusy(false);
+        setMemberMessage(message);
+      },
     });
   }
 
@@ -1047,31 +1142,36 @@ export function Settings() {
             </Button>
           </form>
           {memberMessage ? (
-            <p className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+            <p className="mt-3 whitespace-pre-wrap break-all rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
               {memberMessage}
             </p>
           ) : null}
           <div className="mt-4 space-y-2">
             {state.memberships.map((membership) => {
               const linkedAreas = allAreas.filter((area) => area.coordinatorId === membership.id);
+              const primaryAreaId = state.areas.find((area) => area.coordinatorId === membership.id)?.id ?? "";
               const isCurrentUser = membership.userId === state.sessionUserId;
               const isLastOwner = membership.role === "owner" && ownerCount <= 1;
+              const hasEmail = Boolean(membership.profile?.email);
+              const editing = memberEditId === membership.id;
               return (
                 <div key={membership.id} className="rounded-2xl border border-border bg-[#FAFAFB] p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-text">
                         {membership.profile?.fullName ?? membership.profile?.email ?? membership.userId}
                       </p>
                       <p className="truncate text-xs text-text-secondary">{membership.profile?.email ?? "Email não registrado"}</p>
                       <p className="mt-1 text-xs text-text-tertiary">
+                        Celular: {membership.profile?.phone || "não informado"}
+                        {" · "}
                         Áreas: {linkedAreas.length ? linkedAreas.map((area) => area.name).join(", ") : "Sem área vinculada"}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select
                         value={membership.role}
-                        disabled={roleSavingId === membership.id}
+                        disabled={roleSavingId === membership.id || isCurrentUser}
                         onChange={(event) => changeMemberRole(membership.id, event.target.value as MembershipRole)}
                         className="h-8 rounded-[10px] border border-border bg-white px-2.5 text-xs font-medium text-text-secondary disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label={`Papel de ${membership.profile?.fullName ?? membership.profile?.email ?? membership.userId}`}
@@ -1080,15 +1180,45 @@ export function Settings() {
                         <option value="admin">{membershipRoleLabel("admin")}</option>
                         <option value="coordinator">{membershipRoleLabel("coordinator")}</option>
                       </select>
-                      {membership.profile?.phone && state.whatsappSettings?.enabled && !isCurrentUser ? (
+                      <select
+                        value={primaryAreaId}
+                        disabled={memberAreaBusyId === membership.id || membership.role === "owner"}
+                        onChange={(event) => assignMemberArea(membership, event.target.value)}
+                        className="h-8 max-w-[10rem] rounded-[10px] border border-border bg-white px-2.5 text-xs font-medium text-text-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={`Área de ${membership.profile?.fullName ?? membership.profile?.email ?? membership.userId}`}
+                        title={membership.role === "owner" ? "Dono não precisa de área de coordenação" : "Vincular área"}
+                      >
+                        <option value="">Sem área</option>
+                        {state.areas.map((area) => (
+                          <option key={area.id} value={area.id}>
+                            {area.name}
+                          </option>
+                        ))}
+                      </select>
+                      {!isCurrentUser && hasEmail ? (
                         <Button
                           variant="ghost"
                           size="sm"
                           icon={MessageCircle}
+                          loading={memberInviteBusyId === membership.id}
                           onClick={() => resendInvite(membership)}
-                          title="Enviar convite por WhatsApp"
+                          title={
+                            membership.profile?.phone && state.whatsappSettings?.enabled
+                              ? "Enviar convite por WhatsApp"
+                              : "Convidar por email ou gerar link de acesso"
+                          }
                         >
                           Convidar
+                        </Button>
+                      ) : null}
+                      {!isCurrentUser && hasEmail ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => (editing ? setMemberEditId(null) : openMemberEdit(membership))}
+                          title="Editar nome e celular"
+                        >
+                          {editing ? "Fechar" : "Editar"}
                         </Button>
                       ) : null}
                       <Button
@@ -1103,6 +1233,25 @@ export function Settings() {
                       </Button>
                     </div>
                   </div>
+                  {editing ? (
+                    <div className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-[1fr_1fr_auto]">
+                      <input
+                        value={memberEditName}
+                        onChange={(event) => setMemberEditName(event.target.value)}
+                        placeholder="Nome"
+                        className="h-9 rounded-xl border border-border bg-white px-3 text-sm"
+                      />
+                      <input
+                        value={memberEditPhone}
+                        onChange={(event) => setMemberEditPhone(normalizePhone(event.target.value))}
+                        placeholder="+5546999990000"
+                        className="h-9 rounded-xl border border-border bg-white px-3 text-sm"
+                      />
+                      <Button size="sm" loading={memberEditBusy} onClick={() => saveMemberEdit(membership)}>
+                        Salvar
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
