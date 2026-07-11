@@ -64,24 +64,13 @@ Diagnostico:
 Fluxo na tela **Configurações › Pessoas** (somente owner):
 
 1. **Cadastrar sem avisar**: desmarque “Chamar no WhatsApp agora”. Cria acesso/membership sem enviar mensagem.
-2. **Convidar na lista**: botão **Convidar** em cada pessoa (exceto você). Ordem: WhatsApp (se celular + WhatsApp da empresa ligados) → email Auth → se a conta já existir, a UI mostra um **link copiável**.
-3. **Editar**: nome e celular. Campo de celular vazio **não apaga** o número já salvo.
-4. **Área**: select na linha vincula a pessoa como coordenador da área (ou “Sem área”).
-5. **Papel**: admin/coordenador (e dono só se já for dono).
+2. **Convidar pelo WhatsApp** (lista ou no cadastro com a opção ligada): exige celular no formato internacional **e** WhatsApp da empresa ativo com chave. A mensagem é natural (primeiro nome + empresa + link pessoal do app). Não há convite por email nem link copiável na UI.
+3. Sem celular: “Cadastre o celular para convidar”. Sem WhatsApp da empresa: “Ative o WhatsApp da empresa para convidar”. Nunca mostrar sucesso se a mensagem não saiu.
+4. **Editar**: owner pode editar nome e celular de outras pessoas. Campo de celular vazio **não apaga** o número já salvo.
+5. **Área**: select na linha chama `set-member-area` (RPC `set_member_primary_area`). A troca é atômica: limpa as áreas antigas e vincula só a escolhida (ou nenhuma). A UI só confirma depois da resposta do servidor. Owner não recebe área de coordenação.
+6. **Papel**: admin/coordenador (e dono só se já for dono).
 
-A Edge Function `invite-member` é idempotente: gera link (invite ou magiclink), faz upsert de membership/perfil e **preserva `profiles.phone`** se o request não trouxer celular novo.
-
-### Convites por email (SMTP)
-
-Para o email chegar de verdade, configure SMTP no painel do Supabase:
-
-1. Acesse Supabase Auth > Emails/SMTP.
-2. Conecte um provedor transacional, por exemplo Resend, Postmark ou SendGrid.
-3. Configure remetente, host, porta, usuario e senha do SMTP.
-4. Envie um convite pela tela Configuracoes > Pessoas.
-5. Confira logs de Auth e da Edge Function `invite-member` se o email nao chegar.
-
-Sem SMTP, o vinculo pode ser criado no banco e o app pode devolver link copiável, mas o email de convite pode nao ser entregue.
+`invite-member` é idempotente: gera link (invite→magiclink), faz upsert de membership/perfil, preserva `profiles.phone` se o request não trouxer celular novo, e só envia WhatsApp quando `notify = true` e os requisitos estão ok.
 
 ## Remover pessoa ou arquivar área
 

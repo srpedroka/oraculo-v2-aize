@@ -122,8 +122,9 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 
 ### Edge Functions
 
-- `invite-member`: cria ou registra membros convidados. Se WhatsApp estiver ativo e houver celular, gera link de convite e envia pela Evolution API/Evo Go; caso contrario usa convite por email do Supabase.
+- `invite-member`: cria ou registra membros (invite→magiclink). Convite de notificacao **somente por WhatsApp** (celular + instancia ativa); cadastro silencioso com `notify=false` nao envia mensagem. Nao usa email de convite.
 - `set-member-role`: permite que owner altere membro entre `admin` e `coordinator`, ou rebaixe outro owner quando ainda existir pelo menos um owner restante. Nao promove novos owners.
+- `set-member-area`: owner troca a area principal de um membro de forma atomica via RPC `set_member_primary_area` (limpa vinculos antigos e aplica o novo, ou remove todos).
 - `remove-member`: valida owner, impede autoexclusão e remoção do último owner, aplica reatribuições de coordenação e remove somente a membership em uma transação PostgreSQL. Perfil, Auth e histórico da pessoa não são apagados.
 - `operational-lifecycle`: valida sessão e permissão por empresa/área, chama a RPC transacional de arquivamento/restauração e impede que um coordenador restaure um lote iniciado por objetivo fora do seu escopo.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.

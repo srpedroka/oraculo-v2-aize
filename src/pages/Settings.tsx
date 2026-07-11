@@ -488,14 +488,10 @@ export function Settings() {
     });
   }
 
-  function inviteChannelMessage(result?: { channel?: string; inviteLink?: string; detail?: string }) {
-    if (result?.channel === "whatsapp") return "Convite enviado por WhatsApp.";
-    if (result?.channel === "email") return "Convite enviado por email.";
-    if (result?.channel === "link" && result.inviteLink) {
-      return `${result.detail ?? "A pessoa já tem cadastro."} Link de acesso:\n${result.inviteLink}`;
-    }
+  function inviteChannelMessage(result?: { channel?: string }) {
+    if (result?.channel === "whatsapp") return "Convite enviado pelo WhatsApp.";
     if (result?.channel === "none") return "Cadastro atualizado sem enviar convite.";
-    return "Convite processado.";
+    return "Cadastro processado.";
   }
 
   function inviteMember(event: FormEvent<HTMLFormElement>) {
@@ -504,6 +500,14 @@ export function Settings() {
     const phone = memberPhone.trim();
     if (phone && !isValidInternationalPhone(phone)) {
       setMemberMessage("Use o celular em formato internacional, por exemplo +5546999990000.");
+      return;
+    }
+    if (memberNotify && !phone) {
+      setMemberMessage("Cadastre o celular para convidar pelo WhatsApp.");
+      return;
+    }
+    if (memberNotify && !state.whatsappSettings?.enabled) {
+      setMemberMessage("Ative o WhatsApp da empresa para convidar.");
       return;
     }
 
@@ -520,7 +524,7 @@ export function Settings() {
         setMemberMessage(
           willNotify
             ? inviteChannelMessage(result)
-            : "Coordenador cadastrado sem aviso. Use “Convidar” na lista para chamar por WhatsApp ou email (ou copiar o link).",
+            : "Coordenador cadastrado sem aviso. Use “Convidar pelo WhatsApp” na lista quando quiser chamar.",
         );
       },
       onError: (message) => setMemberMessage(message),
@@ -530,18 +534,26 @@ export function Settings() {
     setMemberPhone("");
     setMemberAreaId("");
     setMemberNotify(true);
-    setMemberMessage(willNotify ? "Enviando convite..." : "Cadastrando sem avisar...");
+    setMemberMessage(willNotify ? "Enviando convite pelo WhatsApp..." : "Cadastrando sem avisar...");
   }
 
   function resendInvite(membership: Membership) {
     const email = membership.profile?.email;
     if (!email) {
-      setMemberMessage("Sem email registrado para convidar esta pessoa.");
+      setMemberMessage("Sem email registrado para esta pessoa.");
+      return;
+    }
+    if (!membership.profile?.phone) {
+      setMemberMessage("Cadastre o celular para convidar pelo WhatsApp.");
+      return;
+    }
+    if (!state.whatsappSettings?.enabled) {
+      setMemberMessage("Ative o WhatsApp da empresa para convidar.");
       return;
     }
     const area = state.areas.find((item) => item.coordinatorId === membership.id);
     setMemberInviteBusyId(membership.id);
-    setMemberMessage("Enviando convite...");
+    setMemberMessage("Enviando convite pelo WhatsApp...");
     dispatch({
       type: "create_member",
       email,
@@ -562,30 +574,28 @@ export function Settings() {
   }
 
   function assignMemberArea(membership: Membership, nextAreaId: string) {
-    const currentAreas = state.areas.filter((area) => area.coordinatorId === membership.id);
     setMemberAreaBusyId(membership.id);
     setMemberMessage("");
-
-    // Limpa áreas atuais deste coordenador e atribui a escolhida (uma área principal na lista).
-    for (const area of currentAreas) {
-      if (area.id !== nextAreaId) {
-        dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: null });
-      }
-    }
-
-    if (nextAreaId) {
-      const area = state.areas.find((item) => item.id === nextAreaId);
-      if (!area) {
+    dispatch({
+      type: "set_member_area",
+      membershipId: membership.id,
+      areaId: nextAreaId || null,
+      onSuccess: () => {
         setMemberAreaBusyId(null);
-        setMemberMessage("Área não encontrada.");
-        return;
-      }
-      dispatch({ type: "update_area", areaId: area.id, name: area.name, coordinatorId: membership.id });
-      setMemberMessage(`${membership.profile?.fullName ?? "Pessoa"} vinculada a ${area.name}.`);
-    } else {
-      setMemberMessage("Área desvinculada desta pessoa.");
-    }
-    setMemberAreaBusyId(null);
+        const areaName = nextAreaId
+          ? state.areas.find((item) => item.id === nextAreaId)?.name ?? "área"
+          : null;
+        setMemberMessage(
+          areaName
+            ? `${membership.profile?.fullName ?? "Pessoa"} vinculada a ${areaName}.`
+            : "Área desvinculada desta pessoa.",
+        );
+      },
+      onError: (message) => {
+        setMemberAreaBusyId(null);
+        setMemberMessage(message);
+      },
+    });
   }
 
   function openMemberEdit(membership: Membership) {
@@ -1139,8 +1149,14 @@ export function Settings() {
               />
               Chamar no WhatsApp agora — desmarque para cadastrar sem avisar e convidar depois pela lista.
             </label>
+            {memberNotify && !state.whatsappSettings?.enabled ? (
+              <p className="text-xs leading-5 text-[#A16207]">Ative o WhatsApp da empresa para convidar.</p>
+            ) : null}
+            {memberNotify && !memberPhone.trim() ? (
+              <p className="text-xs leading-5 text-[#A16207]">Cadastre o celular para convidar pelo WhatsApp.</p>
+            ) : null}
             <Button type="submit" icon={UserPlus}>
-              {memberNotify ? "Convidar coordenador" : "Cadastrar sem avisar"}
+              {memberNotify ? "Convidar pelo WhatsApp" : "Cadastrar sem avisar"}
             </Button>
           </form>
           {memberMessage ? (
@@ -1203,14 +1219,17 @@ export function Settings() {
                           size="sm"
                           icon={MessageCircle}
                           loading={memberInviteBusyId === membership.id}
+                          disabled={!membership.profile?.phone || !state.whatsappSettings?.enabled}
                           onClick={() => resendInvite(membership)}
                           title={
-                            membership.profile?.phone && state.whatsappSettings?.enabled
-                              ? "Enviar convite por WhatsApp"
-                              : "Convidar por email ou gerar link de acesso"
+                            !membership.profile?.phone
+                              ? "Cadastre o celular para convidar"
+                              : !state.whatsappSettings?.enabled
+                                ? "Ative o WhatsApp da empresa para convidar"
+                                : "Convidar pelo WhatsApp"
                           }
                         >
-                          Convidar
+                          Convidar pelo WhatsApp
                         </Button>
                       ) : null}
                       {!isCurrentUser && hasEmail ? (

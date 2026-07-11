@@ -1,6 +1,6 @@
 # Plano: importacao historica, Documentos, numeros do Dashboard e Pessoas
 
-> **STATUS: pronto para execucao pelo Grok CLI.** Executar fatia por fatia, na ordem. Ao fim de cada fatia: lint, build, teste focado, commit e push. Nao iniciar a fatia seguinte se alguma validacao falhar.
+> **STATUS: em execucao pelo Grok CLI.** Fatia 1 concluida (area transacional + convite WhatsApp-only). Seguir fatias 2–5 na ordem. Ao fim de cada fatia: lint, build, teste focado, commit e push. Nao iniciar a fatia seguinte se alguma validacao falhar.
 
 ## 1. Objetivo do pacote
 

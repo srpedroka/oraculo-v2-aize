@@ -73,6 +73,13 @@ type AppAction =
     }
   | { type: "set_member_role"; membershipId: string; role: Exclude<MembershipRole, "owner">; onSuccess?: () => void; onError?: (message: string) => void }
   | {
+      type: "set_member_area";
+      membershipId: string;
+      areaId: string | null;
+      onSuccess?: (result?: { changedAreaIds?: string[] }) => void;
+      onError?: (message: string) => void;
+    }
+  | {
       type: "remove_member";
       membershipId: string;
       areaReassignments: Record<string, string | null>;
@@ -1641,6 +1648,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível alterar o papel.");
+          });
+        return;
+      }
+
+      if (action.type === "set_member_area") {
+        void callEdgeFunction("set-member-area", {
+          orgId,
+          membershipId: action.membershipId,
+          areaId: action.areaId,
+        })
+          .then((result) => {
+            invalidateOrg();
+            action.onSuccess?.(result as { changedAreaIds?: string[] } | undefined);
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível alterar a área.");
           });
         return;
       }

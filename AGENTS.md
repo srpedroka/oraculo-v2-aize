@@ -205,7 +205,8 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 
 ### Edge Functions
 
-- `invite-member`: convites por email ou WhatsApp.
+- `invite-member`: cadastro de membros e convite **somente por WhatsApp** (link pessoal); cadastro silencioso sem mensagem.
+- `set-member-area`: troca atomica da area principal do membro (owner).
 - `set-member-role`: altera papel de membros com proteção do último owner.
 - `remove-member`: revoga o acesso de uma pessoa, reatribui áreas em transação e preserva perfil/histórico.
 - `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.
@@ -486,7 +487,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Arquivo operacional reversivel para objetivos, acoes, projetos, evidencias, check-ins e documentos, com auditoria antes/depois de planos e KPIs.
 - Criacao e alternancia de empresas.
 - Cadastro de celular no perfil e identificacao por WhatsApp.
-- Convites por email/WhatsApp.
+- Convites por WhatsApp (cadastro silencioso opcional).
 - Recuperacao de senha via Supabase Auth.
 - Dashboard executivo.
 - Revisao mensal com confianca, bloqueio e compromisso seguinte; pulso semanal leve opcional por WhatsApp.

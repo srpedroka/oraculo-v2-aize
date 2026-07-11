@@ -11,14 +11,20 @@ function cleanRedirectTo(value: unknown) {
   return url.origin;
 }
 
+function firstName(fullName: string) {
+  const token = fullName.trim().split(/\s+/).filter(Boolean)[0];
+  return token || "olá";
+}
+
 function buildInviteMessage(params: { organizationName: string; fullName: string; link: string }) {
+  const name = firstName(params.fullName);
+  const company = params.organizationName || "sua empresa";
   return [
-    `Olá, ${params.fullName}. Você foi convidado para entrar no Oráculo da ${params.organizationName}.`,
+    `Oi, ${name}.`,
     "",
-    "Acesse o link abaixo para criar seu acesso e acompanhar os planos da sua área:",
+    `Seu acesso ao Oráculo da ${company} está pronto.`,
+    "Abra o app pelo link abaixo — é pessoal, não encaminhe:",
     params.link,
-    "",
-    "Este convite é pessoal. Não encaminhe para outras pessoas.",
   ].join("\n");
 }
 
@@ -77,8 +83,7 @@ async function saveMembership(params: {
   role: string;
   areaId: string | null;
 }) {
-  // Nunca apagar celular existente: só grava phone se veio valor novo;
-  // se o request veio sem phone, reaproveita o que já está no perfil.
+  // Nunca apagar celular existente: só grava phone se veio valor novo.
   const { data: existingProfile, error: existingProfileError } = await params.client
     .from("profiles")
     .select("phone")
@@ -93,7 +98,6 @@ async function saveMembership(params: {
     full_name: params.fullName || params.email,
     email: params.email,
   };
-  // Só inclui a coluna phone quando há valor — evita limpar com null em upserts parciais.
   if (nextPhone) profilePayload.phone = nextPhone;
 
   const { error: profileError } = await params.client.from("profiles").upsert(profilePayload);
@@ -108,21 +112,21 @@ async function saveMembership(params: {
   if (membershipError) throw membershipError;
 
   if (params.areaId) {
-    const { data: area, error: areaError } = await params.client
-      .from("areas")
-      .update({ coordinator_id: membership.id })
-      .eq("id", params.areaId)
-      .eq("org_id", params.orgId)
-      .is("archived_at", null)
-      .select("id")
-      .maybeSingle();
-    if (areaError) throw areaError;
-    if (!area) throw new Error("Área arquivada ou não encontrada");
+    const { data, error } = await params.client.rpc("set_member_primary_area", {
+      p_org_id: params.orgId,
+      p_membership_id: membership.id,
+      p_area_id: params.areaId,
+    });
+    if (error) throw error;
+    void data;
   }
+
+  return membership;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return jsonResponse({ error: "Método não permitido" }, 405);
 
   try {
     const user = await getUser(req);
@@ -150,13 +154,11 @@ serve(async (req) => {
     const cleanRedirect = cleanRedirectTo(redirectTo);
     const [{ data: organization, error: organizationError }, whatsappConfig] = await Promise.all([
       client.from("organizations").select("name").eq("id", orgId).maybeSingle(),
-      // WhatsApp config se a org tiver WhatsApp ligado (telefone é opcional na checagem de config).
       getWhatsAppConfig(client, orgId),
     ]);
     if (organizationError) throw organizationError;
 
     // Sempre garante usuário + membership + perfil (idempotente).
-    // Assim "cadastrar sem avisar" e "convidar depois" funcionam para usuário novo ou já existente.
     const linkData = await generateInviteLink(client, cleanEmail, inviteData, cleanRedirect);
     const invitedUser = linkData.user;
     const inviteLink = linkData.properties?.action_link ?? null;
@@ -173,47 +175,34 @@ serve(async (req) => {
       areaId,
     });
 
-    // Apenas atualizar cadastro (sem avisar).
+    // Cadastro silencioso: não envia mensagem.
     if (!notify) {
       return jsonResponse({ ok: true, channel: "none" });
     }
 
-    // Preferência: WhatsApp quando houver celular + integração ativa.
-    if (cleanPhone && whatsappConfig && inviteLink) {
-      await sendWhatsAppText(
-        whatsappConfig.settings,
-        whatsappConfig.keyRow,
-        cleanPhone,
-        buildInviteMessage({
-          organizationName: organization?.name ?? "sua empresa",
-          fullName: cleanFullName,
-          link: inviteLink,
-        }),
-      );
-      return jsonResponse({ ok: true, channel: "whatsapp" });
+    // Convite somente por WhatsApp (decisão do dono).
+    if (!cleanPhone) {
+      throw new Error("Cadastre o celular para convidar pelo WhatsApp");
+    }
+    if (!whatsappConfig) {
+      throw new Error("Ative o WhatsApp da empresa para convidar");
+    }
+    if (!inviteLink) {
+      throw new Error("Não foi possível gerar o link pessoal de acesso");
     }
 
-    // Tenta convite por email do Auth (funciona bem para usuário ainda sem conta enviada).
-    // Se a pessoa já existe (cadastro silencioso prévio), o invite falha — devolvemos o link para o dono copiar.
-    const invite = await client.auth.admin.inviteUserByEmail(cleanEmail, {
-      data: inviteData,
-      redirectTo: cleanRedirect,
-    });
+    await sendWhatsAppText(
+      whatsappConfig.settings,
+      whatsappConfig.keyRow,
+      cleanPhone,
+      buildInviteMessage({
+        organizationName: organization?.name ?? "sua empresa",
+        fullName: cleanFullName,
+        link: inviteLink,
+      }),
+    );
 
-    if (!invite.error) {
-      return jsonResponse({ ok: true, channel: "email" });
-    }
-
-    if (inviteLink) {
-      return jsonResponse({
-        ok: true,
-        channel: "link",
-        inviteLink,
-        detail: "A pessoa já tem acesso cadastrado. Copie o link e envie por email ou WhatsApp.",
-      });
-    }
-
-    throw invite.error;
+    return jsonResponse({ ok: true, channel: "whatsapp" });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao convidar pessoa" }, 400);
   }

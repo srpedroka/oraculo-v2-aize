@@ -90,7 +90,7 @@ O webhook `whatsapp-webhook` aceita chamadas com o segredo configurado no cabeca
 
 Download de midia (audio/documento) por URL vinda do payload passa por guarda anti-SSRF: apenas `http(s)`, com bloqueio de loopback, redes privadas, link-local (inclui o metadata `169.254.169.254` de cloud) e nomes internos; ha teto de tamanho por download; e a `apikey` da Evolution so e enviada quando o host da URL e o da propria instancia (`instance_url`), nunca para um CDN ou host arbitrario.
 
-Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usando service role no servidor. O frontend nunca recebe a chave da Evolution API e tambem nao monta a chamada direta para a VPS. O link de convite do Supabase e entregue ao celular informado no cadastro do convidado.
+Convites por WhatsApp sao gerados dentro da Edge Function `invite-member`, usando service role no servidor. O frontend nunca recebe a chave da Evolution API e tambem nao monta a chamada direta para a VPS. O link de acesso (invite ou magiclink) e entregue **somente** ao celular informado, via WhatsApp. Nao ha convite por email na UI.
 
 Mensagens recebidas pelo WhatsApp sao gravadas em `chat_messages` antes da chamada de IA, com `user_id` e `conversation_id`. Isso facilita diagnostico quando a IA falha: se houver mensagem `user` sem resposta `oracle` na mesma conversa, investigar logs da Edge Function, provider/modelo, chave de IA e envio pela Evolution.
 
@@ -158,7 +158,7 @@ O ciclo de vida da própria empresa segue a mesma trava. `authenticated` não po
 
 ## Dados de conta
 
-O email fica em `profiles.email` para administracao de convites. O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e deve ser tratado como identificador de acesso, especialmente para a futura integracao com WhatsApp. A interface edita apenas o celular da propria conta.
+O email fica em `profiles.email` para administracao. O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e identificador de acesso ao WhatsApp. A propria conta edita seu celular; o **owner** tambem pode editar nome e celular de outros membros (via `invite-member` com `notify=false`/upsert de perfil service_role), porque o celular e o canal do convite.
 
 Ao criar nova tabela:
 
