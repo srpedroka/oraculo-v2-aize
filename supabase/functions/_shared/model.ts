@@ -262,6 +262,226 @@ export async function callModelWithImage(
   throw new Error("O modelo de bastidores selecionado não aceita leitura de imagem. Escolha OpenAI, Anthropic ou xAI em Configurações.");
 }
 
+export interface WebSearchSource {
+  url: string;
+  title: string;
+}
+
+export interface WebSearchResult {
+  text: string;
+  sources: WebSearchSource[];
+}
+
+const WEB_SEARCH_TIMEOUT_MS = 60000;
+
+function pushWebSearchSource(sources: WebSearchSource[], url: unknown, title: unknown) {
+  try {
+    if (typeof url !== "string" || !url.trim()) return;
+    const normalizedUrl = url.trim();
+    if (sources.some((source) => source.url === normalizedUrl)) return;
+    const normalizedTitle = typeof title === "string" && title.trim() ? title.trim() : normalizedUrl;
+    sources.push({ url: normalizedUrl, title: normalizedTitle });
+  } catch {
+    // citation malformada: ignorar e seguir
+  }
+}
+
+function dedupeWebSearchSources(sources: WebSearchSource[]): WebSearchSource[] {
+  const seen = new Set<string>();
+  const out: WebSearchSource[] = [];
+  for (const source of sources) {
+    try {
+      if (!source?.url || seen.has(source.url)) continue;
+      seen.add(source.url);
+      out.push({
+        url: source.url,
+        title: typeof source.title === "string" && source.title.trim() ? source.title : source.url,
+      });
+    } catch {
+      // citation malformada: ignorar e seguir
+    }
+  }
+  return out;
+}
+
+function extractAnthropicWebSearchText(content: unknown): string {
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter((block: any) => block?.type === "text")
+    .map((block: any) => (typeof block?.text === "string" ? block.text : ""))
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function extractAnthropicWebSearchSources(content: unknown): WebSearchSource[] {
+  const sources: WebSearchSource[] = [];
+  if (!Array.isArray(content)) return sources;
+
+  for (const block of content) {
+    try {
+      if (Array.isArray(block?.citations)) {
+        for (const citation of block.citations) {
+          try {
+            pushWebSearchSource(sources, citation?.url, citation?.title);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      if (block?.type === "web_search_tool_result") {
+        const resultContent = block?.content;
+        if (Array.isArray(resultContent)) {
+          for (const item of resultContent) {
+            try {
+              pushWebSearchSource(sources, item?.url, item?.title);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    } catch {
+      // bloco malformado: ignorar e seguir
+    }
+  }
+
+  return dedupeWebSearchSources(sources);
+}
+
+function extractOpenAiWebSearchSources(data: any): WebSearchSource[] {
+  const sources: WebSearchSource[] = [];
+  try {
+    const parts = Array.isArray(data?.output) ? data.output : [];
+    for (const item of parts) {
+      try {
+        const contentItems = Array.isArray(item?.content) ? item.content : [];
+        for (const content of contentItems) {
+          try {
+            const annotations = Array.isArray(content?.annotations) ? content.annotations : [];
+            for (const annotation of annotations) {
+              try {
+                if (annotation?.type !== "url_citation") continue;
+                pushWebSearchSource(sources, annotation?.url, annotation?.title);
+              } catch {
+                // ignore
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return dedupeWebSearchSources(sources);
+}
+
+export async function callModelWithWebSearch(
+  provider: Provider,
+  model: string,
+  apiKey: string,
+  prompt: string,
+  options: ModelCallOptions = {},
+): Promise<WebSearchResult> {
+  const maxTokens = options.maxTokens;
+  const temperature = options.temperature;
+
+  if (provider === "moonshot" || provider === "xai") {
+    throw new Error("Busca web indisponível neste provedor");
+  }
+
+  if (provider === "openai") {
+    const response = await fetchWithTimeout(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          input: prompt,
+          tools: [{ type: "web_search" }],
+          max_output_tokens: maxTokens ?? 1200,
+          ...(typeof temperature === "number" ? { temperature } : {}),
+          store: false,
+        }),
+      },
+      WEB_SEARCH_TIMEOUT_MS,
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI não conseguiu fazer a busca web: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return {
+      text: responseText(data),
+      sources: extractOpenAiWebSearchSources(data),
+    };
+  }
+
+  if (provider === "anthropic") {
+    const headers = {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    };
+    const tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }];
+
+    const requestAnthropic = async (messages: Array<{ role: string; content: unknown }>) => {
+      const response = await fetchWithTimeout(
+        "https://api.anthropic.com/v1/messages",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: maxTokens ?? 1200,
+            temperature: temperature ?? 0.4,
+            tools,
+          }),
+        },
+        WEB_SEARCH_TIMEOUT_MS,
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Anthropic não conseguiu fazer a busca web: ${errorText}`);
+      }
+
+      return await response.json();
+    };
+
+    let data = await requestAnthropic([{ role: "user", content: prompt }]);
+    const collectedSources = extractAnthropicWebSearchSources(data?.content);
+
+    if (data?.stop_reason === "pause_turn" && Array.isArray(data?.content)) {
+      data = await requestAnthropic([
+        { role: "user", content: prompt },
+        { role: "assistant", content: data.content },
+      ]);
+      collectedSources.push(...extractAnthropicWebSearchSources(data?.content));
+    }
+
+    return {
+      text: extractAnthropicWebSearchText(data?.content) || "Não consegui gerar uma resposta agora.",
+      sources: dedupeWebSearchSources(collectedSources),
+    };
+  }
+
+  throw new Error("Provedor não suportado");
+}
+
 export async function callModelText(
   provider: Provider,
   model: string,
