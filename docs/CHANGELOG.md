@@ -2,6 +2,7 @@
 
 ## 2026-07-11
 
+- Classificação de histórico estruturada (`suggest-historical-metadata` / `historical-import-structure`): devolve candidatos, tabelas com fingerprint, conflitos e avisos; período multi-ano só quando a tabela realmente expandiu (narrativa `2025`+`2030` não vira faixa); uso de IA como `historical_import_classification`. UI de conflitos fica na fatia seguinte.
 - **Importar histórico** saiu do Plano Estratégico e passou a morar em **Documentos** (`HistoricalImportDialog`): botão no cabeçalho (e no estado vazio) para owner/coordenador com área gravável; admin não importa histórico. O fluxo (arquivo/imagem, interpretar, confirmar) não grava ao só selecionar o arquivo; após salvar, o novo documento é selecionado.
 - Dashboard › Resultado: números executivos passam a usar formatação compacta fixa (`formatKpiCompact` / `formatKpiFull` em `src/lib/kpi.ts`) com `mil` / `mi` / `bi` (ex.: `R$ 1,2 mi`, `18,5 mil`, `12,5%`). O valor integral fica no `title`/tooltip; inputs de edição continuam com número completo. Percentual nunca abrevia. Arredondamento de 1 casa promove de escala quando chegaria a `1.000 mil` (ex.: `999.999` → `R$ 1 mi`).
 - Pessoas: troca de área do coordenador passou a ser **transacional** (RPC `set_member_primary_area` + Edge Function `set-member-area`); a UI só confirma sucesso após o servidor. Convite ficou **somente por WhatsApp** (mensagem natural + link pessoal); sem celular ou sem WhatsApp da empresa não há sucesso falso. Owner continua podendo editar nome e celular.

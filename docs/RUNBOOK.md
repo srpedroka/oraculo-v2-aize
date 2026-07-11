@@ -863,6 +863,7 @@ Nunca copie esses valores para o frontend.
 3. Imagem: o navegador redimensiona e envia à leitura do Oráculo; o texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
 4. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia antes de salvar.
 5. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; entra em Documentos como histórico. A mídia da imagem **não** é guardada. Após salvar, o novo documento fica selecionado.
+5b. A API já devolve `tables`/`conflicts` (ex.: duas tabelas com o mesmo período e valores diferentes). A tela de escolha humana completa chega na próxima fatia; até lá, confira a prévia de texto e o período antes de salvar. Período multi-ano só aparece quando a tabela foi expandida — menção a `2025` e `2030` numa visão não vira faixa sozinha.
 6. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
 7. Se o objetivo for alimentar os cards de Resultado (KPI), use o import de planilha/imagem no Dashboard — o histórico não grava `kpi_monthly_values`.
 

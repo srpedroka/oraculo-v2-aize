@@ -74,6 +74,11 @@ serve(async (req) => {
         suggestion: result.suggestion,
         extractedText: result.extractedText,
         tableExpanded: result.tableExpanded,
+        importSuggestion: result.importSuggestion,
+        candidates: result.importSuggestion.candidates,
+        tables: result.importSuggestion.tables,
+        conflicts: result.importSuggestion.conflicts,
+        warnings: result.importSuggestion.warnings,
       });
     }
 
@@ -82,6 +87,11 @@ serve(async (req) => {
       suggestion: result.suggestion,
       extractedText: result.extractedText,
       tableExpanded: result.tableExpanded,
+      importSuggestion: result.importSuggestion,
+      candidates: result.importSuggestion.candidates,
+      tables: result.importSuggestion.tables,
+      conflicts: result.importSuggestion.conflicts,
+      warnings: result.importSuggestion.warnings,
     });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Não foi possível interpretar o histórico" }, 400);

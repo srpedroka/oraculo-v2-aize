@@ -207,6 +207,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 
 - `invite-member`: cadastro de membros e convite **somente por WhatsApp** (link pessoal); cadastro silencioso sem mensagem.
 - `set-member-area`: troca atomica da area principal do membro (owner).
+- `suggest-historical-metadata`: classifica historico (texto/imagem) e devolve sugestao legada + `importSuggestion` estruturado (candidatos, tabelas, conflitos); acao de uso `historical_import_classification`.
 - `set-member-role`: altera papel de membros com proteção do último owner.
 - `remove-member`: revoga o acesso de uma pessoa, reatribui áreas em transação e preserva perfil/histórico.
 - `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.

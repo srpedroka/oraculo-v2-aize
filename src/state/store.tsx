@@ -20,7 +20,11 @@ import type {
   CompanyProfileSuggestion,
   Evidence,
   ExecutiveKpi,
+  HistoricalConflict,
+  HistoricalDocumentCandidate,
+  HistoricalImportSuggestion,
   HistoricalMetadataSuggestion,
+  HistoricalTableCandidate,
   KeyAction,
   KpiImportInput,
   KpiImportKind,
@@ -110,6 +114,11 @@ type AppAction =
         suggestion: HistoricalMetadataSuggestion;
         extractedText?: string;
         tableExpanded?: boolean;
+        importSuggestion?: HistoricalImportSuggestion;
+        candidates?: HistoricalDocumentCandidate[];
+        tables?: HistoricalTableCandidate[];
+        conflicts?: HistoricalConflict[];
+        warnings?: string[];
       }) => void;
       onError?: (message: string) => void;
     }
@@ -1833,6 +1842,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
               suggestion: HistoricalMetadataSuggestion;
               extractedText?: string;
               tableExpanded?: boolean;
+              importSuggestion?: HistoricalImportSuggestion;
+              candidates?: HistoricalDocumentCandidate[];
+              tables?: HistoricalTableCandidate[];
+              conflicts?: HistoricalConflict[];
+              warnings?: string[];
             };
             action.onSuccess?.(payload);
           })

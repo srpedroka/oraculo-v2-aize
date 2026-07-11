@@ -223,6 +223,55 @@ export interface HistoricalMetadataSuggestion {
   source: "ai_background" | "heuristic";
 }
 
+/** Contrato estruturado da Fatia 4 (classificação + conflitos). */
+export interface HistoricalTableCandidate {
+  id: string;
+  label: string;
+  headers: string[];
+  normalizedText: string;
+  years: number[];
+  rowCount: number;
+  fingerprint: string;
+}
+
+export interface HistoricalDocumentCandidate {
+  id: string;
+  title: string;
+  documentType: Extract<PlanDocumentType, "strategic" | "quarterly" | "monthly">;
+  areaId: string | null;
+  areaName: string | null;
+  period: string;
+  periodFound: boolean;
+  summary: string;
+  normalizedText: string;
+  tableIds: string[];
+  confidence: {
+    title: number;
+    documentType: number;
+    area: number;
+    period: number;
+  };
+  lowConfidenceFields: string[];
+}
+
+export interface HistoricalConflict {
+  id: string;
+  kind: "table_choice" | "period" | "area" | "duplicate" | "value";
+  message: string;
+  candidateIds: string[];
+  tableIds: string[];
+  required: boolean;
+}
+
+export interface HistoricalImportSuggestion {
+  sourceName: string | null;
+  extractedText: string;
+  candidates: HistoricalDocumentCandidate[];
+  tables: HistoricalTableCandidate[];
+  conflicts: HistoricalConflict[];
+  warnings: string[];
+}
+
 export interface CompanyProfileSource {
   url: string;
   title: string;
