@@ -11,6 +11,7 @@ import {
   formatAttainment,
   formatKpiCompact,
   formatKpiFull,
+  KPI_DASHBOARD_FRACTION_DIGITS,
   KPI_MONTHS,
   ladderLabel,
   latestClosedKpiPeriod,
@@ -27,7 +28,7 @@ import { KpiSparkline } from "./KpiSparkline";
 
 /** Número compacto com valor integral no title (tooltip nativo). */
 function KpiAmount({ value, unit, className }: { value: number | null | undefined; unit: KpiUnit; className?: string }) {
-  const compact = formatKpiCompact(value, unit);
+  const compact = formatKpiCompact(value, unit, { maximumFractionDigits: KPI_DASHBOARD_FRACTION_DIGITS });
   const full = formatKpiFull(value, unit);
   return (
     <span className={className} title={full === "—" ? undefined : full}>
@@ -174,7 +175,7 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
           ) : null}
 
           <div className="mt-auto">
-            <KpiSparkline data={sparklineData} showTarget={sparklineData.some((item) => item.target !== null)} />
+            <KpiSparkline data={sparklineData} unit="currency" showTarget={sparklineData.some((item) => item.target !== null)} />
           </div>
           <LinkedObjectives objectives={linkedObjectives} />
         </div>
@@ -260,7 +261,7 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
         ) : null}
 
         <div className="mt-auto">
-          <KpiSparkline data={sparklineData} showTarget />
+          <KpiSparkline data={sparklineData} unit={kpi.unit} showTarget />
         </div>
         <LinkedObjectives objectives={linkedObjectives} />
       </div>

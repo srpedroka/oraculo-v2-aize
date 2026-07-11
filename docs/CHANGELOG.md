@@ -2,6 +2,7 @@
 
 ## 2026-07-11
 
+- Dashboard: números principais dos KPIs passaram a usar até 2 casas decimais; tooltips das colunas mantêm a mesma escala e unidade com até 4 casas.
 - Documentos: lista e leitor ganharam rolagem contida no desktop; o modal de importação passou a usar portal no `body`, ficando centralizado na viewport mesmo com sidebar e transição de página.
 - Importação histórica reconhece equivalências empresariais de área, incluindo `Industrial` como `Produção`, mas mantém confirmação manual quando mais de uma área é plausível.
 - Histórico: prévia de conflitos no diálogo (radio para escolha de tabela; salvamento bloqueado até decidir), backup recuperável em `content.import_backup` (sem arquivo/base64 bruto), **Reabrir importação** em Documentos (nova versão, anterior preservada) e badge **Importado com revisão**.

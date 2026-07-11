@@ -1,4 +1,6 @@
 import { Bar, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { formatKpiCompact, KPI_TOOLTIP_FRACTION_DIGITS } from "../../lib/kpi";
+import type { KpiUnit } from "../../types";
 
 interface KpiSparklineProps {
   data: Array<{
@@ -7,9 +9,10 @@ interface KpiSparklineProps {
     target?: number | null;
   }>;
   showTarget?: boolean;
+  unit: KpiUnit;
 }
 
-export function KpiSparkline({ data, showTarget = true }: KpiSparklineProps) {
+export function KpiSparkline({ data, unit, showTarget = true }: KpiSparklineProps) {
   const hasData = data.some((item) => item.actual !== null || item.target !== null);
 
   if (!hasData) {
@@ -28,7 +31,12 @@ export function KpiSparkline({ data, showTarget = true }: KpiSparklineProps) {
               boxShadow: "0 10px 28px rgba(23, 32, 42, 0.08)",
               fontSize: 12,
             }}
-            formatter={(value, name) => [value === null || value === undefined ? "—" : value, name === "target" ? "Meta" : "Realizado"]}
+            formatter={(value, name) => [
+              value === null || value === undefined
+                ? "—"
+                : formatKpiCompact(Number(value), unit, { maximumFractionDigits: KPI_TOOLTIP_FRACTION_DIGITS }),
+              name === "target" ? "Meta" : "Realizado",
+            ]}
             labelFormatter={(label) => label}
           />
           <Bar dataKey="actual" fill="#8799AD" radius={[4, 4, 0, 0]} barSize={10} isAnimationActive={false} />

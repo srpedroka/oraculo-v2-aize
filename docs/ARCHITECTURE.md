@@ -291,6 +291,7 @@ Backend e dados:
 
 ## Pontos criticos
 
+- No Dashboard, cards de KPI usam ate 2 casas decimais; tooltips das colunas preservam escala/unidade e usam ate 4 casas para conferência.
 - RLS deve ser revisada sempre que uma tabela nova for criada.
 - `SUPABASE_SERVICE_ROLE_KEY` nunca deve chegar ao frontend.
 - Chaves de IA devem passar apenas por Edge Functions.

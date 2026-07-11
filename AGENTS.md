@@ -151,6 +151,7 @@ Para funcoes sem JWT, como `whatsapp-webhook` e `month-turn`, preserve as flags 
 - `src/lib/supabase.ts`: cliente Supabase do navegador e checagem de configuracao.
 - `src/lib/fileImport.ts`: extracao local de texto de PDF/PPTX/DOCX/TXT.
 - `src/lib/aiPricing.ts`: catalogo de pricing usado na UI.
+- `src/lib/kpi.ts`: formatacao e calculos dos KPIs; cards usam ate 2 casas e tooltip do grafico ate 4. Fixture: `pnpm run test:kpi-format`.
 - `src/components/OraclePanel.tsx`: chat lateral do Oraculo, sessoes e anexos.
 - `src/components/PlanDocument.tsx`: renderizacao canonica de documentos.
 - `src/features/objective/ObjectiveEditDialog.tsx`: edicao manual de objetivos.

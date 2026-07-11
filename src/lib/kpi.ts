@@ -1,6 +1,8 @@
 import type { ExecutiveKpi, KpiDirection, KpiMonthlyValue, KpiUnit, LadderStage } from "../types";
 
 export const KPI_MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+export const KPI_DASHBOARD_FRACTION_DIGITS = 2;
+export const KPI_TOOLTIP_FRACTION_DIGITS = KPI_DASHBOARD_FRACTION_DIGITS + 2;
 
 export function currentYear() {
   return new Date().getFullYear();
@@ -25,14 +27,20 @@ function formatPtNumber(value: number, maximumFractionDigits: number) {
 
 /**
  * Compacto executivo (cards/gráficos): mil / mi / bi.
- * Arredonda para 1 casa; se o arredondamento atinge 1000 na unidade atual, sobe de escala
+ * Arredonda para a precisão solicitada; se o arredondamento atinge 1000 na unidade atual, sobe de escala
  * (ex.: 999_950 → "1 mi" em vez de "1.000 mil"). Percentual nunca abrevia.
  */
-export function formatKpiCompact(value: number | null | undefined, unit: KpiUnit) {
+export function formatKpiCompact(
+  value: number | null | undefined,
+  unit: KpiUnit,
+  options: { maximumFractionDigits?: number } = {},
+) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  const fractionDigits = Math.max(0, Math.min(6, Math.trunc(options.maximumFractionDigits ?? 1)));
+  const roundingFactor = 10 ** fractionDigits;
 
   if (unit === "percent") {
-    return `${formatPtNumber(value, 1)}%`;
+    return `${formatPtNumber(value, fractionDigits)}%`;
   }
 
   const negative = value < 0;
@@ -55,27 +63,27 @@ export function formatKpiCompact(value: number | null | undefined, unit: KpiUnit
     }
   }
 
-  // Promove se, com 1 casa decimal, o valor arredondado vira 1000 da unidade atual.
+  // Promove se, na precisão pedida, o valor arredondado vira 1000 da unidade atual.
   if (chosen) {
     let scaled = abs / chosen.divisor;
-    let rounded = Math.round(scaled * 10) / 10;
+    let rounded = Math.round(scaled * roundingFactor) / roundingFactor;
     if (rounded >= 1000) {
       if (chosen.suffix === " mil") {
         chosen = { min: 1_000_000, divisor: 1_000_000, suffix: " mi" };
         scaled = abs / chosen.divisor;
-        rounded = Math.round(scaled * 10) / 10;
+        rounded = Math.round(scaled * roundingFactor) / roundingFactor;
       } else if (chosen.suffix === " mi") {
         chosen = { min: 1_000_000_000, divisor: 1_000_000_000, suffix: " bi" };
         scaled = abs / chosen.divisor;
-        rounded = Math.round(scaled * 10) / 10;
+        rounded = Math.round(scaled * roundingFactor) / roundingFactor;
       }
     }
-    const body = formatPtNumber(rounded, 1);
+    const body = formatPtNumber(rounded, fractionDigits);
     if (money) return `${sign}R$ ${body}${chosen.suffix}`;
     return `${sign}${body}${chosen.suffix}`;
   }
 
-  const body = formatPtNumber(abs, unit === "count" ? 0 : 1);
+  const body = formatPtNumber(abs, unit === "count" ? 0 : fractionDigits);
   if (money) return `${sign}R$ ${body}`;
   return `${sign}${body}`;
 }

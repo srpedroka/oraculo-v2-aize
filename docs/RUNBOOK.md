@@ -875,12 +875,12 @@ Nunca copie esses valores para o frontend.
 
 Os cards de Resultado mostram valores compactos em pt-BR:
 
-- moeda: `R$ 850 mil`, `R$ 1,2 mi`, `R$ 2,4 bi`;
-- contagens: `18,5 mil` (sem `R$`);
-- percentual: `12,5%` (nunca abrevia);
+- moeda: `R$ 850 mil`, `R$ 1,23 mi`, `R$ 2,45 bi`;
+- contagens: `18,55 mil` (sem `R$`);
+- percentual: `12,46%` (nunca abrevia);
 - nulo: `—`.
 
-Passe o mouse (ou use o `title`) para ver o valor integral. Campos de edicao no lancamento continuam com o numero completo, sem abreviacao. A regra vive em `src/lib/kpi.ts` (`formatKpiCompact` / `formatKpiFull` / `verifyKpiFormatCases`).
+Os cards mostram ate 2 casas decimais. Ao passar sobre uma coluna do grafico, o tooltip mantem `mil`/`mi`/`bi` e mostra ate 4 casas; o `title` dos numeros continua oferecendo o valor integral. Campos de edicao permanecem sem abreviacao. A regra vive em `src/lib/kpi.ts`; valide com `pnpm run test:kpi-format`.
 
 ## Resgatar KPIs a partir do histórico
 
