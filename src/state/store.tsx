@@ -123,7 +123,7 @@ type AppAction =
       note?: string | null;
       title?: string | null;
       classification?: Record<string, unknown> | null;
-      onSuccess?: () => void;
+      onSuccess?: (result?: { document?: { id: string } }) => void;
       onError?: (message: string) => void;
     }
   | {
@@ -1854,9 +1854,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           title: action.title ?? null,
           classification: action.classification ?? null,
         })
-          .then(() => {
+          .then((result) => {
             queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
-            action.onSuccess?.();
+            action.onSuccess?.(result as { document?: { id: string } } | undefined);
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível importar o histórico.");

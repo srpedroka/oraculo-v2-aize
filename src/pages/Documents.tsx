@@ -1,12 +1,13 @@
-import { Archive, FileText, Printer } from "lucide-react";
+import { Archive, FileText, Printer, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PlanDocumentView } from "../components/PlanDocument";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { HistoricalImportDialog } from "../features/history/HistoricalImportDialog";
+import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 import { useAppState } from "../state/store";
 import type { PlanDocument, PlanDocumentOrigin, PlanDocumentType } from "../types";
-import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 
 const TYPE_LABEL: Record<PlanDocumentType, string> = {
   strategic: "Plano Estratégico",
@@ -38,6 +39,15 @@ export function Documents() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const isOwner = state.currentMembership?.role === "owner";
+  const canImportHistory = useMemo(() => {
+    if (isOwner) return true;
+    if (state.currentMembership?.role !== "coordinator") return false;
+    const membershipId = state.currentMembership.id;
+    return state.areas.some((area) => area.coordinatorId === membershipId);
+  }, [isOwner, state.areas, state.currentMembership]);
 
   const knownAreas = useMemo(() => [...state.areas, ...state.archivedAreas], [state.areas, state.archivedAreas]);
   const periods = useMemo(() => [...new Set(state.planDocuments.map((document) => document.period))], [state.planDocuments]);
@@ -95,32 +105,42 @@ export function Documents() {
           <h1 className="text-2xl font-semibold text-text">Documentos</h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
             Planos, fechamentos e históricos salvos para leitura, impressão e envio pelo WhatsApp.
+            {canImportHistory
+              ? " Importe planos, relatórios e tabelas antigas. O Oráculo organiza os campos e você confirma antes de salvar."
+              : ""}
           </p>
         </div>
-        {selectedDocument ? (
-          <div className="flex items-center gap-2">
-            {canManageSelected ? (
-              <Button
-                variant="quiet"
-                size="icon"
-                icon={Archive}
-                onClick={() => {
-                  setArchiveError(null);
-                  setArchiveOpen(true);
-                }}
-                aria-label="Arquivar documento"
-                title="Retirar documento da lista ativa"
-              />
-            ) : null}
-            <Link
-              to={`/documentos/${selectedDocument.id}/imprimir`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border bg-transparent px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white"
-            >
-              <Printer className="h-4 w-4" />
-              Exportar PDF
-            </Link>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {canImportHistory ? (
+            <Button icon={Upload} onClick={() => setImportOpen(true)}>
+              Importar histórico
+            </Button>
+          ) : null}
+          {selectedDocument ? (
+            <>
+              {canManageSelected ? (
+                <Button
+                  variant="quiet"
+                  size="icon"
+                  icon={Archive}
+                  onClick={() => {
+                    setArchiveError(null);
+                    setArchiveOpen(true);
+                  }}
+                  aria-label="Arquivar documento"
+                  title="Retirar documento da lista ativa"
+                />
+              ) : null}
+              <Link
+                to={`/documentos/${selectedDocument.id}/imprimir`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border bg-transparent px-4 text-sm font-medium text-text transition hover:border-accent/30 hover:bg-white"
+              >
+                <Printer className="h-4 w-4" />
+                Exportar PDF
+              </Link>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <Card>
@@ -204,7 +224,15 @@ export function Documents() {
           <p className="text-base font-semibold text-text">Nenhum documento padrão ainda.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
             Confirme um plano estratégico, trimestral, mensal ou fechamento para o Oráculo gerar o primeiro documento.
+            {canImportHistory ? " Você também pode importar um histórico antigo." : ""}
           </p>
+          {canImportHistory ? (
+            <div className="mt-4 flex justify-center">
+              <Button icon={Upload} onClick={() => setImportOpen(true)}>
+                Importar histórico
+              </Button>
+            </div>
+          ) : null}
         </Card>
       )}
       {archiveOpen && selectedDocument ? (
@@ -223,6 +251,13 @@ export function Documents() {
           onConfirm={archiveDocument}
         />
       ) : null}
+      <HistoricalImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSaved={(documentId) => {
+          if (documentId) setSelectedId(documentId);
+        }}
+      />
     </div>
   );
 }

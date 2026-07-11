@@ -856,13 +856,13 @@ Verifique secrets no Supabase:
 
 Nunca copie esses valores para o frontend.
 
-## Importar histórico (Plano Estratégico)
+## Importar histórico (Documentos)
 
-1. Abra **Plano Estratégico › Histórico** (ou a aba de importar histórico).
-2. Cole texto **ou** use **Importar arquivo**: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP.
-3. Imagem: o navegador redimensiona e envia JPEG à `suggest-historical-metadata`; a IA de bastidores precisa ser OpenAI, Anthropic ou xAI (visão). O texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
-4. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia no textarea antes de salvar — é isso que a IA usará depois como memória.
-5. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; só entra em Documentos como `origin = historical`. A mídia da imagem **não** é guardada.
+1. Abra **Documentos** e clique **Importar histórico** (owner, ou coordenador com ao menos uma área ativa). O Plano Estratégico **não** tem mais esta entrada.
+2. Cole texto **ou** use **Importar arquivo** / arraste: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP. Nada é gravado só por escolher o arquivo.
+3. Imagem: o navegador redimensiona e envia à leitura do Oráculo; o texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
+4. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia antes de salvar.
+5. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; entra em Documentos como histórico. A mídia da imagem **não** é guardada. Após salvar, o novo documento fica selecionado.
 6. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
 7. Se o objetivo for alimentar os cards de Resultado (KPI), use o import de planilha/imagem no Dashboard — o histórico não grava `kpi_monthly_values`.
 
@@ -879,7 +879,7 @@ Passe o mouse (ou use o `title`) para ver o valor integral. Campos de edicao no 
 
 ## Resgatar KPIs a partir do histórico
 
-1. Importe documentos com números (ex. faturamento mensal multi-ano) em **Plano Estratégico › Histórico** e salve.
+1. Importe documentos com números (ex. faturamento mensal multi-ano) em **Documentos › Importar histórico** e salve.
 2. No **Dashboard › Resultado**, owner/admin clica **Resgatar do histórico** (ou em Lançar KPIs › mesmo botão).
 3. O servidor lê até 30 históricos com texto, a IA de bastidores extrai linhas de KPI e **omite o que já tem Meta/Atingido** no Dashboard.
 4. Confira a prévia (anos, indicadores, valores) e **Aplique**. Nada grava sem confirmação.

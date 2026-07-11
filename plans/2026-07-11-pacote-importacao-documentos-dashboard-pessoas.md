@@ -1,6 +1,6 @@
 # Plano: importacao historica, Documentos, numeros do Dashboard e Pessoas
 
-> **STATUS: em execucao pelo Grok CLI.** Fatias 1–2 concluidas (Pessoas + numeros compactos do Dashboard). Seguir fatias 3–5 na ordem. Ao fim de cada fatia: lint, build, teste focado, commit e push. Nao iniciar a fatia seguinte se alguma validacao falhar.
+> **STATUS: em execucao pelo Grok CLI.** Fatias 1–3 concluidas (Pessoas, numeros Dashboard, importacao em Documentos). Seguir fatias 4–5 na ordem. Ao fim de cada fatia: lint, build, teste focado, commit e push. Nao iniciar a fatia seguinte se alguma validacao falhar.
 
 ## 1. Objetivo do pacote
 
