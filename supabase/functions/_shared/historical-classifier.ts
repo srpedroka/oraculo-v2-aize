@@ -71,6 +71,175 @@ function truncateForModel(rawText: string) {
   return `${normalized.slice(0, 6000)}\n\n[...trecho intermediario omitido...]\n\n${normalized.slice(-2000)}`;
 }
 
+function normalizeDocumentText(value: unknown, maxLength = 120_000) {
+  return String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function splitTableCells(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes("|")) {
+    return trimmed
+      .split("|")
+      .map((cell) => cell.trim())
+      .filter((cell) => cell && !/^[-:]+$/.test(cell));
+  }
+  if (trimmed.includes("\t")) {
+    return trimmed.split("\t").map((cell) => cell.trim()).filter(Boolean);
+  }
+  // Colunas separadas por 2+ espaços
+  if (/\s{2,}/.test(trimmed)) {
+    return trimmed.split(/\s{2,}/).map((cell) => cell.trim()).filter(Boolean);
+  }
+  return [trimmed];
+}
+
+function yearInHeader(cell: string): number | null {
+  const match = cell.match(/\b(20\d{2})\b/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  return Number.isInteger(year) ? year : null;
+}
+
+function looksLikeMonthLabel(cell: string) {
+  const token = normalizeTextForRouting(cell).replace(/[^a-z0-9]/g, "");
+  if (!token) return false;
+  if (MONTH_LABEL_BY_NORMALIZED[token]) return true;
+  if (/^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/.test(token)) return true;
+  const asNum = Number(token);
+  return Number.isInteger(asNum) && asNum >= 1 && asNum <= 12;
+}
+
+/**
+ * Tabelas "largas" (Mês | TOTAL 2025 | TOTAL 2026) viram linhas longas
+ * "Janeiro 2025 | valor" para o histórico não misturar anos.
+ */
+export function expandMultiYearTables(rawText: string): { text: string; expanded: boolean; years: number[] } {
+  const source = normalizeDocumentText(rawText);
+  if (!source) return { text: "", expanded: false, years: [] };
+
+  const lines = source.split("\n");
+  const out: string[] = [];
+  const yearsFound = new Set<number>();
+  let expandedAny = false;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+    const headerCells = splitTableCells(line);
+    const yearColumns = headerCells
+      .map((cell, index) => ({ index, year: yearInHeader(cell) }))
+      .filter((item): item is { index: number; year: number } => item.year != null);
+
+    const uniqueYears = [...new Set(yearColumns.map((item) => item.year))];
+    const hasMonthHint = headerCells.some((cell) => /mes|mês|month/i.test(cell) || looksLikeMonthLabel(cell));
+
+    if (uniqueYears.length >= 2 && yearColumns.length >= 2 && (hasMonthHint || headerCells.length >= 3)) {
+      for (const year of uniqueYears) yearsFound.add(year);
+      out.push(`[Tabela expandida por ano — colunas: ${uniqueYears.join(", ")}]`);
+      i += 1;
+      while (i < lines.length) {
+        const row = lines[i] ?? "";
+        const rowTrim = row.trim();
+        if (!rowTrim) {
+          out.push("");
+          i += 1;
+          break;
+        }
+        // Nova tabela / seção
+        const nextHeaderYears = splitTableCells(row)
+          .map((cell) => yearInHeader(cell))
+          .filter((year): year is number => year != null);
+        if (nextHeaderYears.length >= 2 && splitTableCells(row).length >= 3 && !looksLikeMonthLabel(splitTableCells(row)[0] ?? "")) {
+          break;
+        }
+
+        const cells = splitTableCells(row);
+        if (cells.length < 2) {
+          out.push(row);
+          i += 1;
+          continue;
+        }
+
+        // Rotulo = primeira celula que parece mes/nome; senao a primeira celula.
+        let labelIndex = 0;
+        for (let c = 0; c < cells.length; c += 1) {
+          if (looksLikeMonthLabel(cells[c] ?? "")) {
+            labelIndex = c;
+            break;
+          }
+        }
+        const label = cells[labelIndex] ?? cells[0] ?? "";
+        const yearsInOrder = yearColumns.map((item) => item.year);
+        const valueCells = cells.filter((_, index) => index !== labelIndex);
+        let rowExpanded = false;
+
+        // Caso tipico: "Janeiro | val2025 | val2026" com cabecalho "Mês | TOTAL 2025 | TOTAL 2026"
+        if (valueCells.length === yearsInOrder.length) {
+          for (let v = 0; v < yearsInOrder.length; v += 1) {
+            const value = valueCells[v];
+            const year = yearsInOrder[v];
+            if (value == null || value === "" || yearInHeader(value)) continue;
+            out.push(`${label} ${year} | ${value}`);
+            yearsFound.add(year);
+            rowExpanded = true;
+            expandedAny = true;
+          }
+        } else {
+          for (const { index, year } of yearColumns) {
+            const value = cells[index];
+            if (value == null || value === "" || yearInHeader(value)) continue;
+            out.push(`${label} ${year} | ${value}`);
+            yearsFound.add(year);
+            rowExpanded = true;
+            expandedAny = true;
+          }
+        }
+        if (!rowExpanded) out.push(row);
+        i += 1;
+      }
+      continue;
+    }
+
+    out.push(line);
+    i += 1;
+  }
+
+  const text = out.join("\n").replace(/\n{4,}/g, "\n\n\n").trim();
+  return {
+    text: text || source,
+    expanded: expandedAny,
+    years: [...yearsFound].sort((a, b) => a - b),
+  };
+}
+
+function periodFromYears(years: number[]): { period: string; periodFound: boolean } {
+  if (!years.length) return { period: "", periodFound: false };
+  if (years.length === 1) return { period: String(years[0]), periodFound: true };
+  return { period: `${years[0]}–${years[years.length - 1]}`, periodFound: true };
+}
+
+function yearsMentionedInText(text: string) {
+  const matches = String(text).match(/\b(20\d{2})\b/g) ?? [];
+  return [...new Set(matches.map((item) => Number(item)).filter((year) => year >= 2000 && year <= 2100))].sort((a, b) => a - b);
+}
+
+const TABLE_NORMALIZATION_RULES = [
+  "TABELAS COM VARIOS ANOS (critico para historico):",
+  "- Se houver colunas como TOTAL 2025 | TOTAL 2026 (ou 2024/2025/...), NAO deixe so a linha larga.",
+  "- Expanda para UMA LINHA POR MES+ANO, no formato: `Janeiro 2025 | R$ 1.234,56` e na linha seguinte `Janeiro 2026 | R$ 2.345,67`.",
+  "- Repita o rotulo do mes em cada linha expandida. Nunca misture valores de anos diferentes na mesma linha sem o ano explicito.",
+  "- Preserve todos os valores e rotulos; nao some colunas nem invente numeros.",
+  "- No campo period dos metadados: se houver varios anos na tabela, use a faixa `2025–2026` (en-dash ou hifen) e periodFound=true.",
+  "- Coloque o documento JA EXPANDIDO em normalizedText (texto) ou extractedText (imagem).",
+].join("\n");
+
 function normalizeAreaToken(value: unknown) {
   return normalizeTextForRouting(value).replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -163,13 +332,22 @@ function sanitizeAiSuggestion(parsed: any, text: string, areas: AreaCandidate[])
   const parsedPeriodFound = Boolean(periodFoundValue);
   const parsedPeriod = asText(parsed?.period, 80);
   const fallbackPeriod = extractPeriod(text, documentType);
-  const period = modelExplicitlyMissedPeriod
-    ? { period: "", periodFound: false }
-    : parsedPeriodFound && parsedPeriod
-      ? { period: parsedPeriod, periodFound: true }
-      : fallbackPeriod.periodFound
-        ? fallbackPeriod
-        : { period: "", periodFound: false };
+  const multiYear = periodFromYears(yearsMentionedInText(text));
+
+  let period: { period: string; periodFound: boolean };
+  if (modelExplicitlyMissedPeriod) {
+    period = { period: "", periodFound: false };
+  } else if (multiYear.periodFound && yearsMentionedInText(text).length >= 2) {
+    // Prefer faixa multi-ano quando o texto expandido deixa isso claro.
+    period = multiYear;
+  } else if (parsedPeriodFound && parsedPeriod) {
+    period = { period: parsedPeriod, periodFound: true };
+  } else if (fallbackPeriod.periodFound) {
+    period = fallbackPeriod;
+  } else {
+    period = multiYear;
+  }
+
   const lowConfidence = Array.isArray(parsed?.lowConfidenceFields)
     ? parsed.lowConfidenceFields.map((item: unknown) => asText(item, 40)).filter(Boolean)
     : [];
@@ -197,29 +375,64 @@ function systemPrompt(areas: AreaCandidate[]) {
     : "Nenhuma area candidata. Use escopo Empresa.";
 
   return [
-    "Voce sugere metadados para importar um documento historico no Oraculo. Responda somente JSON valido.",
-    'Formato: {"documentType":"strategic|quarterly|monthly","area":"nome ou numero da area|null","period":"2024|T2 2024|Set 2024|","periodFound":true|false,"title":"titulo curto","summary":"1-2 linhas","confidence":0.0,"lowConfidenceFields":["period"]}',
+    "Voce prepara um documento historico para o Oraculo. Responda somente JSON valido.",
+    'Formato: {"normalizedText":"texto canonico para gravar","documentType":"strategic|quarterly|monthly","area":"nome ou numero da area|null","period":"2024|2025–2026|T2 2024|Set 2024|","periodFound":true|false,"title":"titulo curto","summary":"1-2 linhas","confidence":0.0,"lowConfidenceFields":["period"]}',
     "Regras:",
     "- strategic: plano anual/estrategico da empresa.",
     "- quarterly: plano trimestral de area ou trimestre.",
     "- monthly: plano mensal, execucao mensal ou prioridades do mes.",
     "- Area: escolha somente uma das areas candidatas por nome ou numero; se nao houver sinal claro, retorne null.",
-    "- Periodo: use 2024 para ano, T2 2024 para trimestre, Set 2024 para mes.",
+    "- Periodo: use 2024 para ano, T2 2024 para trimestre, Set 2024 para mes. Se a tabela tiver varios anos, use faixa 2025–2026.",
     "- Se nao houver data clara no texto, retorne period vazio e periodFound=false. Nunca invente ano.",
     "- O titulo deve ser descritivo, em PT-BR, com ate 120 caracteres.",
+    "- normalizedText: versao do documento que sera salva no historico (ate ~12000 caracteres). Se nao precisar reescrever, repita o texto de entrada ja limpo.",
+    TABLE_NORMALIZATION_RULES,
     "",
     "Areas candidatas:",
     areaList,
   ].join("\n");
 }
 
+function finalizeHistoricalText(rawCandidate: string, originalFallback: string) {
+  const base = normalizeDocumentText(rawCandidate || originalFallback);
+  const expanded = expandMultiYearTables(base);
+  const years = expanded.years.length ? expanded.years : yearsMentionedInText(expanded.text);
+  return {
+    text: expanded.text,
+    expanded: expanded.expanded,
+    years,
+  };
+}
+
+function suggestionWithMultiYearPeriod(suggestion: HistoricalMetadataSuggestion, years: number[]): HistoricalMetadataSuggestion {
+  if (years.length < 2) return suggestion;
+  const range = periodFromYears(years);
+  return {
+    ...suggestion,
+    period: range.period,
+    periodFound: true,
+    lowConfidenceFields: suggestion.lowConfidenceFields.filter((field) => field !== "period"),
+  };
+}
+
 export async function suggestHistoricalMetadata(
   client: Client,
   params: { orgId: string; rawText: string; fileName?: string | null; areas: AreaCandidate[] },
-): Promise<HistoricalMetadataSuggestion> {
-  const text = truncateForModel(params.rawText);
+): Promise<{ suggestion: HistoricalMetadataSuggestion; extractedText: string; tableExpanded: boolean }> {
+  const preExpanded = expandMultiYearTables(params.rawText);
+  const text = truncateForModel(preExpanded.text);
   const aiRoute = await resolveAiFunction(client, params.orgId, "background");
-  if (!aiRoute) return fallbackSuggestion(text, params.areas, "heuristic");
+  if (!aiRoute) {
+    const finalized = finalizeHistoricalText(preExpanded.text, params.rawText);
+    return {
+      extractedText: finalized.text,
+      tableExpanded: finalized.expanded || preExpanded.expanded,
+      suggestion: suggestionWithMultiYearPeriod(
+        fallbackSuggestion(finalized.text, params.areas, "heuristic"),
+        finalized.years,
+      ),
+    };
+  }
 
   try {
     const result = await callModelForFunction(
@@ -229,7 +442,7 @@ export async function suggestHistoricalMetadata(
       aiRoute,
       systemPrompt(params.areas),
       [{ role: "user", content: [`Arquivo: ${params.fileName ?? "Texto colado"}`, "", text].join("\n") }],
-      aiRoute.limits,
+      { ...aiRoute.limits, maxTokens: Math.max(aiRoute.limits.maxTokens ?? 2000, 3500) },
     );
 
     await recordAiUsage({
@@ -244,11 +457,41 @@ export async function suggestHistoricalMetadata(
     });
 
     const parsed = parseJsonObject(result.text);
-    if (!parsed) return fallbackSuggestion(text, params.areas, "heuristic");
-    return sanitizeAiSuggestion(parsed, text, params.areas);
+    const candidateText = String(parsed?.normalizedText ?? parsed?.normalized_text ?? parsed?.extractedText ?? parsed?.extracted_text ?? "").trim()
+      || preExpanded.text
+      || params.rawText;
+    const finalized = finalizeHistoricalText(candidateText, params.rawText);
+
+    if (!parsed) {
+      return {
+        extractedText: finalized.text,
+        tableExpanded: finalized.expanded || preExpanded.expanded,
+        suggestion: suggestionWithMultiYearPeriod(
+          fallbackSuggestion(finalized.text, params.areas, "heuristic"),
+          finalized.years,
+        ),
+      };
+    }
+
+    return {
+      extractedText: finalized.text,
+      tableExpanded: finalized.expanded || preExpanded.expanded,
+      suggestion: suggestionWithMultiYearPeriod(
+        sanitizeAiSuggestion(parsed, finalized.text, params.areas),
+        finalized.years,
+      ),
+    };
   } catch (error) {
     console.error("Erro ao sugerir metadados historicos", error instanceof Error ? error.message : String(error));
-    return fallbackSuggestion(text, params.areas, "heuristic");
+    const finalized = finalizeHistoricalText(preExpanded.text, params.rawText);
+    return {
+      extractedText: finalized.text,
+      tableExpanded: finalized.expanded || preExpanded.expanded,
+      suggestion: suggestionWithMultiYearPeriod(
+        fallbackSuggestion(finalized.text, params.areas, "heuristic"),
+        finalized.years,
+      ),
+    };
   }
 }
 
@@ -258,9 +501,10 @@ function imageSystemPrompt(areas: AreaCandidate[]) {
     "",
     "A entrada e uma IMAGEM (foto ou captura de tela) de um documento historico.",
     "1) Transcreva o texto legivel da imagem em portugues, sem inventar trechos ilegíveis (use [ilegivel] se precisar).",
-    "2) Com base no texto lido, preencha os metadados.",
-    'Inclua no JSON o campo "extractedText" com a transcricao completa (ate ~12000 caracteres).',
-    'Formato: {"extractedText":"...","documentType":"strategic|quarterly|monthly","area":"...","period":"...","periodFound":true|false,"title":"...","summary":"...","confidence":0.0,"lowConfidenceFields":[]}',
+    "2) Se houver tabela com colunas de anos diferentes, JA DEIXE o extractedText no formato expandido mes+ano (veja regras de tabelas).",
+    "3) Preencha os metadados com base no texto expandido.",
+    'Inclua no JSON o campo "extractedText" com a transcricao/normalizacao completa (ate ~12000 caracteres).',
+    'Formato: {"extractedText":"...","normalizedText":"...opcional...","documentType":"strategic|quarterly|monthly","area":"...","period":"...","periodFound":true|false,"title":"...","summary":"...","confidence":0.0,"lowConfidenceFields":[]}',
   ].join("\n");
 }
 
@@ -272,7 +516,7 @@ export async function suggestHistoricalMetadataFromImage(
     fileName?: string | null;
     areas: AreaCandidate[];
   },
-): Promise<{ suggestion: HistoricalMetadataSuggestion; extractedText: string }> {
+): Promise<{ suggestion: HistoricalMetadataSuggestion; extractedText: string; tableExpanded: boolean }> {
   const aiRoute = await resolveAiFunction(client, params.orgId, "background");
   if (!aiRoute) {
     throw new Error("Configure a função de IA de bastidores (background) com um provedor que leia imagem (OpenAI, Anthropic ou xAI).");
@@ -280,7 +524,7 @@ export async function suggestHistoricalMetadataFromImage(
 
   const userText = [
     `Arquivo: ${params.fileName ?? "Imagem histórica"}`,
-    "Transcreva o documento da imagem e devolva o JSON pedido no system prompt.",
+    "Transcreva o documento da imagem, expanda tabelas multi-ano (uma linha por mês+ano) e devolva o JSON pedido no system prompt.",
   ].join("\n");
 
   try {
@@ -292,7 +536,7 @@ export async function suggestHistoricalMetadataFromImage(
       imageSystemPrompt(params.areas),
       userText,
       params.image,
-      { ...aiRoute.limits, maxTokens: Math.max(aiRoute.limits.maxTokens ?? 2000, 3500) },
+      { ...aiRoute.limits, maxTokens: Math.max(aiRoute.limits.maxTokens ?? 2000, 4000) },
     );
 
     await recordAiUsage({
@@ -311,29 +555,33 @@ export async function suggestHistoricalMetadataFromImage(
     });
 
     const parsed = parseJsonObject(result.text);
-    const rawExtracted = String(parsed?.extractedText ?? parsed?.extracted_text ?? "").trim() || String(result.text ?? "").trim();
-    const normalizedExtracted = rawExtracted
-      .replace(/\r\n?/g, "\n")
-      .replace(/\u00a0/g, " ")
-      .replace(/[ \t]{2,}/g, " ")
-      .replace(/\n{4,}/g, "\n\n\n")
-      .trim()
-      .slice(0, 120_000);
+    const rawExtracted = String(
+      parsed?.normalizedText ?? parsed?.normalized_text ?? parsed?.extractedText ?? parsed?.extracted_text ?? "",
+    ).trim() || String(result.text ?? "").trim();
+    const finalized = finalizeHistoricalText(rawExtracted, rawExtracted);
 
-    if (!normalizedExtracted) {
+    if (!finalized.text) {
       throw new Error("Não consegui ler texto nesta imagem. Envie uma foto mais nítida ou um PDF/DOCX com texto.");
     }
 
     if (!parsed) {
       return {
-        extractedText: normalizedExtracted,
-        suggestion: fallbackSuggestion(normalizedExtracted, params.areas, "heuristic"),
+        extractedText: finalized.text,
+        tableExpanded: finalized.expanded,
+        suggestion: suggestionWithMultiYearPeriod(
+          fallbackSuggestion(finalized.text, params.areas, "heuristic"),
+          finalized.years,
+        ),
       };
     }
 
     return {
-      extractedText: normalizedExtracted,
-      suggestion: sanitizeAiSuggestion(parsed, normalizedExtracted, params.areas),
+      extractedText: finalized.text,
+      tableExpanded: finalized.expanded,
+      suggestion: suggestionWithMultiYearPeriod(
+        sanitizeAiSuggestion(parsed, finalized.text, params.areas),
+        finalized.years,
+      ),
     };
   } catch (error) {
     if (error instanceof Error && /imagem|image|vision|não aceita|indispon/i.test(error.message)) {

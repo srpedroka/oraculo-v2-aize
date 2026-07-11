@@ -237,9 +237,11 @@ export function Strategic() {
                 reject(new Error("Não consegui ler texto nesta imagem. Tente outra foto ou um PDF/DOCX."));
                 return;
               }
-              setHistoricalText(text);
-              applyHistoricalSuggestion(result.suggestion);
-              setHistoricalFeedback("Imagem lida. Confira o texto e a sugestão antes de salvar.");
+              applyHistoricalSuggestion(result.suggestion, {
+                extractedText: text,
+                tableExpanded: result.tableExpanded,
+                fromImage: true,
+              });
               resolve();
             },
             onError: (message) => reject(new Error(message)),
@@ -316,18 +318,30 @@ export function Strategic() {
     void processHistoricalFile(file);
   }
 
-  function applyHistoricalSuggestion(suggestion: HistoricalMetadataSuggestion) {
+  function applyHistoricalSuggestion(
+    suggestion: HistoricalMetadataSuggestion,
+    options?: { extractedText?: string; tableExpanded?: boolean; fromImage?: boolean },
+  ) {
     const nextAreaId = suggestion.areaId ?? (isOwner ? "company" : writableHistoricalAreas[0]?.id ?? "company");
+    const normalized = String(options?.extractedText ?? "").trim();
+    if (normalized) setHistoricalText(normalized);
     setHistoricalSuggestion(suggestion);
     setHistoricalType(suggestion.documentType);
     setHistoricalAreaId(nextAreaId);
     setHistoricalPeriod(suggestion.period);
     setHistoricalTitle(suggestion.title);
-    setHistoricalFeedback(
-      suggestion.periodFound
-        ? "Sugestão pronta para conferência. Ajuste qualquer campo antes de salvar."
-        : "Sugestão pronta, mas não encontrei período claro. Preencha o período antes de salvar.",
-    );
+
+    const parts: string[] = [];
+    if (options?.fromImage) parts.push("Imagem lida.");
+    if (options?.tableExpanded || (normalized && /\[Tabela expandida por ano/i.test(normalized))) {
+      parts.push("Tabela multi-ano expandida (uma linha por mês+ano) para o histórico não misturar anos.");
+    }
+    if (suggestion.periodFound) {
+      parts.push("Sugestão pronta para conferência. Ajuste qualquer campo antes de salvar.");
+    } else {
+      parts.push("Sugestão pronta, mas não encontrei período claro. Preencha o período antes de salvar.");
+    }
+    setHistoricalFeedback(parts.join(" "));
   }
 
   function suggestHistoricalMetadata() {
@@ -353,7 +367,10 @@ export function Strategic() {
       fileName: historicalFileName,
       onSuccess: (result) => {
         setSuggestingHistorical(false);
-        applyHistoricalSuggestion(result.suggestion);
+        applyHistoricalSuggestion(result.suggestion, {
+          extractedText: result.extractedText,
+          tableExpanded: result.tableExpanded,
+        });
       },
       onError: (message) => {
         setSuggestingHistorical(false);
@@ -693,7 +710,7 @@ export function Strategic() {
                 onChange={(event) => updateHistoricalText(event.target.value)}
                 rows={12}
                 className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm leading-6"
-                placeholder="Cole aqui o plano ou estratégia passada"
+                placeholder="Cole o texto ou importe arquivo/imagem. Tabelas multi-ano serão expandidas (Janeiro 2025 | valor) ao interpretar."
               />
             </label>
 
@@ -701,6 +718,11 @@ export function Strategic() {
               <p className="mt-3 flex items-center gap-2 text-xs font-medium text-text-secondary">
                 <FileText aria-hidden="true" className="h-4 w-4" />
                 Texto importado de {historicalFileName}.
+              </p>
+            ) : null}
+            {/\[Tabela expandida por ano/i.test(historicalText) ? (
+              <p className="mt-2 text-xs leading-5 text-text-secondary">
+                Prévia já no formato de histórico: cada linha é um mês + um ano (fácil de gravar e de a IA reler depois).
               </p>
             ) : null}
             {historicalSuggestion ? (

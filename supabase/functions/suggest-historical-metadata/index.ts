@@ -73,11 +73,16 @@ serve(async (req) => {
       return jsonResponse({
         suggestion: result.suggestion,
         extractedText: result.extractedText,
+        tableExpanded: result.tableExpanded,
       });
     }
 
-    const suggestion = await suggestHistoricalMetadata(client, { orgId, rawText, fileName, areas });
-    return jsonResponse({ suggestion });
+    const result = await suggestHistoricalMetadata(client, { orgId, rawText, fileName, areas });
+    return jsonResponse({
+      suggestion: result.suggestion,
+      extractedText: result.extractedText,
+      tableExpanded: result.tableExpanded,
+    });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Não foi possível interpretar o histórico" }, 400);
   }

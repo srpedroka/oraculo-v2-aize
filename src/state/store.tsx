@@ -99,7 +99,11 @@ type AppAction =
       rawText?: string;
       fileName?: string | null;
       image?: { mimeType: "image/jpeg" | "image/png"; base64: string } | null;
-      onSuccess?: (result: { suggestion: HistoricalMetadataSuggestion; extractedText?: string }) => void;
+      onSuccess?: (result: {
+        suggestion: HistoricalMetadataSuggestion;
+        extractedText?: string;
+        tableExpanded?: boolean;
+      }) => void;
       onError?: (message: string) => void;
     }
   | {
@@ -1800,7 +1804,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
           .then((result) => {
             queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
-            const payload = result as { suggestion: HistoricalMetadataSuggestion; extractedText?: string };
+            const payload = result as {
+              suggestion: HistoricalMetadataSuggestion;
+              extractedText?: string;
+              tableExpanded?: boolean;
+            };
             action.onSuccess?.(payload);
           })
           .catch((error) => {

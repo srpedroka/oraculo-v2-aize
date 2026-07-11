@@ -6,6 +6,7 @@
 - Aba Pessoas: botão **Convidar** sempre visível (WhatsApp se houver celular + WA ativo; senão email; se a conta já existe, devolve link copiável). Lista permite **vincular área**, **editar nome/celular** e convidar depois de cadastro silencioso.
 - Corrigido bug em que o celular dos membros parecia “apagado”: a query de `profiles` da org não carregava `phone`, e o upsert de `invite-member` agora **nunca sobrescreve** um celular existente com vazio/null.
 - Importação de histórico no Plano Estratégico aceita imagens JPG/PNG/WEBP: a IA de bastidores (visão) transcreve o texto, sugere metadados e preenche a prévia; o arquivo bruto da imagem **não** é gravado — só o texto e a classificação confirmados.
+- Histórico normaliza tabelas multi-ano (ex.: Mês | TOTAL 2025 | TOTAL 2026) para linhas `Janeiro 2025 | valor` / `Janeiro 2026 | valor` antes de gravar, com período em faixa (`2025–2026`) e prévia editável — a visualização em colunas fica no arquivo original; o texto canônico do histórico fica separado por ano.
 
 ## 2026-07-10
 
