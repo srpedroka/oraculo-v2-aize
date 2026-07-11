@@ -168,6 +168,7 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
   const historicalSource = asText(content.source);
   const historicalNote = asText(content.note);
   const historicalSummary = asText(content.summary) || asText(asRecord(content.classification).summary);
+  const historicalMetadata = asRecord(content.source_metadata);
   const hasImportBackup = Boolean(content.import_backup && typeof content.import_backup === "object");
   const objectives = asArray<Record<string, unknown>>(content.objetivos);
   const context = asArray<string>(content.contexto_rapido);
@@ -202,16 +203,22 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
         </header>
 
         <div className="space-y-10 py-8">
-          {(historicalSource || historicalNote) ? (
+          {(historicalSource || historicalNote || Object.keys(historicalMetadata).length) ? (
             <Section index={1} title="Origem">
               <div className="grid gap-3 md:grid-cols-2">
                 <KeyValue label="Fonte" value={historicalSource} />
                 <KeyValue label="Nota" value={historicalNote} />
+                <KeyValue label="Empresa de origem" value={historicalMetadata.sourceCompany} />
+                <KeyValue label="Área no documento" value={historicalMetadata.sourceAreaLabel} />
+                <KeyValue label="Responsável" value={historicalMetadata.managerName} />
+                <KeyValue label="Ano" value={historicalMetadata.year} />
+                <KeyValue label="Trimestre" value={historicalMetadata.quarter ? `T${historicalMetadata.quarter}` : ""} />
+                <KeyValue label="Versão de origem" value={historicalMetadata.sourceVersion} />
               </div>
             </Section>
           ) : null}
 
-          <Section index={historicalSource || historicalNote ? 2 : 1} title="Texto Importado">
+          <Section index={historicalSource || historicalNote || Object.keys(historicalMetadata).length ? 2 : 1} title="Texto Importado">
             <div className="whitespace-pre-wrap break-words rounded-xl border border-border bg-surface px-4 py-4 text-sm leading-6 text-text-secondary">
               {rawHistory || "Documento histórico sem texto disponível."}
             </div>

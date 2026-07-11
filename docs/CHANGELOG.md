@@ -198,3 +198,10 @@
 - Construida a V1 navegavel do Oraculo com dashboard, planejamento estrategico, areas, planos trimestrais e demonstracao WhatsApp.
 - Ajustada sidebar redimensionavel e compacta conforme referencia visual.
 - Gerado pacote local com o codigo da V1.
+## 2026-07-11 - Metadados da importacao historica
+
+- A importacao em Documentos agora interpreta arquivos automaticamente e preenche tipo, area, periodo e titulo sem segundo clique.
+- Adicionado extrator deterministico de cabecalho para ano, trimestre, mes, responsavel, empresa citada e versao, com evidencias e conflitos antes da IA.
+- Tabelas complementares do mesmo ano deixaram de gerar falso conflito; tabelas do mesmo assunto com valores divergentes continuam exigindo escolha.
+- Metadados e valores confirmados passam a ser persistidos e restaurados; multiplos candidatos selecionados sao gravados atomicamente.
+- Adicionadas fixtures puras em `pnpm run test:historical-import` cobrindo o caso Marketing/Abril 2026 e conflitos relevantes.

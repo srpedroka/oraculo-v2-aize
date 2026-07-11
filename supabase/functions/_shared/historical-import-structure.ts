@@ -109,6 +109,29 @@ function yearsInText(text: string) {
   );
 }
 
+const GENERIC_TABLE_TOKENS = new Set([
+  "mes", "ano", "total", "meta", "atingido", "realizado", "resultado", "valor", "jan", "fev", "mar", "abr",
+  "mai", "jun", "jul", "ago", "set", "out", "nov", "dez",
+]);
+
+function tableSubjectTokens(table: HistoricalTableCandidate) {
+  const source = [table.headers.join(" "), table.normalizedText.split("\n")[0] ?? ""].join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/20\d{2}/g, " ")
+    .replace(/[^a-z0-9]+/g, " ");
+  return new Set(source.split(" ").filter((token) => token.length > 2 && !GENERIC_TABLE_TOKENS.has(token)));
+}
+
+function tablesCompete(left: HistoricalTableCandidate, right: HistoricalTableCandidate) {
+  const leftTokens = tableSubjectTokens(left);
+  const rightTokens = tableSubjectTokens(right);
+  if (!leftTokens.size || !rightTokens.size) return false;
+  const shared = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+  return shared / Math.min(leftTokens.size, rightTokens.size) >= 0.5;
+}
+
 /** Hash estável simples (não criptográfico) para fingerprint de tabela. */
 export function stableFingerprint(parts: string[]) {
   const input = parts.join("\n").toLowerCase().replace(/\s+/g, " ").trim();
@@ -298,7 +321,7 @@ export function detectHistoricalConflicts(params: {
       const right = tables[j];
       if (left.fingerprint === right.fingerprint) continue;
       const sharedYears = left.years.filter((year) => right.years.includes(year));
-      if (!sharedYears.length) continue;
+      if (!sharedYears.length || !tablesCompete(left, right)) continue;
       // Mesmo conjunto de anos e tamanho similar, mas texto diferente → conflito de valor
       const sameYearSet =
         left.years.length === right.years.length && left.years.every((year, index) => year === right.years[index]);
@@ -387,6 +410,7 @@ export function buildHistoricalImportSuggestion(params: {
   };
   tableExpanded: boolean;
   warnings?: string[];
+  candidates?: HistoricalDocumentCandidate[];
 }): HistoricalImportSuggestion {
   let extractedText = normalizeDocumentText(params.extractedText, MAX_EXTRACTED);
   if (!extractedText) {
@@ -425,7 +449,21 @@ export function buildHistoricalImportSuggestion(params: {
     };
   }
 
-  const candidates = [candidate].slice(0, MAX_CANDIDATES);
+  const suppliedCandidates = (params.candidates ?? []).filter((item) => item.normalizedText.trim()).map((item) => {
+    const normalizedCandidate = normalizeDocumentText(item.normalizedText, 40_000);
+    const linkedTableIds = tables
+      .filter((table) => {
+        const firstLine = table.normalizedText.split("\n").find((line) => line.trim())?.trim() ?? "";
+        return normalizedCandidate.includes(table.normalizedText) || (firstLine.length >= 8 && normalizedCandidate.includes(firstLine));
+      })
+      .map((table) => table.id);
+    return {
+      ...item,
+      normalizedText: normalizedCandidate,
+      tableIds: linkedTableIds.length ? linkedTableIds : item.tableIds,
+    };
+  });
+  const candidates = (suppliedCandidates.length ? suppliedCandidates : [candidate]).slice(0, MAX_CANDIDATES);
   const conflicts = detectHistoricalConflicts({
     candidates,
     tables,

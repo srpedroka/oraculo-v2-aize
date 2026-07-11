@@ -1,6 +1,6 @@
 # Plano: extracao real de metadados na importacao historica
 
-> **STATUS: pronto para execucao pelo Grok CLI.** Este plano corrige a entrega anterior de importacao estruturada. Executar fatia por fatia, sem marcar como concluido antes do teste com o caso de aceite descrito abaixo.
+> **STATUS: executado pelo Codex em 2026-07-11.** Extracao, preenchimento automatico, persistencia, fixtures e deploys validados conforme o caso de aceite.
 
 ## 1. Problema observado
 

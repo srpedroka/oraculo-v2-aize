@@ -272,6 +272,38 @@ export interface HistoricalImportSuggestion {
   warnings: string[];
 }
 
+export interface HistoricalHeaderEvidence {
+  field: string;
+  value: string;
+  source: "title" | "label" | "body" | "filename" | "ai";
+  confidence: number;
+  excerpt: string;
+}
+
+export interface HistoricalHeaderConflict {
+  field: "documentType" | "area" | "year" | "quarter" | "month" | "title" | "company";
+  message: string;
+  values: string[];
+  required: boolean;
+}
+
+export interface HistoricalHeaderMetadata {
+  documentType: Extract<PlanDocumentType, "strategic" | "quarterly" | "monthly"> | null;
+  title: string | null;
+  sourceCompany: string | null;
+  sourceAreaLabel: string | null;
+  matchedAreaId: string | null;
+  matchedAreaName: string | null;
+  managerName: string | null;
+  year: number | null;
+  quarter: 1 | 2 | 3 | 4 | null;
+  month: number | null;
+  primaryPeriod: string;
+  sourceVersion: string | null;
+  evidence: HistoricalHeaderEvidence[];
+  conflicts: HistoricalHeaderConflict[];
+}
+
 export interface CompanyProfileSource {
   url: string;
   title: string;

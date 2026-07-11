@@ -59,6 +59,8 @@ serve(async (req) => {
     if (membership.role === "admin") throw new Error("Admin não pode importar histórico");
 
     const areas = await loadCandidateAreas(client, { orgId, membership });
+    const { data: organization, error: organizationError } = await client.from("organizations").select("name").eq("id", orgId).maybeSingle();
+    if (organizationError) throw organizationError;
     if (membership.role !== "owner" && !areas.length) {
       throw new Error("Seu usuário precisa coordenar uma área para importar histórico");
     }
@@ -69,6 +71,7 @@ serve(async (req) => {
         image,
         fileName,
         areas,
+        activeCompanyName: organization?.name ?? null,
       });
       return jsonResponse({
         suggestion: result.suggestion,
@@ -79,10 +82,11 @@ serve(async (req) => {
         tables: result.importSuggestion.tables,
         conflicts: result.importSuggestion.conflicts,
         warnings: result.importSuggestion.warnings,
+        headerMetadata: result.headerMetadata,
       });
     }
 
-    const result = await suggestHistoricalMetadata(client, { orgId, rawText, fileName, areas });
+    const result = await suggestHistoricalMetadata(client, { orgId, rawText, fileName, areas, activeCompanyName: organization?.name ?? null });
     return jsonResponse({
       suggestion: result.suggestion,
       extractedText: result.extractedText,
@@ -92,6 +96,7 @@ serve(async (req) => {
       tables: result.importSuggestion.tables,
       conflicts: result.importSuggestion.conflicts,
       warnings: result.importSuggestion.warnings,
+      headerMetadata: result.headerMetadata,
     });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Não foi possível interpretar o histórico" }, 400);

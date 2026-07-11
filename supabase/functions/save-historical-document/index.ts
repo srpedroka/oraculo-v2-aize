@@ -82,8 +82,45 @@ function normalizeClassification(value: unknown) {
     confidence: optionalNumber(record.confidence),
     lowConfidenceFields,
     source: optionalText(record.source, 40),
+    sourceMetadata: normalizeSourceMetadata(record.sourceMetadata),
     confirmed: normalizeConfirmed(record.confirmed),
     overridden: normalizeOverridden(record.overridden),
+  };
+}
+
+function normalizeSourceMetadata(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const year = Number(record.year);
+  const quarter = Number(record.quarter);
+  const month = Number(record.month);
+  const evidence = Array.isArray(record.evidence)
+    ? record.evidence.slice(0, 24).map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        return {
+          field: optionalText(row.field, 40),
+          value: optionalText(row.value, 160),
+          source: optionalText(row.source, 20),
+          confidence: optionalNumber(row.confidence),
+          excerpt: optionalText(row.excerpt, 220),
+        };
+      }).filter(Boolean)
+    : [];
+  return {
+    documentType: optionalText(record.documentType, 30),
+    title: optionalText(record.title, 120),
+    sourceCompany: optionalText(record.sourceCompany, 160),
+    sourceAreaLabel: optionalText(record.sourceAreaLabel, 120),
+    matchedAreaId: optionalText(record.matchedAreaId, 80),
+    matchedAreaName: optionalText(record.matchedAreaName, 120),
+    managerName: optionalText(record.managerName, 120),
+    year: Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : null,
+    quarter: Number.isInteger(quarter) && quarter >= 1 && quarter <= 4 ? quarter : null,
+    month: Number.isInteger(month) && month >= 1 && month <= 12 ? month : null,
+    primaryPeriod: optionalText(record.primaryPeriod, MAX_PERIOD_LENGTH),
+    sourceVersion: optionalText(record.sourceVersion, 120),
+    evidence,
   };
 }
 
@@ -190,6 +227,8 @@ function normalizeImportBackup(value: unknown, savedCandidateId: string): { back
     conflicts,
     decisions,
     savedCandidateId: optionalText(record.savedCandidateId, 40) ?? savedCandidateId,
+    confirmed: normalizeConfirmed(record.confirmed),
+    sourceMetadata: normalizeSourceMetadata(record.sourceMetadata),
   };
 
   let serialized = JSON.stringify(backup);
@@ -265,78 +304,103 @@ serve(async (req) => {
     const user = await getUser(req);
     const payload = await req.json();
     const orgId = asText(payload.orgId);
-    const areaId = payload.areaId ? asText(payload.areaId) : null;
-    const documentType = asText(payload.documentType) as PlanDocumentType;
-    const period = asText(payload.period);
-    const rawText = normalizeRawText(stripUnsafeBinary(payload.rawText));
-    const source = optionalText(payload.source, MAX_SOURCE_LENGTH);
-    const note = optionalText(payload.note, MAX_NOTE_LENGTH);
-    const requestedTitle = optionalText(payload.title, 120);
-    const summary = optionalText(payload.summary, 320);
-    const classification = normalizeClassification(payload.classification);
-    const savedCandidateId = optionalText(payload.savedCandidateId, 40) ?? "doc_1";
-    const { backup: importBackup, warning: backupWarning } = normalizeImportBackup(payload.importBackup, savedCandidateId);
-
     if (!orgId) throw new Error("Empresa ausente");
-    if (!DOCUMENT_TYPES.has(documentType)) throw new Error("Tipo de documento inválido");
-    if (!period) throw new Error("Informe o ano ou período do histórico");
-    if (period.length > MAX_PERIOD_LENGTH) throw new Error("Período muito longo");
-    if (!rawText) throw new Error("Informe o texto do histórico");
-    if (rawText.length > MAX_TEXT_LENGTH) throw new Error("Texto muito longo. Divida o histórico em arquivos menores.");
+    const rawDocuments = Array.isArray(payload.documents) && payload.documents.length
+      ? payload.documents.slice(0, MAX_BATCH_DOCS)
+      : [payload];
+    const documents = rawDocuments.map((value: unknown, index: number) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Documento ${index + 1} inválido`);
+      const record = value as Record<string, unknown>;
+      const areaId = record.areaId ? asText(record.areaId) : null;
+      const documentType = asText(record.documentType) as PlanDocumentType;
+      const period = asText(record.period);
+      const rawText = normalizeRawText(stripUnsafeBinary(record.rawText));
+      const savedCandidateId = optionalText(record.savedCandidateId, 40) ?? `doc_${index + 1}`;
+      const backup = normalizeImportBackup(record.importBackup, savedCandidateId);
+      if (!DOCUMENT_TYPES.has(documentType)) throw new Error(`Tipo inválido no documento ${index + 1}`);
+      if (!period) throw new Error(`Informe o período do documento ${index + 1}`);
+      if (period.length > MAX_PERIOD_LENGTH) throw new Error(`Período muito longo no documento ${index + 1}`);
+      if (!rawText) throw new Error(`Texto ausente no documento ${index + 1}`);
+      if (rawText.length > MAX_TEXT_LENGTH) throw new Error(`Documento ${index + 1} muito longo. Divida o histórico em arquivos menores.`);
+      return {
+        areaId,
+        documentType,
+        period,
+        rawText,
+        source: optionalText(record.source, MAX_SOURCE_LENGTH),
+        note: optionalText(record.note, MAX_NOTE_LENGTH),
+        requestedTitle: optionalText(record.title, 120),
+        summary: optionalText(record.summary, 320),
+        classification: normalizeClassification(record.classification),
+        sourceMetadata: normalizeSourceMetadata(record.sourceMetadata),
+        savedCandidateId,
+        importBackup: backup.backup,
+        backupWarning: backup.warning,
+      };
+    });
 
     const client = serviceClient();
-    const membership = await assertAreaWriter(user.id, orgId, areaId);
-    if (membership.role === "admin") throw new Error("Admin não pode importar histórico");
+    const memberships = await Promise.all(documents.map((document) => assertAreaWriter(user.id, orgId, document.areaId)));
+    if (memberships.some((membership) => membership.role === "admin")) throw new Error("Admin não pode importar histórico");
 
-    const [{ data: organization, error: orgError }, profileResult, area] = await Promise.all([
+    const [{ data: organization, error: orgError }, profileResult, areas] = await Promise.all([
       client.from("organizations").select("name").eq("id", orgId).maybeSingle(),
       client.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
-      loadArea(client, orgId, areaId),
+      Promise.all(documents.map((document) => loadArea(client, orgId, document.areaId))),
     ]);
     if (orgError) throw orgError;
     if (!organization) throw new Error("Empresa inválida");
     if (profileResult.error) throw profileResult.error;
 
-    const version = await nextHistoricalVersion(client, orgId, areaId, documentType, period);
-    const areaLabel = area?.name ? ` · ${area.name}` : "";
-    const title = requestedTitle ?? `${TYPE_LABEL[documentType]} histórico${areaLabel} · ${period}`;
     const importedAt = new Date().toISOString();
-    const content: Record<string, unknown> = {
-      empresa: organization.name ?? "Empresa",
-      area: area?.name ?? null,
-      periodo: period,
-      gestor: profileResult.data?.full_name ?? profileResult.data?.email ?? "",
-      raw: rawText,
-      source,
-      note,
-      summary,
-      classification,
-      imported_at: importedAt,
-    };
-    if (importBackup) {
-      content.import_backup = importBackup;
-      if (backupWarning) content.import_backup_warning = backupWarning;
+    const versionOffsets = new Map<string, number>();
+    const rows = [];
+    for (let index = 0; index < documents.length; index += 1) {
+      const document = documents[index];
+      const area = areas[index];
+      const key = `${document.areaId ?? "company"}:${document.documentType}:${document.period}`;
+      const baseVersion = await nextHistoricalVersion(client, orgId, document.areaId, document.documentType, document.period);
+      const offset = versionOffsets.get(key) ?? 0;
+      versionOffsets.set(key, offset + 1);
+      const areaLabel = area?.name ? ` · ${area.name}` : "";
+      const content: Record<string, unknown> = {
+        empresa: organization.name ?? "Empresa",
+        area: area?.name ?? null,
+        periodo: document.period,
+        gestor: profileResult.data?.full_name ?? profileResult.data?.email ?? "",
+        raw: document.rawText,
+        source: document.source,
+        note: document.note,
+        summary: document.summary,
+        classification: document.classification,
+        source_metadata: document.sourceMetadata,
+        imported_at: importedAt,
+      };
+      if (document.importBackup) {
+        content.import_backup = document.importBackup;
+        if (document.backupWarning) content.import_backup_warning = document.backupWarning;
+      }
+      rows.push({
+        org_id: orgId,
+        area_id: document.areaId,
+        session_id: null,
+        type: document.documentType,
+        origin: "historical",
+        period: document.period,
+        title: document.requestedTitle ?? `${TYPE_LABEL[document.documentType]} histórico${areaLabel} · ${document.period}`,
+        content,
+        version: baseVersion + offset,
+        created_by: user.id,
+      });
     }
 
     const { data, error } = await client
       .from("plan_documents")
-      .insert({
-        org_id: orgId,
-        area_id: areaId,
-        session_id: null,
-        type: documentType,
-        origin: "historical",
-        period,
-        title,
-        content,
-        version,
-        created_by: user.id,
-      })
-      .select("*")
-      .single();
+      .insert(rows)
+      .select("*");
     if (error) throw error;
 
-    return jsonResponse({ document: data, warning: backupWarning });
+    return jsonResponse({ document: data?.[0] ?? null, documents: data ?? [], warning: documents.map((item) => item.backupWarning).filter(Boolean).join(" ") || null });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Não foi possível salvar o histórico" }, 400);
   }

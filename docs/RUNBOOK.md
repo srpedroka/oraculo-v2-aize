@@ -859,6 +859,7 @@ Nunca copie esses valores para o frontend.
 ## Importar histórico (Documentos)
 
 1. Abra **Documentos** e clique **Importar histórico** (owner, ou coordenador com ao menos uma área ativa). O Plano Estratégico **não** tem mais esta entrada.
+2. Ao selecionar PDF/PPTX/DOCX/TXT ou imagem, aguarde a leitura e a organização automática. Tipo, escopo, período e título devem ser preenchidos sem um segundo clique; ano, trimestre, responsável e versão aparecem como metadados quando identificados.
 2. Cole texto **ou** use **Importar arquivo** / arraste: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP. Nada é gravado só por escolher o arquivo.
 3. Imagem: o navegador redimensiona e envia à leitura do Oráculo; o texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
 4. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia antes de salvar.

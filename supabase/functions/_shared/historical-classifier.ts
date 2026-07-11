@@ -3,8 +3,13 @@ import { callModelForFunction, callModelWithImageForFunction } from "./call-for-
 import {
   applyTablePeriodIfSafe,
   buildHistoricalImportSuggestion,
+  type HistoricalDocumentCandidate,
   type HistoricalImportSuggestion,
 } from "./historical-import-structure.ts";
+import {
+  extractHistoricalHeaderMetadata,
+  type HistoricalHeaderMetadata,
+} from "./historical-header.ts";
 import { parseJsonObject } from "./json.ts";
 import type { ModelImageInput } from "./model.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
@@ -541,6 +546,62 @@ function sanitizeAiSuggestion(parsed: any, text: string, areas: AreaCandidate[])
   };
 }
 
+function mergeHeaderSuggestion(
+  suggestion: HistoricalMetadataSuggestion,
+  header: HistoricalHeaderMetadata,
+): HistoricalMetadataSuggestion {
+  const low = new Set(suggestion.lowConfidenceFields);
+  if (header.documentType) low.delete("documentType");
+  if (header.matchedAreaId) {
+    low.delete("area");
+    low.delete("areaId");
+  }
+  if (header.primaryPeriod) low.delete("period");
+  if (header.title) low.delete("title");
+  return {
+    ...suggestion,
+    documentType: header.documentType ?? suggestion.documentType,
+    areaId: header.matchedAreaId ?? suggestion.areaId,
+    areaName: header.matchedAreaName ?? suggestion.areaName,
+    period: header.primaryPeriod || suggestion.period,
+    periodFound: Boolean(header.primaryPeriod) || suggestion.periodFound,
+    title: header.title ?? suggestion.title,
+    confidence: header.evidence.length ? Math.max(suggestion.confidence, 0.9) : suggestion.confidence,
+    lowConfidenceFields: [...low],
+  };
+}
+
+function sanitizeAiCandidates(
+  parsed: any,
+  fallbackText: string,
+  areas: AreaCandidate[],
+): HistoricalDocumentCandidate[] {
+  if (!Array.isArray(parsed?.candidates)) return [];
+  return parsed.candidates.slice(0, 12).map((raw: any, index: number) => {
+    const body = pickDocumentBody(raw, "", fallbackText);
+    const suggestion = sanitizeAiSuggestion(raw, body, areas);
+    return {
+      id: `doc_${index + 1}`,
+      title: suggestion.title,
+      documentType: suggestion.documentType,
+      areaId: suggestion.areaId,
+      areaName: suggestion.areaName,
+      period: suggestion.period,
+      periodFound: suggestion.periodFound,
+      summary: suggestion.summary,
+      normalizedText: body.slice(0, 40_000),
+      tableIds: [],
+      confidence: {
+        title: suggestion.lowConfidenceFields.includes("title") ? 0.45 : suggestion.confidence,
+        documentType: suggestion.lowConfidenceFields.includes("documentType") ? 0.45 : suggestion.confidence,
+        area: suggestion.lowConfidenceFields.some((field) => field === "area" || field === "areaId") ? 0.45 : suggestion.confidence,
+        period: suggestion.lowConfidenceFields.includes("period") ? 0.4 : suggestion.confidence,
+      },
+      lowConfidenceFields: suggestion.lowConfidenceFields,
+    };
+  }).filter((item: HistoricalDocumentCandidate) => Boolean(item.normalizedText));
+}
+
 function systemPrompt(areas: AreaCandidate[]) {
   const areaList = areas.length
     ? areas.map((area, index) => `${index + 1}. ${area.name}`).join("\n")
@@ -603,23 +664,60 @@ function packHistoricalResult(params: {
   tableYears: number[];
   fileName?: string | null;
   warnings?: string[];
+  areas: AreaCandidate[];
+  activeCompanyName?: string | null;
+  parsedCandidates?: unknown;
 }): {
   suggestion: HistoricalMetadataSuggestion;
   extractedText: string;
   tableExpanded: boolean;
   importSuggestion: HistoricalImportSuggestion;
+  headerMetadata: HistoricalHeaderMetadata;
 } {
-  const suggestion = applyTablePeriodIfSafe(params.suggestion, {
+  const headerMetadata = extractHistoricalHeaderMetadata(params.extractedText, params.fileName, params.areas, params.activeCompanyName);
+  const tableSuggestion = applyTablePeriodIfSafe(params.suggestion, {
     tableExpanded: params.tableExpanded,
     tableYears: params.tableYears,
   });
+  const suggestion = mergeHeaderSuggestion(tableSuggestion, headerMetadata);
+  const parsedCandidates = sanitizeAiCandidates(
+    { candidates: params.parsedCandidates },
+    params.extractedText,
+    params.areas,
+  ).map((candidate, index) => index === 0 ? {
+    ...candidate,
+    documentType: headerMetadata.documentType ?? candidate.documentType,
+    areaId: headerMetadata.matchedAreaId ?? candidate.areaId,
+    areaName: headerMetadata.matchedAreaName ?? candidate.areaName,
+    period: headerMetadata.primaryPeriod || candidate.period,
+    periodFound: Boolean(headerMetadata.primaryPeriod) || candidate.periodFound,
+    title: headerMetadata.title ?? candidate.title,
+    lowConfidenceFields: candidate.lowConfidenceFields.filter((field) => {
+      if (headerMetadata.documentType && field === "documentType") return false;
+      if (headerMetadata.matchedAreaId && (field === "area" || field === "areaId")) return false;
+      if (headerMetadata.primaryPeriod && field === "period") return false;
+      if (headerMetadata.title && field === "title") return false;
+      return true;
+    }),
+  } : candidate);
   const importSuggestion = buildHistoricalImportSuggestion({
     sourceName: params.fileName ?? null,
     extractedText: params.extractedText,
     suggestion,
     tableExpanded: params.tableExpanded,
     warnings: params.warnings,
+    candidates: parsedCandidates,
   });
+  for (const [index, conflict] of headerMetadata.conflicts.entries()) {
+    importSuggestion.conflicts.push({
+      id: `header_${conflict.field}_${index + 1}`,
+      kind: conflict.field === "area" ? "area" : "period",
+      message: conflict.message,
+      candidateIds: importSuggestion.candidates.map((candidate) => candidate.id),
+      tableIds: [],
+      required: conflict.required,
+    });
+  }
   // Prefer título curto estruturado se o legado ficou genérico demais
   const primary = importSuggestion.candidates[0];
   const aligned: HistoricalMetadataSuggestion = primary
@@ -639,19 +737,22 @@ function packHistoricalResult(params: {
     extractedText: importSuggestion.extractedText,
     tableExpanded: params.tableExpanded,
     importSuggestion,
+    headerMetadata,
   };
 }
 
 export async function suggestHistoricalMetadata(
   client: Client,
-  params: { orgId: string; rawText: string; fileName?: string | null; areas: AreaCandidate[] },
+  params: { orgId: string; rawText: string; fileName?: string | null; areas: AreaCandidate[]; activeCompanyName?: string | null },
 ): Promise<{
   suggestion: HistoricalMetadataSuggestion;
   extractedText: string;
   tableExpanded: boolean;
   importSuggestion: HistoricalImportSuggestion;
+  headerMetadata: HistoricalHeaderMetadata;
 }> {
   const preExpanded = expandMultiYearTables(params.rawText);
+  const preliminaryHeader = extractHistoricalHeaderMetadata(preExpanded.text, params.fileName, params.areas, params.activeCompanyName);
   const text = truncateForModel(preExpanded.text);
   const aiRoute = await resolveAiFunction(client, params.orgId, "background");
   if (!aiRoute) {
@@ -663,6 +764,8 @@ export async function suggestHistoricalMetadata(
       fileName: params.fileName,
       suggestion: fallbackSuggestion(finalized.text, params.areas, "heuristic"),
       warnings: ["IA de bastidores indisponível; sugestão heurística."],
+      areas: params.areas,
+      activeCompanyName: params.activeCompanyName,
     });
   }
 
@@ -673,7 +776,16 @@ export async function suggestHistoricalMetadata(
       "background",
       aiRoute,
       systemPrompt(params.areas),
-      [{ role: "user", content: [`Arquivo: ${params.fileName ?? "Texto colado"}`, "", text].join("\n") }],
+      [{
+        role: "user",
+        content: [
+          `Arquivo: ${params.fileName ?? "Texto colado"}`,
+          `Metadados explícitos detectados no cabeçalho: ${JSON.stringify(preliminaryHeader)}`,
+          "Use esses campos como evidência prioritária e não os substitua por inferências do corpo.",
+          "",
+          text,
+        ].join("\n"),
+      }],
       { ...aiRoute.limits, maxTokens: Math.max(aiRoute.limits.maxTokens ?? 2000, 3500) },
     );
 
@@ -706,6 +818,8 @@ export async function suggestHistoricalMetadata(
         tableYears: preExpanded.expanded ? preExpanded.years : rescue.years,
         fileName: params.fileName,
         suggestion: fallbackSuggestion(rescue.text || params.rawText, params.areas, "heuristic"),
+        areas: params.areas,
+        activeCompanyName: params.activeCompanyName,
       });
     }
 
@@ -716,6 +830,8 @@ export async function suggestHistoricalMetadata(
         tableYears,
         fileName: params.fileName,
         suggestion: fallbackSuggestion(finalized.text, params.areas, "heuristic"),
+        areas: params.areas,
+        activeCompanyName: params.activeCompanyName,
       });
     }
 
@@ -725,6 +841,9 @@ export async function suggestHistoricalMetadata(
       tableYears,
       fileName: params.fileName,
       suggestion: sanitizeAiSuggestion(parsed, finalized.text, params.areas),
+      parsedCandidates: parsed?.candidates,
+      areas: params.areas,
+      activeCompanyName: params.activeCompanyName,
     });
   } catch (error) {
     console.error("Erro ao sugerir metadados historicos", error instanceof Error ? error.message : String(error));
@@ -736,6 +855,8 @@ export async function suggestHistoricalMetadata(
       fileName: params.fileName,
       suggestion: fallbackSuggestion(finalized.text || params.rawText, params.areas, "heuristic"),
       warnings: ["Falha na classificação automática; sugestão heurística."],
+      areas: params.areas,
+      activeCompanyName: params.activeCompanyName,
     });
   }
 }
@@ -760,12 +881,14 @@ export async function suggestHistoricalMetadataFromImage(
     image: ModelImageInput;
     fileName?: string | null;
     areas: AreaCandidate[];
+    activeCompanyName?: string | null;
   },
 ): Promise<{
   suggestion: HistoricalMetadataSuggestion;
   extractedText: string;
   tableExpanded: boolean;
   importSuggestion: HistoricalImportSuggestion;
+  headerMetadata: HistoricalHeaderMetadata;
 }> {
   const aiRoute = await resolveAiFunction(client, params.orgId, "background");
   if (!aiRoute) {
@@ -865,6 +988,9 @@ export async function suggestHistoricalMetadataFromImage(
       tableYears: finalized.expanded ? finalized.years : [],
       fileName: params.fileName,
       suggestion,
+      parsedCandidates: parsed?.candidates,
+      areas: params.areas,
+      activeCompanyName: params.activeCompanyName,
     });
   } catch (error) {
     if (error instanceof Error && /imagem|image|vision|não aceita|indispon/i.test(error.message)) {

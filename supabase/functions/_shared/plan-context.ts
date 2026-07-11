@@ -191,12 +191,16 @@ function historicalMemoryLines(
       : "Empresa";
     const source = rawText(content.source);
     const note = rawText(content.note);
+    const sourceMetadata = asRecord(content.source_metadata);
     const metadata = [
       `período: ${text(document.period, "sem período")}`,
       `tipo: ${text(document.type, "sem tipo")}`,
       `escopo: ${areaName}`,
       source ? `fonte: ${source}` : "",
       note ? `nota: ${note}` : "",
+      sourceMetadata.managerName ? `responsável original: ${rawText(sourceMetadata.managerName)}` : "",
+      sourceMetadata.year ? `ano identificado: ${rawText(sourceMetadata.year)}` : "",
+      sourceMetadata.quarter ? `trimestre identificado: T${rawText(sourceMetadata.quarter)}` : "",
     ].filter(Boolean).join("; ");
 
     lines.push(

@@ -7,6 +7,7 @@ import { readKpiImage } from "../../lib/kpiSpreadsheet";
 import { useAppState } from "../../state/store";
 import type {
   HistoricalConflict,
+  HistoricalHeaderMetadata,
   HistoricalImportSuggestion,
   HistoricalMetadataSuggestion,
   HistoricalTableCandidate,
@@ -60,18 +61,20 @@ function tablePreviewLines(table: HistoricalTableCandidate, max = 5) {
 
 export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup = null }: HistoricalImportDialogProps) {
   const { state, dispatch } = useAppState();
-  const [historicalType, setHistoricalType] = useState<HistoricalImportDocumentType>("strategic");
+  const [historicalType, setHistoricalType] = useState<HistoricalImportDocumentType | "">("");
   const [historicalPeriod, setHistoricalPeriod] = useState("");
-  const [historicalAreaId, setHistoricalAreaId] = useState("company");
+  const [historicalAreaId, setHistoricalAreaId] = useState("");
   const [historicalTitle, setHistoricalTitle] = useState("");
   const [historicalText, setHistoricalText] = useState("");
   const [historicalFileName, setHistoricalFileName] = useState<string | null>(null);
   const [historicalNote, setHistoricalNote] = useState("");
   const [historicalSuggestion, setHistoricalSuggestion] = useState<HistoricalMetadataSuggestion | null>(null);
   const [importSuggestion, setImportSuggestion] = useState<HistoricalImportSuggestion | null>(null);
+  const [headerMetadata, setHeaderMetadata] = useState<HistoricalHeaderMetadata | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState("doc_1");
   const [conflictChoices, setConflictChoices] = useState<Record<string, string>>({});
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>(["doc_1"]);
+  const [importBatchId, setImportBatchId] = useState<string>(() => crypto.randomUUID());
   const [historicalFeedback, setHistoricalFeedback] = useState<string | null>(null);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
   const [importingHistorical, setImportingHistorical] = useState(false);
@@ -104,7 +107,10 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
   });
   const canSave =
     Boolean(historicalText.trim()) &&
+    Boolean(historicalType) &&
+    Boolean(effectiveHistoricalAreaId) &&
     Boolean(historicalPeriod.trim()) &&
+    selectedCandidateIds.length > 0 &&
     unresolvedRequiredConflicts.length === 0 &&
     !historicalBusy;
 
@@ -118,13 +124,24 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     const decisions = Array.isArray(backup.decisions) ? backup.decisions : [];
     const savedId = String(backup.savedCandidateId ?? candidates[0]?.id ?? "doc_1");
     const primary = candidates.find((item: { id?: string }) => item.id === savedId) ?? candidates[0];
+    const confirmed = backup.confirmed && typeof backup.confirmed === "object"
+      ? backup.confirmed as Record<string, unknown>
+      : null;
+    const savedMetadata = backup.sourceMetadata && typeof backup.sourceMetadata === "object"
+      ? backup.sourceMetadata as unknown as HistoricalHeaderMetadata
+      : null;
 
     setReopenFromBackup(true);
     setHistoricalFileName(typeof backup.sourceName === "string" ? backup.sourceName : null);
-    setHistoricalText(extracted || String(primary?.normalizedText ?? ""));
-    setHistoricalTitle(String(primary?.title ?? ""));
+    setHistoricalText(String(primary?.normalizedText ?? "").trim() || extracted);
+    setHistoricalType(String(confirmed?.documentType ?? primary?.documentType ?? "") as HistoricalImportDocumentType | "");
+    setHistoricalAreaId(String(confirmed?.areaId ?? primary?.areaId ?? "company"));
+    setHistoricalPeriod(String(confirmed?.period ?? primary?.period ?? ""));
+    setHistoricalTitle(String(confirmed?.title ?? primary?.title ?? ""));
+    setHeaderMetadata(savedMetadata);
     setSelectedCandidateId(savedId);
-    setSelectedCandidateIds(candidates.map((item: { id?: string }) => String(item.id ?? "")).filter(Boolean));
+    setSelectedCandidateIds([savedId]);
+    setImportBatchId(String(backup.batchId ?? crypto.randomUUID()));
     setImportSuggestion({
       sourceName: typeof backup.sourceName === "string" ? backup.sourceName : null,
       extractedText: extracted,
@@ -145,17 +162,19 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
   if (!open) return null;
 
   function resetForm() {
-    setHistoricalType("strategic");
+    setHistoricalType("");
     setHistoricalPeriod("");
-    setHistoricalAreaId("company");
+    setHistoricalAreaId("");
     setHistoricalTitle("");
     setHistoricalText("");
     setHistoricalFileName(null);
     setHistoricalNote("");
     setHistoricalSuggestion(null);
     setImportSuggestion(null);
+    setHeaderMetadata(null);
     setSelectedCandidateId("doc_1");
     setSelectedCandidateIds(["doc_1"]);
+    setImportBatchId(crypto.randomUUID());
     setConflictChoices({});
     setHistoricalFeedback(null);
     setHistoricalError(null);
@@ -188,19 +207,21 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       fromImage?: boolean;
       importSuggestion?: HistoricalImportSuggestion;
       warnings?: string[];
+      headerMetadata?: HistoricalHeaderMetadata;
     },
   ) {
     const nextAreaId = suggestion.areaId ?? (isOwner ? "company" : writableHistoricalAreas[0]?.id ?? "company");
     const structured = options?.importSuggestion ?? null;
     const primary = structured?.candidates?.[0];
-    const normalized = String(options?.extractedText ?? primary?.normalizedText ?? "").trim();
+    const normalized = String(primary?.normalizedText ?? options?.extractedText ?? "").trim();
     if (normalized && !looksLikeMetadataDump(normalized)) {
       setHistoricalText(normalized);
     }
     setHistoricalSuggestion(suggestion);
+    setHeaderMetadata(options?.headerMetadata ?? null);
     setImportSuggestion(structured);
     setSelectedCandidateId(primary?.id ?? "doc_1");
-    setSelectedCandidateIds(structured?.candidates?.map((item) => item.id) ?? ["doc_1"]);
+    setSelectedCandidateIds([primary?.id ?? "doc_1"]);
     setConflictChoices({});
     setHistoricalType((primary?.documentType ?? suggestion.documentType) as HistoricalImportDocumentType);
     setHistoricalAreaId(primary?.areaId ?? nextAreaId);
@@ -258,6 +279,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
                 fromImage: true,
                 importSuggestion: result.importSuggestion,
                 warnings: result.warnings,
+                headerMetadata: result.headerMetadata,
               });
               resolve();
             },
@@ -270,9 +292,25 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       const imported = await importStrategicPlanFile(file);
       setHistoricalText(imported.text);
       setHistoricalFileName(imported.fileName);
-      setHistoricalFeedback(imported.warning ?? "Texto importado para conferência. Interprete antes de salvar.");
-      setImportSuggestion(null);
-      setConflictChoices({});
+      setHistoricalFeedback("Organizando tipo, área, período e título...");
+      await new Promise<void>((resolve, reject) => {
+        dispatch({
+          type: "suggest_historical_metadata",
+          rawText: imported.text,
+          fileName: imported.fileName,
+          onSuccess: (result) => {
+            applyHistoricalSuggestion(result.suggestion, {
+              extractedText: result.extractedText,
+              tableExpanded: result.tableExpanded,
+              importSuggestion: result.importSuggestion,
+              warnings: [...(imported.warning ? [imported.warning] : []), ...(result.warnings ?? [])],
+              headerMetadata: result.headerMetadata,
+            });
+            resolve();
+          },
+          onError: (message) => reject(new Error(message)),
+        });
+      });
     } catch (error) {
       setHistoricalFileName(null);
       setHistoricalError(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
@@ -339,6 +377,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           tableExpanded: result.tableExpanded,
           importSuggestion: result.importSuggestion,
           warnings: result.warnings,
+          headerMetadata: result.headerMetadata,
         });
       },
       onError: (message) => {
@@ -353,6 +392,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     const title = historicalTitle.trim();
     return {
       ...historicalSuggestion,
+      sourceMetadata: headerMetadata,
       confirmed: {
         documentType: historicalType,
         areaId,
@@ -368,21 +408,29 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     };
   }
 
-  function resolveRawTextForSave() {
-    let rawText = historicalText.trim();
-    // Se o usuário escolheu uma tabela em conflito table_choice, usa o texto da tabela escolhida.
-    const tableChoice = requiredConflicts.find((conflict) => conflict.kind === "table_choice" && conflictChoices[conflict.id]);
-    if (tableChoice && importSuggestion) {
-      const tableId = conflictChoices[tableChoice.id];
-      const table = importSuggestion.tables.find((item) => item.id === tableId);
-      if (table?.normalizedText?.trim()) {
-        rawText = table.normalizedText.trim();
+  function resolveRawTextForSave(sourceText = historicalText) {
+    let rawText = sourceText.trim();
+    if (importSuggestion) {
+      for (const conflict of requiredConflicts.filter((item) => item.kind === "table_choice")) {
+        const selectedTableId = conflictChoices[conflict.id];
+        if (!selectedTableId) continue;
+        for (const tableId of conflict.tableIds) {
+          if (tableId === selectedTableId) continue;
+          const table = importSuggestion.tables.find((item) => item.id === tableId);
+          if (table?.normalizedText) rawText = rawText.replace(table.normalizedText, "").replace(/\n{3,}/g, "\n\n").trim();
+        }
       }
     }
     return rawText;
   }
 
-  function buildImportBackupPayload(areaId: string | null, period: string, savedCandidateId: string) {
+  function buildImportBackupPayload(
+    areaId: string | null,
+    period: string,
+    savedCandidateId: string,
+    confirmed?: { documentType: HistoricalImportDocumentType; title: string | null },
+    confirmedSourceMetadata: HistoricalHeaderMetadata | null = headerMetadata,
+  ) {
     const structured = importSuggestion;
     const decisions = Object.entries(conflictChoices).map(([conflictId, choice]) => {
       const conflict = structured?.conflicts.find((item) => item.id === conflictId);
@@ -393,7 +441,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     });
     return {
       schemaVersion: 1,
-      batchId: crypto.randomUUID(),
+      batchId: importBatchId,
       sourceName: historicalFileName,
       sourceKind: historicalFileName && /\.(jpe?g|png|webp)$/i.test(historicalFileName) ? "image" : historicalFileName ? "document" : "text",
       extractedText: structured?.extractedText ?? historicalText,
@@ -410,11 +458,12 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       decisions,
       savedCandidateId,
       confirmed: {
-        documentType: historicalType,
+        documentType: confirmed?.documentType ?? historicalType,
         areaId,
         period,
-        title: historicalTitle.trim() || null,
+        title: confirmed?.title ?? (historicalTitle.trim() || null),
       },
+      sourceMetadata: confirmedSourceMetadata,
     };
   }
 
@@ -424,12 +473,25 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     const title = historicalTitle.trim();
     const rawText = resolveRawTextForSave();
     const savedCandidateId = selectedCandidateId || "doc_1";
+    const selectedCandidates = (importSuggestion?.candidates ?? [])
+      .filter((candidate) => selectedCandidateIds.includes(candidate.id))
+      .sort((left, right) => Number(right.id === savedCandidateId) - Number(left.id === savedCandidateId));
 
     setHistoricalFeedback(null);
     setHistoricalError(null);
 
     if (unresolvedRequiredConflicts.length) {
       setHistoricalError("Resolva as escolhas obrigatórias antes de salvar.");
+      return;
+    }
+
+    if (!historicalType) {
+      setHistoricalError("Informe o tipo do documento histórico.");
+      return;
+    }
+
+    if (!effectiveHistoricalAreaId) {
+      setHistoricalError("Informe se o histórico é da empresa ou de uma área.");
       return;
     }
 
@@ -443,12 +505,55 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       return;
     }
 
+    if (!selectedCandidateIds.length) {
+      setHistoricalError("Selecione ao menos um documento para salvar.");
+      return;
+    }
+
+    const invalidCandidate = selectedCandidates.find((candidate) => !candidate.period || !candidate.normalizedText.trim());
+    if (invalidCandidate && invalidCandidate.id !== savedCandidateId) {
+      setHistoricalError(`Revise período e conteúdo de “${invalidCandidate.title || "Documento"}” antes de salvar em lote.`);
+      return;
+    }
+
     if (!isOwner && !areaId) {
       setHistoricalError("Seu usuário precisa ter uma área coordenada para salvar histórico de área.");
       return;
     }
 
     setSavingHistorical(true);
+    const batchDocuments = selectedCandidates.length > 1
+      ? selectedCandidates.map((candidate) => {
+          const isActive = candidate.id === savedCandidateId;
+          const candidateAreaId = isActive
+            ? areaId
+            : candidate.areaId ?? (isOwner ? null : writableHistoricalAreas[0]?.id ?? null);
+          const candidatePeriod = isActive ? period : candidate.period;
+          const candidateTitle = isActive ? title : candidate.title;
+          const candidateType = isActive ? historicalType : candidate.documentType;
+          return {
+            documentType: candidateType,
+            areaId: candidateAreaId,
+            period: candidatePeriod,
+            rawText: resolveRawTextForSave(isActive ? rawText : candidate.normalizedText),
+            source: historicalFileName ?? "Texto colado",
+            note: historicalNote.trim() || null,
+            title: candidateTitle || null,
+            summary: candidate.summary || null,
+            classification: {
+              ...candidate,
+              sourceMetadata: isActive ? headerMetadata : null,
+              confirmed: { documentType: candidateType, areaId: candidateAreaId, period: candidatePeriod, title: candidateTitle || null },
+            },
+            importBackup: buildImportBackupPayload(candidateAreaId, candidatePeriod, candidate.id, {
+              documentType: candidateType,
+              title: candidateTitle || null,
+            }, isActive ? headerMetadata : null),
+            sourceMetadata: isActive ? headerMetadata : null,
+            savedCandidateId: candidate.id,
+          };
+        })
+      : undefined;
     dispatch({
       type: "import_historical_document",
       documentType: historicalType,
@@ -461,6 +566,8 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       summary: historicalSuggestion?.summary ?? importSuggestion?.candidates.find((item) => item.id === savedCandidateId)?.summary ?? null,
       classification: buildHistoricalClassification(areaId, period),
       importBackup: buildImportBackupPayload(areaId, period, savedCandidateId),
+      sourceMetadata: headerMetadata,
+      documents: batchDocuments,
       savedCandidateId,
       onSuccess: (result) => {
         setSavingHistorical(false);
@@ -544,6 +651,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
                   historicalLowConfidenceFields.has("documentType") ? "border-[#D97706]" : "border-border",
                 ].join(" ")}
               >
+                <option value="">Selecione</option>
                 {HISTORICAL_DOCUMENT_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {DOCUMENT_TYPE_LABEL[type]}
@@ -554,7 +662,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
             <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
               Escopo
               <select
-                value={effectiveHistoricalAreaId || "company"}
+                value={effectiveHistoricalAreaId}
                 onChange={(event) => setHistoricalAreaId(event.target.value)}
                 className={[
                   "h-10 rounded-xl border bg-white px-3 text-sm text-text",
@@ -564,6 +672,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
                 ].join(" ")}
                 disabled={!isOwner && !writableHistoricalAreas.length}
               >
+                <option value="">Selecione</option>
                 {isOwner ? <option value="company">Empresa</option> : null}
                 {!isOwner && !writableHistoricalAreas.length ? <option value="company">Sem área disponível</option> : null}
                 {writableHistoricalAreas.map((area) => (
@@ -586,6 +695,15 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
               />
             </label>
           </div>
+
+          {headerMetadata && (headerMetadata.year || headerMetadata.quarter || headerMetadata.managerName || headerMetadata.sourceVersion) ? (
+            <div className="flex flex-wrap gap-2" aria-label="Metadados identificados no cabeçalho">
+              {headerMetadata.year ? <span className="rounded-full border border-border bg-[#FBFBFC] px-2.5 py-1 text-xs text-text-secondary">Ano {headerMetadata.year}</span> : null}
+              {headerMetadata.quarter ? <span className="rounded-full border border-border bg-[#FBFBFC] px-2.5 py-1 text-xs text-text-secondary">T{headerMetadata.quarter}{headerMetadata.year ? ` ${headerMetadata.year}` : ""}</span> : null}
+              {headerMetadata.managerName ? <span className="rounded-full border border-border bg-[#FBFBFC] px-2.5 py-1 text-xs text-text-secondary">Responsável: {headerMetadata.managerName}</span> : null}
+              {headerMetadata.sourceVersion ? <span className="rounded-full border border-border bg-[#FBFBFC] px-2.5 py-1 text-xs text-text-secondary">Versão: {headerMetadata.sourceVersion}</span> : null}
+            </div>
+          ) : null}
 
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-text-tertiary">Título</span>
@@ -611,7 +729,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           </label>
 
           <label className="block">
-            <span className="sr-only">Texto do documento</span>
+            <span className="mb-1.5 block text-xs font-medium text-text-tertiary">Conteúdo extraído</span>
             <textarea
               value={historicalText}
               onChange={(event) => updateHistoricalText(event.target.value)}
@@ -663,12 +781,13 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           {importSuggestion && importSuggestion.candidates.length > 1 ? (
             <div className="space-y-2 rounded-xl border border-border p-4">
               <p className="text-sm font-semibold text-text">Documentos encontrados</p>
-              <p className="text-xs text-text-secondary">Escolha qual salvar agora. Depois você pode reabrir e escolher outra leitura.</p>
+              <p className="text-xs text-text-secondary">Marque os documentos que deseja salvar. Clique em um item para revisar seus campos.</p>
               <div className="mt-2 space-y-2">
                 {importSuggestion.candidates.map((candidate) => {
                   const active = selectedCandidateId === candidate.id;
+                  const selected = selectedCandidateIds.includes(candidate.id);
                   return (
-                    <label
+                    <div
                       key={candidate.id}
                       className={[
                         "flex cursor-pointer gap-3 rounded-xl border p-3 transition",
@@ -676,13 +795,16 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
                       ].join(" ")}
                     >
                       <input
-                        type="radio"
-                        name="historical-candidate"
+                        type="checkbox"
                         className="mt-1"
-                        checked={active}
+                        checked={selected}
                         onChange={() => {
+                          if (selected && active) return;
+                          setSelectedCandidateIds((current) => selected
+                            ? current.filter((id) => id !== candidate.id)
+                            : [...current, candidate.id]);
+                          if (selected) return;
                           setSelectedCandidateId(candidate.id);
-                          setSelectedCandidateIds([candidate.id]);
                           setHistoricalType(candidate.documentType);
                           setHistoricalTitle(candidate.title);
                           setHistoricalPeriod(candidate.period);
@@ -690,7 +812,18 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
                           if (candidate.normalizedText?.trim()) setHistoricalText(candidate.normalizedText);
                         }}
                       />
-                      <div className="min-w-0">
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() => {
+                          setSelectedCandidateId(candidate.id);
+                          setHistoricalType(candidate.documentType);
+                          setHistoricalTitle(candidate.title);
+                          setHistoricalPeriod(candidate.period);
+                          setHistoricalAreaId(candidate.areaId ?? "company");
+                          if (candidate.normalizedText?.trim()) setHistoricalText(candidate.normalizedText);
+                        }}
+                      >
                         <p className="text-sm font-medium text-text">{candidate.title || "Documento"}</p>
                         <p className="mt-0.5 text-xs text-text-secondary">
                           {DOCUMENT_TYPE_LABEL[candidate.documentType]}
@@ -700,8 +833,8 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
                         {candidate.summary ? (
                           <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">{candidate.summary}</p>
                         ) : null}
-                      </div>
-                    </label>
+                      </button>
+                    </div>
                   );
                 })}
               </div>

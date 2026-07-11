@@ -23,6 +23,7 @@ import type {
   HistoricalConflict,
   HistoricalDocumentCandidate,
   HistoricalImportSuggestion,
+  HistoricalHeaderMetadata,
   HistoricalMetadataSuggestion,
   HistoricalTableCandidate,
   KeyAction,
@@ -119,6 +120,7 @@ type AppAction =
         tables?: HistoricalTableCandidate[];
         conflicts?: HistoricalConflict[];
         warnings?: string[];
+        headerMetadata?: HistoricalHeaderMetadata;
       }) => void;
       onError?: (message: string) => void;
     }
@@ -134,6 +136,21 @@ type AppAction =
       summary?: string | null;
       classification?: Record<string, unknown> | null;
       importBackup?: Record<string, unknown> | null;
+      sourceMetadata?: HistoricalHeaderMetadata | null;
+      documents?: Array<{
+        documentType: Extract<PlanDocumentType, "strategic" | "quarterly" | "monthly">;
+        areaId: string | null;
+        period: string;
+        rawText: string;
+        source?: string | null;
+        note?: string | null;
+        title?: string | null;
+        summary?: string | null;
+        classification?: Record<string, unknown> | null;
+        importBackup?: Record<string, unknown> | null;
+        sourceMetadata?: HistoricalHeaderMetadata | null;
+        savedCandidateId?: string | null;
+      }>;
       savedCandidateId?: string | null;
       onSuccess?: (result?: { document?: { id: string }; warning?: string | null }) => void;
       onError?: (message: string) => void;
@@ -1850,6 +1867,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               tables?: HistoricalTableCandidate[];
               conflicts?: HistoricalConflict[];
               warnings?: string[];
+              headerMetadata?: HistoricalHeaderMetadata;
             };
             action.onSuccess?.(payload);
           })
@@ -1872,6 +1890,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           summary: action.summary ?? null,
           classification: action.classification ?? null,
           importBackup: action.importBackup ?? null,
+          sourceMetadata: action.sourceMetadata ?? null,
+          documents: action.documents ?? null,
           savedCandidateId: action.savedCandidateId ?? null,
         })
           .then((result) => {

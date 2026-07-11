@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit --pretty false"
+    "lint": "tsc --noEmit --pretty false",
+    "test:historical-import": "node --experimental-strip-types scripts/verify-historical-import.ts"
   },
   "dependencies": {
     "@fontsource/inter": "^5.0.20",

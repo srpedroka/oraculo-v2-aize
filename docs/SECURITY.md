@@ -158,7 +158,7 @@ O ciclo de vida da própria empresa segue a mesma trava. `authenticated` não po
 
 ## Dados de conta
 
-Importacao historica: o navegador nao envia arquivo/imagem bruto para gravacao; `save-historical-document` revalida e limita o payload, rejeita base64/data-URL em `import_backup`, e grava apenas texto/tabelas/decisoes. Admin nao importa historico.
+Importacao historica: o navegador nao envia arquivo/imagem bruto para gravacao; `save-historical-document` revalida e limita texto, metadados, evidencias e backup, rejeita base64/data-URL e grava apenas texto/tabelas/decisoes. `source_metadata` e orientativo e nunca concede permissao. Lotes sao validados integralmente antes de uma unica insercao. Admin nao importa historico.
 
 O email fica em `profiles.email` para administracao. O celular fica em `profiles.phone`, com formato internacional e unicidade no banco. Ele e dado pessoal e identificador de acesso ao WhatsApp. A propria conta edita seu celular; o **owner** tambem pode editar nome e celular de outros membros (via `invite-member` com `notify=false`/upsert de perfil service_role), porque o celular e o canal do convite.
 
