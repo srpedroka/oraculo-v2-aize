@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { isKpiImageFile, KPI_IMPORT_ACCEPT, readKpiImage, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
-import { cashDeltas, formatKpiValue, KPI_MONTHS, ladderLabel, movingAverage3, orderedLadder } from "../../lib/kpi";
+import { cashDeltas, formatKpiCompact, formatKpiFull, KPI_MONTHS, ladderLabel, movingAverage3, orderedLadder } from "../../lib/kpi";
 import { useAppState } from "../../state/store";
 import type { ExecutiveKpi, KpiHistoryDocumentRef, KpiImportKind, KpiMonthlyValue, KpiSpreadsheetSuggestion } from "../../types";
 
@@ -403,15 +403,31 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
                   <tbody>
                     {spreadsheetSuggestion.rows.slice(0, 12).map((suggested) => {
                       const kpi = orderedKpis.find((item) => item.key === suggested.kpiKey);
-                      const target = suggested.targetStage && kpi ? ladderLabel(kpi.ladder, suggested.targetStage) : kpi ? formatKpiValue(suggested.targetValue, kpi.unit, { compact: true }) : "—";
-                      const actual = kpi ? formatKpiValue(suggested.actualValue, kpi.unit, { compact: true }) : "—";
+                      const target =
+                        suggested.targetStage && kpi
+                          ? ladderLabel(kpi.ladder, suggested.targetStage)
+                          : kpi
+                            ? formatKpiCompact(suggested.targetValue, kpi.unit)
+                            : "—";
+                      const actual = kpi ? formatKpiCompact(suggested.actualValue, kpi.unit) : "—";
+                      const targetTitle =
+                        suggested.targetStage && kpi
+                          ? undefined
+                          : kpi
+                            ? formatKpiFull(suggested.targetValue, kpi.unit)
+                            : undefined;
+                      const actualTitle = kpi ? formatKpiFull(suggested.actualValue, kpi.unit) : undefined;
                       return (
                         <tr key={`${suggested.year}-${suggested.kpiKey}-${suggested.month}`} className="border-t border-border">
                           <td className="px-3 py-2 font-medium text-text">{kpi?.label ?? suggested.kpiKey}</td>
                           <td className="px-3 py-2 text-text-secondary">{suggested.year}</td>
                           <td className="px-3 py-2 text-text-secondary">{KPI_MONTHS[suggested.month - 1]}</td>
-                          <td className="px-3 py-2 text-text-secondary">{target ?? "—"}</td>
-                          <td className="px-3 py-2 text-text-secondary">{actual}</td>
+                          <td className="px-3 py-2 text-text-secondary" title={targetTitle && targetTitle !== "—" ? targetTitle : undefined}>
+                            {target ?? "—"}
+                          </td>
+                          <td className="px-3 py-2 text-text-secondary" title={actualTitle && actualTitle !== "—" ? actualTitle : undefined}>
+                            {actual}
+                          </td>
                         </tr>
                       );
                     })}
@@ -489,6 +505,10 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
                   const target = parseInputNumber(month.targetValue);
                   const actual = parseInputNumber(month.actualValue);
                   const percent = target && actual !== null ? actual / target : null;
+                  const cashDelta = cashMonthlyDeltas[index] ?? null;
+                  const cashAverage = cashMonthlyAverage[index] ?? null;
+                  const cashDeltaFull = formatKpiFull(cashDelta, "currency");
+                  const cashAverageFull = formatKpiFull(cashAverage, "currency");
                   return (
                     <tr key={KPI_MONTHS[index]} className="border-t border-border">
                       <td className="px-3 py-2 font-medium text-text">{KPI_MONTHS[index]}</td>
@@ -517,8 +537,12 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
                               className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-text"
                             />
                           </td>
-                          <td className="px-3 py-2 text-text-secondary">{formatKpiValue(cashMonthlyDeltas[index] ?? null, "currency", { compact: true })}</td>
-                          <td className="px-3 py-2 text-text-secondary">{formatKpiValue(cashMonthlyAverage[index] ?? null, "currency", { compact: true })}</td>
+                          <td className="px-3 py-2 text-text-secondary" title={cashDeltaFull === "—" ? undefined : cashDeltaFull}>
+                            {formatKpiCompact(cashDelta, "currency")}
+                          </td>
+                          <td className="px-3 py-2 text-text-secondary" title={cashAverageFull === "—" ? undefined : cashAverageFull}>
+                            {formatKpiCompact(cashAverage, "currency")}
+                          </td>
                         </>
                       ) : (
                         <>

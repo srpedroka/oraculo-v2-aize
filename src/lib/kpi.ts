@@ -15,26 +15,130 @@ export function latestClosedKpiPeriod(referenceDate = new Date()) {
   return { year: date.getFullYear(), month: date.getMonth() + 1 };
 }
 
-export function formatKpiValue(value: number | null | undefined, unit: KpiUnit, options: { compact?: boolean } = {}) {
+/** Formata número pt-BR com no máximo N casas; remove zeros finais via Intl. */
+function formatPtNumber(value: number, maximumFractionDigits: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits,
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
+/**
+ * Compacto executivo (cards/gráficos): mil / mi / bi.
+ * Arredonda para 1 casa; se o arredondamento atinge 1000 na unidade atual, sobe de escala
+ * (ex.: 999_950 → "1 mi" em vez de "1.000 mil"). Percentual nunca abrevia.
+ */
+export function formatKpiCompact(value: number | null | undefined, unit: KpiUnit) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
 
-  if (unit === "currency") {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      notation: options.compact ? "compact" : "standard",
-      maximumFractionDigits: options.compact ? 1 : 0,
-    }).format(value);
+  if (unit === "percent") {
+    return `${formatPtNumber(value, 1)}%`;
   }
+
+  const negative = value < 0;
+  const abs = Math.abs(value);
+  const sign = negative ? "-" : "";
+  const money = unit === "currency";
+
+  type Scale = { min: number; divisor: number; suffix: string };
+  const scales: Scale[] = [
+    { min: 1_000_000_000, divisor: 1_000_000_000, suffix: " bi" },
+    { min: 1_000_000, divisor: 1_000_000, suffix: " mi" },
+    { min: 1_000, divisor: 1_000, suffix: " mil" },
+  ];
+
+  let chosen: Scale | null = null;
+  for (const scale of scales) {
+    if (abs >= scale.min) {
+      chosen = scale;
+      break;
+    }
+  }
+
+  // Promove se, com 1 casa decimal, o valor arredondado vira 1000 da unidade atual.
+  if (chosen) {
+    let scaled = abs / chosen.divisor;
+    let rounded = Math.round(scaled * 10) / 10;
+    if (rounded >= 1000) {
+      if (chosen.suffix === " mil") {
+        chosen = { min: 1_000_000, divisor: 1_000_000, suffix: " mi" };
+        scaled = abs / chosen.divisor;
+        rounded = Math.round(scaled * 10) / 10;
+      } else if (chosen.suffix === " mi") {
+        chosen = { min: 1_000_000_000, divisor: 1_000_000_000, suffix: " bi" };
+        scaled = abs / chosen.divisor;
+        rounded = Math.round(scaled * 10) / 10;
+      }
+    }
+    const body = formatPtNumber(rounded, 1);
+    if (money) return `${sign}R$ ${body}${chosen.suffix}`;
+    return `${sign}${body}${chosen.suffix}`;
+  }
+
+  const body = formatPtNumber(abs, unit === "count" ? 0 : 1);
+  if (money) return `${sign}R$ ${body}`;
+  return `${sign}${body}`;
+}
+
+/** Valor integral para tooltip, acessibilidade e conferência (sem mil/mi/bi). */
+export function formatKpiFull(value: number | null | undefined, unit: KpiUnit) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
 
   if (unit === "percent") {
-    return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value)}%`;
+    return `${formatPtNumber(value, 1)}%`;
   }
 
-  return new Intl.NumberFormat("pt-BR", {
-    notation: options.compact ? "compact" : "standard",
-    maximumFractionDigits: unit === "count" ? 0 : 1,
-  }).format(value);
+  if (unit === "currency") {
+    const negative = value < 0;
+    const abs = Math.abs(value);
+    const body = formatPtNumber(abs, 0);
+    return `${negative ? "-" : ""}R$ ${body}`;
+  }
+
+  return formatPtNumber(value, unit === "count" ? 0 : 1);
+}
+
+/** Compat: `compact: true` usa formatKpiCompact; senão formatKpiFull. */
+export function formatKpiValue(value: number | null | undefined, unit: KpiUnit, options: { compact?: boolean } = {}) {
+  return options.compact ? formatKpiCompact(value, unit) : formatKpiFull(value, unit);
+}
+
+/** Casos canônicos da Fatia 2 — rodar `verifyKpiFormatCases()`. */
+export const KPI_FORMAT_CASES: Array<{
+  value: number | null;
+  unit: KpiUnit;
+  compact: string;
+  full: string;
+}> = [
+  { value: 999, unit: "currency", compact: "R$ 999", full: "R$ 999" },
+  { value: 1_000, unit: "currency", compact: "R$ 1 mil", full: "R$ 1.000" },
+  { value: 1_250, unit: "currency", compact: "R$ 1,3 mil", full: "R$ 1.250" },
+  // 999_999 arredonda para 1.000 mil → promove a 1 mi (regra documentada).
+  { value: 999_999, unit: "currency", compact: "R$ 1 mi", full: "R$ 999.999" },
+  { value: 1_200_000, unit: "currency", compact: "R$ 1,2 mi", full: "R$ 1.200.000" },
+  { value: 2_400_000_000, unit: "currency", compact: "R$ 2,4 bi", full: "R$ 2.400.000.000" },
+  { value: -1_250_000, unit: "currency", compact: "-R$ 1,3 mi", full: "-R$ 1.250.000" },
+  { value: 12.45, unit: "percent", compact: "12,5%", full: "12,5%" },
+  { value: null, unit: "currency", compact: "—", full: "—" },
+  { value: 18_500, unit: "count", compact: "18,5 mil", full: "18.500" },
+];
+
+export function verifyKpiFormatCases() {
+  const failures: string[] = [];
+  for (const testCase of KPI_FORMAT_CASES) {
+    const compact = formatKpiCompact(testCase.value, testCase.unit);
+    const full = formatKpiFull(testCase.value, testCase.unit);
+    if (compact !== testCase.compact) {
+      failures.push(`compact(${testCase.value}, ${testCase.unit}): got "${compact}", want "${testCase.compact}"`);
+    }
+    if (full !== testCase.full) {
+      failures.push(`full(${testCase.value}, ${testCase.unit}): got "${full}", want "${testCase.full}"`);
+    }
+  }
+  if (failures.length) {
+    throw new Error(`KPI format cases failed:\n${failures.join("\n")}`);
+  }
+  return true;
 }
 
 export function formatAttainment(value: number | null) {

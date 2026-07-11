@@ -9,7 +9,8 @@ import {
   currentMonth,
   currentYear,
   formatAttainment,
-  formatKpiValue,
+  formatKpiCompact,
+  formatKpiFull,
   KPI_MONTHS,
   ladderLabel,
   latestClosedKpiPeriod,
@@ -21,8 +22,19 @@ import {
   ytd,
 } from "../../lib/kpi";
 import { useAppState } from "../../state/store";
-import type { ExecutiveKpi, KpiKey, KpiMonthlyValue, Objective } from "../../types";
+import type { ExecutiveKpi, KpiKey, KpiMonthlyValue, KpiUnit, Objective } from "../../types";
 import { KpiSparkline } from "./KpiSparkline";
+
+/** Número compacto com valor integral no title (tooltip nativo). */
+function KpiAmount({ value, unit, className }: { value: number | null | undefined; unit: KpiUnit; className?: string }) {
+  const compact = formatKpiCompact(value, unit);
+  const full = formatKpiFull(value, unit);
+  return (
+    <span className={className} title={full === "—" ? undefined : full}>
+      {compact}
+    </span>
+  );
+}
 
 const KPI_ICON = {
   revenue: Banknote,
@@ -133,10 +145,16 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
           </div>
 
           <div>
-            <p className="text-metric font-semibold text-text">{formatKpiValue(reportedAverage, "currency", { compact: true })}</p>
+            <p className="text-metric font-semibold text-text">
+              <KpiAmount value={reportedAverage} unit="currency" />
+            </p>
             <div className="mt-3 space-y-1 text-label text-text-secondary">
-              <p>Saldo: {formatKpiValue(current?.actualValue, "currency", { compact: true })}</p>
-              <p>Geração: {formatKpiValue(reportedDelta, "currency", { compact: true })}</p>
+              <p>
+                Saldo: <KpiAmount value={current?.actualValue} unit="currency" />
+              </p>
+              <p>
+                Geração: <KpiAmount value={reportedDelta} unit="currency" />
+              </p>
               <p>Estágio-alvo: {targetStage ?? "A definir"}</p>
             </div>
           </div>
@@ -144,11 +162,11 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
           {generationYtd !== null ? (
             <div className="border-t border-border pt-3 text-label text-text-secondary">
               <p>
-                Geração no ano: <span className="font-medium text-text">{formatKpiValue(generationYtd, "currency", { compact: true })}</span>
+                Geração no ano: <KpiAmount value={generationYtd} unit="currency" className="font-medium text-text" />
               </p>
               {projectedBalance !== null ? (
                 <p className="mt-1">
-                  Projeção de saldo (dez): <span className="font-medium text-text">{formatKpiValue(projectedBalance, "currency", { compact: true })}</span>
+                  Projeção de saldo (dez): <KpiAmount value={projectedBalance} unit="currency" className="font-medium text-text" />
                   {cashPace !== null ? <span className={`ml-1 font-medium ${paceTone(cashPace)}`}>· {paceLabel(cashPace)}</span> : null}
                 </p>
               ) : null}
@@ -192,11 +210,17 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
         </div>
 
         <div>
-          <p className="text-metric font-semibold text-text">{formatKpiValue(current?.actualValue, kpi.unit, { compact: true })}</p>
+          <p className="text-metric font-semibold text-text">
+            <KpiAmount value={current?.actualValue} unit={kpi.unit} />
+          </p>
           <div className="mt-3 space-y-1 text-label text-text-secondary">
-            <p>Meta: {formatKpiValue(current?.targetValue, kpi.unit, { compact: true })}</p>
+            <p>
+              Meta: <KpiAmount value={current?.targetValue} unit={kpi.unit} />
+            </p>
             {kpi.secondaryUnit && current?.secondaryActual !== null && current?.secondaryActual !== undefined ? (
-              <p>Qtd: {formatKpiValue(current.secondaryActual, kpi.secondaryUnit, { compact: true })}</p>
+              <p>
+                Qtd: <KpiAmount value={current.secondaryActual} unit={kpi.secondaryUnit} />
+              </p>
             ) : null}
           </div>
         </div>
@@ -205,8 +229,20 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between gap-2 text-label">
               <span className="text-text-secondary">
-                Ano{ytdMode === "average" ? " (média)" : ""}: <span className="font-medium text-text">{formatKpiValue(ytdValue, kpi.unit, { compact: true })}</span>
-                <span className="text-text-tertiary">{ytdMode === "sum" ? ` de ${formatKpiValue(annual, kpi.unit, { compact: true })}` : ` · meta ${formatKpiValue(annual, kpi.unit, { compact: true })}`}</span>
+                Ano{ytdMode === "average" ? " (média)" : ""}: <KpiAmount value={ytdValue} unit={kpi.unit} className="font-medium text-text" />
+                <span className="text-text-tertiary">
+                  {ytdMode === "sum" ? (
+                    <>
+                      {" "}
+                      de <KpiAmount value={annual} unit={kpi.unit} />
+                    </>
+                  ) : (
+                    <>
+                      {" "}
+                      · meta <KpiAmount value={annual} unit={kpi.unit} />
+                    </>
+                  )}
+                </span>
               </span>
               {pace !== null ? <span className={`shrink-0 font-medium ${paceTone(pace)}`}>{paceLabel(pace)}</span> : null}
             </div>
@@ -216,7 +252,9 @@ function KpiCard({ kpi, values, year, focusMonth, linkedObjectives }: { kpi: Exe
               </div>
             ) : null}
             {ytdMode === "sum" && projection !== null ? (
-              <p className="mt-1 text-xs text-text-tertiary">Projeção do ano: {formatKpiValue(projection, kpi.unit, { compact: true })}</p>
+              <p className="mt-1 text-xs text-text-tertiary">
+                Projeção do ano: <KpiAmount value={projection} unit={kpi.unit} />
+              </p>
             ) : null}
           </div>
         ) : null}

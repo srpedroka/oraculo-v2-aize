@@ -2,6 +2,7 @@
 
 ## 2026-07-11
 
+- Dashboard › Resultado: números executivos passam a usar formatação compacta fixa (`formatKpiCompact` / `formatKpiFull` em `src/lib/kpi.ts`) com `mil` / `mi` / `bi` (ex.: `R$ 1,2 mi`, `18,5 mil`, `12,5%`). O valor integral fica no `title`/tooltip; inputs de edição continuam com número completo. Percentual nunca abrevia. Arredondamento de 1 casa promove de escala quando chegaria a `1.000 mil` (ex.: `999.999` → `R$ 1 mi`).
 - Pessoas: troca de área do coordenador passou a ser **transacional** (RPC `set_member_primary_area` + Edge Function `set-member-area`); a UI só confirma sucesso após o servidor. Convite ficou **somente por WhatsApp** (mensagem natural + link pessoal); sem celular ou sem WhatsApp da empresa não há sucesso falso. Owner continua podendo editar nome e celular.
 - Adicionado o Perfil da empresa: o dono pesquisa a internet a partir de Configurações › Empresa, revisa uma prévia editável com fontes desmarcáveis e só grava ao confirmar. O resumo confirmado fica em `plan_documents` (`type = company_profile`) e entra como bloco permanente "PERFIL DA EMPRESA" no contexto do Oráculo (app, WhatsApp e sessões). A Edge Function `company-research` só sugere (nunca grava); a busca web usa Anthropic ou OpenAI. Links sem protocolo (`www.gaam.com.br`) passam a ser normalizados para `https://`.
 - Aba Pessoas: botão **Convidar** sempre visível (WhatsApp se houver celular + WA ativo; senão email; se a conta já existe, devolve link copiável). Lista permite **vincular área**, **editar nome/celular** e convidar depois de cadastro silencioso.

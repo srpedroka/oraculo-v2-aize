@@ -866,6 +866,17 @@ Nunca copie esses valores para o frontend.
 6. Se a leitura da imagem falhar: use foto mais nítida, PDF com texto, ou cole o texto.
 7. Se o objetivo for alimentar os cards de Resultado (KPI), use o import de planilha/imagem no Dashboard — o histórico não grava `kpi_monthly_values`.
 
+## Numeros do Dashboard (Resultado)
+
+Os cards de Resultado mostram valores compactos em pt-BR:
+
+- moeda: `R$ 850 mil`, `R$ 1,2 mi`, `R$ 2,4 bi`;
+- contagens: `18,5 mil` (sem `R$`);
+- percentual: `12,5%` (nunca abrevia);
+- nulo: `—`.
+
+Passe o mouse (ou use o `title`) para ver o valor integral. Campos de edicao no lancamento continuam com o numero completo, sem abreviacao. A regra vive em `src/lib/kpi.ts` (`formatKpiCompact` / `formatKpiFull` / `verifyKpiFormatCases`).
+
 ## Resgatar KPIs a partir do histórico
 
 1. Importe documentos com números (ex. faturamento mensal multi-ano) em **Plano Estratégico › Histórico** e salve.
