@@ -138,6 +138,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `month-turn`: funcao de virada de mes. Verifica areas com plano mensal encerrado sem check-in e envia convite por WhatsApp para owner/coordenador quando a integracao estiver ativa.
 - `weekly-pulse`: cron horario protegido que respeita dia/horario configurados por empresa, convida uma vez por semana coordenadores com plano ativo e guarda contexto temporario para interpretar a resposta sem insistencia.
 - `suggest-objective-kpis`: valida usuario e permissao do objetivo, usa a funcao `background` e devolve no maximo dois KPIs existentes; nao grava vinculos.
+- `company-research`: owner-only; monta termos a partir de nome/subtítulo (split em `/`), usa busca web nativa de Anthropic ou OpenAI via `callModelWithWebSearch` e devolve apenas uma sugestão (`summary`, `sources`, `queries`, `links`). Nunca grava no banco; a confirmação grava `plan_documents` com `type = company_profile` pelo cliente (RLS owner).
 - `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp.
 
 Funcoes compartilhadas:
@@ -159,7 +160,7 @@ Funcoes compartilhadas:
 - `_shared/periods.ts`: normaliza texto e resolve ano, trimestre e mes vigentes ou citados na mensagem.
 - `_shared/quick-updates.ts`: identifica atualizacoes curtas do WhatsApp, escolhe objetivo/acao mensal, pede esclarecimento em caso de ambiguidade, valida permissao e grava status, progresso ou evidencia.
 - `_shared/conversations.ts`: cria/retoma conversa por pessoa e canal, grava mensagens com dono, carrega historico da conversa e resume historico longo com a funcao `background`.
-- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias, pendencias e memoria estrategica historica truncada quando o foco e estrategico ou trimestral.
+- `_shared/plan-context.ts`: monta contexto textual do plano, com empresa, objetivos estrategicos, area em foco, plano anual, trimestre/mes em foco, IDs de objetivos/acoes, acoes-chave, evidencias, pendencias e memoria estrategica historica truncada quando o foco e estrategico ou trimestral. Quando existe `plan_documents.type = company_profile` confirmado, injeta o bloco permanente "PERFIL DA EMPRESA" (resumo truncado a ~1200 caracteres) logo após EMPRESA/TEMA, em todos os focos; sem perfil o bloco some sem erro.
 - `_shared/session-engine.ts`: orquestra sessoes de planejamento, historico, prompts, estado e chamadas ao modelo.
 - `_shared/proposals.ts`: aplica propostas confirmadas no banco com validacao server-side de permissao.
 - `_shared/plan-documents.ts`: transforma propostas confirmadas em `plan_documents` deterministico, incrementando versao por empresa/area/tipo/periodo.
@@ -198,6 +199,8 @@ Na Fase 3, as chamadas de conversa deixam de usar historico geral da empresa. `o
 O contexto do plano tambem deixa de ser JSON cru. `_shared/plan-context.ts` devolve texto estruturado para a IA, incluindo objetivos, progresso, donos, prazos, entregas e acoes-chave. Isso permite que perguntas como "como está o mês da minha área?" enxerguem tambem as ações-chave, não só os objetivos.
 
 Na Fatia 2a da Memoria Estrategica, o mesmo helper passa a incluir a seção "MEMÓRIA ESTRATÉGICA (planos passados — referência)" quando o foco e estrategico (`org`) ou trimestral. A seção busca no maximo 3 documentos historicos (`plan_documents.origin = historical`) mais relevantes/recentes, limita cada texto a cerca de 1.800 caracteres e orienta o modelo a tratar recorrencia como pergunta construtiva, nao como prova de resultado. Nao ha migration nem chamada de IA extra nessa fatia.
+
+O Perfil da empresa e independente da memoria estrategica: a pesquisa web passa por `company-research` (so sugere), o dono confirma no app e o resumo vigente e injetado em todas as conversas via o bloco "PERFIL DA EMPRESA". `company_profile` nao entra no filtro de memoria historica (que continua so com strategic/quarterly).
 
 Modo misto de gravacao:
 

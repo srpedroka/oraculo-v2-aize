@@ -24,6 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MAX_HISTORICAL_DOCS = 3;
 const MAX_HISTORICAL_CHARS_PER_DOC = 1800;
+const MAX_PROFILE_CHARS = 1200;
 
 function text(value: unknown, fallback = "não informado") {
   const output = String(value ?? "").trim();
@@ -51,6 +52,25 @@ function truncateHistoricalText(value: unknown) {
     .trim();
   if (output.length <= MAX_HISTORICAL_CHARS_PER_DOC) return output;
   return `${output.slice(0, MAX_HISTORICAL_CHARS_PER_DOC).trim()}\n[trecho truncado para controlar tokens]`;
+}
+
+function truncateProfileText(value: unknown) {
+  const output = rawText(value)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+  if (!output) return "";
+  if (output.length <= MAX_PROFILE_CHARS) return output;
+  return `${output.slice(0, MAX_PROFILE_CHARS).trim()}\n[trecho truncado para controlar tokens]`;
+}
+
+function companyProfileLines(document: any | null) {
+  if (!document) return [];
+  const summary = truncateProfileText(asRecord(document.content).summary);
+  if (!summary) return [];
+  return ["PERFIL DA EMPRESA:", summary];
 }
 
 function currentPeriods(date = new Date()) {
@@ -212,6 +232,15 @@ export async function buildPlanContext(
       .order("created_at", { ascending: false })
       .limit(12)
     : Promise.resolve({ data: [] });
+  const companyProfileQuery = client
+    .from("plan_documents")
+    .select("id, type, period, title, content, version, created_at")
+    .eq("org_id", orgId)
+    .eq("type", "company_profile")
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const [
     { data: organization },
     { data: areas },
@@ -224,6 +253,7 @@ export async function buildPlanContext(
     { data: checkIns },
     { data: strategicProjects },
     { data: historicalDocuments },
+    { data: companyProfile },
   ] = await Promise.all([
     client.from("organizations").select("id, name, subtitle").eq("id", orgId).maybeSingle(),
     client.from("areas").select("id, name, coordinator_id, archived_at").eq("org_id", orgId).order("created_at"),
@@ -236,6 +266,7 @@ export async function buildPlanContext(
     client.from("check_ins").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false }).limit(12),
     client.from("strategic_projects").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     historicalDocumentsQuery,
+    companyProfileQuery,
   ]);
 
   const profileIds = Array.from(new Set((memberships ?? []).map((membership: any) => membership.user_id).filter(Boolean)));
@@ -255,6 +286,7 @@ export async function buildPlanContext(
   const lines: string[] = [
     `EMPRESA: ${text(organization?.name, "Empresa")}${organization?.subtitle ? ` (${organization.subtitle})` : ""}`,
     `TEMA DO ANO: ${asArray(strategicPlan?.themes).join("; ") || "não definido"} | Ano: ${strategicPlan?.year ?? periods.year}`,
+    ...companyProfileLines(companyProfile ?? null),
     "OBJETIVOS ESTRATÉGICOS:",
     ...(strategicObjectives.length ? strategicObjectives.map(objectiveLine) : ["- Nenhum objetivo estratégico cadastrado."]),
   ];

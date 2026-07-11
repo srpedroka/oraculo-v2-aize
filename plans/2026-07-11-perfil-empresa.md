@@ -1,6 +1,6 @@
 # Plano: Perfil da empresa (rastreio na internet como contexto do Oráculo)
 
-> **STATUS: pronto para execução no Codex, em 3 ondas.** Prompts prontos para colar na seção "Execução no Codex" ao fim deste arquivo. Executar uma onda por vez, na ordem.
+> **STATUS: executado (2026-07-11) pelo Grok CLI** — 5 fatias: migration `company_profile`, `callModelWithWebSearch`, Edge Function `company-research` (deployada), card confirmável na aba Empresa (frontend em prod), bloco permanente no `plan-context` + redeploy de `oracle-chat` / `oracle-session` / `whatsapp-webhook` + docs. **Pendente de teste real do dono:** primeira pesquisa autenticada de verdade (web search com chave da org) e pergunta no painel "o que você sabe sobre a minha empresa?" com perfil confirmado.
 
 Pedido do dono (2026-07-11): um lugar/rotina que rastreie a internet sobre a empresa (sites e canais principalmente; redes sociais se aparecerem), guarde esse contexto no histórico, gere automaticamente um resumo descritivo, e esse contexto sirva para o Oráculo conhecer melhor a empresa. Quando o nome tiver dois nomes ("Gaam/Aize"), pesquisar os dois.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-11
+
+- Adicionado o Perfil da empresa: o dono pesquisa a internet a partir de Configurações › Empresa, revisa uma prévia editável com fontes desmarcáveis e só grava ao confirmar. O resumo confirmado fica em `plan_documents` (`type = company_profile`) e entra como bloco permanente "PERFIL DA EMPRESA" no contexto do Oráculo (app, WhatsApp e sessões). A Edge Function `company-research` só sugere (nunca grava); a busca web usa Anthropic ou OpenAI.
+
 ## 2026-07-10
 
 - Revisao mensal ganhou pulso de gestao: confianca verde/amarela/vermelha, trava que exige ajuda/decisao e compromisso principal do mes seguinte, guardados de forma estruturada no check-in e visiveis na Execucao.

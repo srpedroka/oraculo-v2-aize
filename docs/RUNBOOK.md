@@ -184,6 +184,22 @@ Arquivos obrigatorios:
 
 Depois rode build e publique novamente.
 
+## Perfil da empresa
+
+O dono configura o perfil em **Configurações › Empresa**, no card **Perfil da empresa**.
+
+Como usar:
+
+1. (Opcional) Cole links oficiais da empresa no campo, um por linha (site, LinkedIn, etc.; máximo 5).
+2. Clique em **Pesquisar na internet**. A função `company-research` só sugere; nada é gravado ainda.
+3. Revise a prévia: edite o resumo e desmarque fontes que não quiser guardar (defesa contra homônimo).
+4. **Confirmar perfil** grava um `plan_documents` com `type = company_profile`. **Descartar** limpa a prévia sem gravar.
+5. Para atualizar, pesquise de novo e confirme outra versão; o contexto da IA usa a versão mais recente.
+
+Erro comum: *"O perfil precisa de uma chave Anthropic ou OpenAI cadastrada na aba IA"*. Cadastre e salve uma chave Anthropic (preferida) ou OpenAI em **Configurações › IA**. Moonshot e xAI não fazem busca web neste fluxo.
+
+Com perfil confirmado, o Oráculo recebe o bloco permanente "PERFIL DA EMPRESA" em painel, WhatsApp e sessões. Sem perfil, o bloco simplesmente não aparece.
+
 ## Problema: Oraculo nao responde com IA real
 
 Possiveis causas:
