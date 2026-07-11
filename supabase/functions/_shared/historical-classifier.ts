@@ -81,6 +81,82 @@ function normalizeDocumentText(value: unknown, maxLength = 120_000) {
     .slice(0, maxLength);
 }
 
+/** String não vazia ("" não conta — evita o bug `??` com normalizedText: ""). */
+function nonEmptyText(value: unknown, maxLength = 120_000) {
+  const text = normalizeDocumentText(value, maxLength);
+  return text || "";
+}
+
+function looksLikeMetadataJson(value: string) {
+  const text = value.trim();
+  if (!text.startsWith("{")) return false;
+  return (
+    /"documentType"\s*:/.test(text) ||
+    /"normalizedText"\s*:/.test(text) ||
+    /"extractedText"\s*:/.test(text) ||
+    /"periodFound"\s*:/.test(text)
+  );
+}
+
+function looksLikeJsonNoiseLine(line: string) {
+  const t = line.trim();
+  if (!t) return false;
+  if (t.startsWith("{") || t.startsWith("}") || t === "[" || t === "]") return true;
+  if (/^"[a-zA-Z_]+"\s*:/.test(t)) return true;
+  if (/^\[Tabela expandida por ano/.test(t) && t.length < 80) return false;
+  return false;
+}
+
+/** Remove bloco JSON de metadados que o modelo às vezes cola no texto. */
+function stripMetadataJson(value: string) {
+  const text = normalizeDocumentText(value);
+  if (!text) return "";
+  if (looksLikeMetadataJson(text)) {
+    // Tenta extrair só o valor de normalizedText/extractedText se vierem preenchidos
+    try {
+      const parsed = JSON.parse(text);
+      const inner = nonEmptyText(parsed?.normalizedText ?? parsed?.normalized_text ?? parsed?.extractedText ?? parsed?.extracted_text);
+      if (inner && !looksLikeMetadataJson(inner)) return inner;
+    } catch {
+      // segue para strip heurístico
+    }
+    return "";
+  }
+  // Remove um objeto JSON embutido no meio do texto
+  return text
+    .replace(/\{\s*"normalizedText"[\s\S]*$/m, "")
+    .replace(/\{\s*"extractedText"[\s\S]*$/m, "")
+    .replace(/\{\s*"documentType"[\s\S]*$/m, "")
+    .trim();
+}
+
+function pickDocumentBody(parsed: any, rawModelText: string, fallback: string) {
+  const fieldCandidates = [
+    parsed?.normalizedText,
+    parsed?.normalized_text,
+    parsed?.extractedText,
+    parsed?.extracted_text,
+    parsed?.text,
+    parsed?.content,
+    parsed?.documentText,
+    parsed?.body,
+    parsed?.tableText,
+  ];
+  for (const candidate of fieldCandidates) {
+    const text = nonEmptyText(candidate);
+    if (text && !looksLikeMetadataJson(text)) return text;
+  }
+
+  const raw = nonEmptyText(rawModelText);
+  if (raw && !looksLikeMetadataJson(raw)) {
+    const stripped = stripMetadataJson(raw);
+    if (stripped && !looksLikeMetadataJson(stripped)) return stripped;
+  }
+
+  const fromFallback = nonEmptyText(fallback);
+  return fromFallback;
+}
+
 function splitTableCells(line: string) {
   const trimmed = line.trim();
   if (!trimmed) return [];
@@ -132,6 +208,14 @@ export function expandMultiYearTables(rawText: string): { text: string; expanded
 
   while (i < lines.length) {
     const line = lines[i] ?? "";
+    // Nunca tratar linhas de JSON de metadados como cabeçalho de tabela.
+    if (looksLikeJsonNoiseLine(line) || looksLikeMetadataJson(line)) {
+      // Descarta o JSON inteiro se for o bloco de metadados; mantém texto útil.
+      if (looksLikeMetadataJson(lines.slice(i).join("\n"))) break;
+      i += 1;
+      continue;
+    }
+
     const headerCells = splitTableCells(line);
     const yearColumns = headerCells
       .map((cell, index) => ({ index, year: yearInHeader(cell) }))
@@ -139,8 +223,15 @@ export function expandMultiYearTables(rawText: string): { text: string; expanded
 
     const uniqueYears = [...new Set(yearColumns.map((item) => item.year))];
     const hasMonthHint = headerCells.some((cell) => /mes|mês|month/i.test(cell) || looksLikeMonthLabel(cell));
+    // Exige separador tabular real (|, tab ou 2+ espaços) — evita falso positivo em prosa/JSON.
+    const hasTabularSeparator = /\||\t|\s{2,}/.test(line);
 
-    if (uniqueYears.length >= 2 && yearColumns.length >= 2 && (hasMonthHint || headerCells.length >= 3)) {
+    if (
+      hasTabularSeparator &&
+      uniqueYears.length >= 2 &&
+      yearColumns.length >= 2 &&
+      (hasMonthHint || headerCells.length >= 3)
+    ) {
       for (const year of uniqueYears) yearsFound.add(year);
       out.push(`[Tabela expandida por ano — colunas: ${uniqueYears.join(", ")}]`);
       i += 1;
@@ -237,7 +328,15 @@ const TABLE_NORMALIZATION_RULES = [
   "- Repita o rotulo do mes em cada linha expandida. Nunca misture valores de anos diferentes na mesma linha sem o ano explicito.",
   "- Preserve todos os valores e rotulos; nao some colunas nem invente numeros.",
   "- No campo period dos metadados: se houver varios anos na tabela, use a faixa `2025–2026` (en-dash ou hifen) e periodFound=true.",
-  "- Coloque o documento JA EXPANDIDO em normalizedText (texto) ou extractedText (imagem).",
+  "- normalizedText (texto) e extractedText (imagem) NUNCA podem ser string vazia.",
+  "- O documento completo JA EXPANDIDO deve ir em normalizedText e/ou extractedText (texto corrido com quebras de linha, NAO um JSON dentro do campo).",
+  "- Os campos documentType/area/period/title/summary ficam FORA do texto do documento — so no JSON raiz.",
+  "- Exemplo minimo de extractedText/normalizedText:",
+  "  [Tabela expandida por ano — colunas: 2025, 2026]",
+  "  Janeiro 2025 | R$ 2.035.253,35",
+  "  Janeiro 2026 | R$ 2.410.506,19",
+  "  Fevereiro 2025 | R$ 2.567.616,79",
+  "  Fevereiro 2026 | R$ 2.551.724,73",
 ].join("\n");
 
 function normalizeAreaToken(value: unknown) {
@@ -394,12 +493,22 @@ function systemPrompt(areas: AreaCandidate[]) {
 }
 
 function finalizeHistoricalText(rawCandidate: string, originalFallback: string) {
-  const base = normalizeDocumentText(rawCandidate || originalFallback);
+  const cleanedCandidate = stripMetadataJson(rawCandidate);
+  const cleanedFallback = stripMetadataJson(originalFallback);
+  const base = nonEmptyText(cleanedCandidate) || nonEmptyText(cleanedFallback) || nonEmptyText(originalFallback);
+  if (!base || looksLikeMetadataJson(base)) {
+    return { text: nonEmptyText(originalFallback) && !looksLikeMetadataJson(originalFallback) ? nonEmptyText(originalFallback) : "", expanded: false, years: [] as number[] };
+  }
   const expanded = expandMultiYearTables(base);
-  const years = expanded.years.length ? expanded.years : yearsMentionedInText(expanded.text);
+  // Se a "expansão" só gerou o marcador sem linhas de dados, volta ao texto base.
+  const onlyMarker = /^\[Tabela expandida por ano[^\]]*\]\s*$/m.test(expanded.text.trim()) &&
+    !/\b(20\d{2})\s*\|/.test(expanded.text) &&
+    expanded.text.split("\n").filter((line) => line.trim() && !line.startsWith("[Tabela")).length === 0;
+  const text = onlyMarker ? base : expanded.text;
+  const years = expanded.years.length ? expanded.years : yearsMentionedInText(text);
   return {
-    text: expanded.text,
-    expanded: expanded.expanded,
+    text,
+    expanded: expanded.expanded && !onlyMarker,
     years,
   };
 }
@@ -457,10 +566,20 @@ export async function suggestHistoricalMetadata(
     });
 
     const parsed = parseJsonObject(result.text);
-    const candidateText = String(parsed?.normalizedText ?? parsed?.normalized_text ?? parsed?.extractedText ?? parsed?.extracted_text ?? "").trim()
-      || preExpanded.text
-      || params.rawText;
-    const finalized = finalizeHistoricalText(candidateText, params.rawText);
+    const candidateText = pickDocumentBody(parsed, result.text, preExpanded.text || params.rawText);
+    const finalized = finalizeHistoricalText(candidateText, preExpanded.text || params.rawText);
+
+    if (!finalized.text) {
+      const rescue = finalizeHistoricalText(preExpanded.text, params.rawText);
+      return {
+        extractedText: rescue.text || params.rawText,
+        tableExpanded: rescue.expanded || preExpanded.expanded,
+        suggestion: suggestionWithMultiYearPeriod(
+          fallbackSuggestion(rescue.text || params.rawText, params.areas, "heuristic"),
+          rescue.years,
+        ),
+      };
+    }
 
     if (!parsed) {
       return {
@@ -485,10 +604,10 @@ export async function suggestHistoricalMetadata(
     console.error("Erro ao sugerir metadados historicos", error instanceof Error ? error.message : String(error));
     const finalized = finalizeHistoricalText(preExpanded.text, params.rawText);
     return {
-      extractedText: finalized.text,
+      extractedText: finalized.text || params.rawText,
       tableExpanded: finalized.expanded || preExpanded.expanded,
       suggestion: suggestionWithMultiYearPeriod(
-        fallbackSuggestion(finalized.text, params.areas, "heuristic"),
+        fallbackSuggestion(finalized.text || params.rawText, params.areas, "heuristic"),
         finalized.years,
       ),
     };
@@ -555,13 +674,51 @@ export async function suggestHistoricalMetadataFromImage(
     });
 
     const parsed = parseJsonObject(result.text);
-    const rawExtracted = String(
-      parsed?.normalizedText ?? parsed?.normalized_text ?? parsed?.extractedText ?? parsed?.extracted_text ?? "",
-    ).trim() || String(result.text ?? "").trim();
-    const finalized = finalizeHistoricalText(rawExtracted, rawExtracted);
+    // normalizedText:"" era tratado como valor e o fallback virava o JSON inteiro na tela.
+    let body = pickDocumentBody(parsed, result.text, "");
+    let finalized = finalizeHistoricalText(body, body);
 
-    if (!finalized.text) {
-      throw new Error("Não consegui ler texto nesta imagem. Envie uma foto mais nítida ou um PDF/DOCX com texto.");
+    // 2ª tentativa: se veio só metadados/JSON vazio, pede APENAS o texto expandido da tabela (sem JSON).
+    if (!finalized.text || looksLikeMetadataJson(finalized.text)) {
+      const recovery = await callModelWithImageForFunction(
+        client,
+        params.orgId,
+        "background",
+        aiRoute,
+        [
+          "Voce transcreve tabelas de documentos historicos.",
+          "Responda SOMENTE com texto puro, SEM JSON e SEM markdown de codigo.",
+          "Se houver colunas de anos (TOTAL 2025 | TOTAL 2026), expanda para uma linha por mes+ano:",
+          "Janeiro 2025 | R$ ...",
+          "Janeiro 2026 | R$ ...",
+          "Preserve todos os numeros e rotulos. Nao invente valores.",
+        ].join("\n"),
+        `Arquivo: ${params.fileName ?? "Imagem histórica"}. Transcreva e expanda a(s) tabela(s) da imagem.`,
+        params.image,
+        { ...aiRoute.limits, maxTokens: Math.max(aiRoute.limits.maxTokens ?? 2000, 4000) },
+      );
+      await recordAiUsage({
+        client,
+        orgId: params.orgId,
+        provider: aiRoute.provider,
+        model: aiRoute.model,
+        channel: "web",
+        usage: recovery.usage,
+        settings: aiRoute.legacySettings,
+        metadata: {
+          aiFunction: "background",
+          action: "historical_image_table_recovery",
+          fileName: params.fileName ?? null,
+        },
+      });
+      body = pickDocumentBody(null, recovery.text, recovery.text);
+      finalized = finalizeHistoricalText(body, recovery.text);
+    }
+
+    if (!finalized.text || looksLikeMetadataJson(finalized.text)) {
+      throw new Error(
+        "A IA leu a imagem mas não devolveu o texto da tabela. Tente de novo ou cole a tabela como texto (Mês | TOTAL 2025 | TOTAL 2026).",
+      );
     }
 
     if (!parsed) {

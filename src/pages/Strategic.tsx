@@ -318,13 +318,21 @@ export function Strategic() {
     void processHistoricalFile(file);
   }
 
+  function looksLikeMetadataDump(text: string) {
+    const t = text.trim();
+    return t.startsWith("{") && (/normalizedText|documentType|periodFound/.test(t));
+  }
+
   function applyHistoricalSuggestion(
     suggestion: HistoricalMetadataSuggestion,
     options?: { extractedText?: string; tableExpanded?: boolean; fromImage?: boolean },
   ) {
     const nextAreaId = suggestion.areaId ?? (isOwner ? "company" : writableHistoricalAreas[0]?.id ?? "company");
     const normalized = String(options?.extractedText ?? "").trim();
-    if (normalized) setHistoricalText(normalized);
+    // Nunca substituir o textarea por JSON de metadados (bug: normalizedText vazio → JSON na tela).
+    if (normalized && !looksLikeMetadataDump(normalized)) {
+      setHistoricalText(normalized);
+    }
     setHistoricalSuggestion(suggestion);
     setHistoricalType(suggestion.documentType);
     setHistoricalAreaId(nextAreaId);

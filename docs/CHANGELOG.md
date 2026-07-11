@@ -7,6 +7,7 @@
 - Corrigido bug em que o celular dos membros parecia “apagado”: a query de `profiles` da org não carregava `phone`, e o upsert de `invite-member` agora **nunca sobrescreve** um celular existente com vazio/null.
 - Importação de histórico no Plano Estratégico aceita imagens JPG/PNG/WEBP: a IA de bastidores (visão) transcreve o texto, sugere metadados e preenche a prévia; o arquivo bruto da imagem **não** é gravado — só o texto e a classificação confirmados.
 - Histórico normaliza tabelas multi-ano (ex.: Mês | TOTAL 2025 | TOTAL 2026) para linhas `Janeiro 2025 | valor` / `Janeiro 2026 | valor` antes de gravar, com período em faixa (`2025–2026`) e prévia editável — a visualização em colunas fica no arquivo original; o texto canônico do histórico fica separado por ano.
+- Corrigido bug na importação de histórico por imagem: se a IA devolvia `normalizedText: ""`, a UI mostrava o JSON de metadados em vez da tabela; agora campos vazios são ignorados, JSON de metadados não entra no texto canônico, e a expansão multi-ano exige separador tabular real.
 
 ## 2026-07-10
 
