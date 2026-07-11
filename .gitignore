@@ -1,0 +1,21 @@
+node_modules/
+.pnpm-store/
+dist/
+.env
+.env.*
+!.env.example
+.agents-private/
+.supabase-private/
+supabase/.branches/
+supabase/.temp/
+*.log
+*.dump
+*.sql.gz
+*.zip
+.DS_Store
+
+# Local Netlify folder
+.netlify
+
+# Config local do Claude Code (launch.json/dev-server.sh tem caminhos da maquina)
+.claude/

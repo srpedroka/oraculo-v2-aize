@@ -1,0 +1,34 @@
+import { Menu } from "lucide-react";
+import { Outlet, useLocation } from "react-router-dom";
+import { useAppState } from "../state/store";
+import { OraclePanel } from "./OraclePanel";
+import { Sidebar } from "./Sidebar";
+import { Button } from "./ui/Button";
+
+export function Layout() {
+  const { state, dispatch } = useAppState();
+  const location = useLocation();
+
+  return (
+    <div className="min-h-screen bg-bg text-text sm:flex">
+      <Sidebar />
+      <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 sm:hidden">
+        <div>
+          <p className="text-sm font-bold text-text">ORÁCULO</p>
+          <p className="text-xs text-text-tertiary">
+            {state.organization?.name}
+            {state.organization?.subtitle ? ` · ${state.organization.subtitle}` : ""}
+          </p>
+        </div>
+        <Button variant="quiet" size="icon" icon={Menu} onClick={() => dispatch({ type: "toggle_mobile_nav" })} aria-label="Abrir menu" />
+      </header>
+
+      <main className="min-w-0 flex-1">
+        <div key={location.pathname} className="animate-page-in mx-auto w-full max-w-7xl px-4 py-6 motion-reduce:animate-none sm:px-6 sm:py-8 lg:px-8">
+          <Outlet />
+        </div>
+      </main>
+      <OraclePanel />
+    </div>
+  );
+}
