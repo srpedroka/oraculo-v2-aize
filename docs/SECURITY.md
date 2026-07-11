@@ -188,7 +188,7 @@ As tabelas `conversations`, `planning_sessions`, `ai_function_settings` e `plan_
 
 Regras de seguranca:
 
-- `conversations`: cada usuario autenticado le e atualiza apenas as proprias conversas; owners podem ler todas as conversas da empresa para supervisao. Edge Functions usam service role para gravacoes de canais externos.
+- `conversations`: cada usuario autenticado le e atualiza apenas as proprias conversas; owners podem ler todas as conversas da empresa para supervisao. Edge Functions usam service role para gravacoes de canais externos. Episodios encerrados por 4 horas de inatividade ficam arquivados, nao apagados, e continuam sob a mesma RLS.
 - `planning_sessions`: cada usuario le e atualiza as proprias sessoes; owner tambem pode ler. Quando a sessao envolve uma area, escrita exige permissao pela mesma regra de coordenador da area.
 - `ai_function_settings`: membros leem a configuracao de modelo; apenas owner altera.
 - `plan_documents`: membros leem documentos da empresa; owner grava documentos gerais e coordenadores gravam documentos da propria area. Historicos importados usam a mesma regra de leitura/escrita, mas ficam marcados com `origin = historical`.
@@ -197,7 +197,7 @@ Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios.
 
 Na Fase 3, `conversations.summary` guarda um resumo de conversa gerado por IA. Esse resumo pode conter decisoes, numeros e pendencias da empresa, portanto deve ser tratado como dado privado da organizacao. Ele nunca deve guardar chave de API, segredo de webhook, senha, URL temporaria de mídia, audio bruto ou arquivo bruto.
 
-O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. Na Memoria Estrategica Fatia 2a, contextos de planejamento estrategico/trimestral tambem podem incluir ate 3 documentos historicos truncados de `plan_documents.origin = historical`, no escopo da empresa e da area em foco. Segredos continuam fora desse contexto.
+O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. A Memoria Estrategica pode incluir ate 5 documentos historicos truncados de `plan_documents.origin = historical` nos planejamentos estrategico, trimestral, mensal e por area. A selecao prioriza o escopo da empresa e a area em foco; historicos de outras areas nao entram quando uma area especifica foi escolhida. Segredos continuam fora desse contexto.
 
 ## Sessoes e propostas da V3
 

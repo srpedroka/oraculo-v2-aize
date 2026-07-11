@@ -215,7 +215,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.
 - `save-ai-settings`: salva chaves de IA, provider/modelo e configuracoes por funcao.
 - `save-whatsapp-settings`: salva configuracao publica e segredos da Evolution API/Evo Go.
-- `oracle-chat`: chat web, historico por conversa, contexto do plano e inicio de sessoes.
+- `oracle-chat`: chat web em episodios de 4 horas, historico por conversa, contexto do plano e inicio de sessoes.
 - `oracle-session`: motor server-side de planejamento/importacao/fechamento com proposta e confirmacao.
 - `month-turn`: virada mensal e convite de fechamento.
 - `weekly-pulse`: convite semanal leve, configuravel e deduplicado para coordenadores com plano ativo.
@@ -229,13 +229,14 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 Compartilhados criticos:
 
 - `_shared/auth.ts`: sessao, membership, owner e permissao por area.
+- `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios e deteccao de retomada explicita.
 - `_shared/model.ts`: chamadas OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok.
 - `_shared/ai-router.ts`: resolve provider/modelo/chave por funcao (`planning`, `daily`, `background`).
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.
 - `_shared/conductors/tone.ts`: carrega o ajuste de tom da empresa e monta a diretiva segura para os prompts.
 - `_shared/session-engine.ts`: estado e ciclo de sessoes.
 - `_shared/proposals.ts`: aplica propostas confirmadas com validacao server-side.
-- `_shared/plan-context.ts`: contexto textual do plano para IA.
+- `_shared/plan-context.ts`: contexto textual do plano e ate 5 historicos relevantes para IA.
 - `_shared/plan-documents.ts`: cria `plan_documents` deterministico.
 - `_shared/plan-render.ts`: renderiza documentos para WhatsApp.
 - `_shared/intent-router.ts`: classificacao operacional.
@@ -411,7 +412,7 @@ Motivo: evitar vazamento de credenciais, controlar custo e impedir gravacao inde
 
 ### Oraculo V3
 
-- Conversas sao separadas por pessoa e canal em `conversations`.
+- Conversas sao separadas por pessoa e canal em `conversations`; 4 horas de inatividade abrem novo episodio sem apagar memoria anterior.
 - Sessoes estruturadas ficam em `planning_sessions`.
 - Condutores ficam em `_shared/conductors/`.
 - Persona, tom e guias por contexto ficam em `_shared/conductors/persona.ts`.

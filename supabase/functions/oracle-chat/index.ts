@@ -157,6 +157,9 @@ serve(async (req) => {
         "Conduza o usuário com perguntas curtas e mantenha a lógica de Resultado e Evolução sem soar mecânico.",
         "Se a pergunta for ambígua, peça esclarecimento antes de analisar dados.",
         "Nunca diga que salvou algo se a ação não foi gravada pelo sistema.",
+        conversation.previous_conversation_id
+          ? "Este é um novo episódio após inatividade. Preserve contexto e memória, mas não retome pergunta ou fluxo anterior sem pedido explícito do usuário."
+          : "",
         toneDirective(orgTone),
         CONVERSATION_STYLE,
         guide,

@@ -22,8 +22,8 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const MAX_HISTORICAL_DOCS = 3;
-const MAX_HISTORICAL_CHARS_PER_DOC = 1800;
+const MAX_HISTORICAL_DOCS = 5;
+const MAX_HISTORICAL_CHARS_PER_DOC = 1600;
 const MAX_PROFILE_CHARS = 1200;
 
 function text(value: unknown, fallback = "não informado") {
@@ -151,22 +151,23 @@ function historicalDocumentScore(document: any, focus: PlanContextFocus, areaId:
   if (!document.area_id) score += 2;
   if (focus === "quarterly" && document.type === "quarterly") score += 3;
   if (focus === "quarterly" && document.type === "strategic") score += 1;
+  if (focus === "monthly" && document.type === "monthly") score += 3;
+  if (focus === "monthly" && document.type === "quarterly") score += 2;
+  if (focus === "area" && ["monthly", "quarterly"].includes(document.type)) score += 2;
   if (focus === "org" && document.type === "strategic") score += 3;
   return score;
 }
 
-function historicalMemoryLines(
+export function historicalMemoryLines(
   documents: any[],
   areas: any[],
   options: { focus: PlanContextFocus; areaId: string | null },
 ) {
-  if (options.focus !== "org" && options.focus !== "quarterly") return [];
-
-  const allowedTypes = options.focus === "quarterly" ? new Set(["strategic", "quarterly"]) : new Set(["strategic"]);
+  const allowedTypes = new Set(["strategic", "quarterly", "monthly"]);
   const relevant = documents
     .filter((document) => allowedTypes.has(String(document.type ?? "")))
     .filter((document) => {
-      if (!options.areaId) return !document.area_id;
+      if (!options.areaId) return true;
       return !document.area_id || document.area_id === options.areaId;
     })
     .filter((document) => rawText(asRecord(document.content).raw))
@@ -181,7 +182,7 @@ function historicalMemoryLines(
 
   const lines = [
     "MEMÓRIA ESTRATÉGICA (planos passados — referência):",
-    "Use estes documentos como lembrança para orientar melhor. Não trate como prova de resultado; quando inferir repetição ou trava, transforme em pergunta construtiva.",
+    "Antes de propor um plano novo, use estes documentos para recuperar decisões, metas e tentativas anteriores. Não trate como prova de resultado; quando inferir repetição ou trava, transforme em pergunta construtiva.",
   ];
 
   for (const document of relevant) {
@@ -225,17 +226,18 @@ export async function buildPlanContext(
     : periods.quarterLabels;
   const quarterDisplay = quarterLabels[0] ?? periods.quarterDisplay;
   const monthDisplay = periodInFocus && !/^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus) ? periodInFocus : periods.month;
-  const shouldLoadHistoricalMemory = focus === "org" || focus === "quarterly";
-  const historicalDocumentsQuery = shouldLoadHistoricalMemory
-    ? client
-      .from("plan_documents")
-      .select("id, area_id, type, period, title, content, version, created_at")
-      .eq("org_id", orgId)
-      .eq("origin", "historical")
-      .is("archived_at", null)
-      .order("created_at", { ascending: false })
-      .limit(12)
-    : Promise.resolve({ data: [] });
+  let historicalDocumentsQuery = client
+    .from("plan_documents")
+    .select("id, area_id, type, period, title, content, version, created_at")
+    .eq("org_id", orgId)
+    .eq("origin", "historical")
+    .in("type", ["strategic", "quarterly", "monthly"])
+    .is("archived_at", null)
+    .order("created_at", { ascending: false });
+  if (options.areaId) {
+    historicalDocumentsQuery = historicalDocumentsQuery.or(`area_id.is.null,area_id.eq.${options.areaId}`);
+  }
+  historicalDocumentsQuery = historicalDocumentsQuery.limit(options.areaId ? 40 : 60);
   const companyProfileQuery = client
     .from("plan_documents")
     .select("id, type, period, title, content, version, created_at")

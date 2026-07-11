@@ -1,5 +1,15 @@
 # Decisoes tecnicas
 
+## 2026-07-11 - Episodios de conversa e memoria historica continua
+
+Decisao: encerrar automaticamente o episodio ativo de conversa depois de 4 horas sem mensagens, criando outro episodio no mesmo canal sem apagar o anterior. Resumos e historicos relevantes continuam como memoria de longo prazo, mas sessoes antigas de planejamento so voltam com confirmacao pendente ou pedido explicito de continuacao.
+
+Contexto: uma conversa do WhatsApp iniciada pela manha ainda tratava um simples "Ola" horas depois como resposta da pergunta anterior. Ao mesmo tempo, planos historicos importados precisavam orientar planejamentos novos, inclusive mensais e de area, sem transformar todo o acervo em um unico chat infinito.
+
+Motivo: episodio curto e memoria longa reproduzem a expectativa natural de conversa: a abertura recomeca depois de uma pausa real, enquanto conhecimento empresarial, decisoes e tentativas anteriores permanecem disponiveis como contexto. Quatro horas evitam cortes durante uma reuniao ou planejamento normal e separam retomadas no mesmo dia.
+
+Consequencias: `_shared/conversation-policy.ts` centraliza o timeout e a deteccao de retomada; `_shared/conversations.ts` arquiva o episodio ocioso, abre outro e cria uma ponte compacta com o resumo e as ultimas 8 falas; o painel web mostra apenas o episodio ativo; `whatsapp-webhook` nao deixa sessao antiga interceptar conversa casual. `_shared/plan-context.ts` passa a selecionar ate 5 historicos relevantes em todos os focos de planejamento, priorizando empresa e area. Nao ha tabela ou migration nova.
+
 ## 2026-07-10 - Mensal estruturado, semanal leve e KPI sugerido
 
 Decisao: manter o fechamento mensal como ritual estruturado de gestao; adicionar um convite semanal opcional, natural e sem insistencia; preservar planejamento completo pelo WhatsApp; e permitir que a IA sugira ate dois vinculos entre objetivo e KPI existente, sempre com confirmacao humana.

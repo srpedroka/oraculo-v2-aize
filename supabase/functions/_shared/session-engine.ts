@@ -617,7 +617,25 @@ export async function startPlanningSession(
     .limit(1)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing) return { session: existing, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
+  if (existing) {
+    const conversation = await getOrCreateConversation(client, {
+      orgId: params.orgId,
+      userId: params.userId,
+      channel: params.channel ?? "web",
+      areaId: params.areaId,
+    });
+    if (existing.conversation_id !== conversation.id) {
+      const { data: rebound, error: rebindError } = await client
+        .from("planning_sessions")
+        .update({ conversation_id: conversation.id })
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (rebindError) throw rebindError;
+      return { session: rebound, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
+    }
+    return { session: existing, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
+  }
 
   const conversation = await getOrCreateConversation(client, {
     orgId: params.orgId,

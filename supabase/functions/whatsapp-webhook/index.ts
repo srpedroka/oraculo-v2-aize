@@ -23,6 +23,7 @@ import { handleQuickUpdate } from "../_shared/quick-updates.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
+import { isExplicitPlanningResume } from "../_shared/conversation-policy.ts";
 import {
   confirmPlanningProposal,
   prepareReadyMonthlyPlanProposal,
@@ -1666,6 +1667,9 @@ async function buildAnswer(
     `- Horário local do atendimento: ${localTimestamp()}.`,
     "Se a pessoa perguntar se o sistema está funcionando, responda que recebeu a mensagem e pergunte se ela quer falar do funcionamento do Oráculo/WhatsApp ou do andamento dos planos.",
     "Se citar status do plano, objetivos, metas ou indicadores, cite itens concretos do contexto. Se pedir evidência, diga qual evidência falta.",
+    conversation.previous_conversation_id
+      ? "Este é um novo episódio após inatividade. Use a memória apenas como contexto; não retome pergunta, formulário ou sessão anterior sem pedido explícito da pessoa. Em saudação simples, cumprimente naturalmente e pergunte o que ela quer fazer agora."
+      : "",
     interactionInstruction,
     formatConversationMemory(history),
     "Contexto atual do plano:",
@@ -2346,7 +2350,7 @@ serve(async (req) => {
 
     const { data: activeSessions, error: activeSessionError } = await client
       .from("planning_sessions")
-      .select("id, pending_proposal")
+      .select("id, conversation_id, pending_proposal")
       .eq("org_id", orgId)
       .eq("user_id", profile.id)
       .eq("status", "active")
@@ -2354,11 +2358,21 @@ serve(async (req) => {
       .limit(5);
     if (activeSessionError) throw activeSessionError;
 
+    const resumeRequested = isExplicitPlanningResume(text);
     const activeSession = confirmationMessage
-      ? (activeSessions ?? []).find((session: any) => session.pending_proposal) ?? activeSessions?.[0]
-      : activeSessions?.[0];
+      ? (activeSessions ?? []).find((session: any) => session.pending_proposal) ?? null
+      : resumeRequested
+        ? activeSessions?.[0] ?? null
+        : (activeSessions ?? []).find((session: any) => session.conversation_id === conversation.id) ?? null;
 
     if (activeSession) {
+      if (activeSession.conversation_id !== conversation.id) {
+        const { error: rebindError } = await client
+          .from("planning_sessions")
+          .update({ conversation_id: conversation.id })
+          .eq("id", activeSession.id);
+        if (rebindError) throw rebindError;
+      }
       const sessionResult = activeSession.pending_proposal && confirmationMessage
         ? await confirmPlanningProposal(client, { sessionId: activeSession.id, userId: profile.id, channel: "whatsapp", confirmationText: storedUserText })
         : await processPlanningMessage(client, { sessionId: activeSession.id, message: storedUserText, userId: profile.id, channel: "whatsapp" });

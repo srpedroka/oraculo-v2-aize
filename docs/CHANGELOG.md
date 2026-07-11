@@ -2,6 +2,8 @@
 
 ## 2026-07-11
 
+- Conversas do Oraculo agora funcionam em episodios: depois de 4 horas sem mensagem, app e WhatsApp abrem uma conversa ativa nova, preservam o episodio anterior arquivado e usam seu resumo apenas como memoria de fundo. Um cumprimento simples nao retoma uma sessao antiga de planejamento; confirmacoes pendentes e pedidos explicitos de continuacao continuam funcionando.
+- Memoria estrategica ampliada para planejamentos estrategico, trimestral, mensal e por area: o contexto pode usar ate 5 historicos relevantes, prioriza documentos da area em foco e transforma recorrencias em perguntas construtivas antes de propor um plano novo.
 - Dashboard: números principais dos KPIs passaram a usar até 2 casas decimais; tooltips das colunas mantêm a mesma escala e unidade com até 4 casas.
 - Documentos: lista e leitor ganharam rolagem contida no desktop; o modal de importação passou a usar portal no `body`, ficando centralizado na viewport mesmo com sidebar e transição de página.
 - Importação histórica reconhece equivalências empresariais de área, incluindo `Industrial` como `Produção`, mas mantém confirmação manual quando mais de uma área é plausível.

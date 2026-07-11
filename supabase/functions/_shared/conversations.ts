@@ -1,6 +1,7 @@
 import { resolveAiFunction } from "./ai-router.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { recordAiUsage } from "./usage.ts";
+import { buildEpisodeBridgeSummary, conversationIdleExpired } from "./conversation-policy.ts";
 
 type Client = any;
 
@@ -18,6 +19,8 @@ export interface ConversationRecord {
   pending_context?: Record<string, unknown> | null;
   last_message_at: string | null;
   created_at: string;
+  episode_started?: boolean;
+  previous_conversation_id?: string | null;
 }
 
 export interface ConversationMessage {
@@ -60,6 +63,43 @@ export async function getOrCreateConversation(
   if (error) throw error;
 
   if (existing) {
+    if (conversationIdleExpired(existing.last_message_at)) {
+      const { data: recentMessages, error: recentMessagesError } = await client
+        .from("chat_messages")
+        .select("id, author, text, created_at")
+        .eq("conversation_id", existing.id)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (recentMessagesError) throw recentMessagesError;
+      const bridgeSummary = buildEpisodeBridgeSummary(
+        existing.summary,
+        ((recentMessages ?? []) as ConversationMessage[]).reverse(),
+      );
+
+      const { error: archiveError } = await client
+        .from("conversations")
+        .update({ status: "archived", pending_context: {} })
+        .eq("id", existing.id);
+      if (archiveError) throw archiveError;
+
+      const { data: fresh, error: freshError } = await client
+        .from("conversations")
+        .insert({
+          org_id: params.orgId,
+          user_id: params.userId,
+          area_id: params.areaId ?? existing.area_id ?? null,
+          channel: params.channel,
+          summary: bridgeSummary,
+        })
+        .select("*")
+        .single();
+      if (freshError) throw freshError;
+      return {
+        ...(fresh as ConversationRecord),
+        episode_started: true,
+        previous_conversation_id: existing.id,
+      };
+    }
     if (!existing.area_id && params.areaId) {
       const { data: updated, error: updateError } = await client
         .from("conversations")
@@ -68,9 +108,9 @@ export async function getOrCreateConversation(
         .select("*")
         .single();
       if (updateError) throw updateError;
-      return updated as ConversationRecord;
+      return { ...(updated as ConversationRecord), episode_started: false };
     }
-    return existing as ConversationRecord;
+    return { ...(existing as ConversationRecord), episode_started: false };
   }
 
   const { data, error: insertError } = await client
@@ -84,7 +124,7 @@ export async function getOrCreateConversation(
     .select("*")
     .single();
   if (insertError) throw insertError;
-  return data as ConversationRecord;
+  return { ...(data as ConversationRecord), episode_started: true, previous_conversation_id: null };
 }
 
 export async function touchConversation(client: Client, conversationId: string) {

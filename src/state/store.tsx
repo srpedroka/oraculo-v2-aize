@@ -1078,12 +1078,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: Boolean(supabase && orgId && userId),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client
-        .from("chat_messages")
-        .select("*")
+      const { data: activeConversation, error: conversationError } = await client
+        .from("conversations")
+        .select("id")
         .eq("org_id", orgId)
         .eq("user_id", userId)
         .eq("channel", "web")
+        .eq("status", "active")
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (conversationError) throw conversationError;
+      if (!activeConversation) return [];
+      const { data, error } = await client
+        .from("chat_messages")
+        .select("*")
+        .eq("conversation_id", activeConversation.id)
         .order("created_at");
       if (error) throw error;
       return (data ?? []).map(mapChatMessage);

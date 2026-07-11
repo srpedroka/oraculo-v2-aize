@@ -248,11 +248,13 @@ Fluxo esperado da Fase 3:
 2. `whatsapp-webhook` cria ou retoma uma conversa `whatsapp` para o perfil identificado pelo celular.
 3. Toda mensagem principal de chat recebe `user_id` e `conversation_id`.
 4. A IA recebe somente o historico daquela conversa, mais `conversations.summary` quando a conversa ficou longa.
+5. Depois de 4 horas sem mensagens, a conversa anterior fica `archived` e uma nova conversa ativa e criada. Seu resumo e memoria de fundo, nao uma ordem para continuar a ultima pergunta.
+6. Sessoes de planejamento de outro episodio so voltam por confirmacao pendente ou pedido explicito, como "continuar o planejamento".
 
 Verifique:
 
 ```sql
-select id, user_id, channel, summary is not null as has_summary, summary_upto, last_message_at
+select id, user_id, channel, status, summary is not null as has_summary, summary_upto, last_message_at
 from public.conversations
 where org_id = '<ORG_ID>'
 order by last_message_at desc
@@ -267,7 +269,7 @@ order by created_at desc
 limit 40;
 ```
 
-Se duas pessoas se contaminarem, confira se as mensagens estão com `user_id` diferente e `conversation_id` diferente. Se web e WhatsApp da mesma pessoa se misturarem, confira se `channel` está separado em `conversations`. Se a conversa passar de 40 mensagens novas e `summary` continuar vazio, confira `public.ai_function_settings` da função `background`, chave do provedor e logs de `ai_usage_logs.metadata.action = 'conversation_summary'`.
+Se duas pessoas se contaminarem, confira se as mensagens estão com `user_id` diferente e `conversation_id` diferente. Se web e WhatsApp da mesma pessoa se misturarem, confira se `channel` está separado em `conversations`. Depois de uma pausa maior que 4 horas, confirme que o episodio anterior ficou `archived` e existe somente um `active` no canal. Se um "Ola" retomar formulario antigo, confira se a `planning_session.conversation_id` pertence ao episodio atual e se as functions publicadas incluem `_shared/conversation-policy.ts`. Se a conversa passar de 40 mensagens novas e `summary` continuar vazio, confira `public.ai_function_settings` da função `background`, chave do provedor e logs de `ai_usage_logs.metadata.action = 'conversation_summary'`.
 
 ## Problema: Oraculo nao enxerga ações-chave do mês
 
