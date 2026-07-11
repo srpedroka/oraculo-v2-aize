@@ -373,10 +373,18 @@ export function Settings() {
     setOrganizationMessage("Empresa criada. Ela será selecionada automaticamente em instantes.");
   }
 
+  function normalizeProfileLink(raw: string) {
+    const value = raw.trim();
+    if (!value) return "";
+    // Domínio solto (www.gaam.com.br) → https://www.gaam.com.br
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return value;
+    return `https://${value.replace(/^\/+/, "")}`;
+  }
+
   function parseProfileLinks(text: string) {
     return text
       .split(/\r?\n/)
-      .map((line) => line.trim())
+      .map((line) => normalizeProfileLink(line))
       .filter(Boolean)
       .slice(0, 5);
   }
@@ -881,7 +889,7 @@ export function Settings() {
                   value={profileLinksText}
                   onChange={(event) => setProfileLinksText(event.target.value)}
                   rows={3}
-                  placeholder={"https://site-da-empresa.com\nhttps://linkedin.com/company/..."}
+                  placeholder={"www.gaam.com.br\nhttps://linkedin.com/company/..."}
                   className="w-full rounded-2xl border border-border bg-white px-3 py-3 text-sm leading-6 text-text"
                 />
               </label>

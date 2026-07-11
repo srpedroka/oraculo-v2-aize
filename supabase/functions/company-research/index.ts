@@ -14,6 +14,14 @@ function asText(value: unknown, maxLength = 10_000) {
   return String(value ?? "").replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").trim().slice(0, maxLength);
 }
 
+/** Aceita https://..., http://... ou domínio solto (www.gaam.com.br → https://www.gaam.com.br). */
+function normalizeLinkUrl(raw: string): string {
+  const value = asText(raw, 2000);
+  if (!value) return "";
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return value;
+  return `https://${value.replace(/^\/+/, "")}`;
+}
+
 function validateLinks(raw: unknown): string[] {
   if (raw == null) return [];
   if (!Array.isArray(raw)) throw new Error("links deve ser uma lista de URLs");
@@ -21,18 +29,23 @@ function validateLinks(raw: unknown): string[] {
 
   const links: string[] = [];
   for (const item of raw) {
-    const value = asText(item, 2000);
-    if (!value) continue;
+    const original = asText(item, 2000);
+    if (!original) continue;
+    const value = normalizeLinkUrl(original);
 
     let parsed: URL;
     try {
       parsed = new URL(value);
     } catch {
-      throw new Error(`Link inválido: ${value}`);
+      throw new Error(`Link inválido: ${original}. Use o endereço completo, ex.: https://www.gaam.com.br`);
     }
 
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error(`Link inválido (use http ou https): ${value}`);
+      throw new Error(`Link inválido (use http ou https): ${original}`);
+    }
+
+    if (!parsed.hostname || !parsed.hostname.includes(".")) {
+      throw new Error(`Link inválido: ${original}. Use o endereço completo, ex.: https://www.gaam.com.br`);
     }
 
     links.push(parsed.toString());
