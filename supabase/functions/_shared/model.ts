@@ -270,6 +270,25 @@ export interface WebSearchSource {
 export interface WebSearchResult {
   text: string;
   sources: WebSearchSource[];
+  usage: ModelUsage;
+}
+
+function anthropicUsage(data: any): ModelUsage {
+  const promptTokens = Number(data?.usage?.input_tokens ?? 0);
+  const completionTokens = Number(data?.usage?.output_tokens ?? 0);
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+  };
+}
+
+function addUsage(a: ModelUsage, b: ModelUsage): ModelUsage {
+  return {
+    promptTokens: a.promptTokens + b.promptTokens,
+    completionTokens: a.completionTokens + b.completionTokens,
+    totalTokens: a.totalTokens + b.totalTokens,
+  };
 }
 
 const WEB_SEARCH_TIMEOUT_MS = 60000;
@@ -426,6 +445,7 @@ export async function callModelWithWebSearch(
     return {
       text: responseText(data),
       sources: extractOpenAiWebSearchSources(data),
+      usage: normalizeOpenAiUsage(data.usage),
     };
   }
 
@@ -463,6 +483,7 @@ export async function callModelWithWebSearch(
     };
 
     let data = await requestAnthropic([{ role: "user", content: prompt }]);
+    let usage = anthropicUsage(data);
     const collectedSources = extractAnthropicWebSearchSources(data?.content);
 
     if (data?.stop_reason === "pause_turn" && Array.isArray(data?.content)) {
@@ -470,12 +491,14 @@ export async function callModelWithWebSearch(
         { role: "user", content: prompt },
         { role: "assistant", content: data.content },
       ]);
+      usage = addUsage(usage, anthropicUsage(data));
       collectedSources.push(...extractAnthropicWebSearchSources(data?.content));
     }
 
     return {
       text: extractAnthropicWebSearchText(data?.content) || "Não consegui gerar uma resposta agora.",
       sources: dedupeWebSearchSources(collectedSources),
+      usage,
     };
   }
 
