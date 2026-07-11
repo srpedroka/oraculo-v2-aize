@@ -16,6 +16,8 @@ import type {
   AreaPlan,
   ChatMessage,
   CheckIn,
+  CompanyProfileSource,
+  CompanyProfileSuggestion,
   Evidence,
   ExecutiveKpi,
   HistoricalMetadataSuggestion,
@@ -99,6 +101,21 @@ type AppAction =
       note?: string | null;
       title?: string | null;
       classification?: Record<string, unknown> | null;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
+  | {
+      type: "research_company_profile";
+      links?: string[];
+      onSuccess?: (suggestion: CompanyProfileSuggestion) => void;
+      onError?: (message: string) => void;
+    }
+  | {
+      type: "confirm_company_profile";
+      summary: string;
+      sources: CompanyProfileSource[];
+      queries: string[];
+      links: string[];
       onSuccess?: () => void;
       onError?: (message: string) => void;
     }
@@ -237,6 +254,7 @@ const EMPTY_STATE: AppState = {
   planningSessions: [],
   planDocuments: [],
   archivedPlanDocuments: [],
+  companyProfile: null,
   operationalRevisions: [],
   executiveKpis: [],
   kpiValues: [],
@@ -1252,6 +1270,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => (planDocumentsQuery.data ?? []).filter((document) => Boolean(document.archivedAt)),
     [planDocumentsQuery.data],
   );
+  const companyProfile = useMemo(() => {
+    const profiles = activePlanDocuments
+      .filter((document) => document.type === "company_profile")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return profiles[0] ?? null;
+  }, [activePlanDocuments]);
   const activePlanningSessions = useMemo(
     () => (planningSessionsQuery.data ?? []).filter((planningSession) => !planningSession.areaId || activeAreaIds.has(planningSession.areaId)),
     [activeAreaIds, planningSessionsQuery.data],
@@ -1381,6 +1405,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       planningSessions: activePlanningSessions,
       planDocuments: activePlanDocuments,
       archivedPlanDocuments,
+      companyProfile,
       operationalRevisions: operationalRevisionsQuery.data ?? [],
       executiveKpis: executiveKpisQuery.data ?? [],
       kpiValues: kpiValuesQuery.data ?? [],
@@ -1408,6 +1433,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     activeObjectives,
     activePlanDocuments,
     activePlanningSessions,
+    companyProfile,
     areaPlansQuery.data,
     areaPlansQuery.isLoading,
     areas,
@@ -1789,6 +1815,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível importar o histórico.");
           });
+        return;
+      }
+
+      if (action.type === "research_company_profile") {
+        void callEdgeFunction("company-research", {
+          orgId,
+          links: action.links ?? [],
+        })
+          .then((result) => {
+            queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+            action.onSuccess?.((result as { suggestion: CompanyProfileSuggestion }).suggestion);
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível pesquisar o perfil da empresa.");
+          });
+        return;
+      }
+
+      if (action.type === "confirm_company_profile") {
+        void (async () => {
+          try {
+            const summary = String(action.summary ?? "").trim();
+            if (!summary) throw new Error("O resumo do perfil não pode ficar vazio");
+
+            const { data: existingRows, error: versionError } = await client
+              .from("plan_documents")
+              .select("version")
+              .eq("org_id", orgId)
+              .eq("type", "company_profile")
+              .order("version", { ascending: false })
+              .limit(1);
+            if (versionError) throw versionError;
+
+            const nextVersion = Number(existingRows?.[0]?.version ?? 0) + 1;
+            const { error } = await client.from("plan_documents").insert({
+              org_id: orgId,
+              area_id: null,
+              session_id: null,
+              type: "company_profile",
+              period: String(new Date().getFullYear()),
+              title: "Perfil da empresa",
+              content: {
+                summary,
+                sources: action.sources ?? [],
+                queries: action.queries ?? [],
+                links: action.links ?? [],
+              },
+              version: nextVersion,
+              created_by: userId,
+            });
+            if (error) throw error;
+            invalidateOrg();
+            action.onSuccess?.();
+          } catch (error) {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível confirmar o perfil da empresa.");
+          }
+        })();
         return;
       }
 

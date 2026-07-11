@@ -7,6 +7,7 @@ import {
   Building2,
   CheckCircle2,
   DollarSign,
+  Globe,
   KeyRound,
   LogOut,
   MessageCircle,
@@ -26,8 +27,19 @@ import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../features/members/MemberRemovalDialog";
 import { CompanyDangerZone } from "../features/lifecycle/CompanyDangerZone";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
+import { formatDate } from "../lib/format";
 import { useAppState } from "../state/store";
-import type { AiConfigStatus, AiFunction, AiProvider, AiValidationResult, Area, Membership, MembershipRole, OrgTonePreset } from "../types";
+import type {
+  AiConfigStatus,
+  AiFunction,
+  AiProvider,
+  AiValidationResult,
+  Area,
+  CompanyProfileSuggestion,
+  Membership,
+  MembershipRole,
+  OrgTonePreset,
+} from "../types";
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
   openai: "gpt-5.4",
@@ -209,7 +221,22 @@ export function Settings() {
   const [weeklyPulseHour, setWeeklyPulseHour] = useState(state.whatsappSettings?.weeklyPulseHour ?? 16);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
+  const [profileLinksText, setProfileLinksText] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileResearching, setProfileResearching] = useState(false);
+  const [profileConfirming, setProfileConfirming] = useState(false);
+  const [profilePreview, setProfilePreview] = useState<{
+    summary: string;
+    sources: Array<{ url: string; title: string; selected: boolean }>;
+    queries: string[];
+    links: string[];
+  } | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
+  const companyProfile = state.companyProfile;
+  const companyProfileSummary = String(companyProfile?.content?.summary ?? "").trim();
+  const companyProfileLinks = Array.isArray(companyProfile?.content?.links)
+    ? (companyProfile?.content?.links as unknown[]).map((link) => String(link ?? "").trim()).filter(Boolean)
+    : [];
 
   const SECTIONS = [
     { id: "empresa", label: "Empresa e áreas", ownerOnly: true },
@@ -233,6 +260,16 @@ export function Settings() {
     if (hash && SECTIONS.some((section) => section.id === hash)) setActiveSection(hash);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setProfileLinksText(companyProfileLinks.join("\n"));
+    setProfilePreview(null);
+    setProfileError("");
+    setProfileResearching(false);
+    setProfileConfirming(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.activeOrgId, companyProfile?.id]);
+
   const [iaTab, setIaTab] = useState<"chaves" | "funcoes" | "historico">("chaves");
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const whatsappWebhookUrl =
@@ -334,6 +371,70 @@ export function Settings() {
     setOrganizationName("");
     setOrganizationSubtitle("");
     setOrganizationMessage("Empresa criada. Ela será selecionada automaticamente em instantes.");
+  }
+
+  function parseProfileLinks(text: string) {
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+  }
+
+  function researchCompanyProfile() {
+    setProfileError("");
+    setProfileResearching(true);
+    const links = parseProfileLinks(profileLinksText);
+    dispatch({
+      type: "research_company_profile",
+      links,
+      onSuccess: (suggestion: CompanyProfileSuggestion) => {
+        setProfileResearching(false);
+        setProfilePreview({
+          summary: String(suggestion?.summary ?? "").trim(),
+          sources: (Array.isArray(suggestion?.sources) ? suggestion.sources : []).map((source) => ({
+            url: String(source?.url ?? "").trim(),
+            title: String(source?.title ?? source?.url ?? "").trim() || String(source?.url ?? "").trim(),
+            selected: true,
+          })).filter((source) => source.url),
+          queries: Array.isArray(suggestion?.queries) ? suggestion.queries.map((item) => String(item ?? "").trim()).filter(Boolean) : [],
+          links: Array.isArray(suggestion?.links) ? suggestion.links.map((item) => String(item ?? "").trim()).filter(Boolean) : links,
+        });
+      },
+      onError: (message) => {
+        setProfileResearching(false);
+        setProfileError(message);
+      },
+    });
+  }
+
+  function confirmCompanyProfile() {
+    if (!profilePreview) return;
+    const summary = profilePreview.summary.trim();
+    if (!summary) {
+      setProfileError("Edite o resumo antes de confirmar.");
+      return;
+    }
+    setProfileError("");
+    setProfileConfirming(true);
+    const selectedSources = profilePreview.sources
+      .filter((source) => source.selected)
+      .map((source) => ({ url: source.url, title: source.title || source.url }));
+    dispatch({
+      type: "confirm_company_profile",
+      summary,
+      sources: selectedSources,
+      queries: profilePreview.queries,
+      links: profilePreview.links,
+      onSuccess: () => {
+        setProfileConfirming(false);
+        setProfilePreview(null);
+      },
+      onError: (message) => {
+        setProfileConfirming(false);
+        setProfileError(message);
+      },
+    });
   }
 
   function createArea(event: FormEvent<HTMLFormElement>) {
@@ -640,6 +741,7 @@ export function Settings() {
 
       {showSection("empresa") ? (
       <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+        <div className="space-y-4">
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <Building2 className="h-5 w-5 text-text-secondary" />
@@ -695,6 +797,105 @@ export function Settings() {
             </form>
           </div>
         </Card>
+
+        <Card>
+          <div className="mb-4 flex items-center gap-2">
+            <Globe className="h-5 w-5 text-text-secondary" />
+            <h2 className="text-base font-semibold text-text">Perfil da empresa</h2>
+          </div>
+          <p className="text-sm leading-6 text-text-secondary">
+            O Oráculo pesquisa a internet e monta um resumo da empresa que vira contexto permanente das conversas.
+          </p>
+
+          {companyProfile && companyProfileSummary && !profilePreview ? (
+            <div className="mt-4 rounded-2xl border border-border bg-[#FAFAFB] p-4">
+              <p className="text-sm leading-6 text-text whitespace-pre-wrap">{companyProfileSummary}</p>
+              <p className="mt-3 text-xs font-medium text-text-tertiary">
+                Atualizado em {formatDate(companyProfile.createdAt)}
+              </p>
+            </div>
+          ) : null}
+
+          {profilePreview ? (
+            <div className="mt-4 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-text">Prévia do resumo (editável)</span>
+                <textarea
+                  value={profilePreview.summary}
+                  onChange={(event) => setProfilePreview({ ...profilePreview, summary: event.target.value })}
+                  rows={8}
+                  className="w-full rounded-2xl border border-border bg-white px-3 py-3 text-sm leading-6 text-text"
+                />
+              </label>
+              {profilePreview.sources.length ? (
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-sm font-medium text-text">Fontes (desmarque as que não quiser guardar)</p>
+                  <div className="space-y-2">
+                    {profilePreview.sources.map((source, index) => (
+                      <label key={`${source.url}-${index}`} className="flex items-start gap-3 rounded-xl border border-border bg-[#FAFAFB] p-3">
+                        <input
+                          type="checkbox"
+                          checked={source.selected}
+                          onChange={(event) => {
+                            const sources = profilePreview.sources.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, selected: event.target.checked } : item,
+                            );
+                            setProfilePreview({ ...profilePreview, sources });
+                          }}
+                          className="mt-1"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-text">{source.title || source.url}</span>
+                          <span className="mt-0.5 block break-all text-xs text-text-secondary">{source.url}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-4 text-sm text-text-secondary">
+                  A pesquisa não retornou fontes citáveis. Você ainda pode editar e confirmar o resumo.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button icon={Save} loading={profileConfirming} disabled={profileConfirming || profileResearching} onClick={confirmCompanyProfile}>
+                  Confirmar perfil
+                </Button>
+                <Button
+                  variant="ghost"
+                  disabled={profileConfirming || profileResearching}
+                  onClick={() => {
+                    setProfilePreview(null);
+                    setProfileError("");
+                  }}
+                >
+                  Descartar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-text">Links da empresa (opcional, um por linha)</span>
+                <textarea
+                  value={profileLinksText}
+                  onChange={(event) => setProfileLinksText(event.target.value)}
+                  rows={3}
+                  placeholder={"https://site-da-empresa.com\nhttps://linkedin.com/company/..."}
+                  className="w-full rounded-2xl border border-border bg-white px-3 py-3 text-sm leading-6 text-text"
+                />
+              </label>
+              <Button icon={Globe} loading={profileResearching} disabled={profileResearching || !state.activeOrgId} onClick={researchCompanyProfile}>
+                {companyProfile ? "Pesquisar de novo" : "Pesquisar na internet"}
+              </Button>
+            </div>
+          )}
+
+          {profileError ? (
+            <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{profileError}</p>
+          ) : null}
+        </Card>
+        </div>
 
         <Card>
           <h2 className="mb-4 text-base font-semibold text-text">Áreas</h2>
