@@ -1,4 +1,4 @@
-import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
+import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   createOrganizationBackup,
@@ -104,6 +104,10 @@ Deno.serve(async (req) => {
     if (!orgId) throw new Error("Empresa não informada");
     await assertOwner(user.id, orgId);
 
+    if (body.action === "download" || body.action === "restore") {
+      await assertCriticalActionAal2(req, orgId);
+    }
+
     if (body.action === "list") {
       return jsonResponse(await listState(orgId));
     }
@@ -179,6 +183,7 @@ Deno.serve(async (req) => {
 
     throw new Error("Ação de backup inválida");
   } catch (error) {
+    if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
     const message = error instanceof Error ? error.message : "Erro inesperado no backup";
     const status = /Sessão|autorizad|Apenas o dono|Sem acesso/.test(message) ? 401 : 400;
     return jsonResponse({ error: message }, status);

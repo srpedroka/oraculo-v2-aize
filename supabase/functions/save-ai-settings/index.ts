@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
+import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { probeModel, type ProbeResult, type ProbeStatus } from "../_shared/model-probe.ts";
 import { resolveModelPricing } from "../_shared/pricing.ts";
@@ -163,6 +163,7 @@ serve(async (req) => {
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
 
     await assertOwner(user.id, orgId);
+    await assertCriticalActionAal2(req, orgId);
     const client = serviceClient();
     const providerValue = asProvider(body.provider);
     const aiFunction = asAiFunction(requestedFunction);
@@ -329,6 +330,7 @@ serve(async (req) => {
 
     return jsonResponse({ ok: true, keyPreview, validation });
   } catch (error) {
+    if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao salvar IA" }, 400);
   }
 });

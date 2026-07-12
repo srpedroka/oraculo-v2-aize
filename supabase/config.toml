@@ -455,6 +455,9 @@ verify_jwt = true
 [functions.save-historical-document]
 verify_jwt = true
 
+[functions.save-security-settings]
+verify_jwt = true
+
 [functions.save-objective]
 verify_jwt = true
 

@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
+import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
 function previewSecret(value: string) {
@@ -34,6 +34,7 @@ serve(async (req) => {
 
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
     await assertOwner(user.id, orgId);
+    await assertCriticalActionAal2(req, orgId);
 
     const cleanInstanceUrl = cleanUrl(String(instanceUrl));
     const cleanInstanceName = String(instanceName).trim();
@@ -86,6 +87,7 @@ serve(async (req) => {
     if (settingsError) throw settingsError;
     return jsonResponse({ ok: true });
   } catch (error) {
+    if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao salvar WhatsApp" }, 400);
   }
 });

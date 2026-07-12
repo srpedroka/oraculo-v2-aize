@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
+import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { purgeOrganizationBackupObjects } from "../_shared/organization-backup.ts";
 
@@ -93,6 +93,10 @@ serve(async (req) => {
     // The remaining actions are owner-only.
     await assertOwner(user.id, orgId);
 
+    if (action === "archive" || action === "permanent_delete") {
+      await assertCriticalActionAal2(req, orgId);
+    }
+
     if (action === "archive" || action === "restore") {
       const { data, error } = await client.rpc("set_organization_archived", {
         p_org_id: orgId,
@@ -160,6 +164,7 @@ serve(async (req) => {
 
     return jsonResponse({ error: "Ação inválida" }, 400);
   } catch (error) {
+    if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
     const message = error instanceof Error ? error.message : "Não foi possível concluir a operação";
     const status = /Sessão|autorizad|Apenas o dono|Sem acesso|não faz parte/.test(message) ? 401 : 400;
     return jsonResponse({ error: message }, status);

@@ -168,6 +168,16 @@ Troca administrativa emergencial:
 3. Nao registre a senha em arquivos, docs, Git, prints ou historico de runbook.
 4. Oriente a pessoa a entrar e trocar para uma senha propria depois.
 
+## MFA opcional do owner
+
+1. Abra `Configurações > Segurança` como owner.
+2. Use `Adicionar`, escaneie o QR Code e confirme o código de seis dígitos. O fator só fica ativo após a confirmação.
+3. Cadastre um segundo autenticador para recuperação; o Supabase não fornece códigos de recuperação.
+4. `Exigir segundo fator em ações críticas` nasce desligado. Para ligar ou desligar, confirme antes a identidade na mesma tela e alcance `aal2`.
+5. Com a política ligada, uma sessão antiga `aal1` continua usando o app normalmente, mas ações protegidas orientam a confirmar o autenticador e tentar novamente.
+
+Recuperação: use o segundo fator para elevar a sessão e remover o perdido. Se nenhum fator estiver acessível, valide a identidade fora do app e use Supabase Admin Auth `mfa.deleteFactor`; não registre QR, segredo TOTP ou código em chamados, docs ou logs.
+
 ## Problema: acesso negado em escrita
 
 Possiveis causas:

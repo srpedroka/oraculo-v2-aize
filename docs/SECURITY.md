@@ -97,6 +97,15 @@ Na Fase 1 da V3, o catalogo foi atualizado com xAI/Grok e modelos recentes da An
 
 Senhas nao sao salvas no frontend, na documentacao ou no banco em texto puro. A recuperacao usa o fluxo nativo do Supabase Auth: o app solicita o email de redefinicao e, depois do link, chama `updateUser` para gravar a nova senha.
 
+## MFA opcional para owners
+
+- TOTP usa o Supabase Auth; QR Code, segredo e códigos nunca são gravados nas tabelas do Oráculo, logs ou documentação.
+- A política por empresa nasce desligada. Cadastrar um fator não muda o login nem ativa bloqueios automaticamente.
+- Alterar a própria política exige sessão `aal2`; não é possível ativá-la sem fator confirmado.
+- Quando ligada, chaves/configuração de IA, WhatsApp, papéis, download/restauração de backup e arquivamento/exclusão exigem `aal2` no servidor. Policies de memberships/IA/WhatsApp também usam `critical_action_aal_ok` para impedir atalho pela Data API.
+- Coordenadores e admins não são obrigados a cadastrar MFA nesta versão.
+- Supabase não fornece recovery codes. Recomenda-se cadastrar dois fatores. Sem fator utilizável, um administrador deve validar a identidade e remover o fator pelo Admin Auth; a remoção de fator verificado encerra as sessões ativas.
+
 ## WhatsApp
 
 O webhook `whatsapp-webhook` aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. Desde 2026-07-05 o segredo **nao** e mais aceito via query string (`?secret=`), porque vaza em logs de proxy/acesso, e a comparacao e feita em tempo constante. Excecao operacional: o Evo Go Manager nao expoe header customizado; nesse provedor, a URL pode usar `evoGoToken`, um HMAC-SHA-256 derivado do `webhook_secret` e do `orgId`, sem expor o segredo bruto. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.

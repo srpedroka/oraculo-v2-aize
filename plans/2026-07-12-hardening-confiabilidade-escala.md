@@ -442,6 +442,8 @@ Montar CSP em modo `Report-Only` primeiro se houver risco de bloquear produção
 
 ## 2.5 Fatia 2D — MFA para owners
 
+> **STATUS: concluída e em produção em 2026-07-12.** Decisão do dono: MFA opcional, sem desafio no login e com política por empresa desligada por padrão. O owner cadastra um ou mais TOTP em Configurações > Segurança e pode elevar a sessão sob demanda. Só depois de ativar explicitamente `Exigir segundo fator em ações críticas`, Edge Functions e RLS exigem `aal2` nos fluxos abaixo. Validação: 62 unitários, 43 integrações, lint/build, revisão visual desktop/mobile e `verify:deploy`; produção confirmou zero política ativa após o deploy.
+
 Implementar em duas fases:
 
 1. cadastro e recuperação de TOTP em Configurações > Segurança;

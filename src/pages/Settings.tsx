@@ -26,6 +26,7 @@ import { OrganizationBackupCard } from "../features/backups/OrganizationBackupCa
 import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../features/members/MemberRemovalDialog";
 import { CompanyDangerZone } from "../features/lifecycle/CompanyDangerZone";
+import { MfaSecurityCard } from "../features/security/MfaSecurityCard";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { formatDate } from "../lib/format";
 import { useAppState } from "../state/store";
@@ -252,6 +253,7 @@ export function Settings() {
     { id: "pessoas", label: "Pessoas", ownerOnly: true },
     { id: "ia", label: "IA do Oráculo", ownerOnly: true },
     { id: "whatsapp", label: "WhatsApp", ownerOnly: true },
+    { id: "seguranca", label: "Segurança", ownerOnly: true },
     { id: "backups", label: "Backups", ownerOnly: true },
     { id: "tom", label: "Tom do Oráculo", ownerOnly: false },
     { id: "perigo", label: "Zona de perigo", ownerOnly: false },
@@ -1693,6 +1695,8 @@ export function Settings() {
       ) : null}
 
       {showSection("backups") && state.activeOrgId ? <OrganizationBackupCard orgId={state.activeOrgId} /> : null}
+
+      {showSection("seguranca") && state.activeOrgId ? <MfaSecurityCard orgId={state.activeOrgId} /> : null}
 
       {showSection("tom") ? (
       <Card>

@@ -171,6 +171,8 @@ Migrations principais:
 - `supabase/migrations/20260709150000_org_ai_tone.sql`: tom/persona por empresa, RLS e realtime.
 - `supabase/migrations/20260710170000_area_lifecycle_member_removal.sql`: arquivamento reversivel de areas e remocao transacional de memberships.
 - `supabase/migrations/20260710193000_operational_lifecycle.sql`: arquivamento reversivel de registros operacionais e snapshots antes/depois de planos e KPIs.
+- `supabase/migrations/20260712190000_optional_owner_mfa.sql`: politica opcional de MFA por empresa.
+- `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 
 Tabelas publicas importantes:
 
@@ -196,6 +198,7 @@ Tabelas publicas importantes:
 - `planning_sessions`
 - `plan_documents`
 - `operational_revisions`
+- `organization_security_settings`
 
 Tabelas com segredos reais, bloqueadas para `anon` e `authenticated`:
 
@@ -215,6 +218,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.
 - `save-ai-settings`: salva chaves de IA, provider/modelo e configuracoes por funcao.
 - `save-whatsapp-settings`: salva configuracao publica e segredos da Evolution API/Evo Go.
+- `save-security-settings`: ativa/desativa a exigencia opcional de AAL2, sempre a partir de sessao AAL2.
 - `oracle-chat`: chat web em episodios de 4 horas, historico por conversa, contexto do plano e inicio de sessoes.
 - `oracle-session`: motor server-side de planejamento/importacao/fechamento com proposta e confirmacao.
 - `month-turn`: virada mensal e convite de fechamento.

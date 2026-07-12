@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
+import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
 type MembershipRole = "owner" | "admin" | "coordinator";
@@ -21,6 +21,7 @@ serve(async (req) => {
 
     const nextRole = parseEditableRole(role);
     await assertOwner(user.id, orgId);
+    await assertCriticalActionAal2(req, orgId);
 
     const client = serviceClient();
     const { data: targetMembership, error: targetError } = await client
@@ -57,6 +58,7 @@ serve(async (req) => {
     if (updateError) throw updateError;
     return jsonResponse({ ok: true, role: nextRole });
   } catch (error) {
+    if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao alterar papel do membro" }, 400);
   }
 });

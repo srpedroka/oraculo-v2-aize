@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - MFA opcional e step-up apenas em ações críticas
+
+Decisao: oferecer TOTP aos owners sem desafio obrigatório no login. Cada empresa tem uma política desligada por padrão; somente uma sessão `aal2` pode ativá-la. Quando ativa, o segundo fator é exigido apenas em ações críticas, com defesa tanto nas Edge Functions quanto nas policies da Data API.
+
+Motivo: reduzir risco de tomada de conta sem burocratizar planejamento, Dashboard, conversa ou operação pelo WhatsApp. Cadastrar o fator e ativar a exigência são decisões separadas e reversíveis.
+
+Consequencias: não há recovery codes nativos; owners devem preferir dois fatores e o último recurso é remoção administrativa após validação de identidade. A implementação entrou em produção com a política desligada para todas as empresas; cadastrar fator e ativar proteção continuam decisões explícitas do owner.
+
 ## 2026-07-12 - CSP aplicada em preview antes de produção
 
 Decisao: aplicar no Netlify uma Content Security Policy restrita ao próprio app e aos endpoints HTTPS/WSS do projeto Supabase, junto com anti-iframe, `nosniff`, Referrer Policy, Permissions Policy e HSTS. Assets com hash recebem cache imutável de um ano; HTML sempre revalida. A política é exercitada primeiro em deploy de preview com enforcement real, em vez de usar produção como ambiente de descoberta.

@@ -26,6 +26,51 @@ export async function getUser(req: Request) {
   return data.user;
 }
 
+export class MfaRequiredError extends Error {
+  readonly code = "MFA_REQUIRED";
+
+  constructor() {
+    super("Confirme o código do autenticador em Configurações > Segurança e tente novamente");
+    this.name = "MfaRequiredError";
+  }
+}
+
+function bearerToken(req: Request) {
+  const authorization = req.headers.get("Authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match?.[1]) throw new Error("Sessão ausente");
+  return match[1];
+}
+
+export async function requestAal(req: Request) {
+  const token = bearerToken(req);
+  const client = createClient(env("SUPABASE_URL"), env("SUPABASE_ANON_KEY"), {
+    auth: { persistSession: false },
+  });
+  const { data, error } = await client.auth.mfa.getAuthenticatorAssuranceLevel(token);
+  if (error) throw new Error("Sessão inválida");
+  return data.currentLevel;
+}
+
+export async function assertAal2(req: Request) {
+  if (await requestAal(req) !== "aal2") throw new MfaRequiredError();
+}
+
+export async function assertCriticalActionAal2(req: Request, orgId: string) {
+  const client = serviceClient();
+  const { data, error } = await client
+    .from("organization_security_settings")
+    .select("require_mfa_for_critical_actions")
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.require_mfa_for_critical_actions) await assertAal2(req);
+}
+
+export function isMfaRequiredError(error: unknown): error is MfaRequiredError {
+  return error instanceof MfaRequiredError;
+}
+
 export async function assertOrgMember(userId: string, orgId: string) {
   const client = serviceClient();
   const { data, error } = await client
