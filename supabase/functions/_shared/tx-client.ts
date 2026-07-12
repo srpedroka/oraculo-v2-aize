@@ -216,13 +216,15 @@ export type CommandKey = {
   actorUserId: string | null;
 };
 
-export type CommandWork = (tx: TxClient) => Promise<{ summary: string; reply: string; session: Row }>;
+// `work` roda dentro da transacao e devolve `result`: um objeto JSON persistido em
+// operation_commands.result e devolvido de volta em confirmacoes repetidas (sem
+// reexecutar). Cada operacao decide o que colocar ali (ex.: 1A: {summary, reply,
+// session}; 1B: {appliedCount, document}).
+export type CommandWork = (tx: TxClient) => Promise<{ result: Record<string, unknown> }>;
 
 export type CommandOutcome = {
   duplicate: boolean;
-  summary: string;
-  reply: string;
-  session: Row | null;
+  result: Record<string, unknown>;
 };
 
 function stableStringify(value: unknown): string {
@@ -238,16 +240,46 @@ async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Para propostas, a chave deriva de sessao + tipo + conteudo da proposta.
-// Confirmar a MESMA proposta de novo => mesma chave => idempotente.
-// Proposta alterada => conteudo diferente => chave diferente => nova gravacao (correto).
+// Chave idempotente derivada de conteudo. `scope` isola a chave (ex.: id da sessao,
+// id da org) e `content` e o payload estavel da operacao. Mesmo conteudo => mesma
+// chave => idempotente. Conteudo diferente => chave diferente => nova gravacao.
+// requestHash guarda o hash do conteudo para detectar "mesma chave, payload diferente".
+export async function makeCommandKey(params: {
+  orgId: string;
+  operation: string;
+  scope: string;
+  content: unknown;
+  actorUserId: string | null;
+}): Promise<CommandKey> {
+  const contentHash = await sha256Hex(stableStringify(params.content));
+  const idempotencyKey = await sha256Hex(`${params.scope}|${params.operation}|${contentHash}`);
+  return { orgId: params.orgId, operation: params.operation, idempotencyKey, requestHash: contentHash, actorUserId: params.actorUserId };
+}
+
+// Propostas (1A): escopo = sessao; conteudo = proposta.
 export async function proposalCommandKey(
   sessionId: string,
   operation: string,
   proposal: unknown,
   actorUserId: string | null,
 ): Promise<CommandKey> {
-  const contentHash = await sha256Hex(stableStringify(proposal));
-  const idempotencyKey = await sha256Hex(`${sessionId}|${operation}|${contentHash}`);
-  return { orgId: "", operation, idempotencyKey, requestHash: contentHash, actorUserId };
+  return makeCommandKey({ orgId: "", operation, scope: sessionId, content: proposal, actorUserId });
+}
+
+// Importacao de KPI (1B): idempotencia por ACAO, nao por conteudo. A chave e escopada
+// por um token gerado no cliente a cada importacao. Reenviar a MESMA acao (duplo
+// clique/retry) => mesmo token => idempotente; uma reimportacao deliberada mais tarde
+// => token novo => REAPLICA (corrige valores, mesmo com conteudo identico ao de antes).
+// O hash do conteudo vai em request_hash so para detectar "mesmo token, conteudo
+// diferente" (uso indevido). NAO usa makeCommandKey de proposito: aqui o conteudo NAO
+// entra na idempotencyKey.
+export async function kpiImportCommandKey(
+  orgId: string,
+  applyToken: string,
+  content: unknown,
+  actorUserId: string | null,
+): Promise<CommandKey> {
+  const contentHash = await sha256Hex(stableStringify(content));
+  const idempotencyKey = await sha256Hex(`${applyToken}|apply_kpi_import`);
+  return { orgId, operation: "apply_kpi_import", idempotencyKey, requestHash: contentHash, actorUserId };
 }

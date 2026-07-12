@@ -95,7 +95,10 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
   const [importing, setImporting] = useState(false);
   const [applyingImport, setApplyingImport] = useState(false);
   const [spreadsheetSuggestion, setSpreadsheetSuggestion] = useState<KpiSpreadsheetSuggestion | null>(null);
-  const [importSource, setImportSource] = useState<{ fileName: string; kind: KpiImportKind } | null>(null);
+  // `token` é um "número de recibo" gerado a cada novo processamento de arquivo: torna a
+  // aplicação idempotente (duplo clique = mesmo token = não duplica) sem impedir uma
+  // reimportação deliberada mais tarde (novo processamento = novo token = reaplica).
+  const [importSource, setImportSource] = useState<{ fileName: string; kind: KpiImportKind; token: string } | null>(null);
   const [historyDocs, setHistoryDocs] = useState<KpiHistoryDocumentRef[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const spreadsheetInputRef = useRef<HTMLInputElement>(null);
@@ -201,7 +204,7 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
           ? ["A planilha é grande; a leitura foi limitada às primeiras abas e linhas.", ...suggestion.warnings]
           : suggestion.warnings,
       });
-      setImportSource({ fileName: imported.fileName, kind: image ? "image" : "spreadsheet" });
+      setImportSource({ fileName: imported.fileName, kind: image ? "image" : "spreadsheet", token: crypto.randomUUID() });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível importar este arquivo.");
     } finally {
@@ -231,7 +234,7 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
         return;
       }
       setSpreadsheetSuggestion(result.suggestion);
-      setImportSource({ fileName: "Históricos da empresa", kind: "history" });
+      setImportSource({ fileName: "Históricos da empresa", kind: "history", token: crypto.randomUUID() });
       setMessage(
         `Encontrei ${result.suggestion.rows.length} lançamento(s) possível(is) em ${result.historyDocuments?.length ?? 0} histórico(s). Confira a prévia antes de aplicar.`,
       );

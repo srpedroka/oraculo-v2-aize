@@ -1245,7 +1245,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
       : isReviewSession
         ? `${summary} Revisão salva no sistema.${documentText}`
       : `${summary} O plano já está salvo no sistema.${documentText}`;
-    const { data: updated, error: updateError } = await tx
+    const { error: updateError } = await tx
       .from("planning_sessions")
       .update({
         pending_proposal: null,
@@ -1257,22 +1257,25 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
       .select("*")
       .single();
     if (updateError) throw updateError;
-    return { summary, reply, session: updated };
+    return { result: { summary, reply } };
   });
 
-  // Se foi confirmacao repetida, a transacao nao devolveu a sessao: recarrega o estado ja gravado.
-  let finalSession = outcome.session;
-  if (!finalSession) {
-    const { data: reloaded } = await client.from("planning_sessions").select("*").eq("id", ensured.session.id).maybeSingle();
-    finalSession = reloaded ?? ensured.session;
-  }
+  const reply = String(outcome.result.reply ?? "");
+  // Recarrega SEMPRE o estado atual da sessao do banco (paridade exata com a 1A),
+  // inclusive em confirmacao repetida: nunca devolve um snapshot congelado. Importa
+  // para sessoes de fechamento (month_close/quarter_close) que seguem 'active' e
+  // continuam sendo mutadas apos a confirmacao. Erro no reload propaga (mesma politica
+  // do load inicial) para nunca cair num snapshot pre-transacao com pending_proposal setado.
+  const { data: reloaded, error: reloadError } = await client.from("planning_sessions").select("*").eq("id", ensured.session.id).maybeSingle();
+  if (reloadError) throw reloadError;
+  const finalSession = reloaded ?? ensured.session;
 
   // Log da resposta do Oraculo — cosmetico, fora da transacao: nunca reverte um plano ja salvo.
   try {
-    await insertMessage(client, finalSession, "oracle", outcome.reply, channel);
+    await insertMessage(client, finalSession, "oracle", reply, channel);
   } catch (_) { /* log nao-critico */ }
 
-  return { session: finalSession, reply: outcome.reply };
+  return { session: finalSession, reply };
 }
 
 export async function abandonPlanningSession(client: Client, params: { sessionId: string; userId: string }) {

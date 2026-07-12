@@ -8,6 +8,8 @@ import {
   type KpiSpreadsheetSuggestion,
   type KpiSpreadsheetSuggestionRow,
 } from "../_shared/kpi-spreadsheet.ts";
+import { runIdempotentCommand } from "../_shared/tx-runner.ts";
+import { kpiImportCommandKey } from "../_shared/tx-client.ts";
 
 const MAX_FILENAME_LENGTH = 180;
 const KPI_MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -68,7 +70,7 @@ function historyRaw(rows: AppliedKpiRow[], fileName: string, kind: KpiImportKind
   return [`Importação confirmada de ${source}: ${fileName}.`, "", ...lines].join("\n");
 }
 
-async function nextHistoryVersion(client: ReturnType<typeof serviceClient>, orgId: string, period: string) {
+async function nextHistoryVersion(client: any, orgId: string, period: string) {
   const { data, error } = await client
     .from("plan_documents")
     .select("version")
@@ -113,97 +115,114 @@ serve(async (req) => {
     if (!suggestion.rows.length) throw new Error("A proposta não contém lançamentos de KPI válidos.");
 
     const kpisByKey = new Map(definitions.map((definition) => [definition.key, definition]));
-    const { data: existingValues, error: existingError } = await client
-      .from("kpi_monthly_values")
-      .select("kpi_id, year, month, target_value, target_stage, actual_value, secondary_actual, note")
-      .eq("org_id", orgId)
-      .in("kpi_id", definitions.map((definition) => definition.id));
-    if (existingError) throw existingError;
-    const existingByPeriod = new Map((existingValues ?? []).map((value: any) => [`${value.kpi_id}:${value.year}:${value.month}`, value]));
 
-    const now = new Date().toISOString();
-    const appliedRows: AppliedKpiRow[] = [];
-    const rowsToUpsert = suggestion.rows.flatMap((suggested) => {
-      const definition = kpisByKey.get(suggested.kpiKey);
-      if (!definition) return [];
-      const existing = existingByPeriod.get(`${definition.id}:${suggested.year}:${suggested.month}`);
-      const targetStage = suggested.targetStage ?? existing?.target_stage ?? null;
-      const targetStageLabel = targetStage ? definition.ladder.find((stage) => stage.key === targetStage)?.label ?? targetStage : null;
-      appliedRows.push({
-        ...suggested,
-        targetValue: suggested.targetValue ?? existing?.target_value ?? null,
-        targetStage,
-        actualValue: suggested.actualValue ?? existing?.actual_value ?? null,
-        secondaryActual: suggested.secondaryActual ?? existing?.secondary_actual ?? null,
-        note: suggested.note ?? existing?.note ?? null,
-        kpiId: definition.id,
-        label: definition.label,
-        unit: definition.unit,
-        targetStageLabel,
+    // Idempotencia por ACAO: o cliente envia um "numero de recibo" (applyToken) por
+    // importacao. Duplo clique/retry da MESMA acao => mesmo token => idempotente (nao
+    // duplica); uma reimportacao deliberada => token novo => reaplica (corrige valores).
+    // Sem token (chamada direta/legado): gera um token unico por requisicao => sempre
+    // aplica, nunca reporta sucesso falso. O conteudo cru {rows,year,fileName,kind} vai
+    // em request_hash so para barrar "mesmo token, conteudo diferente".
+    const applyToken = asText(payload.applyToken, 100) || crypto.randomUUID();
+    const rawSuggestion = (payload.suggestion ?? {}) as { rows?: unknown; year?: unknown; ano?: unknown };
+    const key = await kpiImportCommandKey(orgId, applyToken, { rows: rawSuggestion.rows ?? [], year: rawSuggestion.year ?? rawSuggestion.ano ?? null, fileName, kind }, user.id);
+
+    // Numeros (kpi_monthly_values) + documento (kpi_history) gravados numa UNICA
+    // transacao. Se o documento falhar, os numeros nao mudam (tudo-ou-nada).
+    const outcome = await runIdempotentCommand(key, async (tx) => {
+      const { data: existingValues, error: existingError } = await tx
+        .from("kpi_monthly_values")
+        .select("kpi_id, year, month, target_value, target_stage, actual_value, secondary_actual, note")
+        .eq("org_id", orgId)
+        .in("kpi_id", definitions.map((definition) => definition.id));
+      if (existingError) throw existingError;
+      const existingByPeriod = new Map((existingValues ?? []).map((value: any) => [`${value.kpi_id}:${value.year}:${value.month}`, value]));
+
+      const now = new Date().toISOString();
+      const appliedRows: AppliedKpiRow[] = [];
+      const rowsToUpsert = suggestion.rows.flatMap((suggested) => {
+        const definition = kpisByKey.get(suggested.kpiKey);
+        if (!definition) return [];
+        const existing = existingByPeriod.get(`${definition.id}:${suggested.year}:${suggested.month}`);
+        const targetStage = suggested.targetStage ?? existing?.target_stage ?? null;
+        const targetStageLabel = targetStage ? definition.ladder.find((stage) => stage.key === targetStage)?.label ?? targetStage : null;
+        appliedRows.push({
+          ...suggested,
+          targetValue: suggested.targetValue ?? existing?.target_value ?? null,
+          targetStage,
+          actualValue: suggested.actualValue ?? existing?.actual_value ?? null,
+          secondaryActual: suggested.secondaryActual ?? existing?.secondary_actual ?? null,
+          note: suggested.note ?? existing?.note ?? null,
+          kpiId: definition.id,
+          label: definition.label,
+          unit: definition.unit,
+          targetStageLabel,
+        });
+        return [{
+          org_id: orgId,
+          kpi_id: definition.id,
+          year: suggested.year,
+          month: suggested.month,
+          target_value: suggested.targetValue ?? existing?.target_value ?? null,
+          target_stage: targetStage,
+          actual_value: suggested.actualValue ?? existing?.actual_value ?? null,
+          secondary_actual: suggested.secondaryActual ?? existing?.secondary_actual ?? null,
+          note: suggested.note ?? existing?.note ?? null,
+          updated_by: user.id,
+          updated_at: now,
+        }];
       });
-      return [{
-        org_id: orgId,
-        kpi_id: definition.id,
-        year: suggested.year,
-        month: suggested.month,
-        target_value: suggested.targetValue ?? existing?.target_value ?? null,
-        target_stage: targetStage,
-        actual_value: suggested.actualValue ?? existing?.actual_value ?? null,
-        secondary_actual: suggested.secondaryActual ?? existing?.secondary_actual ?? null,
-        note: suggested.note ?? existing?.note ?? null,
-        updated_by: user.id,
-        updated_at: now,
-      }];
+      if (!rowsToUpsert.length) throw new Error("A proposta não contém indicadores válidos desta empresa.");
+
+      const { error: upsertError } = await tx.from("kpi_monthly_values").upsert(rowsToUpsert, { onConflict: "kpi_id,year,month" });
+      if (upsertError) throw upsertError;
+
+      const period = historyPeriod(appliedRows);
+      const [{ data: organization, error: organizationError }, profileResult, version] = await Promise.all([
+        tx.from("organizations").select("name").eq("id", orgId).maybeSingle(),
+        tx.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
+        nextHistoryVersion(tx, orgId, period),
+      ]);
+      if (organizationError) throw organizationError;
+      if (!organization) throw new Error("Empresa inválida");
+      if (profileResult.error) throw profileResult.error;
+
+      const historyContent = {
+        tipo: "kpi_history",
+        empresa: organization.name ?? "Empresa",
+        area: null,
+        periodo: period,
+        gestor: profileResult.data?.full_name ?? profileResult.data?.email ?? "",
+        source: fileName,
+        note: [suggestion.summary, ...suggestion.warnings].filter(Boolean).join(" "),
+        import_kind: kind,
+        summary: suggestion.summary,
+        warnings: suggestion.warnings,
+        imported_at: now,
+        kpis: appliedRows.map(({ kpiId: _kpiId, ...row }) => row),
+        raw: historyRaw(appliedRows, fileName, kind),
+      };
+      const { data: document, error: documentError } = await tx
+        .from("plan_documents")
+        .insert({
+          org_id: orgId,
+          area_id: null,
+          session_id: null,
+          type: "kpi_history",
+          origin: "historical",
+          period,
+          title: `Histórico de KPIs · ${period}`,
+          content: historyContent,
+          version,
+          created_by: user.id,
+        })
+        .select("*")
+        .single();
+      if (documentError) throw documentError;
+
+      return { result: { appliedCount: rowsToUpsert.length, document } };
     });
-    if (!rowsToUpsert.length) throw new Error("A proposta não contém indicadores válidos desta empresa.");
 
-    const { error: upsertError } = await client.from("kpi_monthly_values").upsert(rowsToUpsert, { onConflict: "kpi_id,year,month" });
-    if (upsertError) throw upsertError;
-
-    const period = historyPeriod(appliedRows);
-    const [{ data: organization, error: organizationError }, profileResult, version] = await Promise.all([
-      client.from("organizations").select("name").eq("id", orgId).maybeSingle(),
-      client.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
-      nextHistoryVersion(client, orgId, period),
-    ]);
-    if (organizationError) throw organizationError;
-    if (!organization) throw new Error("Empresa inválida");
-    if (profileResult.error) throw profileResult.error;
-
-    const historyContent = {
-      tipo: "kpi_history",
-      empresa: organization.name ?? "Empresa",
-      area: null,
-      periodo: period,
-      gestor: profileResult.data?.full_name ?? profileResult.data?.email ?? "",
-      source: fileName,
-      note: [suggestion.summary, ...suggestion.warnings].filter(Boolean).join(" "),
-      import_kind: kind,
-      summary: suggestion.summary,
-      warnings: suggestion.warnings,
-      imported_at: now,
-      kpis: appliedRows.map(({ kpiId: _kpiId, ...row }) => row),
-      raw: historyRaw(appliedRows, fileName, kind),
-    };
-    const { data: document, error: documentError } = await client
-      .from("plan_documents")
-      .insert({
-        org_id: orgId,
-        area_id: null,
-        session_id: null,
-        type: "kpi_history",
-        origin: "historical",
-        period,
-        title: `Histórico de KPIs · ${period}`,
-        content: historyContent,
-        version,
-        created_by: user.id,
-      })
-      .select("*")
-      .single();
-    if (documentError) throw documentError;
-
-    return jsonResponse({ appliedCount: rowsToUpsert.length, document });
+    return jsonResponse(outcome.result);
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Não foi possível aplicar a importação de KPI" }, 400);
   }

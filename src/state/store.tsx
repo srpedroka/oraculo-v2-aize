@@ -264,7 +264,7 @@ interface AppContextValue {
   suggestKpiSpreadsheet: (
     input: KpiImportInput,
   ) => Promise<{ suggestion: KpiSpreadsheetSuggestion; historyDocuments?: import("../types").KpiHistoryDocumentRef[]; fromHistory?: boolean }>;
-  applyKpiSpreadsheetSuggestion: (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind }) => Promise<number>;
+  applyKpiSpreadsheetSuggestion: (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind; token?: string }) => Promise<number>;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -2369,18 +2369,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const applyKpiSpreadsheetSuggestion = useCallback(
-    async (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind }) => {
+    async (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind; token?: string }) => {
       if (!orgId) throw new Error("Empresa obrigatória");
       const result = await callEdgeFunction<{
         orgId: string;
         suggestion: KpiSpreadsheetSuggestion;
         fileName: string;
         inputKind: KpiImportKind;
+        applyToken?: string;
       }>("apply-kpi-import", {
         orgId,
         suggestion,
         fileName: source.fileName,
         inputKind: source.kind,
+        // "Número de recibo" da importação: mesma aplicação (duplo clique) = mesmo token
+        // = idempotente; nova importação = novo token = reaplica.
+        applyToken: source.token,
       }) as { appliedCount: number };
       queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
       queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });

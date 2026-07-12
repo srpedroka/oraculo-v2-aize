@@ -45,8 +45,7 @@ export async function runIdempotentCommand(key: CommandKey, work: CommandWork): 
       const row = existing.rows[0];
       if (!row) throw new Error("Falha ao recuperar comando idempotente existente");
       if (row.request_hash !== key.requestHash) throw new ProposalConflictError();
-      const stored = row.result ?? {};
-      return { duplicate: true, summary: stored.summary ?? "", reply: stored.reply ?? "", session: null };
+      return { duplicate: true, result: (row.result ?? {}) as Record<string, unknown> };
     }
 
     const commandId = claim.rows[0].id;
@@ -55,12 +54,12 @@ export async function runIdempotentCommand(key: CommandKey, work: CommandWork): 
 
     await tx.queryObject({
       text: `update operation_commands set status = 'completed', result = $2::jsonb, completed_at = now() where id = $1`,
-      args: [commandId, JSON.stringify({ summary: res.summary, reply: res.reply })],
+      args: [commandId, JSON.stringify(res.result)],
     });
 
     await tx.commit();
     settled = true;
-    return { duplicate: false, summary: res.summary, reply: res.reply, session: res.session };
+    return { duplicate: false, result: res.result };
   } catch (e) {
     if (began && !settled) {
       try { await tx.rollback(); } catch (_) { /* tx ja abortada */ }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TxClient, proposalCommandKey } from "./tx-client.ts";
+import { TxClient, proposalCommandKey, kpiImportCommandKey } from "./tx-client.ts";
 
 // Transacao falsa: registra cada query e devolve linhas canned na ordem enfileirada.
 function fakeTx(cannedRows: any[][] = []) {
@@ -156,5 +156,31 @@ describe("proposalCommandKey — determinismo e sensibilidade a conteudo", () =>
     const b = await proposalCommandKey("s2", "save_monthly_plan", { type: "save_monthly_plan", n: 1 }, "u1");
     expect(a.idempotencyKey).not.toBe(b.idempotencyKey);
     expect(a.requestHash).toBe(b.requestHash); // hash de conteudo e o mesmo
+  });
+});
+
+describe("kpiImportCommandKey — idempotência por ação (token)", () => {
+  const content = (n: number) => ({ rows: [{ kpiKey: "revenue", year: 2026, month: 1, actualValue: n }], year: 2026, fileName: "kpis.xlsx", kind: "spreadsheet" });
+
+  it("mesmo token + mesmo conteúdo => mesma chave e mesmo request_hash; operation/orgId corretos", async () => {
+    const a = await kpiImportCommandKey("org-1", "tok-1", content(100), "u1");
+    const b = await kpiImportCommandKey("org-1", "tok-1", content(100), "u1");
+    expect(a.idempotencyKey).toBe(b.idempotencyKey);
+    expect(a.requestHash).toBe(b.requestHash);
+    expect(a.operation).toBe("apply_kpi_import");
+    expect(a.orgId).toBe("org-1");
+  });
+
+  it("token diferente => chave diferente mesmo com conteúdo idêntico (reimportação reaplica)", async () => {
+    const a = await kpiImportCommandKey("org-1", "tok-1", content(100), "u1");
+    const b = await kpiImportCommandKey("org-1", "tok-2", content(100), "u1");
+    expect(a.idempotencyKey).not.toBe(b.idempotencyKey);
+  });
+
+  it("mesmo token + conteúdo diferente => mesma chave, request_hash diferente (detecta conflito)", async () => {
+    const a = await kpiImportCommandKey("org-1", "tok-1", content(100), "u1");
+    const b = await kpiImportCommandKey("org-1", "tok-1", content(200), "u1");
+    expect(a.idempotencyKey).toBe(b.idempotencyKey);
+    expect(a.requestHash).not.toBe(b.requestHash);
   });
 });
