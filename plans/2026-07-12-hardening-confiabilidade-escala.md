@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). Etapas 2–8 ainda não iniciadas — aguardam autorização do dono, uma por vez.**
+> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (correção do gatilho de backup no DELETE de organização populada) validada no staging e EM PRODUÇÃO por Codex em 2026-07-12; fatias 2A–2F ainda aguardam autorização do dono, uma por vez. Etapas 3–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -375,6 +375,16 @@ Antes de ativar MFA obrigatório ou bloquear custo, mostrar exatamente:
 - como recuperar acesso;
 - qual limite será padrão;
 - o que o Oráculo responde ao atingir o limite.
+
+## 2.1.1 Fatia preliminar 2A.0 — gatilho da fila de backup
+
+**Status: concluída e em produção em 2026-07-12.**
+
+- Corrigido `queue_organization_backup()` para manter o enfileiramento em alterações normais e não inserir uma solicitação quando a organização já está sendo removida por `ON DELETE CASCADE`.
+- Migration `20260712150000_fix_backup_queue_on_org_delete.sql` aplicada e registrada no staging e em produção.
+- Testes de integração cobrem exclusão normal de registro, exclusão de organização populada e ausência de solicitação órfã.
+- Validado com 48 testes unitários, 28 testes de integração, lint e build; smoke check de produção somente de leitura.
+- Nenhuma mudança de frontend, WhatsApp ou Edge Function.
 
 ## 2.2 Fatia 2A — Dependências vulneráveis
 

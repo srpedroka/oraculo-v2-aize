@@ -108,9 +108,8 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
 }
 
 // Apaga a org e todas as linhas escopadas por org_id com os gatilhos desligados
-// (session_replication_role=replica). Isso contorna o gatilho de fila de backup, que
-// hoje quebra o DELETE de uma org populada (bug conhecido de produção — ver docs). Roda
-// via Management API do staging porque exige privilégio para desligar gatilhos.
+// (session_replication_role=replica). A limpeza defensiva não depende dos gatilhos que
+// cada teste está exercitando e roda via Management API apenas no staging.
 async function purgeOrgRows(orgId: string): Promise<void> {
   const ref = process.env.SUPABASE_STAGING_PROJECT_REF;
   const token = process.env.SUPABASE_STAGING_ACCESS_TOKEN;
