@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TxClient, proposalCommandKey, kpiImportCommandKey } from "./tx-client.ts";
+import { TxClient, proposalCommandKey, kpiImportCommandKey, uuidFromToken } from "./tx-client.ts";
 
 // Transacao falsa: registra cada query e devolve linhas canned na ordem enfileirada.
 function fakeTx(cannedRows: any[][] = []) {
@@ -55,6 +55,30 @@ describe("TxClient builder — UPSERT", () => {
     );
     expect(calls[0].text).toContain("jsonb_populate_recordset");
     expect(JSON.parse(calls[0].args[0])).toHaveLength(2);
+  });
+
+  it("upsert com ignoreDuplicates gera ON CONFLICT DO NOTHING (não DO UPDATE)", async () => {
+    const { tx, calls } = fakeTx([[]]);
+    const client = new TxClient(tx as any);
+    await client.from("organizations").upsert({ id: "org-x", name: "N", created_by: "u1" }, { onConflict: "id", ignoreDuplicates: true }).select("*");
+    expect(calls[0].text).toContain('on conflict ("id") do nothing');
+    expect(calls[0].text).not.toContain("do update");
+    expect(calls[0].text).toContain("returning *");
+  });
+});
+
+describe("uuidFromToken — id determinístico para idempotência da criação (1C)", () => {
+  it("mesmo token => mesmo UUID, no formato válido", async () => {
+    const a = await uuidFromToken("tok-1");
+    const b = await uuidFromToken("tok-1");
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+
+  it("token diferente => UUID diferente", async () => {
+    const a = await uuidFromToken("tok-1");
+    const b = await uuidFromToken("tok-2");
+    expect(a).not.toBe(b);
   });
 });
 

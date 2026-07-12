@@ -60,7 +60,7 @@ type AppAction =
   | { type: "close_mobile_nav" }
   | { type: "set_oracle_mode"; mode: OracleMode }
   | { type: "set_active_org"; orgId: string }
-  | { type: "create_organization"; name: string; subtitle?: string }
+  | { type: "create_organization"; name: string; subtitle?: string; token: string; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "create_area"; name: string; coordinatorId?: string | null }
   | { type: "update_area"; areaId: string; name: string; coordinatorId?: string | null }
   | { type: "archive_area"; areaId: string; onSuccess?: () => void; onError?: (message: string) => void }
@@ -792,64 +792,6 @@ function toKeyActionInsert(keyAction: KeyAction, orgId: string) {
   };
 }
 
-function defaultExecutiveKpiRows(orgId: string) {
-  return [
-    {
-      org_id: orgId,
-      kpi_key: "revenue",
-      label: "Faturamento",
-      unit: "currency",
-      secondary_unit: null,
-      direction: "higher_better",
-      flow_type: "flow",
-      is_ladder: false,
-      ladder: [],
-      sort_order: 10,
-    },
-    {
-      org_id: orgId,
-      kpi_key: "operating_margin",
-      label: "Margem operacional",
-      unit: "percent",
-      secondary_unit: null,
-      direction: "higher_better",
-      flow_type: "flow",
-      is_ladder: false,
-      ladder: [],
-      sort_order: 20,
-    },
-    {
-      org_id: orgId,
-      kpi_key: "production",
-      label: "Produção",
-      unit: "currency",
-      secondary_unit: "count",
-      direction: "higher_better",
-      flow_type: "flow",
-      is_ladder: false,
-      ladder: [],
-      sort_order: 30,
-    },
-    {
-      org_id: orgId,
-      kpi_key: "cash",
-      label: "Caixa",
-      unit: "currency",
-      secondary_unit: null,
-      direction: "higher_better",
-      flow_type: "stock",
-      is_ladder: true,
-      ladder: [
-        { key: "stop_bleed", label: "Estancar sangria", order: 1 },
-        { key: "operational_zero", label: "Operacional >= 0", order: 2 },
-        { key: "service_debt", label: "Aguentar a dívida", order: 3 },
-        { key: "surplus", label: "Sobrar", order: 4 },
-      ],
-      sort_order: 40,
-    },
-  ];
-}
-
 async function callEdgeFunction<TBody extends Record<string, unknown>>(name: string, body: TBody) {
   const client = requireClient();
   const { data, error } = await client.functions.invoke(name, { body });
@@ -1568,23 +1510,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (action.type === "create_organization") {
         void (async () => {
-          if (!userId) return;
-          const { data: organizationRow, error: organizationError } = await client
-            .from("organizations")
-            .insert({ name: action.name, subtitle: action.subtitle || null, created_by: userId })
-            .select("id")
-            .single();
-          if (organizationError) throw organizationError;
-          const newOrgId = organizationRow.id as string;
-          const { error: membershipError } = await client.from("memberships").insert({ org_id: newOrgId, user_id: userId, role: "owner" });
-          if (membershipError) throw membershipError;
-          const { error: aiSettingsError } = await client.from("ai_settings").insert({ org_id: newOrgId });
-          if (aiSettingsError) throw aiSettingsError;
-          const { error: kpiSeedError } = await client.from("executive_kpis").insert(defaultExecutiveKpiRows(newOrgId));
-          if (kpiSeedError) throw kpiSeedError;
-          setActiveOrgId(newOrgId);
-          window.localStorage.setItem("oraculo.activeOrgId", newOrgId);
-          invalidateOrg();
+          if (!userId) { action.onError?.("Faça login para criar uma empresa."); return; }
+          try {
+            // Criação atômica no servidor (org + dono + ai_settings + 4 KPIs numa
+            // transação; nada parcial se falhar). O token (estável por criação, gerado
+            // no componente) deduplica duplo clique pela PK derivada dele no servidor.
+            const { org } = await callEdgeFunction("create-organization", {
+              name: action.name,
+              subtitle: action.subtitle || null,
+              token: action.token,
+            }) as { org: { id: string } };
+            setActiveOrgId(org.id);
+            window.localStorage.setItem("oraculo.activeOrgId", org.id);
+            invalidateOrg();
+            action.onSuccess?.();
+          } catch (error) {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível criar a empresa.");
+          }
         })();
         return;
       }

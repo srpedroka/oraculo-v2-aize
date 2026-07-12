@@ -10,6 +10,8 @@ export function Onboarding() {
   const { dispatch } = useAppState();
   const [name, setName] = useState("");
   const [subtitle, setSubtitle] = useState("");
+  const [createMessage, setCreateMessage] = useState("");
+  const createOrgTokenRef = useRef(crypto.randomUUID());
   const [backupPassword, setBackupPassword] = useState("");
   const [backupMessage, setBackupMessage] = useState("");
   const [restoringBackup, setRestoringBackup] = useState(false);
@@ -18,7 +20,15 @@ export function Onboarding() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!name.trim()) return;
-    dispatch({ type: "create_organization", name: name.trim(), subtitle: subtitle.trim() || undefined });
+    setCreateMessage("");
+    dispatch({
+      type: "create_organization",
+      name: name.trim(),
+      subtitle: subtitle.trim() || undefined,
+      token: createOrgTokenRef.current,
+      onSuccess: () => { createOrgTokenRef.current = crypto.randomUUID(); },
+      onError: (message) => setCreateMessage(message),
+    });
   }
 
   async function restoreBackup(file: File) {
@@ -79,6 +89,11 @@ export function Onboarding() {
           <Button type="submit" icon={Building2} className="w-full">
             Criar empresa
           </Button>
+          {createMessage ? (
+            <p className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
+              {createMessage}
+            </p>
+          ) : null}
         </form>
 
         <div className="mt-7 border-t border-border pt-6">

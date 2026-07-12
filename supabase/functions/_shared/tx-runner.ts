@@ -7,6 +7,36 @@
 import { Client } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 import { TxClient, ProposalConflictError, type CommandKey, type CommandWork, type CommandOutcome } from "./tx-client.ts";
 
+// Transacao simples (sem trava de idempotencia via operation_commands): abre conexao
+// direta, roda `work` numa unica transacao e comita tudo-ou-nada; qualquer erro faz
+// rollback total. Usado quando a idempotencia e garantida por outro meio (ex.: 1C usa
+// a PK da propria organizacao, derivada do token, com INSERT ON CONFLICT DO NOTHING —
+// a tabela operation_commands nao serve porque exige um org_id que ainda nao existe).
+export async function runInTransaction<T>(work: (tx: TxClient) => Promise<T>): Promise<T> {
+  const url = Deno.env.get("SUPABASE_DB_URL");
+  if (!url) throw new Error("SUPABASE_DB_URL ausente no runtime da Edge Function");
+  const client = new Client(url);
+  await client.connect();
+  const tx = client.createTransaction("tx");
+  let began = false;
+  let settled = false;
+  try {
+    await tx.begin();
+    began = true;
+    const result = await work(new TxClient(tx));
+    await tx.commit();
+    settled = true;
+    return result;
+  } catch (e) {
+    if (began && !settled) {
+      try { await tx.rollback(); } catch (_) { /* tx ja abortada */ }
+    }
+    throw e;
+  } finally {
+    try { await client.end(); } catch (_) { /* noop */ }
+  }
+}
+
 // Abre uma conexao direta, roda `work` dentro de UMA transacao com trava de
 // idempotencia, e comita tudo-ou-nada. Em qualquer erro: rollback total (nada
 // persiste, nem a linha de comando). Em confirmacao repetida: devolve o resultado

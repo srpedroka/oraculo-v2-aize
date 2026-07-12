@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -171,6 +171,9 @@ export function Settings() {
   const [organizationName, setOrganizationName] = useState("");
   const [organizationSubtitle, setOrganizationSubtitle] = useState("");
   const [organizationMessage, setOrganizationMessage] = useState("");
+  // Token estável por criação (roda no servidor como trava de idempotência). Duplo
+  // clique reusa o mesmo token => o servidor deduplica; após sucesso, rotaciona.
+  const createOrgTokenRef = useRef(crypto.randomUUID());
   const [areaName, setAreaName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberName, setMemberName] = useState("");
@@ -369,14 +372,20 @@ export function Settings() {
     event.preventDefault();
     if (!organizationName.trim()) return;
 
+    setOrganizationMessage("Criando empresa…");
     dispatch({
       type: "create_organization",
       name: organizationName.trim(),
       subtitle: organizationSubtitle.trim() || undefined,
+      token: createOrgTokenRef.current,
+      onSuccess: () => {
+        createOrgTokenRef.current = crypto.randomUUID();
+        setOrganizationName("");
+        setOrganizationSubtitle("");
+        setOrganizationMessage("Empresa criada. Ela será selecionada automaticamente em instantes.");
+      },
+      onError: (message) => setOrganizationMessage(message),
     });
-    setOrganizationName("");
-    setOrganizationSubtitle("");
-    setOrganizationMessage("Empresa criada. Ela será selecionada automaticamente em instantes.");
   }
 
   function normalizeProfileLink(raw: string) {

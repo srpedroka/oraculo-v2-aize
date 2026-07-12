@@ -36,6 +36,7 @@ class TxQueryBuilder implements PromiseLike<Result> {
   private op: "insert" | "upsert" | "update" | "delete" | "select" | null = null;
   private payload: Row | Row[] | null = null;
   private conflict: string | null = null;
+  private ignoreDuplicates = false;
   private filters: Filter[] = [];
   private wantReturning = false;
   private selectMode: "single" | "maybe" | "list" = "list";
@@ -46,8 +47,9 @@ class TxQueryBuilder implements PromiseLike<Result> {
   constructor(private tx: Transaction, private table: string, private run: (fn: () => Promise<Result>) => Promise<Result>) {}
 
   insert(values: Row | Row[]) { this.op = "insert"; this.payload = values; return this; }
-  upsert(values: Row | Row[], opts?: { onConflict?: string }) {
-    this.op = "upsert"; this.payload = values; this.conflict = opts?.onConflict ?? null; return this;
+  upsert(values: Row | Row[], opts?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+    this.op = "upsert"; this.payload = values; this.conflict = opts?.onConflict ?? null;
+    this.ignoreDuplicates = opts?.ignoreDuplicates ?? false; return this;
   }
   update(values: Row) { this.op = "update"; this.payload = values; return this; }
   delete() { this.op = "delete"; return this; }
@@ -121,7 +123,7 @@ class TxQueryBuilder implements PromiseLike<Result> {
           : "";
         const target = conflictCols.map(quoteIdent).join(", ");
         text += conflictCols.length
-          ? (updatable.length
+          ? (updatable.length && !this.ignoreDuplicates
             ? ` on conflict (${target}) do update set ${setClause}`
             : ` on conflict (${target}) do nothing`)
           : "";
@@ -282,4 +284,13 @@ export async function kpiImportCommandKey(
   const contentHash = await sha256Hex(stableStringify(content));
   const idempotencyKey = await sha256Hex(`${applyToken}|apply_kpi_import`);
   return { orgId, operation: "apply_kpi_import", idempotencyKey, requestHash: contentHash, actorUserId };
+}
+
+// Deriva um UUID deterministico e valido a partir de um token. Usado na 1C como PK da
+// organizacao (mesmo token => mesmo id => INSERT ON CONFLICT DO NOTHING deduplica a
+// criacao). Aceita qualquer string de token; a resistencia de preimagem do sha256
+// impede um cliente de escolher o id de uma organizacao existente.
+export async function uuidFromToken(token: string): Promise<string> {
+  const h = await sha256Hex(token);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
