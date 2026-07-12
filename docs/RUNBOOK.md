@@ -4,6 +4,15 @@ Manual rapido para quando precisar rodar, diagnosticar ou recuperar o Oraculo V2
 
 Para saber onde ficam contas, chaves, secrets e URLs administrativas, leia tambem `docs/ACCESS.md`.
 
+## Testes automatizados (Etapa 0)
+
+- `pnpm run check` = lint + testes + build (o gate de sempre). Precisa do `pnpm` no PATH; neste Mac, adicione o fallback do runtime: `export PATH="/Users/luisguilherme/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:$PATH"`.
+- `pnpm run test:unit` — Vitest (funções puras e componentes, jsdom). Não toca banco nem rede.
+- `pnpm run test:integration` e `pnpm run test:security` — usam SOMENTE o Supabase de staging. Antes: `set -a; source .agents-private/agent-env; set +a` (carrega `SUPABASE_STAGING_*`). Sem essas variáveis, os testes pulam (não falham). A trava `assertStaging` recusa rodar se a URL apontar para produção.
+- `pnpm run test:e2e` — Playwright abre a tela de acesso em desktop e mobile (só leitura). Requer o Chromium: `node node_modules/@playwright/test/cli.js install chromium`.
+- `pnpm run verify:deploy` — verificador SÓ LEITURA da produção (migrations locais x aplicadas, `verify_jwt` das Edge Functions, frontend no ar, segredos fora do Git). Sai com erro se achar problema. Precisa de `SUPABASE_ACCESS_TOKEN`.
+- Fábrica de teste (`tests/helpers/factory.ts`): cria a org descartável "E2E Oraculo <timestamp>" e a remove ao final (falha visível se não limpar). Nunca usa empresa real.
+
 ## Rodar localmente
 
 1. Conferir `.env`.

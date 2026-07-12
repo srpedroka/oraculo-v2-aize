@@ -1,6 +1,7 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: pronto para execução, ainda não iniciado.**
+> **STATUS: ✅ ETAPA 0 concluída por Claude Code em 2026-07-12 (staging + runner de testes + fábrica + verificadores; sem mudança funcional). Etapas 1–8 ainda não iniciadas — aguardam autorização do dono, uma por vez.**
+> **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
 ## 1. Objetivo

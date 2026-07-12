@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-12
+
+- Fundação de testes e execução segura (Etapa 0 do plano de hardening) — mudança interna, sem efeito visível no app nem no WhatsApp: adicionados Vitest (unitário/componente), Playwright (E2E de login em desktop e mobile) e testes de RLS/integração que rodam num Supabase de staging isolado (nunca em produção). Novos scripts `pnpm run check` (lint + testes + build), fábrica de organização descartável com limpeza garantida, e um verificador `pnpm run verify:deploy` que confere migrations, `verify_jwt` das Edge Functions, frontend e segredos fora do Git.
+
 ## 2026-07-11
 
 - Conversas do Oraculo agora funcionam em episodios: depois de 4 horas sem mensagem, app e WhatsApp abrem uma conversa ativa nova, preservam o episodio anterior arquivado e usam seu resumo apenas como memoria de fundo. Um cumprimento simples nao retoma uma sessao antiga de planejamento; confirmacoes pendentes e pedidos explicitos de continuacao continuam funcionando.

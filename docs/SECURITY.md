@@ -241,6 +241,8 @@ Ja cobertos no `.gitignore`:
 
 ## Checklist antes de deploy
 
+- `pnpm run check` (lint + testes + build);
+- `pnpm run verify:deploy` (migrations, `verify_jwt`, frontend, segredos versionados);
 - `pnpm run lint`
 - `pnpm run build`
 - conferir se `.env` nao esta versionado;
@@ -248,3 +250,11 @@ Ja cobertos no `.gitignore`:
 - testar login/onboarding;
 - testar rota direta no Netlify;
 - testar uma acao protegida por permissao, quando possivel.
+
+## Achados de hardening a corrigir (registrados na Etapa 0, 2026-07-12)
+
+O verificador de deploy e os testes de staging levantaram pendências para as próximas etapas — NÃO corrigidas na Etapa 0 (que não altera comportamento):
+
+- **`verify_jwt=false` indevido no gateway** em `invite-member`, `save-ai-settings` e `save-whatsapp-settings`. As três autenticam usuário/owner DENTRO da função (não é exploração direta), mas o gateway deveria rejeitar chamada sem sessão com 401. Corrigir na etapa de segurança técnica. (`oracle-chat` já foi corrigido para `verify_jwt=true` em 2026-07-11.)
+- **Bug no gatilho `queue_organization_backup`**: em qualquer DELETE ele insere em `organization_backup_requests` com o `org_id`; ao apagar uma organização POPULADA (via cascade), a org já não existe e a FK falha. Impacta `delete_organization_permanently` e o cleanup do clone parcial no restore quando a org tem dados (o teste isolado anterior usou org vazia e não pegou). Corrigir com uma guarda no gatilho (pular se a org não existir mais) — é migration, fica para a etapa de integridade.
+- **`pnpm audit --prod` (baseline 2026-07-12):** 5 vulnerabilidades (2 moderate, 3 high; ex.: `lodash` transitivo via `recharts`). Baseline registrado; correção fica para a Etapa 2.

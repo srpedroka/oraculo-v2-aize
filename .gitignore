@@ -19,3 +19,7 @@ supabase/.temp/
 
 # Config local do Claude Code (launch.json/dev-server.sh tem caminhos da maquina)
 .claude/
+playwright-report/
+test-results/
+coverage/
+.vitest/

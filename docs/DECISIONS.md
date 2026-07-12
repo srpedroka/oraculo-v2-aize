@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - Fundacao de testes com staging isolado
+
+Decisao: adotar Vitest (unitário/componente, jsdom), Playwright (E2E) e um projeto Supabase de STAGING separado para testes de integração e RLS. Nunca rodar teste que grava/apaga contra produção; usar organizações descartáveis com nome explícito e limpeza garantida.
+
+Contexto: as próximas etapas mexem em integridade e segurança de dados, sem uma rede de testes repetível e sem ambiente onde criar/apagar dados fosse seguro. Docker (Supabase local) não está disponível neste Mac.
+
+Alternativas: testar em produção com orgs descartáveis (arriscado); Supabase local via Docker (indisponível); só testes manuais.
+
+Motivo: o staging é espelho fiel do schema (mesmas 30 migrations, RLS e 66 policies) porém com crons desagendados, então isolamento entre empresas e fluxos de gravação são provados sem risco à Gaam/Aize.
+
+Consequencias: novos scripts de teste + `check` + `verify:deploy`; credenciais do staging apenas em `.agents-private/agent-env`; a fábrica apaga org com gatilhos desligados (contorna o bug do gatilho de backup — ver SECURITY). A Etapa 0 não altera nenhuma funcionalidade.
+
 ## 2026-07-11 - Episodios de conversa e memoria historica continua
 
 Decisao: encerrar automaticamente o episodio ativo de conversa depois de 4 horas sem mensagens, criando outro episodio no mesmo canal sem apagar o anterior. Resumos e historicos relevantes continuam como memoria de longo prazo, mas sessoes antigas de planejamento so voltam com confirmacao pendente ou pedido explicito de continuacao.
