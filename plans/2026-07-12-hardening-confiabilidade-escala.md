@@ -215,6 +215,8 @@ Nenhuma funcionalidade mudou e existe uma forma repetível de testar alteraçõe
 
 # ETAPA 1 — Integridade transacional e idempotência
 
+> **STATUS Fatia 1A: ✅ implementada e validada no STAGING (2026-07-12). Aguardando autorização do dono para publicar em produção (migration `operation_commands` + deploy de `oracle-session` e `whatsapp-webhook`).** Abordagem aprovada pelo dono: manter a lógica de gravação em TypeScript e envolvê-la numa transação real via conexão direta (`SUPABASE_DB_URL`), em vez de portar para PL/pgSQL — menor risco, uma fonte só da lógica. Adaptador `_shared/tx-client.ts` (subconjunto do supabase-js sobre uma transação, com `jsonb_populate_record` para tipos e fila de serialização) + `_shared/tx-runner.ts` (trava de idempotência). Chave derivada de `session_id + tipo + hash do conteúdo` (frontend não precisou mudar). Testes: `supabase/functions/_shared/tx-client.test.ts` (unit) e `tests/integration/proposal-atomicity.test.ts` (caso feliz, idempotência, concorrência, rollback). Fatias 1B–1D reutilizam esse mesmo envelope.
+
 ## 1.1 Resumo funcional que deve ser apresentado antes
 
 Hoje uma confirmação pode começar a gravar um plano e falhar no meio. Depois desta etapa, cada ação importante será “tudo ou nada”. Repetir a mesma confirmação não criará objetivos, ações, KPIs ou documentos duplicados.

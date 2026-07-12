@@ -24,6 +24,8 @@ import { renderPlanForWhatsApp } from "./plan-render.ts";
 import { applyProposal } from "./proposals.ts";
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
+import { runIdempotentCommand } from "./tx-runner.ts";
+import { proposalCommandKey } from "./tx-client.ts";
 
 type Client = any;
 
@@ -1221,32 +1223,56 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   }
 
   const proposal = ensured.session.pending_proposal;
-  const summary = await applyProposal(client, ensured.session, proposal, params.userId);
-  const document = params.channel === "whatsapp" ? await loadLatestDocumentForProposal(client, ensured.session, proposal) : null;
-  const documentText = document ? `\n\n---\n\n${renderPlanForWhatsApp(document.content ?? {})}` : "";
+  const operation = String(proposal?.type ?? "");
   const isCloseSession = ensured.session.type === "month_close" || ensured.session.type === "quarter_close";
   const nextPhase = ensured.session.type === "month_close" ? "ponte" : ensured.session.type === "quarter_close" ? "balanco" : ensured.session.phase;
   const isReviewSession = ensured.session.type === "strategic_review";
-  const reply = isCloseSession
-    ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?${documentText}`
-    : isReviewSession
-      ? `${summary} Revisão salva no sistema.${documentText}`
-    : `${summary} O plano já está salvo no sistema.${documentText}`;
-  const { data: updated, error: updateError } = await client
-    .from("planning_sessions")
-    .update({
-      pending_proposal: null,
-      phase: nextPhase,
-      status: isCloseSession ? "active" : "completed",
-      completed_at: isCloseSession ? null : new Date().toISOString(),
-    })
-    .eq("id", ensured.session.id)
-    .select("*")
-    .single();
-  if (updateError) throw updateError;
 
-  await insertMessage(client, updated, "oracle", reply, params.channel ?? "web");
-  return { session: updated, reply };
+  // Chave idempotente por sessao + tipo + conteudo da proposta. Confirmar a mesma
+  // proposta de novo (duplo clique, reenvio no WhatsApp, retry) devolve o mesmo
+  // resultado sem duplicar; um erro no meio reverte tudo (nada parcial fica salvo).
+  const key = await proposalCommandKey(ensured.session.id, operation, proposal, params.userId);
+  key.orgId = ensured.session.org_id;
+
+  // Tudo o que muda dados criticos roda DENTRO da transacao (grava plano + documento
+  // e limpa pending_proposal atomicamente). O log de mensagens fica fora (cosmetico).
+  const outcome = await runIdempotentCommand(key, async (tx) => {
+    const summary = await applyProposal(tx, ensured.session, proposal, params.userId);
+    const document = channel === "whatsapp" ? await loadLatestDocumentForProposal(tx, ensured.session, proposal) : null;
+    const documentText = document ? `\n\n---\n\n${renderPlanForWhatsApp(document.content ?? {})}` : "";
+    const reply = isCloseSession
+      ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?${documentText}`
+      : isReviewSession
+        ? `${summary} Revisão salva no sistema.${documentText}`
+      : `${summary} O plano já está salvo no sistema.${documentText}`;
+    const { data: updated, error: updateError } = await tx
+      .from("planning_sessions")
+      .update({
+        pending_proposal: null,
+        phase: nextPhase,
+        status: isCloseSession ? "active" : "completed",
+        completed_at: isCloseSession ? null : new Date().toISOString(),
+      })
+      .eq("id", ensured.session.id)
+      .select("*")
+      .single();
+    if (updateError) throw updateError;
+    return { summary, reply, session: updated };
+  });
+
+  // Se foi confirmacao repetida, a transacao nao devolveu a sessao: recarrega o estado ja gravado.
+  let finalSession = outcome.session;
+  if (!finalSession) {
+    const { data: reloaded } = await client.from("planning_sessions").select("*").eq("id", ensured.session.id).maybeSingle();
+    finalSession = reloaded ?? ensured.session;
+  }
+
+  // Log da resposta do Oraculo — cosmetico, fora da transacao: nunca reverte um plano ja salvo.
+  try {
+    await insertMessage(client, finalSession, "oracle", outcome.reply, channel);
+  } catch (_) { /* log nao-critico */ }
+
+  return { session: finalSession, reply: outcome.reply };
 }
 
 export async function abandonPlanningSession(client: Client, params: { sessionId: string; userId: string }) {
