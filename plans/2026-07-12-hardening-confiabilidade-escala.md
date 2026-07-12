@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (gatilho de backup) e ✅ Fatia 2A (dependências vulneráveis) validadas e EM PRODUÇÃO por Codex em 2026-07-12; fatias 2B–2F ainda aguardam autorização do dono, uma por vez. Etapas 3–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (gatilho de backup), ✅ Fatia 2A (dependências vulneráveis) e ✅ Fatia 2B (JWT/configuração declarativa) validadas e EM PRODUÇÃO por Codex em 2026-07-12; fatias 2C–2F ainda aguardam autorização do dono, uma por vez. Etapas 3–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -399,6 +399,8 @@ Antes de ativar MFA obrigatório ou bloquear custo, mostrar exatamente:
 7. Reexecutar fixtures de importação com arquivos reais e arquivos malformados.
 
 ## 2.3 Fatia 2B — JWT e configuração declarativa
+
+**Status: concluída e em produção em 2026-07-12.** As 24 funções têm política explícita no `supabase/config.toml`; as três funções administrativas antes públicas exigem JWT; testes cobrem `401`, JWT válido e CORS; `verify:deploy` confirma configuração, remoto, migrations, frontend e segredos sem problemas.
 
 Adicionar entrada explícita em `supabase/config.toml` para todas as functions.
 

@@ -413,8 +413,74 @@ enabled = true
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
-[functions.whatsapp-webhook]
+[functions.apply-kpi-import]
+verify_jwt = true
+
+[functions.company-research]
+verify_jwt = true
+
+[functions.create-organization]
+verify_jwt = true
+
+[functions.deadline-nudges]
 verify_jwt = false
 
+[functions.invite-member]
+verify_jwt = true
+
+[functions.month-turn]
+verify_jwt = false
+
+[functions.operational-lifecycle]
+verify_jwt = true
+
+[functions.oracle-chat]
+verify_jwt = true
+
+[functions.oracle-session]
+verify_jwt = true
+
 [functions.organization-backup]
+verify_jwt = false
+
+[functions.organization-lifecycle]
+verify_jwt = true
+
+[functions.remove-member]
+verify_jwt = true
+
+[functions.save-ai-settings]
+verify_jwt = true
+
+[functions.save-historical-document]
+verify_jwt = true
+
+[functions.save-objective]
+verify_jwt = true
+
+[functions.save-whatsapp-settings]
+verify_jwt = true
+
+[functions.set-member-area]
+verify_jwt = true
+
+[functions.set-member-role]
+verify_jwt = true
+
+[functions.set-objective-kpi-links]
+verify_jwt = true
+
+[functions.suggest-historical-metadata]
+verify_jwt = true
+
+[functions.suggest-kpi-spreadsheet]
+verify_jwt = true
+
+[functions.suggest-objective-kpis]
+verify_jwt = true
+
+[functions.weekly-pulse]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
 verify_jwt = false

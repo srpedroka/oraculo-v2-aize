@@ -998,24 +998,33 @@ supabase db push
 
 Edge Functions:
 
+`supabase/config.toml` e a fonte de verdade de `verify_jwt` para todas as funcoes. Nao dependa de flags manuais para definir a politica: depois do deploy, rode `pnpm run verify:deploy`. As cinco funcoes publicas permitidas sao `whatsapp-webhook`, `month-turn`, `weekly-pulse`, `deadline-nudges` e `organization-backup`; todas validam segredo ou autorizacao dentro da funcao.
+
 ```bash
-supabase functions deploy invite-member
-supabase functions deploy set-member-role
-supabase functions deploy remove-member
-supabase functions deploy operational-lifecycle
-supabase functions deploy save-ai-settings
-supabase functions deploy suggest-kpi-spreadsheet
 supabase functions deploy apply-kpi-import
-supabase functions deploy organization-backup --no-verify-jwt
-supabase functions deploy suggest-historical-metadata
+supabase functions deploy company-research
+supabase functions deploy create-organization
+supabase functions deploy deadline-nudges
+supabase functions deploy invite-member
+supabase functions deploy operational-lifecycle
+supabase functions deploy organization-backup
+supabase functions deploy organization-lifecycle
+supabase functions deploy remove-member
+supabase functions deploy save-ai-settings
 supabase functions deploy save-historical-document
+supabase functions deploy save-objective
+supabase functions deploy save-whatsapp-settings
+supabase functions deploy set-member-area
+supabase functions deploy set-member-role
+supabase functions deploy set-objective-kpi-links
 supabase functions deploy oracle-chat
 supabase functions deploy oracle-session
-supabase functions deploy month-turn --no-verify-jwt
-supabase functions deploy weekly-pulse --no-verify-jwt
+supabase functions deploy month-turn
+supabase functions deploy suggest-historical-metadata
+supabase functions deploy suggest-kpi-spreadsheet
 supabase functions deploy suggest-objective-kpis
-supabase functions deploy save-whatsapp-settings
-supabase functions deploy whatsapp-webhook --no-verify-jwt
+supabase functions deploy weekly-pulse
+supabase functions deploy whatsapp-webhook
 ```
 
 Se a CLI pedir login ou link do projeto, conecte ao projeto correto antes de publicar.

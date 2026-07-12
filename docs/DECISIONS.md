@@ -1,5 +1,15 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - Política JWT declarativa para todas as Edge Functions
+
+Decisao: tornar `supabase/config.toml` a fonte de verdade de `verify_jwt` para todas as Edge Functions. Apenas `whatsapp-webhook`, `month-turn`, `weekly-pulse`, `deadline-nudges` e `organization-backup` ficam com `verify_jwt=false`; elas mantêm segredo de webhook/cron ou autorização interna. Todas as demais exigem JWT no gateway e continuam validando usuário, membership e papel no código.
+
+Contexto: três funções administrativas estavam com `verify_jwt=false` em produção e apenas duas funções tinham configuração declarada no repositório. Embora a autorização interna evitasse acesso direto, a postura dependia de flags manuais de deploy e permitia drift silencioso.
+
+Motivo: defesa em profundidade e deploy reproduzível. O gateway rejeita sessão ausente ou inválida antes de consumir a função, enquanto a autorização server-side continua protegendo empresa e papel.
+
+Consequencias: `verify:deploy` compara diretórios locais, TOML e funções remotas, falhando para função ausente, extra ou com política errada. Mudanças na lista pública exigem alteração explícita, teste e revisão. Preflight CORS continua público para que navegadores consigam chamar funções autenticadas.
+
 ## 2026-07-12 - SheetJS oficial fora do npm e lodash corrigido
 
 Decisao: consumir o SheetJS `0.20.3` pelo tarball oficial e versionado `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, com integridade SHA-512 registrada no `pnpm-lock.yaml`, e fixar o `lodash` transitivo em `4.18.1` pelo override do workspace. Manter Recharts 2 nesta fatia, sem misturar a correção de segurança com uma migração maior para Recharts 3.

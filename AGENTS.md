@@ -129,7 +129,7 @@ Deploy Supabase Functions via CLI nova, quando Docker local nao estiver disponiv
 supabase functions deploy whatsapp-webhook oracle-chat --project-ref bkswkfazkjilwfzwzthz --use-api
 ```
 
-Para funcoes sem JWT, como `whatsapp-webhook` e `month-turn`, preserve as flags ja documentadas em `docs/RUNBOOK.md`.
+`supabase/config.toml` e a fonte de verdade de `verify_jwt` para todas as Edge Functions. Nao use flags manuais para mudar a politica durante um deploy; rode `pnpm run verify:deploy` depois de publicar.
 
 ## 5. Arquivos-chave, rotas e variaveis
 

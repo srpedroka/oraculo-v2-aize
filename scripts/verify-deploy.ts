@@ -1,9 +1,17 @@
 // Verificador de deploy — SOMENTE LEITURA. Confere o estado de produção antes/depois
 // de publicar, sem alterar nada. Uso: `pnpm run verify:deploy` (precisa de
 // SUPABASE_ACCESS_TOKEN de produção no ambiente).
-import { readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { verifyJwtIssues, migrationDrift, PUBLIC_FUNCTIONS, type FunctionInfo } from "./deploy-checks.ts";
+import {
+  functionConfigIssues,
+  functionDeploymentIssues,
+  verifyJwtIssues,
+  migrationDrift,
+  PUBLIC_FUNCTIONS,
+  type FunctionInfo,
+} from "./deploy-checks.ts";
 
 const PROD_REF = "bkswkfazkjilwfzwzthz";
 const FRONTEND_URL = "https://oraculo-v2-aize.netlify.app";
@@ -32,10 +40,19 @@ async function main() {
     process.exit(2);
   }
 
+  const localFunctions = readdirSync("supabase/functions", { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && existsSync(join("supabase/functions", entry.name, "index.ts")))
+    .map((entry) => entry.name)
+    .sort();
+  const functionConfig = readFileSync("supabase/config.toml", "utf8");
+  const configIssues = functionConfigIssues(localFunctions, functionConfig);
+  line(configIssues.length === 0, `Config declarativa: ${localFunctions.length} Edge Functions`, configIssues.length ? configIssues.join("; ") : "completa e coerente");
+  problems.push(...configIssues);
+
   // 1. Funções + verify_jwt
   const functions = (await mgmt("/functions")) as Array<{ slug: string; verify_jwt: boolean }>;
   const infos: FunctionInfo[] = functions.map((f) => ({ slug: f.slug, verify_jwt: f.verify_jwt }));
-  const jwtIssues = verifyJwtIssues(infos);
+  const jwtIssues = [...functionDeploymentIssues(localFunctions, infos), ...verifyJwtIssues(infos)];
   line(jwtIssues.length === 0, `Edge Functions: ${functions.length} publicadas, verify_jwt`, jwtIssues.length ? jwtIssues.join("; ") : "todas corretas");
   problems.push(...jwtIssues);
   notes.push(`públicas esperadas: ${PUBLIC_FUNCTIONS.join(", ")}`);
@@ -62,7 +79,8 @@ async function main() {
   }
   let leaked = "";
   try {
-    leaked = execSync("git grep -I -l -E 'sbp_[a-f0-9]{40}|SERVICE_ROLE_KEY=ey' -- . ':!*.md' || true", { encoding: "utf8" }).trim();
+    const secretPattern = ["sbp_[a-f0-9]{40}", "SERVICE_ROLE_KEY=" + "ey"].join("|");
+    leaked = execSync(`git grep -I -l -E '${secretPattern}' -- . ':!*.md' || true`, { encoding: "utf8" }).trim();
   } catch {
     leaked = "";
   }
