@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (correção do gatilho de backup no DELETE de organização populada) validada no staging e EM PRODUÇÃO por Codex em 2026-07-12; fatias 2A–2F ainda aguardam autorização do dono, uma por vez. Etapas 3–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (gatilho de backup) e ✅ Fatia 2A (dependências vulneráveis) validadas e EM PRODUÇÃO por Codex em 2026-07-12; fatias 2B–2F ainda aguardam autorização do dono, uma por vez. Etapas 3–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -387,6 +387,8 @@ Antes de ativar MFA obrigatório ou bloquear custo, mostrar exatamente:
 - Nenhuma mudança de frontend, WhatsApp ou Edge Function.
 
 ## 2.2 Fatia 2A — Dependências vulneráveis
+
+**Status: concluída e em produção em 2026-07-12.** SheetJS oficial `0.20.3` e `lodash 4.18.1`; `.xlsx`, `.xls` e `.csv` preservados; fixtures reais e inválidas aprovadas; `pnpm audit --prod` sem vulnerabilidades conhecidas; frontend Netlify publicado sem mudança de backend.
 
 1. Substituir/pinar `xlsx` em versão oficial corrigida `>=0.20.2` ou parser mantido equivalente.
 2. Não aceitar simplesmente ignorar o advisory.

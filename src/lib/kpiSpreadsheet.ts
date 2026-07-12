@@ -41,6 +41,15 @@ function cellText(value: unknown) {
     .slice(0, MAX_CELL_LENGTH);
 }
 
+function hasZipSignature(bytes: Uint8Array) {
+  return bytes.length >= 4
+    && bytes[0] === 0x50
+    && bytes[1] === 0x4b
+    && ((bytes[2] === 0x03 && bytes[3] === 0x04)
+      || (bytes[2] === 0x05 && bytes[3] === 0x06)
+      || (bytes[2] === 0x07 && bytes[3] === 0x08));
+}
+
 export async function readKpiSpreadsheet(file: File): Promise<ImportedKpiSpreadsheet> {
   const extension = fileExtension(file.name);
   if (!ALLOWED_EXTENSIONS.has(extension)) throw new Error("Envie uma planilha .xlsx, .xls ou .csv.");
@@ -48,9 +57,13 @@ export async function readKpiSpreadsheet(file: File): Promise<ImportedKpiSpreads
   if (file.size > MAX_FILE_SIZE_BYTES) throw new Error("A planilha deve ter no máximo 20 MB.");
 
   const XLSX = await import("xlsx");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (extension === "xlsx" && !hasZipSignature(bytes)) {
+    throw new Error("Não foi possível ler esta planilha. Verifique se o arquivo não está corrompido.");
+  }
   let workbook: WorkBook;
   try {
-    workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true, raw: false });
+    workbook = XLSX.read(bytes, { type: "array", cellDates: true, raw: false });
   } catch (_error) {
     throw new Error("Não foi possível ler esta planilha. Verifique se o arquivo não está corrompido.");
   }

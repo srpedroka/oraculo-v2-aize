@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - SheetJS oficial fora do npm e lodash corrigido
+
+Decisao: consumir o SheetJS `0.20.3` pelo tarball oficial e versionado `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, com integridade SHA-512 registrada no `pnpm-lock.yaml`, e fixar o `lodash` transitivo em `4.18.1` pelo override do workspace. Manter Recharts 2 nesta fatia, sem misturar a correção de segurança com uma migração maior para Recharts 3.
+
+Contexto: o pacote `xlsx` publicado no npm ficou em `0.18.5` e tinha advisories altos de Prototype Pollution e ReDoS; as versões corrigidas são distribuídas pelo CDN oficial do fabricante. O override anterior prendia o Recharts ao `lodash 4.17.21`, também vulnerável.
+
+Alternativas: trocar o parser e arriscar perder `.xls`; migrar junto para Recharts 3; ignorar os advisories; depender de versão flutuante do CDN.
+
+Motivo: a versão oficial corrigida preserva `.xlsx`, `.xls` e `.csv`; a URL exata mais a integridade tornam a instalação reproduzível. O override `4.18.1` satisfaz a faixa esperada pelo Recharts e evita ampliar a mudança visual.
+
+Consequencias: o build precisa alcançar o CDN oficial apenas quando o pacote ainda não estiver no cache; alteração do tarball falha por integridade em vez de ser aceita silenciosamente. Fixtures reais e arquivo malformado protegem a compatibilidade. `pnpm audit --prod` deve permanecer sem vulnerabilidade alta/crítica, idealmente sem vulnerabilidade conhecida.
+
 ## 2026-07-12 - Fundacao de testes com staging isolado
 
 Decisao: adotar Vitest (unitário/componente, jsdom), Playwright (E2E) e um projeto Supabase de STAGING separado para testes de integração e RLS. Nunca rodar teste que grava/apaga contra produção; usar organizações descartáveis com nome explícito e limpeza garantida.
@@ -10,7 +22,7 @@ Alternativas: testar em produção com orgs descartáveis (arriscado); Supabase 
 
 Motivo: o staging é espelho fiel do schema (mesmas 30 migrations, RLS e 66 policies) porém com crons desagendados, então isolamento entre empresas e fluxos de gravação são provados sem risco à Gaam/Aize.
 
-Consequencias: novos scripts de teste + `check` + `verify:deploy`; credenciais do staging apenas em `.agents-private/agent-env`; a fábrica apaga org com gatilhos desligados (contorna o bug do gatilho de backup — ver SECURITY). A Etapa 0 não altera nenhuma funcionalidade.
+Consequencias: novos scripts de teste + `check` + `verify:deploy`; credenciais do staging apenas em `.agents-private/agent-env`; a fábrica apaga org com gatilhos desligados para que a limpeza defensiva não dependa do comportamento exercitado em cada teste. A Etapa 0 não altera nenhuma funcionalidade.
 
 ## 2026-07-11 - Episodios de conversa e memoria historica continua
 
