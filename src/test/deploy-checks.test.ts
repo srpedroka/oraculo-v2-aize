@@ -2,10 +2,13 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
+  assetCacheIssues,
   functionConfigIssues,
   functionDeploymentIssues,
+  htmlCacheIssues,
   migrationDrift,
   parseFunctionJwtConfig,
+  securityHeaderIssues,
   verifyJwtIssues,
 } from "../../scripts/deploy-checks";
 
@@ -83,5 +86,37 @@ describe("drift de migrations", () => {
   it("aponta migration remota que sumiu do repositório", () => {
     const drift = migrationDrift(["001"], ["001", "999"]);
     expect(drift.soNoRemoto).toEqual(["999"]);
+  });
+});
+
+describe("headers de segurança e cache", () => {
+  const validHeaders = {
+    "content-security-policy": "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; connect-src 'self' https://bkswkfazkjilwfzwzthz.supabase.co wss://bkswkfazkjilwfzwzthz.supabase.co; worker-src 'self' blob:",
+    "permissions-policy": "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+  };
+
+  it("aprova a política esperada", () => {
+    expect(securityHeaderIssues(validHeaders)).toEqual([]);
+    expect(htmlCacheIssues("public, max-age=0, must-revalidate")).toEqual([]);
+    expect(assetCacheIssues("public, max-age=31536000, immutable")).toEqual([]);
+  });
+
+  it("DETECTA proteções ausentes ou enfraquecidas", () => {
+    const issues = securityHeaderIssues({
+      ...validHeaders,
+      "content-security-policy": "default-src *; script-src 'self' 'unsafe-eval'",
+      "x-frame-options": "SAMEORIGIN",
+    });
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.stringContaining("frame-ancestors"),
+      expect.stringContaining("unsafe-eval"),
+      expect.stringContaining("X-Frame-Options"),
+    ]));
+    expect(htmlCacheIssues("public, max-age=3600")).not.toEqual([]);
+    expect(assetCacheIssues("public, max-age=0")).not.toEqual([]);
   });
 });

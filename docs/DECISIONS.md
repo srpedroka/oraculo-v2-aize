@@ -1,5 +1,15 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - CSP aplicada em preview antes de produção
+
+Decisao: aplicar no Netlify uma Content Security Policy restrita ao próprio app e aos endpoints HTTPS/WSS do projeto Supabase, junto com anti-iframe, `nosniff`, Referrer Policy, Permissions Policy e HSTS. Assets com hash recebem cache imutável de um ano; HTML sempre revalida. A política é exercitada primeiro em deploy de preview com enforcement real, em vez de usar produção como ambiente de descoberta.
+
+Contexto: produção tinha HSTS fornecido pelo Netlify, mas não possuía CSP, proteção de frame, políticas de permissão ou cache longo para bundles versionados.
+
+Motivo: reduzir XSS, clickjacking, MIME sniffing e acesso desnecessário a recursos do navegador sem alterar a experiência. Preview com CSP aplicada detecta bloqueios concretos de script, estilo, fonte e rota antes do domínio principal.
+
+Consequencias: novos serviços externos, imagens remotas, captchas, OAuth em iframe ou outro projeto Supabase exigem revisão explícita da CSP. Estilos inline permanecem permitidos porque React/Recharts usam atributos `style`; `unsafe-eval` continua proibido. `verify:deploy` falha se headers ou política de cache regredirem.
+
 ## 2026-07-12 - Política JWT declarativa para todas as Edge Functions
 
 Decisao: tornar `supabase/config.toml` a fonte de verdade de `verify_jwt` para todas as Edge Functions. Apenas `whatsapp-webhook`, `month-turn`, `weekly-pulse`, `deadline-nudges` e `organization-backup` ficam com `verify_jwt=false`; elas mantêm segredo de webhook/cron ou autorização interna. Todas as demais exigem JWT no gateway e continuam validando usuário, membership e papel no código.

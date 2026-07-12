@@ -5,8 +5,11 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import {
+  assetCacheIssues,
   functionConfigIssues,
   functionDeploymentIssues,
+  htmlCacheIssues,
+  securityHeaderIssues,
   verifyJwtIssues,
   migrationDrift,
   PUBLIC_FUNCTIONS,
@@ -14,7 +17,7 @@ import {
 } from "./deploy-checks.ts";
 
 const PROD_REF = "bkswkfazkjilwfzwzthz";
-const FRONTEND_URL = "https://oraculo-v2-aize.netlify.app";
+const FRONTEND_URL = process.env.VERIFY_FRONTEND_URL ?? "https://oraculo-v2-aize.netlify.app";
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 
 const problems: string[] = [];
@@ -69,6 +72,26 @@ async function main() {
   const front = await fetch(FRONTEND_URL, { method: "GET" });
   line(front.ok, `Frontend ${FRONTEND_URL}`, `HTTP ${front.status}`);
   if (!front.ok) problems.push(`frontend respondeu HTTP ${front.status}`);
+  const frontHtml = await front.text();
+  const headerValues = Object.fromEntries(front.headers.entries());
+  const frontHeaderIssues = securityHeaderIssues(headerValues);
+  line(frontHeaderIssues.length === 0, "Headers de segurança do frontend", frontHeaderIssues.length ? frontHeaderIssues.join("; ") : "CSP e proteções presentes");
+  problems.push(...frontHeaderIssues);
+
+  const htmlIssues = htmlCacheIssues(front.headers.get("cache-control"));
+  line(htmlIssues.length === 0, "Cache do HTML", htmlIssues.length ? htmlIssues.join("; ") : "revalidação obrigatória");
+  problems.push(...htmlIssues);
+
+  const assetPath = frontHtml.match(/(?:src|href)="(\/assets\/[^\"]+\.(?:js|css))"/)?.[1];
+  if (!assetPath) {
+    line(false, "Cache dos assets", "nenhum asset versionado encontrado no HTML");
+    problems.push("nenhum asset versionado encontrado no HTML");
+  } else {
+    const asset = await fetch(new URL(assetPath, FRONTEND_URL), { method: "HEAD" });
+    const cacheIssues = asset.ok ? assetCacheIssues(asset.headers.get("cache-control")) : [`asset ${assetPath} respondeu HTTP ${asset.status}`];
+    line(cacheIssues.length === 0, `Cache do asset ${assetPath}`, cacheIssues.length ? cacheIssues.join("; ") : "um ano, immutable");
+    problems.push(...cacheIssues);
+  }
 
   // 4. Segredos fora do Git
   let ignored = false;

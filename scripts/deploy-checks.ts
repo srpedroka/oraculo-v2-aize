@@ -17,6 +17,7 @@ export interface FunctionInfo {
 }
 
 export type FunctionJwtConfig = Record<string, boolean>;
+export type HeaderValues = Record<string, string | null | undefined>;
 
 export function isExpectedPublic(slug: string): boolean {
   return (PUBLIC_FUNCTIONS as readonly string[]).includes(slug);
@@ -88,6 +89,56 @@ export function functionDeploymentIssues(localSlugs: string[], functions: Functi
     if (!local.has(slug)) issues.push(`${slug}: publicada no remoto, mas ausente do repositório`);
   }
   return issues;
+}
+
+function normalizedHeaders(headers: HeaderValues): HeaderValues {
+  return Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]));
+}
+
+export function securityHeaderIssues(headers: HeaderValues): string[] {
+  const values = normalizedHeaders(headers);
+  const issues: string[] = [];
+  const csp = values["content-security-policy"] ?? "";
+  const requiredCsp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "script-src 'self'",
+    "connect-src 'self' https://bkswkfazkjilwfzwzthz.supabase.co wss://bkswkfazkjilwfzwzthz.supabase.co",
+    "worker-src 'self' blob:",
+  ];
+  for (const directive of requiredCsp) {
+    if (!csp.includes(directive)) issues.push(`CSP sem ${directive}`);
+  }
+  if (csp.includes("'unsafe-eval'")) issues.push("CSP permite unsafe-eval");
+  if (values["x-frame-options"]?.toUpperCase() !== "DENY") issues.push("X-Frame-Options deve ser DENY");
+  if (values["x-content-type-options"]?.toLowerCase() !== "nosniff") issues.push("X-Content-Type-Options deve ser nosniff");
+  if (values["referrer-policy"]?.toLowerCase() !== "strict-origin-when-cross-origin") {
+    issues.push("Referrer-Policy deve ser strict-origin-when-cross-origin");
+  }
+  const permissions = values["permissions-policy"] ?? "";
+  for (const blocked of ["camera=()", "geolocation=()", "microphone=()", "payment=()", "usb=()"]) {
+    if (!permissions.includes(blocked)) issues.push(`Permissions-Policy sem ${blocked}`);
+  }
+  if (!(values["strict-transport-security"] ?? "").includes("max-age=31536000")) {
+    issues.push("HSTS deve ter max-age de pelo menos um ano");
+  }
+  return issues;
+}
+
+export function htmlCacheIssues(cacheControl: string | null | undefined): string[] {
+  const value = cacheControl?.toLowerCase() ?? "";
+  return value.includes("max-age=0") && value.includes("must-revalidate")
+    ? []
+    : ["HTML deve usar max-age=0, must-revalidate"];
+}
+
+export function assetCacheIssues(cacheControl: string | null | undefined): string[] {
+  const value = cacheControl?.toLowerCase() ?? "";
+  return value.includes("max-age=31536000") && value.includes("immutable")
+    ? []
+    : ["assets com hash devem usar max-age=31536000, immutable"];
 }
 
 // Compara migrations locais versus versões aplicadas no remoto.

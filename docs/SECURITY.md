@@ -8,6 +8,19 @@
 - Documentacao pode citar nomes de variaveis, mas nunca valores secretos.
 - O mapa operacional de onde cada acesso vive fica em `docs/ACCESS.md`.
 
+## Headers do frontend
+
+O Netlify aplica a política definida em `netlify.toml`:
+
+- CSP com scripts/fontes no próprio app, conexão apenas com o Supabase do Oráculo e workers locais/`blob:`;
+- `frame-ancestors 'none'`, `frame-src 'none'` e `X-Frame-Options: DENY` contra clickjacking;
+- `object-src 'none'`, sem `unsafe-eval`;
+- `X-Content-Type-Options: nosniff` e `Referrer-Policy: strict-origin-when-cross-origin`;
+- `Permissions-Policy` bloqueando câmera, microfone, localização, pagamento e USB;
+- HSTS por um ano com `includeSubDomains` e `preload`.
+
+`style-src 'unsafe-inline'` permanece necessário para estilos dinâmicos de componentes React/Recharts; isso não libera script inline. Qualquer nova origem externa deve ser adicionada somente após revisão e teste em deploy de preview. `pnpm run verify:deploy` confere a política publicada, o cache revalidável do HTML e o cache imutável dos assets com hash.
+
 ## Variaveis e segredos
 
 Pode existir no frontend:

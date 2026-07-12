@@ -10,7 +10,7 @@ Para saber onde ficam contas, chaves, secrets e URLs administrativas, leia tambe
 - `pnpm run test:unit` — Vitest (funções puras e componentes, jsdom). Não toca banco nem rede.
 - `pnpm run test:integration` e `pnpm run test:security` — usam SOMENTE o Supabase de staging. Antes: `set -a; source .agents-private/agent-env; set +a` (carrega `SUPABASE_STAGING_*`). Sem essas variáveis, os testes pulam (não falham). A trava `assertStaging` recusa rodar se a URL apontar para produção.
 - `pnpm run test:e2e` — Playwright abre a tela de acesso em desktop e mobile (só leitura). Requer o Chromium: `node node_modules/@playwright/test/cli.js install chromium`.
-- `pnpm run verify:deploy` — verificador SÓ LEITURA da produção (migrations locais x aplicadas, `verify_jwt` das Edge Functions, frontend no ar, segredos fora do Git). Sai com erro se achar problema. Precisa de `SUPABASE_ACCESS_TOKEN`.
+- `pnpm run verify:deploy` — verificador SÓ LEITURA da produção (migrations, `verify_jwt`, frontend, CSP/headers, cache e segredos fora do Git). Sai com erro se achar problema. Precisa de `SUPABASE_ACCESS_TOKEN`. Para validar um draft antes de produção, use `VERIFY_FRONTEND_URL=https://<deploy>.netlify.app pnpm run verify:deploy`.
 - Fábrica de teste (`tests/helpers/factory.ts`): cria a org descartável "E2E Oraculo <timestamp>" e a remove ao final (falha visível se não limpar). Nunca usa empresa real.
 
 ## Rodar localmente
@@ -970,8 +970,10 @@ pnpm run build
 Publicacao Netlify:
 
 ```bash
-netlify deploy --prod --dir=dist
+netlify deploy --prod --dir=dist --no-build
 ```
+
+Os headers de segurança e cache vivem em `netlify.toml`. Antes de mudar CSP, publique com `netlify deploy --dir=dist --no-build`, rode `VERIFY_FRONTEND_URL=<draft> pnpm run verify:deploy` e confira o console do navegador. Novas origens externas devem ser liberadas de forma explícita; não use curingas para contornar bloqueios.
 
 URL de producao:
 
