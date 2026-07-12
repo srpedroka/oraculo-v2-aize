@@ -174,7 +174,7 @@ type AppAction =
   | { type: "confirm_session_proposal"; sessionId: string }
   | { type: "abandon_session"; sessionId: string }
   | { type: "add_evidence"; evidence: Evidence }
-  | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[]; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
+  | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[]; token: string; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
   | { type: "update_objective"; objective: Objective; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
   | { type: "suggest_objective_kpis"; objectiveId: string; onSuccess: (suggestions: ObjectiveKpiSuggestion[]) => void; onError?: (message: string) => void }
   | { type: "set_objective_kpi_links"; objectiveId: string; links: Array<{ kpiId: string; rationale?: string; confidence?: number }>; onSuccess?: () => void; onError?: (message: string) => void }
@@ -1963,19 +1963,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (action.type === "add_objective") {
         void (async () => {
           try {
+            // Grava objetivo + ações-chave numa transação no servidor (tudo-ou-nada;
+            // sem objetivo órfão). Token = idempotência (id do objetivo derivado dele).
             const objectiveRow = toObjectiveInsert(action.objective, orgId);
-            const { data: inserted, error } = await client.from("objectives").insert(objectiveRow).select("id").single();
-            if (error) throw error;
-            const objectiveId = inserted.id as string;
-            const keyActions = (action.keyActions ?? []).map((keyAction) =>
-              toKeyActionInsert({ ...keyAction, objectiveId }, orgId),
-            );
-            if (keyActions.length) {
-              const { error: keyActionsError } = await client.from("key_actions").insert(keyActions);
-              if (keyActionsError) throw keyActionsError;
-            }
+            const keyActionRows = (action.keyActions ?? []).map((keyAction) => toKeyActionInsert(keyAction, orgId));
+            const { objective } = await callEdgeFunction("save-objective", {
+              orgId,
+              objectiveRow,
+              keyActionRows,
+              token: action.token,
+            }) as { objective: { id: string } };
             invalidateOrg();
-            action.onSuccess?.(objectiveId);
+            action.onSuccess?.(objective.id);
           } catch (error) {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível criar o objetivo.");
           }
@@ -2014,35 +2013,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (action.type === "set_objective_kpi_links") {
         void (async () => {
           try {
-            if (action.links.length) {
-              const { error: upsertError } = await client.from("objective_kpi_links").upsert(
-                action.links.map((link) => ({
-                  org_id: orgId,
-                  objective_id: action.objectiveId,
-                  kpi_id: link.kpiId,
-                  rationale: link.rationale ?? "",
-                  confidence: link.confidence ?? 1,
-                  created_by: userId,
-                })),
-                { onConflict: "objective_id,kpi_id" },
-              );
-              if (upsertError) throw upsertError;
-              const keepIds = action.links.map((link) => link.kpiId);
-              const { error: pruneError } = await client
-                .from("objective_kpi_links")
-                .delete()
-                .eq("org_id", orgId)
-                .eq("objective_id", action.objectiveId)
-                .not("kpi_id", "in", `(${keepIds.join(",")})`);
-              if (pruneError) throw pruneError;
-            } else {
-              const { error: deleteError } = await client
-                .from("objective_kpi_links")
-                .delete()
-                .eq("org_id", orgId)
-                .eq("objective_id", action.objectiveId);
-              if (deleteError) throw deleteError;
-            }
+            // Salva o CONJUNTO de vínculos numa transação no servidor (upsert + remoção
+            // dos que saíram, tudo-ou-nada). Naturalmente idempotente.
+            await callEdgeFunction("set-objective-kpi-links", {
+              orgId,
+              objectiveId: action.objectiveId,
+              links: action.links,
+            });
             invalidateOrg();
             action.onSuccess?.();
           } catch (error) {

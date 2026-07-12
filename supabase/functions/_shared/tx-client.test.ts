@@ -137,6 +137,22 @@ describe("TxClient builder — SELECT/filtros", () => {
     expect(calls[0].text).toContain('"kpi_key" = any($1)');
     expect(calls[0].args[0]).toEqual(["revenue", "cash"]);
   });
+
+  it("notIn() com cast vira NOT (col = any($n::uuid[])) — para prune de vínculos", async () => {
+    const { tx, calls } = fakeTx([[]]);
+    const client = new TxClient(tx as any);
+    await client.from("objective_kpi_links").delete().eq("objective_id", "o1").notIn("kpi_id", ["k1", "k2"], "uuid");
+    expect(calls[0].text).toContain('not ("kpi_id" = any($2::uuid[]))');
+    expect(calls[0].args[1]).toEqual(["k1", "k2"]);
+  });
+
+  it("notIn() sem cast não injeta sufixo; cast inválido é ignorado (anti-injeção)", async () => {
+    const { tx, calls } = fakeTx([[]]);
+    const client = new TxClient(tx as any);
+    await client.from("t").delete().eq("o", "x").notIn("k", ["a"], "uuid[]; drop table t; --");
+    expect(calls[0].text).toContain('not ("k" = any($2))');
+    expect(calls[0].text).not.toContain("drop table");
+  });
 });
 
 describe("TxClient — serializacao de concorrencia", () => {

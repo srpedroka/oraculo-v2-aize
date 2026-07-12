@@ -29,7 +29,8 @@ type Filter =
   | { kind: "eq"; col: string; val: unknown }
   | { kind: "neq"; col: string; val: unknown }
   | { kind: "is"; col: string; val: unknown }
-  | { kind: "in"; col: string; val: unknown[] }
+  | { kind: "in"; col: string; val: unknown[]; cast?: string }
+  | { kind: "notin"; col: string; val: unknown[]; cast?: string }
   | { kind: "ilike"; col: string; val: unknown };
 
 class TxQueryBuilder implements PromiseLike<Result> {
@@ -62,7 +63,8 @@ class TxQueryBuilder implements PromiseLike<Result> {
   eq(col: string, val: unknown) { this.filters.push({ kind: "eq", col, val }); return this; }
   neq(col: string, val: unknown) { this.filters.push({ kind: "neq", col, val }); return this; }
   is(col: string, val: unknown) { this.filters.push({ kind: "is", col, val }); return this; }
-  in(col: string, val: unknown[]) { this.filters.push({ kind: "in", col, val }); return this; }
+  in(col: string, val: unknown[], cast?: string) { this.filters.push({ kind: "in", col, val, cast }); return this; }
+  notIn(col: string, val: unknown[], cast?: string) { this.filters.push({ kind: "notin", col, val, cast }); return this; }
   ilike(col: string, val: unknown) { this.filters.push({ kind: "ilike", col, val }); return this; }
   order(col: string, opts?: { ascending?: boolean }) { this.orderCol = col; this.orderAsc = opts?.ascending !== false; return this; }
   limit(n: number) { this.limitN = n; return this; }
@@ -80,7 +82,13 @@ class TxQueryBuilder implements PromiseLike<Result> {
         if (f.val === false) return `${col} is false`;
         params.push(f.val); return `${col} is not distinct from $${params.length}`;
       }
-      if (f.kind === "in") { params.push(f.val); return `${col} = any($${params.length})`; }
+      if (f.kind === "in" || f.kind === "notin") {
+        // cast vem sempre do nosso codigo (ex.: "uuid"); sanitiza por precaucao.
+        const castSuffix = f.cast && /^[a-z_]+$/i.test(f.cast) ? `::${f.cast}[]` : "";
+        params.push(f.val);
+        const expr = `${col} = any($${params.length}${castSuffix})`;
+        return f.kind === "notin" ? `not (${expr})` : expr;
+      }
       if (f.kind === "ilike") { params.push(f.val); return `${col} ilike $${params.length}`; }
       params.push(f.val);
       return `${col} ${f.kind === "neq" ? "<>" : "="} $${params.length}`;

@@ -1,5 +1,5 @@
 import { Plus, Save, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { buildSavedObjectiveResponse, createMessageId } from "../../lib/oracle";
 import { currentMonthPeriod, currentQuarterPeriod, currentYear } from "../../lib/periods";
 import { evaluateConcreteness, getConcretenessTone } from "../../lib/concreteness";
@@ -53,6 +53,10 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   }, [areaId, level, state.objectives]);
 
   const defaultOwner = area?.coordinator ?? "Gui";
+  // Token estável desta criação (idempotência no servidor: o id do objetivo é derivado
+  // dele). O builder salva um único objetivo (guarda saving/savedObjectiveId), então um
+  // token por instância basta.
+  const saveTokenRef = useRef(crypto.randomUUID());
   const [type, setType] = useState<ObjectiveType>("harvest");
   const [parentId, setParentId] = useState(parentOptions[0]?.id ?? "");
   const [title, setTitle] = useState("");
@@ -134,6 +138,7 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
       type: "add_objective",
       objective,
       keyActions: savedActions,
+      token: saveTokenRef.current,
       onSuccess: (objectiveId) => {
         dispatch({
           type: "add_chat_message",

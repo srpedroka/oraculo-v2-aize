@@ -315,6 +315,8 @@ Preservar onboarding e alternância de empresa.
 
 ## 1.6 Fatia 1D — Objetivo, ações e vínculos
 
+> **STATUS Fatia 1D: ✅ implementada e validada no STAGING (2026-07-12). Verificação adversarial pegou uma REGRESSÃO de segurança real: `set-objective-kpi-links` (service-role, ignora RLS) não revalidava que o `kpi_id` pertence à org — a policy RLS antiga fazia isso. Corrigido (valida KPI∈org + deduplica kpiId; e `save-objective` valida parent_id/owner_membership_id ∈ org). Re-testado no staging (10 testes). Aguardando autorização do dono para produção (deploy de `save-objective` + `set-objective-kpi-links` + frontend Netlify; SEM migration nova).** Caminho MANUAL (o da IA já é atômico desde a 1A). `save-objective`: objetivo + key_actions numa transação (`runInTransaction`), idempotência pela PK do objetivo derivada do token (`uuidFromToken` + ON CONFLICT DO NOTHING); revalida `assertAreaWriter`. `set-objective-kpi-links`: upsert+prune do conjunto numa transação (novo filtro `notIn` com cast uuid no adaptador), preserva `created_at` (a UI ordena por ele), naturalmente idempotente. Frontend: handlers `add_objective`/`set_objective_kpi_links` chamam as funções; builder gera token. `toObjectiveInsert`/`toKeyActionInsert` continuam no frontend (usados por `update_objective`/`update_key_action`, que já são atômicos por serem uma só instrução). Testes: `tests/integration/objective-atomicity.test.ts` (7). **Com a 1D, ETAPA 1 COMPLETA (1A+1B+1C+1D).**
+
 Tornar atômicos:
 
 - objetivo + ações-chave;
