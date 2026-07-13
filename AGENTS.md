@@ -171,6 +171,8 @@ Migrations principais:
 - `supabase/migrations/20260709150000_org_ai_tone.sql`: tom/persona por empresa, RLS e realtime.
 - `supabase/migrations/20260710170000_area_lifecycle_member_removal.sql`: arquivamento reversivel de areas e remocao transacional de memberships.
 - `supabase/migrations/20260710193000_operational_lifecycle.sql`: arquivamento reversivel de registros operacionais e snapshots antes/depois de planos e KPIs.
+- `supabase/migrations/20260713090000_whatsapp_inbound_queue.sql`: fundacao da fila de entrada do WhatsApp, desligada por padrao.
+- `supabase/migrations/20260713093000_whatsapp_inbound_queue_flag_guard.sql`: corrige e reforca a flag server-only.
 - `supabase/migrations/20260712190000_optional_owner_mfa.sql`: politica opcional de MFA por empresa.
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
@@ -196,6 +198,7 @@ Tabelas publicas importantes:
 - `ai_usage_logs`
 - `org_ai_tone`
 - `whatsapp_settings`
+- `whatsapp_inbound_jobs`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -233,7 +236,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `apply-kpi-import`: valida a proposta confirmada, grava valores por ano/mês e cria um documento histórico de KPIs sem guardar o arquivo ou imagem bruta.
 - `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
-- `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas.
+- `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas; a fila inbound opcional permanece desligada ate existir worker validado.
 
 Compartilhados criticos:
 
@@ -253,6 +256,7 @@ Compartilhados criticos:
 - `_shared/historical-classifier.ts`: classificacao orientativa de historicos importados.
 - `_shared/area-matching.ts`: correspondencia conservadora entre nomes equivalentes de areas; aliases semanticos so vinculam quando existe um unico candidato seguro.
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
+- `_shared/whatsapp-queue.ts`: deduplicacao sem texto em claro e payload minimo da fila inbound.
 - `_shared/transcription.ts`: transcricao de audio.
 - `_shared/usage.ts`: registro de tokens/custo.
 
@@ -526,6 +530,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Fase 7 da V3 concluida: removidos roteiros antigos, guia legado separado e function antiga de check-in mensal.
 
 ### Em andamento / atencao
+
+- Etapa 3 / Fatia 3A publicada em producao, mas inerte: schema/RPC e webhook opcional prontos, zero empresas ativadas e ainda sem worker. Manter `inbound_queue_enabled=false` ate a Fatia 3B.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Nao existe suite automatizada de testes unitarios/UI/E2E.

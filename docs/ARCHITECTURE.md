@@ -62,6 +62,7 @@ Migrations principais:
 - `20260710133000_portable_restore_without_org.sql`: permite restaurar pacote portátil pelo onboarding quando a conta ficou sem empresa.
 - `20260710170000_area_lifecycle_member_removal.sql`: adiciona arquivamento reversível de áreas, bloqueia delete direto de memberships, desvincula coordenador por `on delete set null` e cria a função transacional de remoção de membro.
 - `20260710193000_operational_lifecycle.sql`: adiciona ciclo de vida reversível aos registros operacionais, histórico imutável de revisões e bloqueio de delete direto no navegador.
+- `20260713090000_whatsapp_inbound_queue.sql` e `20260713093000_whatsapp_inbound_queue_flag_guard.sql`: fundação aditiva da fila de entrada do WhatsApp, deduplicação atômica, RLS service-only e feature flag por empresa protegida.
 
 Tabelas publicas principais:
 
@@ -82,6 +83,7 @@ Tabelas publicas principais:
 - `ai_provider_key_status`
 - `ai_usage_logs`
 - `whatsapp_settings`
+- `whatsapp_inbound_jobs`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -150,7 +152,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `weekly-pulse`: cron horario protegido que respeita dia/horario configurados por empresa, convida uma vez por semana coordenadores com plano ativo e guarda contexto temporario para interpretar a resposta sem insistencia.
 - `suggest-objective-kpis`: valida usuario e permissao do objetivo, usa a funcao `background` e devolve no maximo dois KPIs existentes; nao grava vinculos.
 - `company-research`: owner-only; monta termos a partir de nome/subtítulo (split em `/`), usa busca web nativa de Anthropic ou OpenAI via `callModelWithWebSearch` e devolve apenas uma sugestão (`summary`, `sources`, `queries`, `links`). Nunca grava no banco; a confirmação grava `plan_documents` com `type = company_profile` pelo cliente (RLS owner).
-- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp.
+- `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp. A Fatia 3A adiciona um desvio opcional para `whatsapp_inbound_jobs`: autenticação, anti-loop e validação básica acontecem antes da fila; com a flag desligada, o caminho síncrono permanece igual.
 
 Funcoes compartilhadas:
 
@@ -163,6 +165,7 @@ Funcoes compartilhadas:
 - `_shared/transcription.ts`: normalizacao de arquivo de áudio e chamada da API de transcrição da OpenAI, com fallback de modelo.
 - `_shared/usage.ts`: calculo e gravacao de consumo de IA.
 - `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
+- `_shared/whatsapp-queue.ts`: gera fallback de deduplicação sem texto em claro e reduz cada evento ao payload mínimo permitido para a fila.
 - `_shared/conductors/persona.ts`: persona, tom de conversa e guias por contexto usados pelos condutores e pelo chat web.
 - `_shared/conductors/tone.ts`: carrega `org_ai_tone`, usa o padrão equilibrado quando não há registro e gera uma diretiva de forma que não sobrepõe regras de segurança.
 - `_shared/intent-router.ts`: classifica mensagens em `smalltalk`, `status`, `quick_update`, `start_planning`, `close_period`, `document_question` ou `other`, usando a funcao de IA `background` com fallback deterministico.
@@ -247,6 +250,8 @@ Na Fase 6, toda proposta confirmada (`save_strategic_plan`, `save_quarterly_plan
 ### WhatsApp
 
 O WhatsApp real passa por Evolution API/Evo Go hospedada fora do app. O fluxo e:
+
+Na Fatia 3A, existe uma entrada durável opcional antes do passo 4. A flag `whatsapp_settings.inbound_queue_enabled` nasce `false`, só pode ser alterada pelo `service_role` e não entra ativa em restaurações. Quando ativa, o webhook grava um único job por evento e responde `200`; o worker que executará os passos seguintes pertence à Fatia 3B e ainda não existe. Por isso, produção deve continuar com a flag desligada até a validação do worker.
 
 1. Usuario envia mensagem para o numero pareado.
 2. Evolution chama `whatsapp-webhook` com segredo.

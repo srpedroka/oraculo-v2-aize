@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos), todas atômicas + idempotentes. Etapa 2 = Fatia preliminar 2A.0 (gatilho de backup) e Fatias 2A–2F (dependências, JWT, headers, MFA opcional, custo de IA e prompt injection), todas validadas em staging antes de produção. Etapas 3–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3 iniciada: Fatia 3A publicada em produção em 2026-07-13, inerte com feature flag desligada para todas as empresas. Fatias 3B–3E e Etapas 4–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -561,6 +561,8 @@ Evolution/Evo Go
 ```
 
 ## 3.3 Fatia 3A — Fila de entrada
+
+> **STATUS Fatia 3A: publicada em produção em 2026-07-13, com zero empresas ativadas e zero jobs após o deploy.** As migrations criam `whatsapp_inbound_jobs`, RPC service-only e flag por empresa protegida contra alteração pelo navegador. O webhook só enfileira quando a flag está ativa e, caso contrário, preserva integralmente o fluxo síncrono atual. Payloads têm allowlist por tipo; mídia bruta, base64, URL temporária, `mediaKey` e segredos não entram no banco. O fallback de deduplicação usa SHA-256 e não expõe texto. Validação: 76 unitários, 58 integrações no staging, RLS, fixtures, lint, build e `verify:deploy` verdes. O worker ainda não existe, portanto a flag não deve ser ativada até a Fatia 3B.
 
 Criar tabela/RPC de fila com:
 

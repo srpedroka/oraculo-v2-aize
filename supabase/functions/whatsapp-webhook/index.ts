@@ -39,6 +39,11 @@ import {
   importedConversationReceipt,
   UNTRUSTED_CONTENT_RULES,
 } from "../_shared/untrusted-content.ts";
+import {
+  buildWhatsAppFallbackEventKey,
+  sanitizeWhatsAppInboundPayload,
+  type WhatsAppInboundKind,
+} from "../_shared/whatsapp-queue.ts";
 
 function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
@@ -145,14 +150,12 @@ function extractWebhookMessageId(payload: any) {
   );
 }
 
-function buildWebhookEventKey(payload: any, phone: string, text: string, hasAudio: boolean, hasDocument: boolean) {
+async function buildWebhookEventKey(payload: any, phone: string, text: string, hasAudio: boolean, hasDocument: boolean) {
   const messageId = extractWebhookMessageId(payload);
   if (messageId) return `message:${phone}:${messageId}`;
 
-  const kind = hasDocument ? "document" : hasAudio ? "audio" : "text";
-  const minute = new Date().toISOString().slice(0, 16);
-  const normalizedText = normalizeText(text).slice(0, 160) || "media";
-  return `fallback:${phone}:${kind}:${normalizedText}:${minute}`;
+  const kind: WhatsAppInboundKind = hasDocument ? "document" : hasAudio ? "audio" : "text";
+  return buildWhatsAppFallbackEventKey(phone, kind, text);
 }
 
 function toBoolean(value: unknown) {
@@ -2129,7 +2132,59 @@ serve(async (req) => {
     if ((!extractedText && !hasAudio && !hasDocument) || !phone) return jsonResponse({ ok: true, ignored: true });
 
     const orgId = whatsappSettings.org_id as string;
-    const eventKey = buildWebhookEventKey(payload, phone, extractedText, hasAudio, hasDocument);
+    const eventKey = await buildWebhookEventKey(payload, phone, extractedText, hasAudio, hasDocument);
+
+    if (whatsappSettings.inbound_queue_enabled === true) {
+      const phoneOptions = phoneCandidates(phone);
+      const { data: queuedProfile, error: queuedProfileError } = await client
+        .from("profiles")
+        .select("id")
+        .in("phone", phoneOptions)
+        .maybeSingle();
+      if (queuedProfileError) throw queuedProfileError;
+
+      let queuedUserId: string | null = null;
+      if (queuedProfile?.id) {
+        const { data: queuedMembership, error: queuedMembershipError } = await client
+          .from("memberships")
+          .select("id")
+          .eq("org_id", orgId)
+          .eq("user_id", queuedProfile.id)
+          .maybeSingle();
+        if (queuedMembershipError) throw queuedMembershipError;
+        if (queuedMembership) queuedUserId = queuedProfile.id;
+      }
+
+      const kind: WhatsAppInboundKind = hasDocument ? "document" : hasAudio ? "audio" : "text";
+      const mediaInfo = kind === "document" ? extractDocumentInfo(payload) : kind === "audio" ? extractAudioInfo(payload) : null;
+      const jobPayload = sanitizeWhatsAppInboundPayload(kind, {
+        messageId: extractWebhookMessageId(payload),
+        text: extractedText,
+        remoteJid: mediaInfo?.key?.remoteJid,
+        mimeType: mediaInfo?.mimeType,
+        fileName: kind === "document" ? mediaInfo?.fileName : undefined,
+        caption: extractedText,
+      });
+      const { data: queuedRows, error: queueError } = await client.rpc("enqueue_whatsapp_inbound_job", {
+        p_org_id: orgId,
+        p_event_key: eventKey,
+        p_phone: phone,
+        p_user_id: queuedUserId,
+        p_kind: kind,
+        p_payload: jobPayload,
+      });
+      if (queueError) throw queueError;
+      const queued = queuedRows?.[0];
+      if (!queued?.job_id || !queued?.correlation_id) throw new Error("Fila do WhatsApp não devolveu o job criado");
+
+      return jsonResponse({
+        ok: true,
+        queued: true,
+        duplicate: queued.inserted !== true,
+        correlationId: queued.correlation_id,
+      });
+    }
+
     const { error: dedupeError } = await client.from("whatsapp_processed_events").insert({ org_id: orgId, event_key: eventKey });
     if (dedupeError) {
       if (dedupeError.code === "23505") return jsonResponse({ ok: true, duplicate: true });

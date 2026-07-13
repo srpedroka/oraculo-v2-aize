@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Fila do WhatsApp entra atrás de flag server-only
+
+Decisao: introduzir a fila inbound de forma aditiva e por empresa, mantendo o processador síncrono como padrão. A flag nasce desligada, só o `service_role` pode alterá-la e restaurações a forçam para `false`. Autenticação e anti-loop continuam antes da fila; payload de mídia guarda apenas metadados mínimos.
+
+Motivo: separar recebimento de processamento reduz perda por timeout, mas ativar a fila antes de existir worker causaria silêncio. A implantação em fatias permite validar schema, deduplicação, RLS e privacidade sem alterar a operação real.
+
+Consequencias: a Fatia 3A pode chegar à produção ainda inerte. Nenhuma empresa deve ser ativada até a Fatia 3B processar, ordenar e limpar jobs. O rollback durante a transição é desligar a flag; o caminho síncrono não pode rodar junto com a fila para o mesmo evento.
+
 ## 2026-07-12 - Documento importado é dado, nunca instrução
 
 Decisao: todo texto de plano importado ou recuperado da Memória Estratégica entra no prompt dentro de um bloco explícito de conteúdo não confiável. A resposta da IA é limitada e validada antes de virar proposta; o texto bruto não é repetido no histórico da conversa. Referências por ID são verificadas novamente contra a empresa no momento da gravação.

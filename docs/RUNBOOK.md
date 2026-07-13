@@ -716,6 +716,12 @@ Se nao aparecer check-in:
 
 ## Problema: WhatsApp recebeu mensagem mas nao respondeu
 
+### Fila de entrada da Etapa 3
+
+A Fatia 3A está preparada atrás de `whatsapp_settings.inbound_queue_enabled`. O padrão e o rollback são `false`, que preserva o webhook síncrono atual. Não ligue a flag em empresa real antes da publicação e validação do worker da Fatia 3B: sem worker, o webhook aceitará o evento e o job ficará `queued` sem resposta.
+
+Para um teste descartável no staging, ative a flag somente via `service_role`, envie o mesmo evento várias vezes e confira um único registro em `whatsapp_inbound_jobs` por `(org_id, event_key)`. Ao terminar, desligue a flag e remova a organização de teste. Nunca coloque base64, mídia, URL temporária, `mediaKey` ou segredo no payload da RPC. Restaurações de backup sempre voltam com a flag desligada.
+
 Diagnostico rapido:
 
 1. Verifique `public.chat_messages` filtrando por `channel = 'whatsapp'`.
