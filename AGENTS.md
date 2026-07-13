@@ -171,6 +171,7 @@ Migrations principais:
 - `supabase/migrations/20260709150000_org_ai_tone.sql`: tom/persona por empresa, RLS e realtime.
 - `supabase/migrations/20260710170000_area_lifecycle_member_removal.sql`: arquivamento reversivel de areas e remocao transacional de memberships.
 - `supabase/migrations/20260710193000_operational_lifecycle.sql`: arquivamento reversivel de registros operacionais e snapshots antes/depois de planos e KPIs.
+- `supabase/migrations/20260713200000_whatsapp_health.sql`: telemetria técnica service-only, alertas e recuperação controlada de dead-letter do WhatsApp.
 - `supabase/migrations/20260713090000_whatsapp_inbound_queue.sql`: fundacao da fila de entrada do WhatsApp, desligada por padrao.
 - `supabase/migrations/20260713093000_whatsapp_inbound_queue_flag_guard.sql`: corrige e reforca a flag server-only.
 - `supabase/migrations/20260713120000_whatsapp_worker.sql`: worker, locks, retry/dead-letter, segredo e cron inerte.
@@ -200,6 +201,7 @@ Tabelas publicas importantes:
 - `ai_usage_logs`
 - `org_ai_tone`
 - `whatsapp_settings`
+- `whatsapp_health_events`
 - `whatsapp_inbound_jobs`
 - `whatsapp_worker_secrets`
 - `whatsapp_outbox`
@@ -242,6 +244,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `suggest-objective-kpis`: sugere ate dois KPIs existentes para um objetivo e nunca grava sem confirmacao.
 - `apply-kpi-import`: valida a proposta confirmada, grava valores por ano/mês e cria um documento histórico de KPIs sem guardar o arquivo ou imagem bruta.
 - `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
+- `whatsapp-health`: diagnóstico owner-only da Evolution/webhook/filas, teste manual e retry controlado, sem expor segredo ou conteúdo.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
 - `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas; a fila inbound opcional permanece desligada ate existir worker validado.
 - `whatsapp-sender`: envia itens da outbox um por vez, confirma HTTP da Evolution e aplica lock, retry e dead-letter; endpoint nulo o mantem inerte.
@@ -268,6 +271,7 @@ Compartilhados criticos:
 - `_shared/whatsapp-queue.ts`: deduplicacao sem texto em claro e payload minimo da fila inbound.
 - `_shared/whatsapp-outbox.ts`: despertar seguro do sender quando a outbox esta ativa.
 - `_shared/whatsapp-sender.ts`: sanitizacao e classificacao de falhas de envio.
+- `_shared/whatsapp-health.ts` e `_shared/whatsapp-health-events.ts`: normalização sanitizada da Evolution e telemetria técnica service-only.
 - `_shared/whatsapp-worker.ts`: reconstrucao do evento minimo, sanitizacao de erro e classificacao de retry.
 - `_shared/transcription.ts`: transcricao de audio.
 - `_shared/usage.ts`: registro de tokens/custo.
@@ -532,6 +536,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Objetivos editaveis manualmente.
 - Oraculo web com historico por conversa.
 - WhatsApp real via Evolution API/Evo Go.
+- Painel owner-only de saúde do WhatsApp com conexão/webhook, telemetria sanitizada, teste manual e recuperação controlada de dead-letter.
 - Audio no WhatsApp com download, descriptografia quando necessario e transcricao.
 - Arquivos no WhatsApp com extracao/classificacao e proposta pendente.
 - Roteador de intencao, atualizacoes rapidas e limite de escopo no WhatsApp.
@@ -550,6 +555,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
+- As filas inbound/outbox e endpoints duráveis continuam desligados; não ativar sem nova autorização e teste real controlado. O painel de saúde não altera esse estado.
 - Documentos, conversas e resumos podem conter dados privados da empresa; trate como sensiveis.
 
 ### Pendencias conhecidas / proximos passos

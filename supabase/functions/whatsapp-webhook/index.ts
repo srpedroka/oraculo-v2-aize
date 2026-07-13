@@ -24,6 +24,8 @@ import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type 
 import { recordAiUsage } from "../_shared/usage.ts";
 import { evaluateAiControls, isAiControlLimitError } from "../_shared/ai-controls.ts";
 import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
+import { recordWhatsAppHealthEvent } from "../_shared/whatsapp-health-events.ts";
+import { classifyWhatsAppSenderFailure } from "../_shared/whatsapp-sender.ts";
 import { isExplicitPlanningResume } from "../_shared/conversation-policy.ts";
 import {
   confirmPlanningProposal,
@@ -1637,7 +1639,27 @@ async function sendFormattedWhatsApp(
   options: { forceDirect?: boolean } = {},
 ) {
   if (settings?.outbound_outbox_enabled === true && !options.forceDirect) return;
-  await sendWhatsAppMessages(settings, keyRow, phone, formatForWhatsApp(text));
+  const client = serviceClient();
+  try {
+    const receipts = await sendWhatsAppMessages(settings, keyRow, phone, formatForWhatsApp(text));
+    const receipt = receipts.at(-1);
+    await recordWhatsAppHealthEvent(client, {
+      orgId: settings.org_id,
+      eventType: "outbound_sent",
+      source: "direct",
+      httpStatus: receipt?.httpStatus ?? null,
+    });
+  } catch (error) {
+    const failure = classifyWhatsAppSenderFailure(error);
+    await recordWhatsAppHealthEvent(client, {
+      orgId: settings.org_id,
+      eventType: "outbound_failed",
+      source: "direct",
+      errorCode: failure.code,
+      httpStatus: failure.httpStatus,
+    });
+    throw error;
+  }
 }
 
 async function buildAnswer(
@@ -2162,6 +2184,14 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
 
     if (!headerAuthorized && !evoGoUrlAuthorized) {
       return jsonResponse({ error: "Webhook não autorizado" }, 401);
+    }
+
+    if (!options.forceSynchronous) {
+      await recordWhatsAppHealthEvent(client, {
+        orgId: whatsappSettings.org_id,
+        eventType: "webhook_received",
+        source: "webhook",
+      });
     }
 
     if (isMessageFromCurrentInstance(payload, whatsappSettings)) return jsonResponse({ ok: true, ignored: "from_me" });

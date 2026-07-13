@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A, 3B e 3C publicadas em produção em 2026-07-13, todas inertes. Fatias 3D–3E e Etapas 4–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A–3D publicadas em produção em 2026-07-13; a infraestrutura durável de 3A–3C continua inerte. Fatia 3E e Etapas 4–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -631,6 +631,8 @@ Gravar mensagem do Oráculo e outbox na mesma transação. O sender marca `sent`
 Retries sugeridos: imediato, 10s, 30s, 2min, 10min. Depois, `dead` e alerta.
 
 ## 3.6 Fatia 3D — Recuperação e saúde
+
+> **STATUS Fatia 3D: publicada em produção em 2026-07-13.** Painel owner-only, telemetria service-only de 30 dias, consulta sanitizada à Evolution, teste manual e retry condicionado à fila correspondente. Nenhuma flag/endpoint foi ativada. Validação: 89 unitários, 6 integrações específicas, lint/build, QA visual desktop/mobile e `verify:deploy`. Produção recebeu migration `20260713200000`, `whatsapp-health` v2, `whatsapp-webhook` v69 e Netlify `6a54d36b5d77e73b1a491a0b`; estado final: migration=1, filas/endpoints/jobs/outbox=0. O teste com mensagem real permanece manual no botão do owner.
 
 Em Configurações > WhatsApp mostrar de forma simples:
 

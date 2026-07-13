@@ -491,6 +491,9 @@ verify_jwt = false
 [functions.whatsapp-webhook]
 verify_jwt = false
 
+[functions.whatsapp-health]
+verify_jwt = true
+
 [functions.whatsapp-sender]
 verify_jwt = false
 

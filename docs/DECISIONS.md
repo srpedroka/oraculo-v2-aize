@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Saúde do WhatsApp é owner-only e não ativa filas
+
+Decisão: a Fatia 3D agrega telemetria técnica service-only e um painel simples em Configurações. Status pode ser consultado pelo owner; teste e retry respeitam MFA opcional. Reprocessar exige que a fila e o endpoint correspondentes já estejam ativos. O painel não altera flags, endpoints nem configuração remota da Evolution.
+
+Motivo: dar diagnóstico e recuperação suficientes para a operação sem expor segredos, conteúdo ou telefone e sem transformar uma tela de observação em caminho acidental de ativação da infraestrutura durável.
+
+Consequências: a URL esperada é exibida sem token; erros e respostas remotas são sanitizados; telemetria fica 30 dias e é excluída dos backups. A ativação real de inbound/outbox continua dependendo de teste controlado e nova autorização. O botão de teste é manual para evitar mensagem não solicitada durante deploy.
+
 ## 2026-07-13 - Outbox atomica por resposta e um POST por bloco
 
 Decisao: quando a flag server-only estiver ativa, `insertConversationMessage` grava a resposta do Oráculo e até três itens formatados da outbox na mesma RPC/transação. Cada item representa um único POST. Um sender separado preserva ordem por destinatário, confirma apenas HTTP 2xx e aplica retry/dead-letter. Flag e endpoint nascem desligados.

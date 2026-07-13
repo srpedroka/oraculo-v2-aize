@@ -28,6 +28,7 @@ import { MemberRemovalDialog } from "../features/members/MemberRemovalDialog";
 import { CompanyDangerZone } from "../features/lifecycle/CompanyDangerZone";
 import { MfaSecurityCard } from "../features/security/MfaSecurityCard";
 import { AiControlsCard } from "../features/ai/AiControlsCard";
+import { WhatsAppHealthPanel } from "../features/whatsapp/WhatsAppHealthPanel";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { formatDate } from "../lib/format";
 import { useAppState } from "../state/store";
@@ -1657,6 +1658,7 @@ export function Settings() {
             />
             <input
               type="password"
+              autoComplete="new-password"
               value={whatsappApiKey}
               onChange={(event) => setWhatsappApiKey(event.target.value)}
               placeholder={
@@ -1666,6 +1668,7 @@ export function Settings() {
             />
             <input
               type="password"
+              autoComplete="new-password"
               value={whatsappWebhookSecret}
               onChange={(event) => setWhatsappWebhookSecret(event.target.value)}
               placeholder={
@@ -1694,6 +1697,7 @@ export function Settings() {
               {whatsappMessage}
             </p>
           ) : null}
+          {state.activeOrgId ? <WhatsAppHealthPanel orgId={state.activeOrgId} /> : null}
         </Card>
       ) : null}
 

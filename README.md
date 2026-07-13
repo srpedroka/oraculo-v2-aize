@@ -102,6 +102,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - `suggest-kpi-spreadsheet`
 - `apply-kpi-import`
 - `organization-backup`
+- `whatsapp-health`
 - `whatsapp-webhook`
 - `whatsapp-sender`
 - `whatsapp-worker`

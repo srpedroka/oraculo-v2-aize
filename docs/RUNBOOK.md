@@ -874,6 +874,20 @@ Convites seguem esta regra:
 
 Sem a Evolution API hospedada e sem QR pareado, o painel do sistema continua funcionando, mas o WhatsApp real nao recebe mensagens.
 
+## Saúde e recuperação do WhatsApp
+
+Em `Configurações > WhatsApp`, somente owners veem o painel de saúde. Ele consulta a Evolution sem revelar chave/segredo e mostra conexão, webhook, último evento recebido, último envio confirmado, fila pendente, taxa de falha e dead-letters recentes. A URL esperada pode ser copiada e contém apenas `orgId`; tokens adicionais do Evo Go não são exibidos.
+
+Alertas significam:
+
+- **Instância desconectada:** reconectar o WhatsApp na Evolution antes de testar.
+- **Webhook fora do padrão:** conferir URL, flag habilitada e evento `MESSAGES_UPSERT` na Evolution.
+- **Sem eventos recentes:** com instância conectada e integração ativa, enviar uma mensagem real e conferir se o horário muda.
+- **Fila acumulando:** investigar worker/sender e endpoints antes de reprocessar.
+- **Falhas que exigem atenção:** abrir a lista, corrigir a causa e reprocessar somente depois que a fila correspondente estiver ativa.
+
+`Enviar teste` manda uma única mensagem para o celular internacional cadastrado no perfil do owner. Não usar repetidamente em produção. `Reprocessar` pode reenviar uma resposta e pede confirmação; com MFA crítico ligado, exige sessão `aal2`. O painel nunca ativa `inbound_queue_enabled`, `outbound_outbox_enabled`, endpoint do worker ou endpoint do sender. A retenção da telemetria é de 30 dias e não substitui logs do Supabase/Evolution.
+
 Configuracao atual de producao:
 
 ```text

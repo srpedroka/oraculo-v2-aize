@@ -27,6 +27,8 @@ Objetivos podem ser ligados aos KPIs executivos por `objective_kpi_links`. Na cr
 
 Na tela `src/pages/Settings.tsx`, o card "Tom do Oráculo" lê `org_ai_tone` para todos os membros da empresa e permite edição somente pelo owner. Presets preenchem os eixos gentil↔ácido/franco e direto↔motivador; o preset personalizado libera os sliders e uma preferência da casa de até 280 caracteres.
 
+Na aba `WhatsApp`, owners também veem `WhatsAppHealthPanel`: conexão consultada na Evolution, correspondência da URL/evento do webhook, último evento recebido, último envio confirmado, itens pendentes, falhas recentes e alertas operacionais. `whatsapp-health` faz a leitura privilegiada e devolve apenas diagnóstico sanitizado; a URL esperada não contém segredo. O teste envia uma única mensagem ao celular do owner. O reprocessamento de dead-letter só é liberado quando a fila correspondente, seu endpoint e a política de MFA permitem a ação; o painel nunca ativa filas ou endpoints automaticamente.
+
 Na aba `IA > Limites`, owners acompanham o custo do mês e configuram `ai_control_policies`. `evaluate_ai_call_controls` incrementa contadores atômicos antes de cada chamada ao provedor e grava `ai_limit_events` deduplicados. O default é `monitor`: limites excedidos não interrompem o app nem o WhatsApp. `call-for-function.ts` é a fronteira central; pesquisa web e transcrição, que usam clientes próprios, chamam o mesmo controle explicitamente. `ai_monthly_usage` agrega o custo exato com `security_invoker` e RLS das linhas de uso.
 
 Na mesma tela, owners administram `Segurança e backups`. Cada empresa tem uma política em `organization_backup_policies`; snapshots concluídos são registrados em `organization_backups` e armazenados como JSON versionado e comprimido no bucket privado `organization-backups`. O pacote inclui dados do domínio, configurações não secretas, perfis públicos ligados à empresa, manifesto, contagem por tabela e SHA-256. Chaves, senhas, mídia bruta e metadados de backups anteriores ficam fora. O download portátil é criptografado no navegador com AES-256-GCM e senha que não sai do dispositivo. A restauração sempre cria uma nova empresa, remapeia IDs e usuários existentes por email, abandona sessões que estavam ativas e mantém a origem intacta. Se a conta não tiver mais nenhuma empresa, `Onboarding.tsx` oferece a importação do pacote; o servidor só libera essa rota sem `org_id` quando o usuário autenticado realmente não possui membership.
@@ -65,6 +67,7 @@ Migrations principais:
 - `20260713090000_whatsapp_inbound_queue.sql` e `20260713093000_whatsapp_inbound_queue_flag_guard.sql`: fundação aditiva da fila de entrada do WhatsApp, deduplicação atômica, RLS service-only e feature flag por empresa protegida.
 - `20260713120000_whatsapp_worker.sql`: RPCs de claim/heartbeat/retry/dead-letter/limpeza, segredo e endpoint server-only e cron inerte de recuperação do worker.
 - `20260713160000_whatsapp_outbox.sql`: gravação atômica de resposta+outbox, ordem por destinatário/bloco, sender service-only, retry/dead-letter e cron inerte.
+- `20260713200000_whatsapp_health.sql`: telemetria técnica service-only, gatilhos de falha/envio, retenção de 30 dias e RPC service-only para reabrir dead-letter sem ativar filas.
 
 Tabelas publicas principais:
 
@@ -89,6 +92,7 @@ Tabelas publicas principais:
 - `whatsapp_worker_secrets`
 - `whatsapp_outbox`
 - `whatsapp_sender_secrets`
+- `whatsapp_health_events`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -160,6 +164,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp. A Fatia 3A adiciona um desvio opcional para `whatsapp_inbound_jobs`: autenticação, anti-loop e validação básica acontecem antes da fila; com a flag desligada, o caminho síncrono permanece igual.
 - `whatsapp-worker`: endpoint protegido por segredo server-side que adquire jobs prontos com lock transacional, executa o núcleo importável de `whatsapp-webhook`, renova lock, conclui ou agenda retry/dead-letter e limpa retenção vencida. O request pode ser despertado pelo webhook ou pelo cron; endpoint nulo mantém ambos inertes.
 - `whatsapp-sender`: endpoint protegido por segredo server-side que envia exatamente um bloco da outbox por POST, registra o ID/status sanitizado devolvido pela Evolution após HTTP 2xx e usa lock, heartbeat, retry e dead-letter. Endpoint nulo mantém wake e cron inertes.
+- `whatsapp-health`: endpoint owner-only com JWT que consulta estado/conexão/webhook na Evolution, agrega telemetria técnica e filas e permite teste ou retry controlado. Teste e retry respeitam MFA opcional; nenhum segredo, telefone, conteúdo ou resposta bruta do provedor volta ao navegador.
 
 Funcoes compartilhadas:
 
@@ -176,6 +181,7 @@ Funcoes compartilhadas:
 - `_shared/whatsapp-worker.ts`: reconstrói o evento mínimo, sanitiza diagnóstico e classifica falhas transitórias/permanentes.
 - `_shared/whatsapp-outbox.ts`: desperta o sender somente quando o endpoint salvo coincide com a Function esperada do projeto.
 - `_shared/whatsapp-sender.ts`: sanitiza erros e separa falhas transitórias de permanentes sem persistir resposta bruta da Evolution.
+- `_shared/whatsapp-health.ts` e `_shared/whatsapp-health-events.ts`: normalizam o diagnóstico da Evolution, recusam destinos locais óbvios, sanitizam erros e registram somente metadados técnicos.
 - `_shared/conductors/persona.ts`: persona, tom de conversa e guias por contexto usados pelos condutores e pelo chat web.
 - `_shared/conductors/tone.ts`: carrega `org_ai_tone`, usa o padrão equilibrado quando não há registro e gera uma diretiva de forma que não sobrepõe regras de segurança.
 - `_shared/intent-router.ts`: classifica mensagens em `smalltalk`, `status`, `quick_update`, `start_planning`, `close_period`, `document_question` ou `other`, usando a funcao de IA `background` com fallback deterministico.
