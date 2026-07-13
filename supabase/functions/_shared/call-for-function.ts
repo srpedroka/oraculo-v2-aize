@@ -21,6 +21,20 @@ function cleanDetail(value: unknown) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
 }
 
+async function recordFunctionError(client: Client, orgId: string, fn: AiFunction, aiRoute: AiRoute, status: ProbeStatus) {
+  try {
+    await client.from("ai_function_errors").insert({
+      org_id: orgId,
+      function: fn,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
+      error_code: status,
+    });
+  } catch {
+    // Telemetry must never replace the original model failure.
+  }
+}
+
 export async function markFunctionStatus(
   client: Client,
   orgId: string,
@@ -59,6 +73,7 @@ export async function callModelForFunction(
     return result;
   } catch (error) {
     const classified = classifyModelError(error);
+    await recordFunctionError(client, orgId, fn, aiRoute, classified.status);
     await markFunctionStatus(client, orgId, fn, classified.status, "runtime", classified.detail);
     throw error;
   }
@@ -82,6 +97,7 @@ export async function callModelWithImageForFunction(
     return result;
   } catch (error) {
     const classified = classifyModelError(error);
+    await recordFunctionError(client, orgId, fn, aiRoute, classified.status);
     await markFunctionStatus(client, orgId, fn, classified.status, "runtime", classified.detail);
     throw error;
   }

@@ -29,6 +29,7 @@ import { CompanyDangerZone } from "../features/lifecycle/CompanyDangerZone";
 import { MfaSecurityCard } from "../features/security/MfaSecurityCard";
 import { AiControlsCard } from "../features/ai/AiControlsCard";
 import { WhatsAppHealthPanel } from "../features/whatsapp/WhatsAppHealthPanel";
+import { OperationalHealthPanel } from "../features/health/OperationalHealthPanel";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { formatDate } from "../lib/format";
 import { useAppState } from "../state/store";
@@ -1703,7 +1704,12 @@ export function Settings() {
 
       {showSection("backups") && state.activeOrgId ? <OrganizationBackupCard orgId={state.activeOrgId} /> : null}
 
-      {showSection("seguranca") && state.activeOrgId ? <MfaSecurityCard orgId={state.activeOrgId} /> : null}
+      {showSection("seguranca") && state.activeOrgId ? (
+        <div className="space-y-5">
+          <MfaSecurityCard orgId={state.activeOrgId} />
+          <OperationalHealthPanel orgId={state.activeOrgId} />
+        </div>
+      ) : null}
 
       {showSection("tom") ? (
       <Card>

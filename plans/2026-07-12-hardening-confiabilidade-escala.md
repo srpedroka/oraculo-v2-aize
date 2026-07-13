@@ -804,6 +804,8 @@ Nunca logar:
 
 ## 4.5 Fatia 4D — Métricas, alertas e SLOs
 
+> **STATUS: concluída em 2026-07-13.** Monitor operacional a cada cinco minutos, snapshots e alertas service-only, painel owner-only e telemetria sanitizada de falhas de IA. Mede frontend, migrations, webhook, p95 do WhatsApp, filas, backups, custo/erros de IA e testes de restauração. Alertas não bloqueiam a operação nem enviam mensagens. Testes unitários e integração no staging provam abertura, resolução e isolamento.
+
 Definir inicialmente:
 
 - disponibilidade frontend: 99,9%;

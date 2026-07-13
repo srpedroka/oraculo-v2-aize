@@ -1123,7 +1123,25 @@ supabase db push
 
 Edge Functions:
 
-`supabase/config.toml` e a fonte de verdade de `verify_jwt` para todas as funcoes. Nao dependa de flags manuais para definir a politica: depois do deploy, rode `pnpm run verify:deploy`. As cinco funcoes publicas permitidas sao `whatsapp-webhook`, `month-turn`, `weekly-pulse`, `deadline-nudges` e `organization-backup`; todas validam segredo ou autorizacao dentro da funcao.
+`supabase/config.toml` e a fonte de verdade de `verify_jwt` para todas as funcoes. Nao dependa de flags manuais para definir a politica: depois do deploy, rode `pnpm run verify:deploy`. As funcoes publicas permitidas sao `whatsapp-webhook`, `month-turn`, `weekly-pulse`, `deadline-nudges`, `organization-backup`, `operational-health`, `whatsapp-sender` e `whatsapp-worker`; todas validam segredo ou autorizacao dentro da funcao.
+
+## Monitor operacional
+
+O cron `oraculo-operational-health` roda a cada cinco minutos. A Function `operational-health` mede frontend, migrations, webhook, p95 do WhatsApp, fila/outbox, backup, custo/falhas de IA e restauração. O endpoint e o segredo ficam em `operational_monitor_secrets`; nunca copie o segredo para frontend ou logs.
+
+```sql
+select status, checked_at, metrics
+from public.operational_health_snapshots
+where org_id = '<ORG_ID>'
+order by checked_at desc limit 5;
+
+select code, tone, title, first_seen_at, last_seen_at, resolved_at
+from public.operational_alerts
+where org_id = '<ORG_ID>'
+order by last_seen_at desc;
+```
+
+Um alerta é resolvido automaticamente quando o sinal normaliza. O monitor não bloqueia funções e não envia WhatsApp. Para pausar chamadas automáticas sem apagar histórico, defina `endpoint_url = null`; o painel owner continua podendo executar uma leitura autenticada.
 
 ```bash
 supabase functions deploy apply-kpi-import

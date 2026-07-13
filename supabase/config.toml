@@ -434,6 +434,9 @@ verify_jwt = false
 [functions.operational-lifecycle]
 verify_jwt = true
 
+[functions.operational-health]
+verify_jwt = false
+
 [functions.oracle-chat]
 verify_jwt = true
 

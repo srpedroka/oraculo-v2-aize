@@ -647,3 +647,6 @@ Alternativas: documentar apenas no chat.
 Motivo: chats se perdem; arquivos versionaveis mantem contexto operacional.
 
 Consequencias: mudancas de arquitetura, ambiente, deploy e seguranca devem atualizar docs no mesmo ciclo.
+## 2026-07-13 — Alertas operacionais informam, mas não bloqueiam
+
+O monitor operacional roda a cada cinco minutos e mantém alertas deduplicados para owners. Nesta fase, nenhum alerta pausa WhatsApp, IA, backup ou acesso ao aplicativo e nenhuma notificação é enviada automaticamente. A decisão preserva a operação simples durante o piloto; bloqueios e canais externos exigem decisão posterior baseada nos SLOs observados.

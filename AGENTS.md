@@ -186,6 +186,7 @@ Migrations principais:
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
 - `supabase/migrations/20260712223000_ai_budget_alert_refresh.sql`: alertas mensais imediatos e deduplicados após registrar custo.
+- `supabase/migrations/20260714090000_operational_health_slos.sql`: snapshots, alertas, falhas sanitizadas de IA e cron do monitor operacional.
 
 Tabelas publicas importantes:
 
@@ -255,6 +256,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `whatsapp-webhook`: entrada HTTP mínima do WhatsApp; autentica, bloqueia loop e encaminha texto obrigatoriamente para a fila. Mídia permanece síncrona/em memória para não persistir descritores criptográficos.
 - `whatsapp-sender`: envia itens da outbox um por vez, confirma HTTP da Evolution e aplica lock, retry e dead-letter; endpoint nulo o mantem inerte.
 - `whatsapp-worker`: processa a fila com ordem por conversa, heartbeat, retry/dead-letter e segredo server-side; endpoint automatico nulo mantem o worker inerte.
+- `operational-health`: monitor owner/cron de frontend, migrations, WhatsApp, backups, IA e restauração; alertas são informativos e service-only.
 
 Compartilhados criticos:
 
