@@ -9,6 +9,7 @@ export const PUBLIC_FUNCTIONS = [
   "weekly-pulse",
   "deadline-nudges",
   "organization-backup",
+  "whatsapp-sender",
   "whatsapp-worker",
 ] as const;
 

@@ -928,6 +928,7 @@ export async function restoreOrganizationEnvelope(input: {
       org_id: targetOrgId,
       enabled: false,
       inbound_queue_enabled: false,
+      outbound_outbox_enabled: false,
       has_api_key: false,
       key_preview: null,
       has_webhook_secret: false,

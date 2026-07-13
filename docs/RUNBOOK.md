@@ -724,7 +724,15 @@ Para um teste descartável no staging, ative a flag somente via `service_role`, 
 
 Com o worker ativo, acompanhe `status`, `attempt_count`, `next_retry_at`, `locked_at`, `last_error_code` e `correlation_id`. `processing` com lock antigo é recuperado no próximo claim; falha transitória usa 10s, 30s, 2min e 10min; a quinta tentativa ou falha permanente vira `dead`. Mensagens posteriores da mesma conversa aguardam a anterior. Para rollback imediato, volte a flag da empresa para `false`; só zere o endpoint global quando quiser também parar recuperação de jobs já enfileirados.
 
-O cron `oraculo-whatsapp-worker` roda a cada minuto, mas retorna sem chamada quando `endpoint_url` é nulo. A função é pública no gateway e autenticada internamente por `x-oraculo-worker-secret`; nunca copie esse valor para frontend, logs ou documentação. A janela de duplicidade entre envio aceito pela Evolution e marcação de `completed` permanece até a outbox da Fatia 3C.
+O cron `oraculo-whatsapp-worker` roda a cada minuto, mas retorna sem chamada quando `endpoint_url` é nulo. A função é pública no gateway e autenticada internamente por `x-oraculo-worker-secret`; nunca copie esse valor para frontend, logs ou documentação. A 3C já está publicada, mas produção continua no caminho síncrono e no envio direto enquanto fila e outbox não forem ativadas.
+
+### Outbox de saída da Etapa 3
+
+A Fatia 3C está publicada em produção, mas inerte. Ela depende de `whatsapp_settings.outbound_outbox_enabled` por empresa e `whatsapp_sender_secrets.endpoint_url` global; ambos permanecem desligados. Com a flag falsa, o webhook continua enviando diretamente. Com a flag verdadeira, a resposta e seus blocos formatados entram em `chat_messages`/`whatsapp_outbox` na mesma transação e o envio direto é suprimido. Restaurações sempre forçam a flag para `false`. Não configure o endpoint nem ligue a flag de empresa real antes de um envio controlado com a Evolution e de nova autorização explícita do dono.
+
+O sender mantém ordem por empresa+destino e por bloco, recupera lock abandonado, tenta imediatamente e depois em 10s, 30s, 2min e 10min; a quinta tentativa ou erro permanente vira `dead`. `sent` exige HTTP 2xx da Evolution. O cron `oraculo-whatsapp-sender` roda a cada minuto, mas não chama nada com endpoint nulo. Para rollback, desligue primeiro a flag da empresa; mantenha o endpoint enquanto houver itens pendentes e zere-o apenas quando a outbox estiver vazia.
+
+O endpoint é público no gateway para permitir `pg_net`, porém exige `x-oraculo-sender-secret`. Nunca exponha esse segredo. A API de texto da Evolution devolve ID/status após aceitar, mas não recebe chave de idempotência do cliente; uma queda após o aceite e antes do registro local continua sendo um intervalo raro de duplicidade possível.
 
 Diagnostico rapido:
 

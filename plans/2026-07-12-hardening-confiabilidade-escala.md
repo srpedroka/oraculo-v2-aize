@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A e 3B publicadas em produção em 2026-07-13, ambas inertes, com endpoint do worker nulo, zero empresas ativadas e zero jobs. Fatias 3C–3E e Etapas 4–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A, 3B e 3C publicadas em produção em 2026-07-13, todas inertes. Fatias 3D–3E e Etapas 4–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -611,6 +611,8 @@ O worker deve:
 - não apagar job concluído imediatamente, respeitando retenção curta para auditoria.
 
 ## 3.5 Fatia 3C — Outbox de envio
+
+> **STATUS Fatia 3C: publicada em produção, ainda inerte, em 2026-07-13.** A RPC central grava `chat_messages` e 1–3 blocos de `whatsapp_outbox` na mesma transação; o sender mantém ordem por destino/bloco, heartbeat, lock recovery, retry e dead-letter e marca `sent` apenas após HTTP 2xx. Flag, segredo, endpoint e cron são service-only e nasceram desligados. Validação: 83 unitários, 78 integrações regulares, 1 RLS, fixtures e prova real do webhook enfileirando sem chamar a Evolution no staging. Produção recebeu a migration `20260713160000` e as Functions `whatsapp-sender`, `whatsapp-webhook`, `whatsapp-worker`, `weekly-pulse`, `organization-backup`, `oracle-chat` e `oracle-session`; `verify:deploy` ficou verde. A consulta final confirmou migration=1, cron=1, endpoints nulos, zero flags e zero itens. Pendente antes de ativação: envio real controlado e nova autorização explícita. A Evolution não aceita chave de idempotência, portanto o intervalo após aceite e antes do `sent` local continua ambíguo.
 
 Nunca considerar resposta entregue só porque foi gerada.
 

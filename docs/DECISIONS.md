@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Outbox atomica por resposta e um POST por bloco
+
+Decisao: quando a flag server-only estiver ativa, `insertConversationMessage` grava a resposta do Oráculo e até três itens formatados da outbox na mesma RPC/transação. Cada item representa um único POST. Um sender separado preserva ordem por destinatário, confirma apenas HTTP 2xx e aplica retry/dead-letter. Flag e endpoint nascem desligados.
+
+Motivo: gravar primeiro e enviar diretamente podia deixar histórico sem entrega; reenviar uma resposta de três blocos como unidade também repetiria blocos já aceitos. Centralizar a gravação cobre conversa diária e sessões sem duplicar regras no webhook.
+
+Consequencias: a estrutura foi publicada inerte e produção continua no envio direto até ativação explícita. Convites e crons proativos continuam no caminho próprio; esta fatia protege respostas operacionais do Oráculo. Como a Evolution não oferece chave de idempotência no `sendText`, a outbox garante durabilidade e deduplicação antes do POST, mas não exatamente-uma-vez na queda posterior ao aceite e anterior ao `sent` local.
+
 ## 2026-07-13 - Worker reutiliza o núcleo do webhook e nasce com acionamento inerte
 
 Decisao: tornar o handler atual importável e executá-lo pelo `whatsapp-worker`, sem duplicar a lógica de texto, áudio, documento, sessão, confirmação e atualização rápida. O worker é protegido por segredo server-only, usa locks no PostgreSQL e tem dois despertares: imediato pelo webhook e cron de recuperação. Ambos dependem de um endpoint guardado no banco que nasce nulo.

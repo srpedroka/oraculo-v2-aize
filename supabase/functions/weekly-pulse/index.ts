@@ -173,6 +173,7 @@ serve(async (req) => {
           author: "oracle",
           text: message,
           channel: "whatsapp",
+          queueWhatsAppDelivery: false,
         });
         await client.from("conversations").update({
           pending_context: { type: "weekly_pulse", weekStart, areaIds, expiresAt },

@@ -1629,7 +1629,14 @@ const WHATSAPP_DAILY_FORM_RULES = [
   "- Nunca diga que salvou algo sem confirmação do sistema.",
 ].join("\n");
 
-async function sendFormattedWhatsApp(settings: any, keyRow: any, phone: string, text: string) {
+async function sendFormattedWhatsApp(
+  settings: any,
+  keyRow: any,
+  phone: string,
+  text: string,
+  options: { forceDirect?: boolean } = {},
+) {
+  if (settings?.outbound_outbox_enabled === true && !options.forceDirect) return;
   await sendWhatsAppMessages(settings, keyRow, phone, formatForWhatsApp(text));
 }
 
@@ -2233,7 +2240,13 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
     const phoneOptions = phoneCandidates(phone);
     const { data: profile } = await client.from("profiles").select("id, full_name, phone").in("phone", phoneOptions).maybeSingle();
     if (!profile) {
-      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, phone, "Este número não está cadastrado no Oráculo. Peça ao dono da empresa para vincular seu celular.");
+      await sendFormattedWhatsApp(
+        whatsappSettings,
+        whatsappKeyRow,
+        phone,
+        "Este número não está cadastrado no Oráculo. Peça ao dono da empresa para vincular seu celular.",
+        { forceDirect: true },
+      );
       return jsonResponse({ ok: true, rejected: "unknown_phone" });
     }
     const replyPhone = profile.phone ?? phone;
@@ -2245,7 +2258,13 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
       .eq("user_id", profile.id)
       .maybeSingle();
     if (!membership) {
-      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, "Seu número existe, mas não tem acesso a esta empresa no Oráculo.");
+      await sendFormattedWhatsApp(
+        whatsappSettings,
+        whatsappKeyRow,
+        replyPhone,
+        "Seu número existe, mas não tem acesso a esta empresa no Oráculo.",
+        { forceDirect: true },
+      );
       return jsonResponse({ ok: true, rejected: "no_membership" });
     }
 
@@ -2305,7 +2324,7 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
       } catch (error) {
         console.error("Erro ao transcrever áudio do WhatsApp", error instanceof Error ? error.message : String(error));
         if (isAiControlLimitError(error)) {
-          await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, error.message);
+          await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, error.message, { forceDirect: true });
           return jsonResponse({ ok: true, audio: "ai_limit" });
         }
         audioDiagnostics.push("transcription-error");
@@ -2564,7 +2583,9 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         userId: profile.id,
         channel: "whatsapp",
       });
-      const reply = `Vou te conduzir por aqui mesmo.\n\n${sessionResult.reply}`;
+      const reply = whatsappSettings.outbound_outbox_enabled === true
+        ? sessionResult.reply
+        : `Vou te conduzir por aqui mesmo.\n\n${sessionResult.reply}`;
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
       return jsonResponse({ ok: true, intent: "start_planning", sessionId: sessionResult.session.id });
     }
@@ -2619,7 +2640,9 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         userId: profile.id,
         channel: "whatsapp",
       });
-      const reply = `Vou conduzir o fechamento por aqui mesmo.\n\n${sessionResult.reply}`;
+      const reply = whatsappSettings.outbound_outbox_enabled === true
+        ? sessionResult.reply
+        : `Vou conduzir o fechamento por aqui mesmo.\n\n${sessionResult.reply}`;
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
       return jsonResponse({ ok: true, intent: "close_period", sessionId: sessionResult.session.id });
     }

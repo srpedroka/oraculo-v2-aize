@@ -643,9 +643,13 @@ export async function startPlanningSession(
         .select("*")
         .single();
       if (rebindError) throw rebindError;
-      return { session: rebound, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
+      const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
+      if ((params.channel ?? "web") === "whatsapp") await insertMessage(client, rebound, "oracle", reply, "whatsapp");
+      return { session: rebound, reply };
     }
-    return { session: existing, reply: "Retomei sua sessão em andamento. Pode continuar de onde paramos." };
+    const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
+    if ((params.channel ?? "web") === "whatsapp") await insertMessage(client, existing, "oracle", reply, "whatsapp");
+    return { session: existing, reply };
   }
 
   const conversation = await getOrCreateConversation(client, {

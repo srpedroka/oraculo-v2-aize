@@ -64,6 +64,7 @@ Migrations principais:
 - `20260710193000_operational_lifecycle.sql`: adiciona ciclo de vida reversível aos registros operacionais, histórico imutável de revisões e bloqueio de delete direto no navegador.
 - `20260713090000_whatsapp_inbound_queue.sql` e `20260713093000_whatsapp_inbound_queue_flag_guard.sql`: fundação aditiva da fila de entrada do WhatsApp, deduplicação atômica, RLS service-only e feature flag por empresa protegida.
 - `20260713120000_whatsapp_worker.sql`: RPCs de claim/heartbeat/retry/dead-letter/limpeza, segredo e endpoint server-only e cron inerte de recuperação do worker.
+- `20260713160000_whatsapp_outbox.sql`: gravação atômica de resposta+outbox, ordem por destinatário/bloco, sender service-only, retry/dead-letter e cron inerte.
 
 Tabelas publicas principais:
 
@@ -86,6 +87,8 @@ Tabelas publicas principais:
 - `whatsapp_settings`
 - `whatsapp_inbound_jobs`
 - `whatsapp_worker_secrets`
+- `whatsapp_outbox`
+- `whatsapp_sender_secrets`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -156,6 +159,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `company-research`: owner-only; monta termos a partir de nome/subtítulo (split em `/`), usa busca web nativa de Anthropic ou OpenAI via `callModelWithWebSearch` e devolve apenas uma sugestão (`summary`, `sources`, `queries`, `links`). Nunca grava no banco; a confirmação grava `plan_documents` com `type = company_profile` pelo cliente (RLS owner).
 - `whatsapp-webhook`: recebe mensagem da Evolution API, valida segredo, identifica usuario por `profiles.phone`, usa a conversa WhatsApp da pessoa e grava historico com `user_id`/`conversation_id`. Para áudio, baixa a mídia da Evolution/Evo Go, descriptografa mídia de WhatsApp quando vier criptografada, transcreve com OpenAI e envia o texto transcrito para o mesmo fluxo de IA. Para documentos PDF/PPTX/DOCX/TXT, baixa e descriptografa quando necessario, extrai texto e classifica por IA. Documentos classificados como Plano Estrategico, Trimestral ou Mensal usam importadores server-side e geram proposta pendente; evidencias e documentos indefinidos recebem pergunta de direcionamento. Na Fase 4 da V3, o webhook ganhou roteamento operacional: classifica intencao, inicia planejamento por WhatsApp quando a pessoa pedir, aplica atualizacoes rapidas em objetivos/acoes mensais quando houver alvo claro, formata respostas para WhatsApp e limita respostas longas a blocos curtos. Na Fase 6, perguntas de documento (`document_question`) buscam o `plan_documents` mais recente por tipo/periodo/area e enviam resumo nativo pelo WhatsApp. A Fatia 3A adiciona um desvio opcional para `whatsapp_inbound_jobs`: autenticação, anti-loop e validação básica acontecem antes da fila; com a flag desligada, o caminho síncrono permanece igual.
 - `whatsapp-worker`: endpoint protegido por segredo server-side que adquire jobs prontos com lock transacional, executa o núcleo importável de `whatsapp-webhook`, renova lock, conclui ou agenda retry/dead-letter e limpa retenção vencida. O request pode ser despertado pelo webhook ou pelo cron; endpoint nulo mantém ambos inertes.
+- `whatsapp-sender`: endpoint protegido por segredo server-side que envia exatamente um bloco da outbox por POST, registra o ID/status sanitizado devolvido pela Evolution após HTTP 2xx e usa lock, heartbeat, retry e dead-letter. Endpoint nulo mantém wake e cron inertes.
 
 Funcoes compartilhadas:
 
@@ -170,6 +174,8 @@ Funcoes compartilhadas:
 - `_shared/whatsapp.ts`: normaliza numero e envia texto pela Evolution API/Evo Go.
 - `_shared/whatsapp-queue.ts`: gera fallback de deduplicação sem texto em claro e reduz cada evento ao payload mínimo permitido para a fila.
 - `_shared/whatsapp-worker.ts`: reconstrói o evento mínimo, sanitiza diagnóstico e classifica falhas transitórias/permanentes.
+- `_shared/whatsapp-outbox.ts`: desperta o sender somente quando o endpoint salvo coincide com a Function esperada do projeto.
+- `_shared/whatsapp-sender.ts`: sanitiza erros e separa falhas transitórias de permanentes sem persistir resposta bruta da Evolution.
 - `_shared/conductors/persona.ts`: persona, tom de conversa e guias por contexto usados pelos condutores e pelo chat web.
 - `_shared/conductors/tone.ts`: carrega `org_ai_tone`, usa o padrão equilibrado quando não há registro e gera uma diretiva de forma que não sobrepõe regras de segurança.
 - `_shared/intent-router.ts`: classifica mensagens em `smalltalk`, `status`, `quick_update`, `start_planning`, `close_period`, `document_question` ou `other`, usando a funcao de IA `background` com fallback deterministico.

@@ -174,6 +174,7 @@ Migrations principais:
 - `supabase/migrations/20260713090000_whatsapp_inbound_queue.sql`: fundacao da fila de entrada do WhatsApp, desligada por padrao.
 - `supabase/migrations/20260713093000_whatsapp_inbound_queue_flag_guard.sql`: corrige e reforca a flag server-only.
 - `supabase/migrations/20260713120000_whatsapp_worker.sql`: worker, locks, retry/dead-letter, segredo e cron inerte.
+- `supabase/migrations/20260713160000_whatsapp_outbox.sql`: outbox transacional, sender, retry/dead-letter e cron inerte de saída.
 - `supabase/migrations/20260712190000_optional_owner_mfa.sql`: politica opcional de MFA por empresa.
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
@@ -201,6 +202,8 @@ Tabelas publicas importantes:
 - `whatsapp_settings`
 - `whatsapp_inbound_jobs`
 - `whatsapp_worker_secrets`
+- `whatsapp_outbox`
+- `whatsapp_sender_secrets`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -214,6 +217,7 @@ Tabelas com segredos reais, bloqueadas para `anon` e `authenticated`:
 - `public.ai_model_keys`
 - `public.whatsapp_instance_keys`
 - `public.whatsapp_worker_secrets`
+- `public.whatsapp_sender_secrets`
 
 Observacao: migrations antigas podem citar schema `private`, mas o caminho operacional atual usa tabelas publicas bloqueadas por RLS/revokes e acessadas somente por `service_role`.
 
@@ -240,6 +244,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
 - `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas; a fila inbound opcional permanece desligada ate existir worker validado.
+- `whatsapp-sender`: envia itens da outbox um por vez, confirma HTTP da Evolution e aplica lock, retry e dead-letter; endpoint nulo o mantem inerte.
 - `whatsapp-worker`: processa a fila com ordem por conversa, heartbeat, retry/dead-letter e segredo server-side; endpoint automatico nulo mantem o worker inerte.
 
 Compartilhados criticos:
@@ -261,6 +266,8 @@ Compartilhados criticos:
 - `_shared/area-matching.ts`: correspondencia conservadora entre nomes equivalentes de areas; aliases semanticos so vinculam quando existe um unico candidato seguro.
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
 - `_shared/whatsapp-queue.ts`: deduplicacao sem texto em claro e payload minimo da fila inbound.
+- `_shared/whatsapp-outbox.ts`: despertar seguro do sender quando a outbox esta ativa.
+- `_shared/whatsapp-sender.ts`: sanitizacao e classificacao de falhas de envio.
 - `_shared/whatsapp-worker.ts`: reconstrucao do evento minimo, sanitizacao de erro e classificacao de retry.
 - `_shared/transcription.ts`: transcricao de audio.
 - `_shared/usage.ts`: registro de tokens/custo.
@@ -536,7 +543,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
-- Etapa 3 / Fatias 3A e 3B publicadas em producao, mas inertes: worker, locks, retry e cron prontos, com endpoint nulo, zero empresas ativadas e zero jobs. Antes de ativar, testar texto, audio e documento validos numa Evolution de staging e obter autorizacao explicita.
+- Etapa 3 / Fatias 3A, 3B e 3C publicadas em producao, mas inertes: fila inbound, historico+outbox atomicos, worker/sender, locks, retry e crons prontos, com endpoints nulos, zero empresas ativadas e zero itens. Antes de ativar, testar texto, audio, documento e envio real controlado com a Evolution e obter nova autorizacao explicita.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Nao existe suite automatizada de testes unitarios/UI/E2E.

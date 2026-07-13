@@ -2,6 +2,8 @@ import { resolveAiFunction } from "./ai-router.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { recordAiUsage } from "./usage.ts";
 import { buildEpisodeBridgeSummary, conversationIdleExpired } from "./conversation-policy.ts";
+import { formatForWhatsApp, splitWhatsAppBlocks } from "./whatsapp.ts";
+import { scheduleWhatsAppSenderWake } from "./whatsapp-outbox.ts";
 
 type Client = any;
 
@@ -145,8 +147,36 @@ export async function insertConversationMessage(
     author: "oracle" | "user";
     text: string;
     channel: ConversationChannel;
+    queueWhatsAppDelivery?: boolean;
+    correlationId?: string | null;
   },
 ) {
+  if (params.author === "oracle" && params.channel === "whatsapp") {
+    const contents = splitWhatsAppBlocks(formatForWhatsApp(params.text));
+    const { data, error } = await client.rpc("insert_whatsapp_oracle_message", {
+      p_org_id: params.orgId,
+      p_area_id: params.areaId ?? null,
+      p_user_id: params.userId,
+      p_conversation_id: params.conversationId,
+      p_text: params.text,
+      p_contents: contents,
+      p_queue_delivery: params.queueWhatsAppDelivery !== false,
+      p_correlation_id: params.correlationId ?? null,
+    });
+    if (error) throw error;
+    const inserted = data?.[0];
+    if (!inserted?.message_id) throw new Error("Falha ao gravar resposta do Oráculo");
+    if (inserted.queued === true) {
+      scheduleWhatsAppSenderWake(client, params.orgId, inserted.correlation_id);
+    }
+    return {
+      id: inserted.message_id,
+      author: inserted.message_author,
+      text: inserted.message_text,
+      created_at: inserted.message_created_at,
+    } as ConversationMessage;
+  }
+
   const { data, error } = await client
     .from("chat_messages")
     .insert({
