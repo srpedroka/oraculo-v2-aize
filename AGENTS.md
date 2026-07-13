@@ -540,7 +540,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - WhatsApp real via Evolution API/Evo Go.
 - Painel owner-only de saúde do WhatsApp com conexão/webhook, telemetria sanitizada, teste manual e recuperação controlada de dead-letter.
 - Audio no WhatsApp com download, descriptografia quando necessario e transcricao.
-- Arquivos no WhatsApp com extracao/classificacao e proposta pendente.
+- Arquivos no WhatsApp com extração real de TXT/DOCX/PPTX/PDF, leitura do conteúdo, memória resumida segura e proposta pendente quando forem planos.
 - Roteador de intencao, atualizacoes rapidas e limite de escopo no WhatsApp.
 - Configuracao de IA por provedor e funcao (`planning`, `daily`, `background`).
 - Tracking de tokens e custo estimado.

@@ -803,30 +803,32 @@ Fluxo esperado:
 1. Evolution envia uma mensagem com `documentMessage` para `whatsapp-webhook`.
 2. O webhook baixa o arquivo por base64, URL direta ou rota `/message/downloadmedia`.
 3. Se o arquivo vier como mídia criptografada do WhatsApp, o webhook descriptografa em memoria com `mediaKey` e info `WhatsApp Document Keys`.
-4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel.
-5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown`.
+4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel. PDF usa `unpdf`/PDF.js; nao faça parsing por regex dos bytes.
+5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown` e devolve natureza literal, resumo, pontos principais e uso sugerido com base no conteúdo.
 6. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com previa textual dos objetivos, projetos e lacunas. A pessoa confirma respondendo `confirmar`.
 7. Se for `quarterly`, o webhook tenta identificar o departamento, chama `prepareReadyQuarterlyPlanProposal` e responde com previa textual dos objetivos trimestrais. A pessoa confirma respondendo `confirmar`.
 8. Se for `monthly`, o webhook tenta identificar o departamento, chama `prepareReadyMonthlyPlanProposal` e responde com previa textual dos objetivos mensais e acoes-chave. A pessoa confirma respondendo `confirmar`.
 9. Se faltar departamento, o Oraculo pergunta qual departamento usar antes de montar a proposta.
-10. Se for `evidence` ou `unknown`, o Oraculo ainda responde com pergunta de direcionamento, sem gravar automaticamente.
+10. Se for `evidence` ou `unknown`, o Oraculo mostra o que identificou no conteúdo e pergunta o direcionamento, sem gravar automaticamente. `unknown` significa material fora das categorias operacionais, nao falha de leitura.
+11. Para perguntas seguintes, a conversa guarda somente o insight automático limitado e marcado como não confiável; nome, arquivo e texto bruto continuam omitidos.
 
 Limite atual:
 
 - O WhatsApp cria proposta estruturada para Plano Estrategico, Trimestral e Mensal.
 - Evidencias por arquivo ainda nao criam dados estruturados automaticamente.
 - Nenhum arquivo grava plano sem confirmação explícita do usuario e validação server-side.
-- PDF escaneado ou PDF muito comprimido pode nao ter texto extraível; nesse caso, orientar a enviar uma versao com texto selecionavel ou importar pela tela do Plano Estratégico.
+- PDF escaneado sem camada de texto continua sem conteúdo extraível; nesse caso, orientar a enviar versão com texto selecionável ou convertida por OCR. PDF textual comprimido deve ser lido normalmente.
 
 Verifique:
 
 - se a mensagem aparece em `chat_messages` como `[Arquivo recebido]`;
-- se a resposta informa `Plano Estratégico`, `Planos Trimestrais`, `Plano Mensal` ou `Evidência`;
+- se a resposta identifica a natureza real do material, resume o conteúdo e lista pontos concretos, inclusive quando a categoria for `unknown`;
+- numa mensagem seguinte como "leia e me responda", se o Oráculo usa o resumo persistido em vez de inferir pelo nome;
 - se existe registro em `ai_usage_logs` com `metadata.action = document_classification`;
 - para Plano Estratégico, se existe registro em `ai_usage_logs` com `metadata.action = ready_plan_import`;
 - para Plano Estratégico, se `public.planning_sessions.pending_proposal` foi preenchido;
 - se o arquivo tem extensao e MIME compatíveis: PDF, PPTX, DOCX ou TXT;
-- se a rota `/message/downloadimage` da Evo continua baixando documentos.
+- se a rota `POST /message/downloadmedia` da Evo Go continua baixando documentos; rotas antigas são apenas fallback.
 
 Consultas uteis no Supabase SQL editor:
 

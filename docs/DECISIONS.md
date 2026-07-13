@@ -1,5 +1,17 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Leitura de documentos no WhatsApp com insight seguro
+
+Decisao: separar a natureza do conteúdo da categoria operacional do Oráculo e persistir somente um insight automático limitado para continuidade da conversa.
+
+Contexto: arquivos como roteiros eram extraídos e classificados como `unknown`, mas a resposta descartava a leitura e o histórico guardava apenas um recibo. Na pergunta seguinte, a IA conhecia só o formato e passava a inferir pelo nome. O parser de PDF por regex também não lia streams comprimidos comuns.
+
+Alternativas: guardar o texto integral na conversa, não manter memória do documento, ou armazenar apenas uma leitura gerada e delimitada.
+
+Motivo: natureza, resumo e pontos principais resolvem a continuidade sem reter arquivo, nome ou texto bruto e preservam a fronteira contra prompt injection. `unpdf` oferece extração real de PDF compatível com Deno/serverless.
+
+Consequencias: `unknown` passa a significar "fora das categorias de plano/evidência", não "não lido"; perguntas seguintes podem usar o insight, mas detalhes não presentes nele exigem reenvio. PDF escaneado sem OCR continua explicitamente não suportado.
+
 ## 2026-07-13 - Mídia síncrona durante o piloto durável do WhatsApp
 
 Decisão: manter texto na fila inbound, mas processar áudio e documento sincronamente a partir do webhook autenticado. O download prioriza `POST /message/downloadmedia` da Evo Go e conserva rotas antigas apenas como fallback.
