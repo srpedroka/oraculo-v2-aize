@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A–3D publicadas; piloto ativo desde 2026-07-13 em uma única empresa, com texto real, envio, deduplicação e ordem aprovados. A gravação semântica indevida descoberta no piloto foi corrigida com guardas e confirmação de alvo inferido. Áudio e documento ainda pendentes. Fatia 3E e Etapas 4–8 não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3 completa e EM PRODUÇÃO em 2026-07-13: Fatias 3A–3E publicadas, piloto real aprovado para texto, áudio, documento, deduplicação, ordem e envio. Texto não possui mais fallback síncrono, o webhook ficou como entrada mínima e a outbox é obrigatória para respostas normais. Etapas 4–8 não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -655,6 +655,8 @@ Adicionar alerta quando:
 - webhook deixa de estar configurado.
 
 ## 3.7 Fatia 3E — Limpeza do webhook
+
+> **STATUS: concluída e em produção em 2026-07-13.** `whatsapp-webhook/index.ts` virou apenas o ponto de entrada; o núcleo único está em `_shared/whatsapp-processor.ts` e é reutilizado pelo worker sem importar outra Edge Function. Texto exige fila + outbox e devolve `503` quando o caminho durável estiver incompleto, sem cair no processador síncrono. Worker valida as flags antes de qualquer mutação. Áudio/documento e PDF continuam como exceções de mídia em memória. A migration `20260713223000` ativa defaults duráveis e atualiza integrações habilitadas; `save-whatsapp-settings` liga/desliga as duas flags junto com a integração. Validação: 128 testes unitários, 91 integrações no staging + 1 skip opt-in, lint e build. Produção recebeu a migration e as Functions `whatsapp-webhook`, `whatsapp-worker` e `save-whatsapp-settings`; `verify:deploy` confirmou 29 Functions e 42 migrations coerentes.
 
 Depois do worker estar validado:
 

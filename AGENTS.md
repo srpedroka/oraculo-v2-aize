@@ -176,6 +176,7 @@ Migrations principais:
 - `supabase/migrations/20260713093000_whatsapp_inbound_queue_flag_guard.sql`: corrige e reforca a flag server-only.
 - `supabase/migrations/20260713120000_whatsapp_worker.sql`: worker, locks, retry/dead-letter, segredo e cron inerte.
 - `supabase/migrations/20260713160000_whatsapp_outbox.sql`: outbox transacional, sender, retry/dead-letter e cron inerte de saída.
+- `supabase/migrations/20260713223000_whatsapp_durable_path_default.sql`: torna fila/outbox padrão para integrações ativas e remove o fallback síncrono de texto.
 - `supabase/migrations/20260712190000_optional_owner_mfa.sql`: politica opcional de MFA por empresa.
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
@@ -246,7 +247,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
 - `whatsapp-health`: diagnóstico owner-only da Evolution/webhook/filas, teste manual e retry controlado, sem expor segredo ou conteúdo.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
-- `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas; no piloto, texto usa a fila inbound e midia permanece sincrona para nao persistir descritores criptograficos.
+- `whatsapp-webhook`: entrada HTTP mínima do WhatsApp; autentica, bloqueia loop e encaminha texto obrigatoriamente para a fila. Mídia permanece síncrona/em memória para não persistir descritores criptográficos.
 - `whatsapp-sender`: envia itens da outbox um por vez, confirma HTTP da Evolution e aplica lock, retry e dead-letter; endpoint nulo o mantem inerte.
 - `whatsapp-worker`: processa a fila com ordem por conversa, heartbeat, retry/dead-letter e segredo server-side; endpoint automatico nulo mantem o worker inerte.
 
@@ -254,6 +255,7 @@ Compartilhados criticos:
 
 - `_shared/auth.ts`: sessao, membership, owner e permissao por area.
 - `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios e deteccao de retomada explicita.
+- `_shared/whatsapp-processor.ts`: núcleo único de autenticação/processamento usado pelo ingress e pelo worker; texto externo nunca usa fallback síncrono.
 - `_shared/model.ts`: chamadas OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok.
 - `_shared/ai-router.ts`: resolve provider/modelo/chave por funcao (`planning`, `daily`, `background`).
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.
@@ -550,14 +552,14 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
-- Etapa 3 / Fatias 3A-3D em piloto controlado desde 2026-07-13: fila inbound e outbox estao ativas somente na empresa piloto; worker/sender configurados; demais empresas continuam no caminho sincrono. Texto real, envio, deduplicacao 10x e ordem passaram, sem pendencias/dead-letter. A falha `Piloto ok` -> evidencia foi corrigida: confirmacao curta nao muta, evidencia exige fato e alvo inferido precisa de confirmacao. A rota de midia da Evo Go foi atualizada para `/message/downloadmedia`; audio/documento ficam no handler sincrono e ainda precisam de prova real antes da Fatia 3E.
+- Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
-- Nao existe suite automatizada de testes unitarios/UI/E2E.
+- Existe suíte Vitest unitária e de integração/RLS em staging, além de Playwright E2E; ampliação de cobertura continua na Etapa 4.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
-- As filas inbound/outbox estao ativas somente na empresa piloto. Nao expandir para outras empresas nem iniciar a Fatia 3E antes de validar audio e documento. Em rollback, desligar flags primeiro e manter endpoints ate zerar pendencias.
+- Desligar fila/outbox não reativa o modo síncrono: produz `503`/retry. Rollback exige drenar itens e republicar a versão anterior antes de desligar flags/endpoints.
 - Documentos, conversas e resumos podem conter dados privados da empresa; trate como sensiveis.
 
 ### Pendencias conhecidas / proximos passos

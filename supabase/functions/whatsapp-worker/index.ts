@@ -7,7 +7,7 @@ import {
   sanitizeWhatsAppWorkerError,
   type QueuedWhatsAppJob,
 } from "../_shared/whatsapp-worker.ts";
-import { handleWhatsAppWebhook } from "../whatsapp-webhook/index.ts";
+import { handleWhatsAppWebhook } from "../_shared/whatsapp-processor.ts";
 
 function timingSafeEqual(a: string, b: string) {
   const left = new TextEncoder().encode(a);
@@ -79,13 +79,20 @@ serve(async (req) => {
 
       try {
         const [{ data: settings, error: settingsError }, { data: keyRow, error: keyError }] = await Promise.all([
-          client.from("whatsapp_settings").select("instance_name, enabled").eq("org_id", job.org_id).single(),
+          client
+            .from("whatsapp_settings")
+            .select("instance_name, enabled, inbound_queue_enabled, outbound_outbox_enabled")
+            .eq("org_id", job.org_id)
+            .single(),
           client.from("whatsapp_instance_keys").select("webhook_secret").eq("org_id", job.org_id).single(),
         ]);
         if (settingsError) throw new WorkerProcessingError(404, settingsError.message);
         if (keyError) throw new WorkerProcessingError(404, keyError.message);
         if (!settings?.enabled || !settings.instance_name || !keyRow?.webhook_secret) {
           throw new WorkerProcessingError(404, "WhatsApp não configurado para esta empresa");
+        }
+        if (settings.outbound_outbox_enabled !== true || (job.kind === "text" && settings.inbound_queue_enabled !== true)) {
+          throw new WorkerProcessingError(503, "Processamento durável do WhatsApp indisponível");
         }
 
         const event = rebuildWhatsAppEvent(job, settings.instance_name);

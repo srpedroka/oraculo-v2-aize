@@ -1,7 +1,18 @@
 export type WhatsAppInboundKind = "text" | "audio" | "document";
 
-export function shouldQueueWhatsAppInbound(kind: WhatsAppInboundKind, queueEnabled: boolean, forceSynchronous: boolean) {
-  return queueEnabled && !forceSynchronous && kind === "text";
+export function shouldQueueWhatsAppInbound(kind: WhatsAppInboundKind, forceSynchronous: boolean) {
+  return !forceSynchronous && kind === "text";
+}
+
+export function isDurableWhatsAppPathReady(
+  kind: WhatsAppInboundKind,
+  queueEnabled: boolean,
+  outboxEnabled: boolean,
+  forceSynchronous: boolean,
+) {
+  if (forceSynchronous) return true;
+  if (!outboxEnabled) return false;
+  return kind !== "text" || queueEnabled;
 }
 
 export async function buildWhatsAppFallbackEventKey(

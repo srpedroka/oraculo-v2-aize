@@ -12,6 +12,7 @@ let phone = "";
 let remoteJid = "";
 let instanceName = "";
 let webhookSecret = "";
+let workerSecret = "";
 
 async function sendText(text: string) {
   const response = await fetch(`${stagingUrl}/functions/v1/whatsapp-webhook?orgId=${org!.orgId}`, {
@@ -31,7 +32,20 @@ async function sendText(text: string) {
     }),
   });
   expect(response.status).toBe(200);
-  return response.json();
+  const body = await response.json();
+  expect(body).toMatchObject({ ok: true, queued: true });
+  const workerResponse = await fetch(`${stagingUrl}/functions/v1/whatsapp-worker`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      "content-type": "application/json",
+      "x-oraculo-worker-secret": workerSecret,
+    },
+    body: JSON.stringify({ orgId: org!.orgId, batchSize: 1 }),
+  });
+  expect(workerResponse.status).toBe(200);
+  expect(await workerResponse.json()).toMatchObject({ ok: true, claimed: 1, completed: 1 });
+  return body;
 }
 
 d("atualizações rápidas seguras (staging, webhook real)", () => {
@@ -54,7 +68,7 @@ d("atualizações rápidas seguras (staging, webhook real)", () => {
       enabled: true,
       has_api_key: true,
       has_webhook_secret: true,
-      inbound_queue_enabled: false,
+      inbound_queue_enabled: true,
       outbound_outbox_enabled: true,
     });
     if (settingsError) throw settingsError;
@@ -64,6 +78,13 @@ d("atualizações rápidas seguras (staging, webhook real)", () => {
       webhook_secret: webhookSecret,
     });
     if (keyError) throw keyError;
+    const { data: workerRow, error: workerError } = await admin
+      .from("whatsapp_worker_secrets")
+      .select("worker_secret")
+      .eq("id", "worker")
+      .single();
+    if (workerError) throw workerError;
+    workerSecret = workerRow.worker_secret;
   }, 60_000);
 
   afterAll(async () => {
@@ -124,5 +145,5 @@ d("atualizações rápidas seguras (staging, webhook real)", () => {
     await sendText("sim");
     const { data: after } = await admin.from("objectives").select("status, progress").eq("id", org!.objectiveId).single();
     expect(after).toMatchObject({ status: "done", progress: 100 });
-  });
+  }, 60_000);
 });

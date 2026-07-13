@@ -83,6 +83,7 @@ d("Fatia 3B — worker, ordem e retry do WhatsApp", () => {
       has_api_key: true,
       has_webhook_secret: true,
       inbound_queue_enabled: true,
+      outbound_outbox_enabled: true,
     });
     if (settingsError) throw settingsError;
 
@@ -292,23 +293,68 @@ d("Fatia 3B — worker, ordem e retry do WhatsApp", () => {
     expect(job.attempt_count).toBe(1);
   });
 
-  it("classifica falha real de dependência e preserva erro sanitizado", async () => {
+  it("não grava resposta quando a outbox fica indisponível com job pendente", async () => {
+    const admin = serviceClient();
+    const queued = await enqueue(`durable-disabled-${Date.now()}`);
+    const { count: messagesBefore } = await admin
+      .from("chat_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org!.orgId);
+
+    const { error: disableError } = await admin
+      .from("whatsapp_settings")
+      .update({ outbound_outbox_enabled: false })
+      .eq("org_id", org!.orgId);
+    if (disableError) throw disableError;
+
+    try {
+      const response = await callWorker({ orgId: org!.orgId, batchSize: 1 });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ ok: true, claimed: 1, retry: 1, completed: 0 });
+      const { data: job, error: jobError } = await admin
+        .from("whatsapp_inbound_jobs")
+        .select("status, last_error_code")
+        .eq("id", queued.job_id)
+        .single();
+      if (jobError) throw jobError;
+      expect(job).toMatchObject({ status: "retry", last_error_code: "http_503" });
+      const { count: messagesAfter } = await admin
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", org!.orgId);
+      expect(messagesAfter).toBe(messagesBefore);
+    } finally {
+      await admin.from("whatsapp_settings").update({ outbound_outbox_enabled: true }).eq("org_id", org!.orgId);
+      await admin.from("whatsapp_inbound_jobs").delete().eq("id", queued.job_id);
+    }
+  });
+
+  it("isola a entrega na outbox sem refazer o processamento no worker", async () => {
+    const admin = serviceClient();
+    const { count: outboxBefore } = await admin
+      .from("whatsapp_outbox")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org!.orgId);
     const queued = await enqueue("worker-real-failure");
     const response = await callWorker({ orgId: org!.orgId, batchSize: 1 });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true, claimed: 1, retry: 1 });
+    expect(await response.json()).toMatchObject({ ok: true, claimed: 1, completed: 1, retry: 0 });
 
-    const { data: job, error } = await serviceClient()
+    const { data: job, error } = await admin
       .from("whatsapp_inbound_jobs")
       .select("status, attempt_count, last_error_code, last_error_message")
       .eq("id", queued.job_id)
       .single();
     if (error) throw error;
-    expect(job).toMatchObject({ status: "retry", attempt_count: 1 });
-    expect(job.last_error_message).not.toMatch(/https?:\/\/|Bearer|e2e-[a-f0-9-]{20,}/i);
+    expect(job).toMatchObject({ status: "completed", attempt_count: 1, last_error_code: null, last_error_message: null });
+    const { count: outboxAfter } = await admin
+      .from("whatsapp_outbox")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org!.orgId);
+    expect(outboxAfter).toBe((outboxBefore ?? 0) + 1);
   });
 
-  it("leva mídia inválida ao retry sem persistir conteúdo bruto", async () => {
+  it("drena job legado de mídia sem persistir conteúdo bruto", async () => {
     const eventKey = `audio-invalid-${Date.now()}`;
     const { data, error: enqueueError } = await serviceClient().rpc("enqueue_whatsapp_inbound_job", {
       p_org_id: org!.orgId,
@@ -326,7 +372,7 @@ d("Fatia 3B — worker, ordem e retry do WhatsApp", () => {
 
     const response = await callWorker({ orgId: org!.orgId, batchSize: 1 });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true, claimed: 1, retry: 1 });
+    expect(await response.json()).toMatchObject({ ok: true, claimed: 1, completed: 1, retry: 0 });
 
     const { data: job, error } = await serviceClient()
       .from("whatsapp_inbound_jobs")
@@ -334,13 +380,23 @@ d("Fatia 3B — worker, ordem e retry do WhatsApp", () => {
       .eq("id", data[0].job_id)
       .single();
     if (error) throw error;
-    expect(job.status).toBe("retry");
+    expect(job.status).toBe("completed");
     expect(job.payload).toEqual({
       messageId: eventKey,
       remoteJid: `${coordinatorPhone.slice(1)}@s.whatsapp.net`,
       mimeType: "audio/ogg",
     });
     expect(JSON.stringify(job)).not.toMatch(/base64|mediaKey|https?:\/\//i);
+    const { data: outbox, error: outboxError } = await serviceClient()
+      .from("whatsapp_outbox")
+      .select("status, content")
+      .eq("org_id", org!.orgId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (outboxError) throw outboxError;
+    expect(outbox.status).toBe("queued");
+    expect(outbox.content).toMatch(/não consegui transcrever/i);
   });
 
   it("remove somente jobs concluídos além da retenção", async () => {

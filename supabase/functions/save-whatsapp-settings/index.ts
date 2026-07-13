@@ -74,6 +74,8 @@ serve(async (req) => {
       instance_name: cleanInstanceName || null,
       connected_number: cleanConnectedNumber || null,
       enabled: Boolean(enabled),
+      inbound_queue_enabled: Boolean(enabled),
+      outbound_outbox_enabled: Boolean(enabled),
       has_api_key: cleanApiKey ? true : existingSettings?.has_api_key ?? false,
       key_preview: cleanApiKey ? previewSecret(cleanApiKey) : existingSettings?.key_preview ?? null,
       has_webhook_secret: cleanWebhookSecret ? true : existingSettings?.has_webhook_secret ?? false,

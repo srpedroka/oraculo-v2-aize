@@ -13,6 +13,7 @@ let conversationId = "";
 let ownerPhone = "";
 let senderSecret = "";
 let webhookSecret = "";
+let workerSecret = "";
 
 async function setEnabled(enabled: boolean) {
   const { error } = await serviceClient()
@@ -93,8 +94,8 @@ d("Fatia 3C — outbox transacional e sender do WhatsApp", () => {
       enabled: true,
       has_api_key: true,
       has_webhook_secret: true,
-      inbound_queue_enabled: false,
-      outbound_outbox_enabled: false,
+      inbound_queue_enabled: true,
+      outbound_outbox_enabled: true,
     });
     if (settingsError) throw settingsError;
     webhookSecret = `e2e-${crypto.randomUUID()}`;
@@ -126,6 +127,13 @@ d("Fatia 3C — outbox transacional e sender do WhatsApp", () => {
       .single();
     if (secretError) throw secretError;
     senderSecret = secretRow.sender_secret;
+    const { data: workerRow, error: workerError } = await admin
+      .from("whatsapp_worker_secrets")
+      .select("worker_secret")
+      .eq("id", "worker")
+      .single();
+    if (workerError) throw workerError;
+    workerSecret = workerRow.worker_secret;
 
     ownerClient = anonClient();
     const { error: signInError } = await ownerClient.auth.signInWithPassword({
@@ -139,7 +147,7 @@ d("Fatia 3C — outbox transacional e sender do WhatsApp", () => {
     const admin = serviceClient();
     await admin.from("whatsapp_outbox").delete().eq("org_id", org!.orgId);
     await admin.from("chat_messages").delete().eq("conversation_id", conversationId);
-    await setEnabled(false);
+    await setEnabled(true);
   });
 
   afterAll(async () => {
@@ -153,10 +161,10 @@ d("Fatia 3C — outbox transacional e sender do WhatsApp", () => {
     org = null;
   }, 60_000);
 
-  it("preserva o envio direto quando a flag está desligada", async () => {
-    const result = await insertReply("Resposta sem outbox");
-    expect(result.queued).toBe(false);
-    expect(result.outbox_ids).toEqual([]);
+  it("mantém toda resposta textual no caminho durável", async () => {
+    const result = await insertReply("Resposta com outbox obrigatória");
+    expect(result.queued).toBe(true);
+    expect(result.outbox_ids).toHaveLength(1);
     const { count } = await serviceClient()
       .from("chat_messages")
       .select("id", { count: "exact", head: true })
@@ -202,6 +210,19 @@ d("Fatia 3C — outbox transacional e sender do WhatsApp", () => {
       }),
     });
     expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, queued: true });
+
+    const workerResponse = await fetch(`${stagingUrl}/functions/v1/whatsapp-worker`, {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        "content-type": "application/json",
+        "x-oraculo-worker-secret": workerSecret,
+      },
+      body: JSON.stringify({ orgId: org!.orgId, batchSize: 1 }),
+    });
+    expect(workerResponse.status).toBe(200);
+    expect(await workerResponse.json()).toMatchObject({ ok: true, claimed: 1, completed: 1 });
 
     const { data: rows, error } = await serviceClient()
       .from("whatsapp_outbox")
@@ -319,7 +340,7 @@ d("Fatia 3C — outbox transacional e sender do WhatsApp", () => {
   it("protege flag, tabela, RPC e segredo contra o owner", async () => {
     const { error: flagError } = await ownerClient!
       .from("whatsapp_settings")
-      .update({ outbound_outbox_enabled: true })
+      .update({ outbound_outbox_enabled: false })
       .eq("org_id", org!.orgId);
     expect(flagError).toBeTruthy();
 

@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Texto do WhatsApp não tem mais fallback síncrono
+
+Decisão: depois do piloto real, toda integração ativa usa fila inbound e outbox para texto. `whatsapp-webhook/index.ts` fica mínimo e delega ao núcleo compartilhado; o worker é o único executor de texto. Se fila ou outbox estiver indisponível, webhook/worker falham antes de qualquer mutação e deixam o provedor/retry tentar novamente.
+
+Motivo: manter o caminho síncrono como fallback criava dois comportamentos operacionais, tornava timeout capaz de perder resposta e podia reexecutar IA quando a falha era apenas da Evolution. A separação faz processamento e entrega falharem/repetirem de forma independente.
+
+Consequências: desligar flag não ativa modo antigo; causa `503`. Rollback exige drenar filas e republicar a versão anterior antes de desligar as flags. Áudio, documento e PDF continuam como exceções de mídia em memória porque não é aceitável persistir o descritor criptográfico. Respostas textuais desses fluxos ainda usam outbox. A janela de duplicação após aceite da Evolution e antes de marcar `sent` continua existindo enquanto o provedor não oferecer idempotência.
+
 ## 2026-07-13 - Sessão de planejamento exige pedido explícito e uma confirmação
 
 Decisão: nenhuma classificação probabilística pode iniciar ou trocar uma sessão estruturada sem sinal determinístico de que a pessoa quer começar, abrir, criar ou retomar um plano. A síntese entrega resumo e proposta juntos e pede uma única confirmação para gravar.

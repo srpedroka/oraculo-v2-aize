@@ -59,7 +59,8 @@ d("Fatia 3A — fila durável de entrada do WhatsApp", () => {
       enabled: true,
       has_api_key: true,
       has_webhook_secret: true,
-      inbound_queue_enabled: false,
+      inbound_queue_enabled: true,
+      outbound_outbox_enabled: true,
     });
     if (settingsError) throw settingsError;
 
@@ -84,14 +85,23 @@ d("Fatia 3A — fila durável de entrada do WhatsApp", () => {
     org = null;
   }, 60_000);
 
-  it("nasce desligada e rejeita enfileiramento", async () => {
+  it("falha fechado sem fila em vez de processar texto sincronamente", async () => {
     const admin = serviceClient();
+    const { error: disableError } = await admin
+      .from("whatsapp_settings")
+      .update({ inbound_queue_enabled: false })
+      .eq("org_id", org!.orgId);
+    if (disableError) throw disableError;
     const { data: settings } = await admin
       .from("whatsapp_settings")
       .select("inbound_queue_enabled")
       .eq("org_id", org!.orgId)
       .single();
     expect(settings?.inbound_queue_enabled).toBe(false);
+
+    const response = await callWebhook(textEvent("durable-disabled", "oi"));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: "Processamento durável do WhatsApp indisponível" });
 
     const { error } = await admin.rpc("enqueue_whatsapp_inbound_job", {
       p_org_id: org!.orgId,
@@ -102,12 +112,25 @@ d("Fatia 3A — fila durável de entrada do WhatsApp", () => {
       p_payload: { messageId: "disabled", text: "oi" },
     });
     expect(error?.message).toMatch(/não está habilitada/i);
+
+    const { count: processed } = await admin
+      .from("whatsapp_processed_events")
+      .select("event_key", { count: "exact", head: true })
+      .eq("org_id", org!.orgId)
+      .eq("event_key", `message:${phone}:durable-disabled`);
+    expect(processed).toBe(0);
+
+    const { error: enableError } = await admin
+      .from("whatsapp_settings")
+      .update({ inbound_queue_enabled: true })
+      .eq("org_id", org!.orgId);
+    if (enableError) throw enableError;
   });
 
   it("não permite que o navegador ligue a flag", async () => {
     const { error } = await ownerClient!
       .from("whatsapp_settings")
-      .update({ inbound_queue_enabled: true })
+      .update({ inbound_queue_enabled: false })
       .eq("org_id", org!.orgId);
     expect(error?.message).toMatch(/só pode ser alterada pelo serviço/i);
   });
@@ -125,12 +148,6 @@ d("Fatia 3A — fila durável de entrada do WhatsApp", () => {
 
   it("deduplica atomicamente dez entregas concorrentes", async () => {
     const admin = serviceClient();
-    const { error: flagError } = await admin
-      .from("whatsapp_settings")
-      .update({ inbound_queue_enabled: true })
-      .eq("org_id", org!.orgId);
-    if (flagError) throw flagError;
-
     const responses = await Promise.all(
       Array.from({ length: 10 }, () => callWebhook(textEvent("same-message-1", "Avancei na meta comercial"))),
     );

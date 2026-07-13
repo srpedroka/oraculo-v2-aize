@@ -53,7 +53,7 @@ pnpm run lint
 pnpm run build
 ```
 
-`pnpm run lint` roda `tsc --noEmit`. Hoje nao existe suite de testes automatizados alem da checagem de tipos e build.
+`pnpm run lint` roda `tsc --noEmit`. `pnpm run test:unit` roda a suíte local; `pnpm run test:integration` usa somente o Supabase de staging configurado em `.agents-private/agent-env`; `pnpm run check` combina lint, testes e build.
 
 ## Deploy
 

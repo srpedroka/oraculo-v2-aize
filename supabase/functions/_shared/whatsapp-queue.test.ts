@@ -1,17 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
   buildWhatsAppFallbackEventKey,
+  isDurableWhatsAppPathReady,
   sanitizeWhatsAppInboundPayload,
   shouldQueueWhatsAppInbound,
 } from "./whatsapp-queue.ts";
 
 describe("payload mínimo da fila do WhatsApp", () => {
   it("enfileira texto e mantém mídia no caminho síncrono seguro", () => {
-    expect(shouldQueueWhatsAppInbound("text", true, false)).toBe(true);
-    expect(shouldQueueWhatsAppInbound("audio", true, false)).toBe(false);
-    expect(shouldQueueWhatsAppInbound("document", true, false)).toBe(false);
-    expect(shouldQueueWhatsAppInbound("text", false, false)).toBe(false);
-    expect(shouldQueueWhatsAppInbound("text", true, true)).toBe(false);
+    expect(shouldQueueWhatsAppInbound("text", false)).toBe(true);
+    expect(shouldQueueWhatsAppInbound("audio", false)).toBe(false);
+    expect(shouldQueueWhatsAppInbound("document", false)).toBe(false);
+    expect(shouldQueueWhatsAppInbound("text", true)).toBe(false);
+  });
+
+  it("não permite que texto caia no processador síncrono quando a infraestrutura durável está incompleta", () => {
+    expect(isDurableWhatsAppPathReady("text", true, true, false)).toBe(true);
+    expect(isDurableWhatsAppPathReady("text", false, true, false)).toBe(false);
+    expect(isDurableWhatsAppPathReady("text", true, false, false)).toBe(false);
+    expect(isDurableWhatsAppPathReady("text", false, false, true)).toBe(true);
+    expect(isDurableWhatsAppPathReady("audio", false, true, false)).toBe(true);
+    expect(isDurableWhatsAppPathReady("document", true, false, false)).toBe(false);
   });
 
   it("gera fallback determinístico sem expor o texto da mensagem", async () => {

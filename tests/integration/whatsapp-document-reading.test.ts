@@ -72,7 +72,7 @@ d("leitura de documento no WhatsApp (staging, webhook real)", () => {
       enabled: true,
       has_api_key: true,
       has_webhook_secret: true,
-      inbound_queue_enabled: false,
+      inbound_queue_enabled: true,
       outbound_outbox_enabled: true,
     });
     if (settingsError) throw settingsError;
