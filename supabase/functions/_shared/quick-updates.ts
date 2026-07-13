@@ -3,6 +3,11 @@ import { callModelForFunction } from "./call-for-function.ts";
 import { parseJsonObject } from "./json.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { currentMonthPeriod, normalizeTextForRouting } from "./periods.ts";
+import {
+  explicitlyReferencesQuickTarget,
+  hasConcreteQuickUpdateSignal,
+  isConcreteEvidenceText,
+} from "./quick-update-policy.ts";
 import { recordAiUsage } from "./usage.ts";
 
 type Client = any;
@@ -29,6 +34,23 @@ interface ExtractedUpdate {
   status: "on_track" | "at_risk" | "late" | "done" | null;
   evidence_text: string | null;
   confidence: number;
+}
+
+export interface PendingQuickUpdateConfirmation {
+  type: "quick_update_confirmation";
+  candidateId: string;
+  candidateKind: CandidateKind;
+  operation: QuickOperation;
+  progress: number | null;
+  status: ExtractedUpdate["status"];
+  evidenceText: string | null;
+  expiresAt: string;
+}
+
+export interface QuickUpdateResult {
+  handled: boolean;
+  reply: string;
+  pendingConfirmation?: PendingQuickUpdateConfirmation;
 }
 
 function text(value: unknown, fallback = "") {
@@ -338,10 +360,50 @@ async function applyUpdate(
     : `Feito, atualizei o objetivo "${params.candidate.label}".${suffix}`;
 }
 
+function pendingConfirmationReply(candidate: QuickCandidate, extracted: ExtractedUpdate) {
+  if (extracted.operation === "add_evidence") {
+    const evidence = text(extracted.evidence_text).slice(0, 180);
+    return `Entendi o registro. Posso adicionar "${evidence}" como evidência no objetivo "${candidate.objectiveTitle}"?`;
+  }
+  if (extracted.operation === "set_progress") {
+    return `Entendi. Posso atualizar o objetivo "${candidate.objectiveTitle}" para ${extracted.progress}%?`;
+  }
+  if (extracted.operation === "set_status") {
+    return `Entendi. Posso atualizar o status de "${candidate.label}" para ${extracted.status}?`;
+  }
+  return candidate.kind === "action"
+    ? `Entendi. Posso marcar a ação "${candidate.label}" como concluída?`
+    : `Entendi. Posso marcar o objetivo "${candidate.label}" como concluído?`;
+}
+
+function buildPendingConfirmation(candidate: QuickCandidate, extracted: ExtractedUpdate): PendingQuickUpdateConfirmation {
+  return {
+    type: "quick_update_confirmation",
+    candidateId: candidate.id,
+    candidateKind: candidate.kind,
+    operation: extracted.operation,
+    progress: extracted.progress,
+    status: extracted.status,
+    evidenceText: text(extracted.evidence_text) || null,
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+  };
+}
+
 export async function handleQuickUpdate(
   client: Client,
-  params: { orgId: string; areaId: string | null; userId: string; conversationId: string; message: string; channel: "web" | "whatsapp" },
-) {
+  params: {
+    orgId: string;
+    areaId: string | null;
+    userId: string;
+    conversationId: string;
+    message: string;
+    channel: "web" | "whatsapp";
+    requireConfirmation?: boolean;
+  },
+): Promise<QuickUpdateResult> {
+  if (!hasConcreteQuickUpdateSignal(params.message)) {
+    return { handled: false, reply: "" };
+  }
   const candidates = await loadCandidates(client, params.orgId, params.areaId);
   if (!candidates.length) {
     return {
@@ -388,10 +450,35 @@ export async function handleQuickUpdate(
       reply: `A ação "${target.label}" não tem percentual próprio. Posso marcar como concluída ou registrar uma evidência nela. O progresso percentual fica no objetivo mensal.`,
     };
   }
-  if (operation === "add_evidence" && !text(extracted.evidence_text)) {
+  const extractedEvidence = text(extracted.evidence_text);
+  if (operation === "add_evidence" && !extractedEvidence) {
     return {
       handled: true,
       reply: `Qual evidência devo registrar em "${target.label}"? Me mande o fato concreto em uma frase.`,
+    };
+  }
+  if (operation === "add_evidence" && !isConcreteEvidenceText(extractedEvidence)) {
+    return {
+      handled: true,
+      reply: `Ainda não apareceu um fato concreto para registrar em "${target.label}". Me diga o que aconteceu, por exemplo: contrato assinado, entrega aprovada ou meta atingida.`,
+    };
+  }
+  const resolvedExtracted: ExtractedUpdate = {
+    ...extracted,
+    operation,
+    evidence_text: extractedEvidence && isConcreteEvidenceText(extractedEvidence) ? extractedEvidence : null,
+  };
+
+  const targetWasExplicit = Boolean(selectedFromPrevious) || explicitlyReferencesQuickTarget(
+    params.message,
+    target.label,
+    target.objectiveTitle,
+  );
+  if (params.requireConfirmation || !targetWasExplicit) {
+    return {
+      handled: true,
+      reply: pendingConfirmationReply(target, resolvedExtracted),
+      pendingConfirmation: buildPendingConfirmation(target, resolvedExtracted),
     };
   }
 
@@ -400,7 +487,55 @@ export async function handleQuickUpdate(
     orgId: params.orgId,
     userId: params.userId,
     candidate: target,
-    extracted: { ...extracted, operation },
+    extracted: resolvedExtracted,
   });
   return { handled: true, reply };
+}
+
+export async function confirmPendingQuickUpdate(
+  client: Client,
+  params: {
+    orgId: string;
+    areaId: string | null;
+    userId: string;
+    pending: PendingQuickUpdateConfirmation;
+  },
+) {
+  const pending = params.pending;
+  const validOperations: QuickOperation[] = ["mark_done", "set_progress", "set_status", "add_evidence"];
+  const expiresAt = new Date(pending?.expiresAt ?? "").getTime();
+  if (
+    pending?.type !== "quick_update_confirmation"
+    || !validOperations.includes(pending.operation)
+    || !pending.candidateId
+    || !Number.isFinite(expiresAt)
+    || expiresAt < Date.now()
+  ) {
+    return "Essa confirmação expirou. Me conte novamente o que você quer atualizar.";
+  }
+
+  const candidates = await loadCandidates(client, params.orgId, params.areaId);
+  const candidate = candidates.find((item) => item.id === pending.candidateId && item.kind === pending.candidateKind) ?? null;
+  if (!candidate) {
+    return "Não encontrei mais o objetivo ou a ação que seria atualizada. Nada foi alterado.";
+  }
+
+  const pendingProgress = pending.progress == null ? null : Number(pending.progress);
+  const extracted: ExtractedUpdate = {
+    target_code: candidate.code,
+    operation: pending.operation,
+    progress: pendingProgress == null || !Number.isFinite(pendingProgress) ? null : Math.min(100, Math.max(0, pendingProgress)),
+    status: ["on_track", "at_risk", "late", "done"].includes(String(pending.status)) ? pending.status : null,
+    evidence_text: text(pending.evidenceText) || null,
+    confidence: 1,
+  };
+  if (extracted.operation === "add_evidence" && !isConcreteEvidenceText(text(extracted.evidence_text))) {
+    return "A evidência pendente não contém um fato concreto. Nada foi alterado; me envie a evidência novamente em uma frase.";
+  }
+  if (extracted.operation === "set_progress" && extracted.progress == null) {
+    return "O percentual não estava claro. Nada foi alterado; me envie o percentual novamente.";
+  }
+
+  await assertQuickUpdatePermission(client, params.orgId, params.userId, candidate.areaId);
+  return applyUpdate(client, { orgId: params.orgId, userId: params.userId, candidate, extracted });
 }

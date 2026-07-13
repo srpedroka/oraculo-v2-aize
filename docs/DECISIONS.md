@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Atualização rápida ambígua nunca grava sem mostrar o alvo
+
+Decisão: respostas curtas de confirmação são não mutáveis por regra determinística, antes e depois da classificação da IA. Evidências genéricas são recusadas. Quando a IA escolhe um objetivo/ação sem referência lexical explícita da pessoa, o Oráculo mostra o alvo e guarda a operação server-side por 30 minutos; apenas uma confirmação explícita aplica a mudança. Se operação e alvo estiverem claros na própria mensagem, a gravação direta permanece.
+
+Motivo: no piloto, `Piloto ok` foi classificado como atualização, associado arbitrariamente a um objetivo da empresa e gravado como evidência. Confiança do modelo não é autorização suficiente para mutar dados, especialmente para owner sem área restrita.
+
+Consequências: o fluxo cotidiano claro não ganha etapa extra. Casos inferidos recebem uma pergunta curta, e `piloto ok` não confirma nem uma alteração já pendente. Testes sintéticos de produção não devem usar a conversa real nem gerar respostas ao celular; use organização descartável no staging. Os artefatos específicos do incidente foram removidos, preservando jobs e telemetria técnica.
+
 ## 2026-07-13 - Piloto durável do WhatsApp fica restrito a uma empresa
 
 Decisão: ativar `inbound_queue_enabled` e `outbound_outbox_enabled` somente na empresa piloto, mantendo os endpoints globais do worker/sender configurados e todas as demais empresas no caminho síncrono. Não executar a Fatia 3E nem remover o processador antigo até provar entrada real de texto, áudio e documento pela Evo Go.

@@ -890,7 +890,9 @@ Alertas significam:
 
 `Enviar teste` manda uma única mensagem para o celular internacional cadastrado no perfil do owner. Não usar repetidamente em produção. `Reprocessar` pode reenviar uma resposta e pede confirmação; com MFA crítico ligado, exige sessão `aal2`. O painel nunca ativa `inbound_queue_enabled`, `outbound_outbox_enabled`, endpoint do worker ou endpoint do sender. A retenção da telemetria é de 30 dias e não substitui logs do Supabase/Evolution.
 
-Piloto iniciado em 2026-07-13: somente a empresa piloto usa fila inbound e outbox; worker/sender estão configurados globalmente. Um envio real e os testes controlados de deduplicação/ordem passaram, sem fila ou dead-letter restante. Ainda é obrigatório provar texto real entrando pela Evo Go, seguido de áudio e documento, antes da Fatia 3E. Para rollback: desligue as duas flags da empresa, aguarde `queued|processing|retry|sending = 0` e só então zere os endpoints do worker/sender. Não desligue endpoints com itens pendentes.
+Piloto iniciado em 2026-07-13: somente a empresa piloto usa fila inbound e outbox; worker/sender estão configurados globalmente. Um envio real e os testes controlados de deduplicação/ordem passaram, sem fila ou dead-letter restante. Antes da Fatia 3E ainda é obrigatório provar áudio e documento reais. Para rollback: desligue as duas flags da empresa, aguarde `queued|processing|retry|sending = 0` e só então zere os endpoints do worker/sender. Não desligue endpoints com itens pendentes.
+
+Atualização do piloto: texto real já percorreu Evo Go -> webhook -> fila -> worker -> outbox -> Evo Go em uma tentativa. Áudio e documento ainda faltam. O teste revelou e levou à correção das atualizações rápidas: `ok`, `sim`, `piloto ok`, `recebido` e equivalentes nunca alteram dados fora de uma confirmação pendente explícita; `piloto ok` também não confirma pendência. Alvo inferido precisa ser mostrado e confirmado; alvo/operação explícitos continuam diretos. Não injete evento sintético numa conversa real de produção. Deduplicação, ordem e mutação devem ser exercitadas somente com organização descartável no staging.
 
 Configuracao atual de producao:
 

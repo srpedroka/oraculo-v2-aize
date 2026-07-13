@@ -19,7 +19,11 @@ import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
 import { loadOrgTone, toneDirective } from "../_shared/conductors/tone.ts";
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
-import { handleQuickUpdate } from "../_shared/quick-updates.ts";
+import {
+  confirmPendingQuickUpdate,
+  handleQuickUpdate,
+  type PendingQuickUpdateConfirmation,
+} from "../_shared/quick-updates.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { evaluateAiControls, isAiControlLimitError } from "../_shared/ai-controls.ts";
@@ -93,7 +97,10 @@ function firstText(...values: unknown[]) {
 
 function isConfirmationMessage(value: string) {
   const normalized = normalizeText(value);
-  return /\b(confirmo|confirmar|gravar|salvar|pode gravar|pode salvar|sim|ok|fechado)\b/.test(normalized);
+  if (/\b(confirmo|pode gravar|pode salvar|pode registrar|quero gravar|quero salvar|quero registrar)\b/.test(normalized)) {
+    return true;
+  }
+  return ["sim", "ok", "fechado", "confirmar", "gravar", "salvar", "registrar"].includes(normalized.replace(/[.!?]+$/g, "").trim());
 }
 
 function extractText(payload: any) {
@@ -1760,6 +1767,10 @@ function isRejectionMessage(value: string) {
   return /^(nao|não|agora nao|agora não|deixa|dispenso|prefiro nao|prefiro não|só compartilhar|so compartilhar)[.!\s]*$/i.test(value.trim());
 }
 
+function isExplicitQuickUpdateConfirmation(value: string) {
+  return isConfirmationMessage(value);
+}
+
 type DocumentTarget = "strategic" | "quarterly" | "monthly" | "evidence" | "unknown";
 
 function parseJsonObject(text: string) {
@@ -2395,6 +2406,63 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
     const confirmationMessage = isConfirmationMessage(text);
     const pendingContext = pendingConversationContext(conversation);
 
+    if (pendingContext?.type === "quick_update_confirmation") {
+      if (isExplicitQuickUpdateConfirmation(text)) {
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "user",
+          text: storedUserText,
+          channel: "whatsapp",
+        });
+        const reply = await confirmPendingQuickUpdate(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          pending: pendingContext as unknown as PendingQuickUpdateConfirmation,
+        });
+        await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "quick_update_confirmed" });
+      }
+      if (isRejectionMessage(text)) {
+        await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
+        const reply = "Tudo certo. Não alterei nenhum dado.";
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "user",
+          text: storedUserText,
+          channel: "whatsapp",
+        });
+        await insertConversationMessage(client, {
+          orgId,
+          areaId,
+          userId: profile.id,
+          conversationId: conversation.id,
+          author: "oracle",
+          text: reply,
+          channel: "whatsapp",
+        });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "quick_update_declined" });
+      }
+      await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
+    }
+
     if (pendingContext?.type === "weekly_capture") {
       await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
       if (confirmationMessage) {
@@ -2415,6 +2483,9 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
           message: String(pendingContext.originalText ?? ""),
           channel: "whatsapp",
         });
+        if (quickUpdate.pendingConfirmation) {
+          await client.from("conversations").update({ pending_context: quickUpdate.pendingConfirmation }).eq("id", conversation.id);
+        }
         await insertConversationMessage(client, {
           orgId,
           areaId,
@@ -2630,6 +2701,9 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         channel: "whatsapp",
       });
       if (quickUpdate.handled) {
+        if (quickUpdate.pendingConfirmation) {
+          await client.from("conversations").update({ pending_context: quickUpdate.pendingConfirmation }).eq("id", conversation.id);
+        }
         await insertConversationMessage(client, {
           orgId,
           areaId,

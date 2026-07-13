@@ -268,6 +268,7 @@ Compartilhados criticos:
 - `_shared/historical-classifier.ts`: classificacao orientativa de historicos importados.
 - `_shared/area-matching.ts`: correspondencia conservadora entre nomes equivalentes de areas; aliases semanticos so vinculam quando existe um unico candidato seguro.
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
+- `_shared/quick-update-policy.ts`: guardas deterministicas para confirmacoes curtas, evidencias concretas e alvo explicito nas atualizacoes rapidas.
 - `_shared/whatsapp-queue.ts`: deduplicacao sem texto em claro e payload minimo da fila inbound.
 - `_shared/whatsapp-outbox.ts`: despertar seguro do sender quando a outbox esta ativa.
 - `_shared/whatsapp-sender.ts`: sanitizacao e classificacao de falhas de envio.
@@ -548,14 +549,14 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
-- Etapa 3 / Fatias 3A-3D em piloto controlado desde 2026-07-13: fila inbound e outbox estao ativas somente na empresa piloto; worker/sender configurados; demais empresas continuam no caminho sincrono. Envio real, deduplicacao 10x e ordem de mensagens passaram, sem pendencias/dead-letter. Entrada real pela Evo Go, audio e documento ainda precisam de prova antes de remover o caminho sincrono na Fatia 3E.
+- Etapa 3 / Fatias 3A-3D em piloto controlado desde 2026-07-13: fila inbound e outbox estao ativas somente na empresa piloto; worker/sender configurados; demais empresas continuam no caminho sincrono. Texto real, envio, deduplicacao 10x e ordem passaram, sem pendencias/dead-letter. A falha `Piloto ok` -> evidencia foi corrigida: confirmacao curta nao muta, evidencia exige fato e alvo inferido precisa de confirmacao. Audio e documento ainda precisam de prova antes da Fatia 3E.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Nao existe suite automatizada de testes unitarios/UI/E2E.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
-- As filas inbound/outbox estao ativas somente na empresa piloto. Nao expandir para outras empresas nem iniciar a Fatia 3E antes de validar entrada real, audio e documento. Em rollback, desligar flags primeiro e manter endpoints ate zerar pendencias.
+- As filas inbound/outbox estao ativas somente na empresa piloto. Nao expandir para outras empresas nem iniciar a Fatia 3E antes de validar audio e documento. Em rollback, desligar flags primeiro e manter endpoints ate zerar pendencias.
 - Documentos, conversas e resumos podem conter dados privados da empresa; trate como sensiveis.
 
 ### Pendencias conhecidas / proximos passos

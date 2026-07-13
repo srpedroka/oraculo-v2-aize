@@ -2,6 +2,7 @@ import { resolveAiFunction } from "./ai-router.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { parseJsonObject } from "./json.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
+import { hasConcreteQuickUpdateSignal, isNonMutatingAcknowledgement } from "./quick-update-policy.ts";
 import { recordAiUsage } from "./usage.ts";
 
 type Client = any;
@@ -23,6 +24,16 @@ export interface IntentClassification {
 }
 
 const VALID_INTENTS = new Set(["smalltalk", "status", "quick_update", "start_planning", "close_period", "document_question", "other"]);
+
+function enforceQuickUpdatePolicy(message: string, classification: IntentClassification): IntentClassification {
+  if (classification.intent !== "quick_update" || hasConcreteQuickUpdateSignal(message)) return classification;
+  return {
+    intent: isNonMutatingAcknowledgement(message) ? "smalltalk" : "other",
+    planning_type: null,
+    period_hint: null,
+    confidence: 1,
+  };
+}
 
 function fallbackIntent(message: string): IntentClassification {
   const normalized = normalizeTextForRouting(message);
@@ -53,8 +64,11 @@ export async function classifyOracleIntent(
   client: Client,
   params: { orgId: string; message: string; channel: "web" | "whatsapp"; areaId?: string | null; conversationId?: string | null },
 ): Promise<IntentClassification> {
+  if (isNonMutatingAcknowledgement(params.message)) {
+    return { intent: "smalltalk", planning_type: null, period_hint: null, confidence: 1 };
+  }
   const aiRoute = await resolveAiFunction(client, params.orgId, "background");
-  if (!aiRoute) return fallbackIntent(params.message);
+  if (!aiRoute) return enforceQuickUpdatePolicy(params.message, fallbackIntent(params.message));
 
   const systemPrompt = [
     'Você classifica a intenção de uma mensagem enviada ao Oráculo, assistente estratégico, pelo WhatsApp. Responda somente JSON válido: {"intent": "smalltalk|status|quick_update|start_planning|close_period|document_question|other", "planning_type": "strategic|quarterly|monthly|null", "period_hint": "string|null", "confidence": 0.0}',
@@ -62,6 +76,7 @@ export async function classifyOracleIntent(
     "- smalltalk: saudação, teste, agradecimento, papo leve.",
     "- status: pergunta sobre andamento de plano, objetivos, metas, indicadores, área ou empresa.",
     "- quick_update: a pessoa informa claramente um avanço pontual (concluiu uma ação, atualizou um número, quer registrar uma evidência curta).",
+    "- Respostas curtas de confirmação, como ok, sim, recebido, piloto ok ou teste ok, são smalltalk e nunca quick_update.",
     "- start_planning: pede para criar ou revisar plano (do ano, do trimestre ou do mês).",
     "- close_period: quer fazer o fechamento ou check-in do mês ou do trimestre.",
     "- document_question: pergunta sobre um documento ou plano gravado (quer receber, resumir).",
@@ -96,14 +111,14 @@ export async function classifyOracleIntent(
     const planningType = ["strategic", "quarterly", "monthly"].includes(parsed?.planning_type)
       ? parsed.planning_type as "strategic" | "quarterly" | "monthly"
       : fallback.planning_type;
-    return {
+    return enforceQuickUpdatePolicy(params.message, {
       intent,
       planning_type: planningType,
       period_hint: parsed?.period_hint ? String(parsed.period_hint) : null,
       confidence: Math.max(0, Math.min(1, Number(parsed?.confidence ?? fallback.confidence))),
-    };
+    });
   } catch (error) {
     console.error("Erro ao classificar intenção", error instanceof Error ? error.message : String(error));
-    return fallbackIntent(params.message);
+    return enforceQuickUpdatePolicy(params.message, fallbackIntent(params.message));
   }
 }
