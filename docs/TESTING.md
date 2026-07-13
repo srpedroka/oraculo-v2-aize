@@ -2,7 +2,11 @@
 
 ## Princípio
 
-A suíte é organizada por risco. Testes unitários não acessam rede; integração e RLS usam exclusivamente o Supabase de staging e recusam a referência de produção; E2E autenticado inicia um frontend local apontado para staging e cria organizações/usuários descartáveis com limpeza obrigatória.
+A suíte é organizada por risco. Testes unitários não acessam rede; integração e RLS usam Supabase local no CI ou staging isolado e recusam a referência de produção; E2E autenticado inicia um frontend local e cria organizações/usuários descartáveis com limpeza obrigatória.
+
+## CI obrigatorio
+
+Pull requests e pushes para `main` executam `.github/workflows/ci.yml`. O status de protecao da branch e `CI required`. A especificacao completa, os artefatos sanitizados e a verificacao por commit estao em `docs/CI.md`.
 
 ## Comandos
 
@@ -24,6 +28,8 @@ pnpm run test:integration
 pnpm run test:security
 pnpm run test:e2e:staging
 ```
+
+Os testes que injetam falhas SQL usam `SUPABASE_STAGING_DB_URL` quando a URL e local. Em staging hospedado, usam `SUPABASE_STAGING_PROJECT_REF` e `SUPABASE_STAGING_ACCESS_TOKEN` pela Management API. A decisao fica centralizada em `tests/helpers/sql.ts`.
 
 Smoke público, somente leitura:
 
@@ -62,4 +68,4 @@ pnpm run test:e2e
 
 ## Limites atuais
 
-A Fatia 4A prova regras críticas e jornadas principais, mas não mede percentual de linhas como meta de produto. CI obrigatório, artefatos sanitizados, axe, Error Boundary, correlação de logs e alertas pertencem às Fatias 4B–4E.
+As Fatias 4A/4B provam regras críticas, jornadas principais e o gate automático, mas não medem percentual de linhas como meta de produto. Axe, Error Boundary, correlação de logs e alertas pertencem às Fatias 4C–4E.

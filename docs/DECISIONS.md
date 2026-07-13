@@ -1,12 +1,20 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - CI usa Supabase local e um unico gate de branch
+
+Decisao: pull requests e pushes para `main` executam qualidade/build e integracao em jobs independentes, finalizados pelo status estavel `CI required`. Integracao aplica migrations e serve Edge Functions em Supabase local; nenhuma credencial de producao entra no CI de contribuicao. Artefatos de falha contem apenas logs sanitizados.
+
+Motivo: testes contra staging hospedado exigiriam segredos em um repositorio publico, limitariam contribuicoes externas e poderiam deixar dados descartaveis quando um job fosse interrompido. Um status agregador evita refazer a regra de protecao sempre que a matriz interna mudar.
+
+Consequencias: SQL adversarial usa conexao PostgreSQL local no CI e preserva a Management API apenas para staging manual. Deploy/verificacao de producao fica em workflow separado, manual, protegido e ligado ao SHA exato. O check `CI required` precisa ser configurado como obrigatorio na branch `main` pelo GitHub.
+
 ## 2026-07-13 - Cobertura automatizada guiada por risco
 
 Decisão: organizar a Fatia 4A por contratos críticos, não por um percentual isolado de linhas. Unitários cobrem domínio, parsers e memória; integração/RLS prova transações e autorização no staging; Playwright percorre as jornadas autenticadas em desktop e mobile usando frontend local e dados descartáveis.
 
 Motivo: uma cobertura numérica alta pode deixar sem prova exatamente os riscos mais caros do Oráculo: cruzamento de empresas, excesso de permissão, segredos acessíveis, gravação parcial, arquivo sem restauração e telas críticas que não carregam. A matriz explícita liga cada risco a um teste executável.
 
-Consequências: testes com banco recusam a referência de produção; recuperação E2E não envia email; IA e WhatsApp não recebem chaves reais; toda fixture tem limpeza obrigatória. CI, logs estruturados, alertas, axe e Error Boundary continuam separados nas Fatias 4B–4E.
+Consequências: testes com banco recusam a referência de produção; recuperação E2E não envia email; IA e WhatsApp não recebem chaves reais; toda fixture tem limpeza obrigatória. Logs estruturados, alertas, axe e Error Boundary continuam separados nas Fatias 4C–4E.
 
 ## 2026-07-13 - Texto do WhatsApp não tem mais fallback síncrono
 

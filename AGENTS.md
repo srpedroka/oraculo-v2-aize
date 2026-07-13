@@ -561,7 +561,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
-- Etapa 4 / Fatia 4A concluída em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. CI, logs, métricas e Error Boundary continuam nas Fatias 4B–4E.
+- Etapa 4 / Fatias 4A e 4B concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; logs estruturados, métricas e Error Boundary continuam nas Fatias 4C–4E.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { anonClient, hasStagingEnv, serviceClient } from "../helpers/staging";
+import { runStagingSql } from "../helpers/sql";
 
 // Etapa 1 / Fatia 1C — criação de empresa atômica e idempotente.
 // Dirige o ENDPOINT REAL (create-organization) com JWT de um usuário descartável.
@@ -11,7 +12,6 @@ const RUN = hasStagingEnv();
 const d = RUN ? describe : describe.skip;
 
 const FN_URL = `${process.env.SUPABASE_STAGING_URL}/functions/v1/create-organization`;
-const MGMT = `https://api.supabase.com/v1/projects/${process.env.SUPABASE_STAGING_PROJECT_REF}/database/query`;
 
 const admin = RUN ? serviceClient() : (null as any);
 const stamp = Date.now();
@@ -21,18 +21,8 @@ let userId: string;
 let userJwt: string;
 const createdOrgIds: string[] = [];
 
-async function runSql(query: string) {
-  const res = await fetch(MGMT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.SUPABASE_STAGING_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  });
-  if (!res.ok) throw new Error(`SQL falhou: ${(await res.text()).slice(0, 300)}`);
-  return res.json();
-}
-
 async function purgeOrg(orgId: string) {
-  await runSql(`do $$ declare t text; begin set local session_replication_role=replica;
+  await runStagingSql(`do $$ declare t text; begin set local session_replication_role=replica;
     for t in
       select c.table_name from information_schema.columns c
       join information_schema.tables i on i.table_schema=c.table_schema and i.table_name=c.table_name
@@ -117,7 +107,7 @@ d("Fatia 1C — criação de empresa atômica e idempotente (staging, endpoint r
 
   it("rollback: falha no seed dos KPIs não deixa organização nem dono", async () => {
     // Gatilho temporário: faz o insert de executive_kpis falhar para orgs deste usuário.
-    await runSql(`create or replace function _test_block_kpi_1c() returns trigger language plpgsql as $fn$
+    await runStagingSql(`create or replace function _test_block_kpi_1c() returns trigger language plpgsql as $fn$
       begin if exists (select 1 from organizations o where o.id = NEW.org_id and o.created_by = '${userId}') then raise exception 'ROLLBACK-1C-TEST'; end if; return NEW; end $fn$;
       drop trigger if exists _test_block_kpi_1c on public.executive_kpis;
       create trigger _test_block_kpi_1c before insert on public.executive_kpis for each row execute function _test_block_kpi_1c();`);
@@ -129,7 +119,7 @@ d("Fatia 1C — criação de empresa atômica e idempotente (staging, endpoint r
       const { data: orgs } = await admin.from("organizations").select("id").eq("name", "Empresa 1C Rollback").eq("created_by", userId);
       expect(orgs).toHaveLength(0);
     } finally {
-      await runSql(`drop trigger if exists _test_block_kpi_1c on public.executive_kpis; drop function if exists _test_block_kpi_1c();`);
+      await runStagingSql(`drop trigger if exists _test_block_kpi_1c on public.executive_kpis; drop function if exists _test_block_kpi_1c();`);
     }
   });
 

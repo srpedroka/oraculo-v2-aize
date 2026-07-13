@@ -23,6 +23,8 @@ O Netlify aplica a política definida em `netlify.toml`:
 
 ## Variaveis e segredos
 
+O GitHub Actions de pull request usa somente credenciais efemeras do Supabase local. `pnpm run ci:secret-scan` bloqueia arquivos sensiveis e credenciais de alta confianca rastreados; logs de falha sao sanitizados antes de virar artefato e nao incluem trace, screenshot, dump ou payload bruto. Credenciais de producao ficam restritas ao workflow manual protegido de verificacao por SHA. Detalhes: `docs/CI.md`.
+
 Pode existir no frontend:
 
 - `VITE_SUPABASE_URL`

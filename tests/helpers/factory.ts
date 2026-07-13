@@ -1,4 +1,5 @@
 import { serviceClient } from "./staging";
+import { runStagingSql } from "./sql";
 
 // Fábrica de organização DESCARTÁVEL para testes (só no staging).
 // Cria owner + coordenador + admin, org "E2E Oraculo <timestamp>", áreas Produção e
@@ -109,11 +110,9 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
 
 // Apaga a org e todas as linhas escopadas por org_id com os gatilhos desligados
 // (session_replication_role=replica). A limpeza defensiva não depende dos gatilhos que
-// cada teste está exercitando e roda via Management API apenas no staging.
+// cada teste está exercitando. No CI, roda no PostgreSQL local; no staging
+// hospedado, usa a Management API.
 async function purgeOrgRows(orgId: string): Promise<void> {
-  const ref = process.env.SUPABASE_STAGING_PROJECT_REF;
-  const token = process.env.SUPABASE_STAGING_ACCESS_TOKEN;
-  if (!ref || !token) throw new Error("faltam SUPABASE_STAGING_PROJECT_REF/SUPABASE_STAGING_ACCESS_TOKEN para a limpeza");
   const sql = `do $$
 declare t text;
 begin
@@ -131,12 +130,7 @@ begin
   end loop;
   delete from public.organizations where id = '${orgId}';
 end $$;`;
-  const response = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: sql }),
-  });
-  if (!response.ok) throw new Error(`purge da org falhou: ${(await response.text()).slice(0, 300)}`);
+  await runStagingSql(sql);
 }
 
 export async function destroyDisposableOrg(handle: DisposableOrg): Promise<void> {

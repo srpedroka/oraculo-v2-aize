@@ -115,6 +115,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - Decisoes: `docs/DECISIONS.md`
 - Runbook: `docs/RUNBOOK.md`
 - Testes: `docs/TESTING.md`
+- CI: `docs/CI.md`
 - Changelog: `docs/CHANGELOG.md`
 - Instrucao para agentes: `AGENTS.md`
 

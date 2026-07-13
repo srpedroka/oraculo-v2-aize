@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { anonClient, hasStagingEnv, serviceClient } from "../helpers/staging";
 import { createDisposableOrg, destroyDisposableOrg, type DisposableOrg } from "../helpers/factory";
+import { runStagingSql } from "../helpers/sql";
 
 // Etapa 1 / Fatia 1B — atomicidade e idempotência da importação de KPI.
 // Dirige o ENDPOINT REAL (apply-kpi-import) com JWT do dono, no staging.
@@ -12,23 +13,12 @@ const RUN = hasStagingEnv();
 const d = RUN ? describe : describe.skip;
 
 const FN_URL = `${process.env.SUPABASE_STAGING_URL}/functions/v1/apply-kpi-import`;
-const MGMT = `https://api.supabase.com/v1/projects/${process.env.SUPABASE_STAGING_PROJECT_REF}/database/query`;
 
 let org: DisposableOrg;
 let ownerJwt: string;
 let coordJwt: string;
 let kpiId: string;
 const admin = RUN ? serviceClient() : (null as any);
-
-async function runSql(query: string) {
-  const res = await fetch(MGMT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.SUPABASE_STAGING_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  });
-  if (!res.ok) throw new Error(`SQL falhou: ${(await res.text()).slice(0, 300)}`);
-  return res.json();
-}
 
 async function signIn(email: string, password: string) {
   const { data, error } = await anonClient().auth.signInWithPassword({ email, password });
@@ -154,7 +144,7 @@ d("Fatia 1B — atomicidade e idempotência da importação de KPI (staging, end
     // Gatilho temporário escopado a esta org: faz o INSERT do documento falhar.
     const cmdsBefore = (await admin.from("operation_commands")
       .select("id", { count: "exact", head: true }).eq("org_id", org.orgId).eq("operation", "apply_kpi_import").eq("status", "completed")).count ?? 0;
-    await runSql(`create or replace function _test_block_plan_doc_1b() returns trigger language plpgsql as $fn$
+    await runStagingSql(`create or replace function _test_block_plan_doc_1b() returns trigger language plpgsql as $fn$
       begin if NEW.org_id = '${org.orgId}' then raise exception 'ROLLBACK-1B-TEST'; end if; return NEW; end $fn$;
       drop trigger if exists _test_block_plan_doc_1b on public.plan_documents;
       create trigger _test_block_plan_doc_1b before insert on public.plan_documents for each row execute function _test_block_plan_doc_1b();`);
@@ -169,7 +159,7 @@ d("Fatia 1B — atomicidade e idempotência da importação de KPI (staging, end
         .select("id", { count: "exact", head: true }).eq("org_id", org.orgId).eq("operation", "apply_kpi_import").eq("status", "completed")).count ?? 0;
       expect(cmdsAfter).toBe(cmdsBefore);
     } finally {
-      await runSql(`drop trigger if exists _test_block_plan_doc_1b on public.plan_documents; drop function if exists _test_block_plan_doc_1b();`);
+      await runStagingSql(`drop trigger if exists _test_block_plan_doc_1b on public.plan_documents; drop function if exists _test_block_plan_doc_1b();`);
     }
   });
 

@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  NODE_VERSION: 22.13.0
+
+jobs:
+  quality:
+    name: Quality and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Scan tracked files for secrets
+        run: node --experimental-strip-types scripts/run-ci-command.ts secret-scan -- pnpm run ci:secret-scan
+      - name: Audit production dependencies
+        run: node --experimental-strip-types scripts/run-ci-command.ts dependency-audit -- pnpm run ci:audit
+      - name: Lint and typecheck
+        run: node --experimental-strip-types scripts/run-ci-command.ts lint -- pnpm run lint
+      - name: Unit tests
+        run: node --experimental-strip-types scripts/run-ci-command.ts unit -- pnpm run test:unit
+      - name: Deterministic fixtures
+        run: node --experimental-strip-types scripts/run-ci-command.ts fixtures -- pnpm run test:fixtures
+      - name: Production build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_ANON_KEY: ci-public-anon-placeholder
+        run: node --experimental-strip-types scripts/run-ci-command.ts build -- pnpm run build
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Smoke the built frontend
+        env:
+          E2E_BASE_URL: http://127.0.0.1:4175
+        run: |
+          pnpm exec vite preview --host 127.0.0.1 --port 4175 > /tmp/oraculo-preview.log 2>&1 &
+          for attempt in {1..30}; do curl -fsS http://127.0.0.1:4175 >/dev/null && break; sleep 1; done
+          node --experimental-strip-types scripts/run-ci-command.ts build-smoke -- pnpm exec playwright test tests/e2e/login.spec.ts
+      - name: Upload sanitized failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-sanitized-${{ github.run_id }}
+          path: ci-artifacts/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  integration:
+    name: Local Supabase integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase and apply migrations
+        run: node --experimental-strip-types scripts/run-ci-command.ts supabase-start -- supabase start
+      - name: Export ephemeral local credentials
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          for value in "$ANON_KEY" "$SERVICE_ROLE_KEY" "$DB_URL"; do echo "::add-mask::$value"; done
+          {
+            echo "SUPABASE_STAGING_URL=$API_URL"
+            echo "SUPABASE_STAGING_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_STAGING_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_STAGING_DB_URL=$DB_URL"
+          } >> "$GITHUB_ENV"
+      - name: Serve all Edge Functions locally
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts
+          printf '%s\n' \
+            'SUPABASE_DB_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres' \
+            'MONTH_TURN_SECRET=ci-local-only' \
+            'APP_ORIGIN=http://127.0.0.1:4174' > /tmp/oraculo-functions.env
+          supabase functions serve --env-file /tmp/oraculo-functions.env > /tmp/oraculo-functions-raw.log 2>&1 &
+          for attempt in {1..60}; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:54321/functions/v1/oracle-chat || true)
+            [ "$status" != "000" ] && break
+            sleep 1
+          done
+          [ "$status" != "000" ]
+      - name: Integration tests
+        run: node --experimental-strip-types scripts/run-ci-command.ts integration -- pnpm run test:integration
+      - name: RLS and security tests
+        run: node --experimental-strip-types scripts/run-ci-command.ts security -- pnpm run test:security
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Authenticated E2E against local Supabase
+        run: node --experimental-strip-types scripts/run-ci-command.ts authenticated-e2e -- pnpm run test:e2e:staging
+      - name: Sanitize local function logs
+        if: always()
+        run: |
+          if [ -f /tmp/oraculo-functions-raw.log ]; then
+            node --experimental-strip-types scripts/sanitize-ci-artifact.ts /tmp/oraculo-functions-raw.log ci-artifacts/functions.log
+            rm -f /tmp/oraculo-functions-raw.log
+          fi
+      - name: Upload sanitized failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-sanitized-${{ github.run_id }}
+          path: ci-artifacts/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+  ci-required:
+    name: CI required
+    if: always()
+    needs: [quality, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce all required jobs
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          test "$QUALITY_RESULT" = "success"
+          test "$INTEGRATION_RESULT" = "success"

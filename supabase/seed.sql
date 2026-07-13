@@ -1,0 +1,1 @@
+-- O CI aplica apenas as migrations. Fixtures de teste sao criadas e removidas pela suite.

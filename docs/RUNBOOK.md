@@ -1,5 +1,9 @@
 # Runbook
 
+## CI e bloqueio de merge
+
+Todo pull request e push para `main` deve terminar com o check `CI required` verde. Ele cobre lockfile, segredos, audit, tipos, unitarios, fixtures, build, Supabase local, Edge Functions, RLS e E2E autenticado. Nao aprove nem publique um commit com esse check vermelho. Configuracao, artefatos sanitizados e verificacao de producao por SHA: `docs/CI.md`.
+
 ## Testes por risco
 
 Antes de publicar, escolha as suítes pela superfície alterada. Unitários sempre rodam sem rede; integração, segurança e E2E autenticado exigem as variáveis de `.agents-private/agent-env` e recusam o projeto de produção.
@@ -20,7 +24,7 @@ Para saber onde ficam contas, chaves, secrets e URLs administrativas, leia tambe
 
 - `pnpm run check` = lint + testes + build (o gate de sempre). Precisa do `pnpm` no PATH; neste Mac, adicione o fallback do runtime: `export PATH="/Users/luisguilherme/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:$PATH"`.
 - `pnpm run test:unit` — Vitest (funções puras e componentes, jsdom). Não toca banco nem rede.
-- `pnpm run test:integration` e `pnpm run test:security` — usam SOMENTE o Supabase de staging. Antes: `set -a; source .agents-private/agent-env; set +a` (carrega `SUPABASE_STAGING_*`). Sem essas variáveis, os testes pulam (não falham). A trava `assertStaging` recusa rodar se a URL apontar para produção.
+- `pnpm run test:integration` e `pnpm run test:security` — usam Supabase local no CI ou staging isolado. Antes: `set -a; source .agents-private/agent-env; set +a` (carrega `SUPABASE_STAGING_*`). Sem essas variáveis, os testes pulam (não falham). A trava `assertStaging` recusa rodar se a URL apontar para produção.
 - `pnpm run test:e2e` — Playwright abre a tela de acesso em desktop e mobile (só leitura). Requer o Chromium: `node node_modules/@playwright/test/cli.js install chromium`.
 - `pnpm run verify:deploy` — verificador SÓ LEITURA da produção (migrations, `verify_jwt`, frontend, CSP/headers, cache e segredos fora do Git). Sai com erro se achar problema. Precisa de `SUPABASE_ACCESS_TOKEN`. Para validar um draft antes de produção, use `VERIFY_FRONTEND_URL=https://<deploy>.netlify.app pnpm run verify:deploy`.
 - Fábrica de teste (`tests/helpers/factory.ts`): cria a org descartável "E2E Oraculo <timestamp>" e a remove ao final (falha visível se não limpar). Nunca usa empresa real.

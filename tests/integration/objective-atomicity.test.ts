@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { anonClient, hasStagingEnv, serviceClient } from "../helpers/staging";
 import { createDisposableOrg, destroyDisposableOrg, type DisposableOrg } from "../helpers/factory";
+import { runStagingSql } from "../helpers/sql";
 
 // Etapa 1 / Fatia 1D — objetivo + ações-chave e conjunto de vínculos de KPI, atômicos.
 // Dirige os ENDPOINTS REAIS (save-objective, set-objective-kpi-links) no staging.
@@ -9,7 +10,6 @@ const RUN = hasStagingEnv();
 const d = RUN ? describe : describe.skip;
 
 const BASE = `${process.env.SUPABASE_STAGING_URL}/functions/v1`;
-const MGMT = `https://api.supabase.com/v1/projects/${process.env.SUPABASE_STAGING_PROJECT_REF}/database/query`;
 
 let org: DisposableOrg;
 let ownerJwt: string;
@@ -18,11 +18,6 @@ let revenueKpiId: string;
 let cashKpiId: string;
 const admin = RUN ? serviceClient() : (null as any);
 
-async function runSql(query: string) {
-  const res = await fetch(MGMT, { method: "POST", headers: { Authorization: `Bearer ${process.env.SUPABASE_STAGING_ACCESS_TOKEN}`, "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
-  if (!res.ok) throw new Error(`SQL falhou: ${(await res.text()).slice(0, 300)}`);
-  return res.json();
-}
 async function signIn(email: string, password: string) {
   const { data, error } = await anonClient().auth.signInWithPassword({ email, password });
   if (error || !data.session) throw new Error(`login falhou: ${error?.message}`);
@@ -83,7 +78,7 @@ d("Fatia 1D — objetivo + ações e vínculos de KPI atômicos (staging, endpoi
   });
 
   it("rollback: falha ao gravar as ações não deixa objetivo órfão", async () => {
-    await runSql(`create or replace function _test_block_ka_1d() returns trigger language plpgsql as $fn$
+    await runStagingSql(`create or replace function _test_block_ka_1d() returns trigger language plpgsql as $fn$
       begin if NEW.org_id = '${org.orgId}' then raise exception 'ROLLBACK-1D-KA'; end if; return NEW; end $fn$;
       drop trigger if exists _test_block_ka_1d on public.key_actions;
       create trigger _test_block_ka_1d before insert on public.key_actions for each row execute function _test_block_ka_1d();`);
@@ -93,7 +88,7 @@ d("Fatia 1D — objetivo + ações e vínculos de KPI atômicos (staging, endpoi
       const { data: orphans } = await admin.from("objectives").select("id").eq("org_id", org.orgId).eq("title", "Obj 1D Rollback");
       expect(orphans).toHaveLength(0);
     } finally {
-      await runSql(`drop trigger if exists _test_block_ka_1d on public.key_actions; drop function if exists _test_block_ka_1d();`);
+      await runStagingSql(`drop trigger if exists _test_block_ka_1d on public.key_actions; drop function if exists _test_block_ka_1d();`);
     }
   });
 
@@ -128,7 +123,7 @@ d("Fatia 1D — objetivo + ações e vínculos de KPI atômicos (staging, endpoi
     await call("set-objective-kpi-links", ownerJwt, { orgId: org.orgId, objectiveId: objId, links: [{ kpiId: revenueKpiId }] });
     expect(await linkKpiIds(objId)).toEqual([revenueKpiId]);
     // Gatilho que faz QUALQUER delete em objective_kpi_links desta org falhar (bloqueia o prune).
-    await runSql(`create or replace function _test_block_link_del_1d() returns trigger language plpgsql as $fn$
+    await runStagingSql(`create or replace function _test_block_link_del_1d() returns trigger language plpgsql as $fn$
       begin if OLD.org_id = '${org.orgId}' then raise exception 'ROLLBACK-1D-LINK'; end if; return OLD; end $fn$;
       drop trigger if exists _test_block_link_del_1d on public.objective_kpi_links;
       create trigger _test_block_link_del_1d before delete on public.objective_kpi_links for each row execute function _test_block_link_del_1d();`);
@@ -139,7 +134,7 @@ d("Fatia 1D — objetivo + ações e vínculos de KPI atômicos (staging, endpoi
       // Conjunto continua exatamente [revenue] — nem cash entrou, nem revenue saiu.
       expect(await linkKpiIds(objId)).toEqual([revenueKpiId]);
     } finally {
-      await runSql(`drop trigger if exists _test_block_link_del_1d on public.objective_kpi_links; drop function if exists _test_block_link_del_1d();`);
+      await runStagingSql(`drop trigger if exists _test_block_link_del_1d on public.objective_kpi_links; drop function if exists _test_block_link_del_1d();`);
     }
   });
 
