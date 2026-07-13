@@ -246,7 +246,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
 - `whatsapp-health`: diagnóstico owner-only da Evolution/webhook/filas, teste manual e retry controlado, sem expor segredo ou conteúdo.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
-- `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas; a fila inbound opcional permanece desligada ate existir worker validado.
+- `whatsapp-webhook`: entrada do WhatsApp, audio, documentos, roteamento de intencao, atualizacoes rapidas e respostas; no piloto, texto usa a fila inbound e midia permanece sincrona para nao persistir descritores criptograficos.
 - `whatsapp-sender`: envia itens da outbox um por vez, confirma HTTP da Evolution e aplica lock, retry e dead-letter; endpoint nulo o mantem inerte.
 - `whatsapp-worker`: processa a fila com ordem por conversa, heartbeat, retry/dead-letter e segredo server-side; endpoint automatico nulo mantem o worker inerte.
 
@@ -270,6 +270,7 @@ Compartilhados criticos:
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
 - `_shared/quick-update-policy.ts`: guardas deterministicas para confirmacoes curtas, evidencias concretas e alvo explicito nas atualizacoes rapidas.
 - `_shared/whatsapp-queue.ts`: deduplicacao sem texto em claro e payload minimo da fila inbound.
+- `_shared/evolution-media.ts`: ordem de rotas e corpos para download de midia, priorizando `/message/downloadmedia` da Evo Go.
 - `_shared/whatsapp-outbox.ts`: despertar seguro do sender quando a outbox esta ativa.
 - `_shared/whatsapp-sender.ts`: sanitizacao e classificacao de falhas de envio.
 - `_shared/whatsapp-health.ts` e `_shared/whatsapp-health-events.ts`: normalização sanitizada da Evolution e telemetria técnica service-only.
@@ -549,7 +550,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
-- Etapa 3 / Fatias 3A-3D em piloto controlado desde 2026-07-13: fila inbound e outbox estao ativas somente na empresa piloto; worker/sender configurados; demais empresas continuam no caminho sincrono. Texto real, envio, deduplicacao 10x e ordem passaram, sem pendencias/dead-letter. A falha `Piloto ok` -> evidencia foi corrigida: confirmacao curta nao muta, evidencia exige fato e alvo inferido precisa de confirmacao. Audio e documento ainda precisam de prova antes da Fatia 3E.
+- Etapa 3 / Fatias 3A-3D em piloto controlado desde 2026-07-13: fila inbound e outbox estao ativas somente na empresa piloto; worker/sender configurados; demais empresas continuam no caminho sincrono. Texto real, envio, deduplicacao 10x e ordem passaram, sem pendencias/dead-letter. A falha `Piloto ok` -> evidencia foi corrigida: confirmacao curta nao muta, evidencia exige fato e alvo inferido precisa de confirmacao. A rota de midia da Evo Go foi atualizada para `/message/downloadmedia`; audio/documento ficam no handler sincrono e ainda precisam de prova real antes da Fatia 3E.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Nao existe suite automatizada de testes unitarios/UI/E2E.

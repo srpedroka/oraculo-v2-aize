@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildWhatsAppFallbackEventKey, sanitizeWhatsAppInboundPayload } from "./whatsapp-queue.ts";
+import {
+  buildWhatsAppFallbackEventKey,
+  sanitizeWhatsAppInboundPayload,
+  shouldQueueWhatsAppInbound,
+} from "./whatsapp-queue.ts";
 
 describe("payload mínimo da fila do WhatsApp", () => {
+  it("enfileira texto e mantém mídia no caminho síncrono seguro", () => {
+    expect(shouldQueueWhatsAppInbound("text", true, false)).toBe(true);
+    expect(shouldQueueWhatsAppInbound("audio", true, false)).toBe(false);
+    expect(shouldQueueWhatsAppInbound("document", true, false)).toBe(false);
+    expect(shouldQueueWhatsAppInbound("text", false, false)).toBe(false);
+    expect(shouldQueueWhatsAppInbound("text", true, true)).toBe(false);
+  });
+
   it("gera fallback determinístico sem expor o texto da mensagem", async () => {
     const receivedAt = new Date("2026-07-13T12:34:45.000Z");
     const first = await buildWhatsAppFallbackEventKey("+5546999999999", "text", "Meta comercial secreta", receivedAt);

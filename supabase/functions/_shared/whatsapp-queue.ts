@@ -1,5 +1,9 @@
 export type WhatsAppInboundKind = "text" | "audio" | "document";
 
+export function shouldQueueWhatsAppInbound(kind: WhatsAppInboundKind, queueEnabled: boolean, forceSynchronous: boolean) {
+  return queueEnabled && !forceSynchronous && kind === "text";
+}
+
 export async function buildWhatsAppFallbackEventKey(
   phone: string,
   kind: WhatsAppInboundKind,

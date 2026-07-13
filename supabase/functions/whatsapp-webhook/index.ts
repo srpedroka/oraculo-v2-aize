@@ -27,6 +27,7 @@ import {
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { evaluateAiControls, isAiControlLimitError } from "../_shared/ai-controls.ts";
+import { buildEvolutionMediaAttempts } from "../_shared/evolution-media.ts";
 import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
 import { recordWhatsAppHealthEvent } from "../_shared/whatsapp-health-events.ts";
 import { classifyWhatsAppSenderFailure } from "../_shared/whatsapp-sender.ts";
@@ -48,6 +49,7 @@ import {
 import {
   buildWhatsAppFallbackEventKey,
   sanitizeWhatsAppInboundPayload,
+  shouldQueueWhatsAppInbound,
   type WhatsAppInboundKind,
 } from "../_shared/whatsapp-queue.ts";
 
@@ -941,107 +943,44 @@ async function downloadAudioFromEvolution(
   const instanceName = String(settings?.instance_name ?? "").trim();
   if (!baseUrl || !instanceName || !keyRow?.api_key) return null;
 
-  const endpoints = [
-    `${baseUrl}/message/downloadimage`,
-    `${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
-    `${baseUrl}/message/getBase64FromMediaMessage/${instanceName}`,
-    `${baseUrl}/chat/getBase64FromMediaMessage`,
-  ];
+  const attempts = buildEvolutionMediaAttempts(baseUrl, instanceName, {
+    rawMessage: audioInfo.rawMessage,
+    rawData: audioInfo.rawData,
+    messageId: audioInfo.messageId || String(audioInfo.key.id ?? ""),
+    key: audioInfo.key,
+    mediaKey: firstText(audioInfo.audioMessage?.mediaKey, audioInfo.audioMessage?.MediaKey),
+    directPath: firstText(audioInfo.audioMessage?.directPath, audioInfo.audioMessage?.DirectPath),
+    url: firstText(audioInfo.audioMessage?.url, audioInfo.audioMessage?.URL),
+    mimeType: audioInfo.mimeType,
+    kind: "audio",
+  });
 
-  const bodies = [
-    {
-      message: audioInfo.rawMessage,
-    },
-    {
-      instance: instanceName,
-      message: audioInfo.rawData,
-      messageId: audioInfo.messageId || audioInfo.key.id,
-      key: audioInfo.key,
-      convertToMp4: false,
-    },
-    {
-      message: {
-        key: audioInfo.key,
-        message: audioInfo.rawMessage,
+  for (const { endpoint, body } of attempts) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: keyRow.api_key,
       },
-      convertToMp4: false,
-    },
-    {
-      message: {
-        key: audioInfo.key,
-      },
-      convertToMp4: false,
-    },
-    {
-      messageId: audioInfo.messageId,
-      key: audioInfo.key,
-      convertToMp4: false,
-    },
-    {
-      key: audioInfo.key,
-      convertToMp4: false,
-    },
-    {
-      remoteJid: audioInfo.key.remoteJid,
-      messageId: audioInfo.messageId || audioInfo.key.id,
-      id: audioInfo.messageId || audioInfo.key.id,
-      fromMe: audioInfo.key.fromMe,
-      convertToMp4: false,
-    },
-    {
-      message: audioInfo.rawData,
-      convertToMp4: false,
-    },
-    {
-      instance: instanceName,
-      message: audioInfo.rawMessage,
-      convertToMp4: false,
-    },
-    {
-      instanceName,
-      message: audioInfo.rawMessage,
-      key: audioInfo.key,
-      convertToMp4: false,
-    },
-    {
-      instance: instanceName,
-      mediaKey: firstText(audioInfo.audioMessage?.mediaKey, audioInfo.audioMessage?.MediaKey),
-      directPath: firstText(audioInfo.audioMessage?.directPath, audioInfo.audioMessage?.DirectPath),
-      url: firstText(audioInfo.audioMessage?.url, audioInfo.audioMessage?.URL),
-      mimetype: audioInfo.mimeType,
-      type: "audio",
-      convertToMp4: false,
-    },
-  ];
+      body: JSON.stringify(body),
+    }).catch(() => null);
 
-  for (const endpoint of endpoints) {
-    for (const body of bodies) {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: keyRow.api_key,
-        },
-        body: JSON.stringify(body),
-      }).catch(() => null);
-
-      if (!response?.ok) {
-        if (response) {
-          await response.body?.cancel().catch(() => undefined);
-          console.error("Evolution não retornou mídia", {
-            status: response.status,
-            endpoint: endpoint.replace(baseUrl, ""),
-            contentType: response.headers.get("content-type") ?? "",
-          });
-          diagnostics.push(`${endpoint.replace(baseUrl, "")}:${response.status}:${response.headers.get("content-type") ?? "no-type"}`);
-        }
-        continue;
+    if (!response?.ok) {
+      if (response) {
+        await response.body?.cancel().catch(() => undefined);
+        console.error("Evolution não retornou mídia", {
+          status: response.status,
+          endpoint: endpoint.replace(baseUrl, ""),
+          contentType: response.headers.get("content-type") ?? "",
+        });
+        diagnostics.push(`${endpoint.replace(baseUrl, "")}:${response.status}:${response.headers.get("content-type") ?? "no-type"}`);
       }
-      const file = await audioFileFromMediaResponse(response, audioInfo.mimeType, keyRow, diagnostics);
-      if (file) return file;
-      console.error("Evolution retornou mídia sem base64 reconhecido", endpoint);
-      diagnostics.push(`${endpoint.replace(baseUrl, "")}:ok-no-file`);
+      continue;
     }
+    const file = await audioFileFromMediaResponse(response, audioInfo.mimeType, keyRow, diagnostics);
+    if (file) return file;
+    console.error("Evolution retornou mídia sem base64 reconhecido", endpoint);
+    diagnostics.push(`${endpoint.replace(baseUrl, "")}:ok-no-file`);
   }
 
   return null;
@@ -1057,54 +996,39 @@ async function downloadDocumentFromEvolution(
   const instanceName = String(settings?.instance_name ?? "").trim();
   if (!baseUrl || !instanceName || !keyRow?.api_key) return null;
 
-  const endpoints = [
-    `${baseUrl}/message/downloadimage`,
-    `${baseUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
-    `${baseUrl}/message/getBase64FromMediaMessage/${instanceName}`,
-    `${baseUrl}/chat/getBase64FromMediaMessage`,
-  ];
+  const attempts = buildEvolutionMediaAttempts(baseUrl, instanceName, {
+    rawMessage: documentInfo.rawMessage,
+    rawData: documentInfo.rawData,
+    messageId: documentInfo.messageId || String(documentInfo.key.id ?? ""),
+    key: documentInfo.key,
+    mediaKey: firstText(documentInfo.documentMessage?.mediaKey, documentInfo.documentMessage?.MediaKey),
+    directPath: firstText(documentInfo.documentMessage?.directPath, documentInfo.documentMessage?.DirectPath),
+    url: firstText(documentInfo.documentMessage?.url, documentInfo.documentMessage?.URL),
+    mimeType: documentInfo.mimeType,
+    kind: "document",
+  });
 
-  const bodies = [
-    { message: documentInfo.rawMessage },
-    { instance: instanceName, message: documentInfo.rawData, messageId: documentInfo.messageId || documentInfo.key.id, key: documentInfo.key },
-    { message: { key: documentInfo.key, message: documentInfo.rawMessage } },
-    { message: { key: documentInfo.key } },
-    { messageId: documentInfo.messageId, key: documentInfo.key },
-    { key: documentInfo.key },
-    { message: documentInfo.rawData },
-    {
-      instance: instanceName,
-      mediaKey: firstText(documentInfo.documentMessage?.mediaKey, documentInfo.documentMessage?.MediaKey),
-      directPath: firstText(documentInfo.documentMessage?.directPath, documentInfo.documentMessage?.DirectPath),
-      url: firstText(documentInfo.documentMessage?.url, documentInfo.documentMessage?.URL),
-      mimetype: documentInfo.mimeType,
-      type: "document",
-    },
-  ];
+  for (const { endpoint, body } of attempts) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: keyRow.api_key,
+      },
+      body: JSON.stringify(body),
+    }).catch(() => null);
 
-  for (const endpoint of endpoints) {
-    for (const body of bodies) {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: keyRow.api_key,
-        },
-        body: JSON.stringify(body),
-      }).catch(() => null);
-
-      if (!response?.ok) {
-        if (response) {
-          await response.body?.cancel().catch(() => undefined);
-          diagnostics.push(`doc:${endpoint.replace(baseUrl, "")}:${response.status}:${response.headers.get("content-type") ?? "no-type"}`);
-        }
-        continue;
+    if (!response?.ok) {
+      if (response) {
+        await response.body?.cancel().catch(() => undefined);
+        diagnostics.push(`doc:${endpoint.replace(baseUrl, "")}:${response.status}:${response.headers.get("content-type") ?? "no-type"}`);
       }
-
-      const file = await mediaFileFromMediaResponse(response, documentInfo.mimeType, documentInfo.fileName, keyRow, diagnostics);
-      if (file) return file;
-      diagnostics.push(`doc:${endpoint.replace(baseUrl, "")}:ok-no-file`);
+      continue;
     }
+
+    const file = await mediaFileFromMediaResponse(response, documentInfo.mimeType, documentInfo.fileName, keyRow, diagnostics);
+    if (file) return file;
+    diagnostics.push(`doc:${endpoint.replace(baseUrl, "")}:ok-no-file`);
   }
 
   return null;
@@ -2215,8 +2139,9 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
 
     const orgId = whatsappSettings.org_id as string;
     const eventKey = await buildWebhookEventKey(payload, phone, extractedText, hasAudio, hasDocument);
+    const inboundKind: WhatsAppInboundKind = hasDocument ? "document" : hasAudio ? "audio" : "text";
 
-    if (whatsappSettings.inbound_queue_enabled === true && !options.forceSynchronous) {
+    if (shouldQueueWhatsAppInbound(inboundKind, whatsappSettings.inbound_queue_enabled === true, options.forceSynchronous === true)) {
       const phoneOptions = phoneCandidates(phone);
       const { data: queuedProfile, error: queuedProfileError } = await client
         .from("profiles")
@@ -2237,7 +2162,7 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         if (queuedMembership) queuedUserId = queuedProfile.id;
       }
 
-      const kind: WhatsAppInboundKind = hasDocument ? "document" : hasAudio ? "audio" : "text";
+      const kind = inboundKind;
       const mediaInfo = kind === "document" ? extractDocumentInfo(payload) : kind === "audio" ? extractAudioInfo(payload) : null;
       const jobPayload = sanitizeWhatsAppInboundPayload(kind, {
         messageId: extractWebhookMessageId(payload),
@@ -2375,7 +2300,8 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
     if (!text) {
       const audioFailureText = "[Áudio recebido sem transcrição]";
       const diagnosticCode = audioDiagnostics.slice(-6).join(" | ") || "sem-diagnostico";
-      const answer = `Recebi seu áudio, mas ainda não consegui transcrever por aqui. Pode me mandar em texto por enquanto?\n\nCódigo técnico: ${diagnosticCode}`;
+      const answer = "Recebi seu áudio, mas não consegui transcrever desta vez. Pode reenviar ou me mandar em texto por enquanto?";
+      console.error("Falha final ao processar áudio do WhatsApp", { diagnosticCode });
 
       await insertConversationMessage(client, {
         orgId,

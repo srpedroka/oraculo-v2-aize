@@ -25,27 +25,6 @@ function textEvent(messageId: string, text: string, fromMe = false) {
   };
 }
 
-function documentEvent(messageId: string) {
-  return {
-    event: "messages.upsert",
-    instance: instanceName,
-    data: {
-      key: { id: messageId, remoteJid, fromMe: false },
-      message: {
-        documentMessage: {
-          mimetype: "application/pdf",
-          fileName: "plano.pdf",
-          caption: "Plano mensal",
-          base64: "JVBERi0xLjQ=",
-          mediaKey: "segredo-de-midia",
-          directPath: "/v/t62/documento",
-          url: "https://temporaria.invalid/documento",
-        },
-      },
-    },
-  };
-}
-
 async function callWebhook(payload: unknown, secret = webhookSecret) {
   if (!org) throw new Error("Organização de teste não criada");
   return fetch(`${stagingUrl}/functions/v1/whatsapp-webhook?orgId=${org.orgId}`, {
@@ -217,16 +196,30 @@ d("Fatia 3A — fila durável de entrada do WhatsApp", () => {
     expect(userError?.message).toMatch(/não pertence à empresa/i);
   });
 
-  it("retém apenas metadados mínimos de documento", async () => {
-    const response = await callWebhook(documentEvent("document-1"));
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true, queued: true, duplicate: false });
+  it("retém apenas metadados mínimos em job de documento legado", async () => {
+    const admin = serviceClient();
+    const eventKey = `message:${phone}:document-1`;
+    const { error: enqueueError } = await admin.rpc("enqueue_whatsapp_inbound_job", {
+      p_org_id: org!.orgId,
+      p_event_key: eventKey,
+      p_phone: phone,
+      p_user_id: null,
+      p_kind: "document",
+      p_payload: {
+        messageId: "document-1",
+        remoteJid,
+        mimeType: "application/pdf",
+        fileName: "plano.pdf",
+        caption: "Plano mensal",
+      },
+    });
+    if (enqueueError) throw enqueueError;
 
-    const { data: job, error } = await serviceClient()
+    const { data: job, error } = await admin
       .from("whatsapp_inbound_jobs")
       .select("payload, kind")
       .eq("org_id", org!.orgId)
-      .eq("event_key", `message:${phone}:document-1`)
+      .eq("event_key", eventKey)
       .single();
     if (error) throw error;
     expect(job.kind).toBe("document");

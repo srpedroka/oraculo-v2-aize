@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Mídia síncrona durante o piloto durável do WhatsApp
+
+Decisão: manter texto na fila inbound, mas processar áudio e documento sincronamente a partir do webhook autenticado. O download prioriza `POST /message/downloadmedia` da Evo Go e conserva rotas antigas apenas como fallback.
+
+Contexto: a fila guarda somente ID e metadados escalares. A Evo Go precisa da mensagem original, incluindo descritor criptográfico, para baixar a mídia; reconstruir apenas ID/MIME levou a `404` nas rotas antigas e seria inseguro persistir `mediaKey`, URL temporária ou arquivo bruto.
+
+Consequências: texto continua com retry durável. Mídia preserva a política de não persistência e volta a usar o caminho já validado antes da ativação da fila, mas ainda depende da duração da requisição síncrona. Uma fila de mídia futura só poderá existir com handoff criptográfico efêmero explicitamente desenhado e revisado.
+
 ## 2026-07-13 - Atualização rápida ambígua nunca grava sem mostrar o alvo
 
 Decisão: respostas curtas de confirmação são não mutáveis por regra determinística, antes e depois da classificação da IA. Evidências genéricas são recusadas. Quando a IA escolhe um objetivo/ação sem referência lexical explícita da pessoa, o Oráculo mostra o alvo e guarda a operação server-side por 30 minutos; apenas uma confirmação explícita aplica a mudança. Se operação e alvo estiverem claros na própria mensagem, a gravação direta permanece.
