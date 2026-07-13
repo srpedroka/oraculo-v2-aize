@@ -2066,7 +2066,41 @@ async function processIncomingDocument(
   }
 }
 
-serve(async (req) => {
+export interface WhatsAppWebhookOptions {
+  forceSynchronous?: boolean;
+}
+
+function scheduleWhatsAppWorkerWake(
+  client: ReturnType<typeof serviceClient>,
+  orgId: string,
+  correlationId: string,
+) {
+  const task = (async () => {
+    const { data, error } = await client
+      .from("whatsapp_worker_secrets")
+      .select("worker_secret, endpoint_url")
+      .eq("id", "worker")
+      .maybeSingle();
+    if (error || !data?.worker_secret || !data.endpoint_url) return;
+
+    const expectedUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-worker`;
+    if (data.endpoint_url !== expectedUrl) return;
+    await fetch(data.endpoint_url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-oraculo-worker-secret": data.worker_secret,
+      },
+      body: JSON.stringify({ source: "webhook", orgId, correlationId, batchSize: 5 }),
+    });
+  })().catch(() => undefined);
+
+  const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(task);
+  else void task;
+}
+
+export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebhookOptions = {}) {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   let dedupeClient: ReturnType<typeof serviceClient> | null = null;
@@ -2134,7 +2168,7 @@ serve(async (req) => {
     const orgId = whatsappSettings.org_id as string;
     const eventKey = await buildWebhookEventKey(payload, phone, extractedText, hasAudio, hasDocument);
 
-    if (whatsappSettings.inbound_queue_enabled === true) {
+    if (whatsappSettings.inbound_queue_enabled === true && !options.forceSynchronous) {
       const phoneOptions = phoneCandidates(phone);
       const { data: queuedProfile, error: queuedProfileError } = await client
         .from("profiles")
@@ -2176,6 +2210,8 @@ serve(async (req) => {
       if (queueError) throw queueError;
       const queued = queuedRows?.[0];
       if (!queued?.job_id || !queued?.correlation_id) throw new Error("Fila do WhatsApp não devolveu o job criado");
+
+      scheduleWhatsAppWorkerWake(client, orgId, queued.correlation_id);
 
       return jsonResponse({
         ok: true,
@@ -2629,4 +2665,6 @@ serve(async (req) => {
     }
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro no webhook do WhatsApp" }, 400);
   }
-});
+}
+
+if (import.meta.main) serve((req) => handleWhatsAppWebhook(req));

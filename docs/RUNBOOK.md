@@ -718,9 +718,13 @@ Se nao aparecer check-in:
 
 ### Fila de entrada da Etapa 3
 
-A Fatia 3A está preparada atrás de `whatsapp_settings.inbound_queue_enabled`. O padrão e o rollback são `false`, que preserva o webhook síncrono atual. Não ligue a flag em empresa real antes da publicação e validação do worker da Fatia 3B: sem worker, o webhook aceitará o evento e o job ficará `queued` sem resposta.
+A fila depende de dois controles: `whatsapp_settings.inbound_queue_enabled` por empresa e `whatsapp_worker_secrets.endpoint_url` global. O padrão e o rollback são flag `false` e endpoint `null`, preservando o webhook síncrono atual. A 3B já está publicada de forma inerte; não ligue nenhum controle em empresa real antes do teste de texto, áudio e documento válidos numa Evolution de staging e de autorização explícita do dono.
 
 Para um teste descartável no staging, ative a flag somente via `service_role`, envie o mesmo evento várias vezes e confira um único registro em `whatsapp_inbound_jobs` por `(org_id, event_key)`. Ao terminar, desligue a flag e remova a organização de teste. Nunca coloque base64, mídia, URL temporária, `mediaKey` ou segredo no payload da RPC. Restaurações de backup sempre voltam com a flag desligada.
+
+Com o worker ativo, acompanhe `status`, `attempt_count`, `next_retry_at`, `locked_at`, `last_error_code` e `correlation_id`. `processing` com lock antigo é recuperado no próximo claim; falha transitória usa 10s, 30s, 2min e 10min; a quinta tentativa ou falha permanente vira `dead`. Mensagens posteriores da mesma conversa aguardam a anterior. Para rollback imediato, volte a flag da empresa para `false`; só zere o endpoint global quando quiser também parar recuperação de jobs já enfileirados.
+
+O cron `oraculo-whatsapp-worker` roda a cada minuto, mas retorna sem chamada quando `endpoint_url` é nulo. A função é pública no gateway e autenticada internamente por `x-oraculo-worker-secret`; nunca copie esse valor para frontend, logs ou documentação. A janela de duplicidade entre envio aceito pela Evolution e marcação de `completed` permanece até a outbox da Fatia 3C.
 
 Diagnostico rapido:
 

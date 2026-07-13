@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Worker reutiliza o núcleo do webhook e nasce com acionamento inerte
+
+Decisao: tornar o handler atual importável e executá-lo pelo `whatsapp-worker`, sem duplicar a lógica de texto, áudio, documento, sessão, confirmação e atualização rápida. O worker é protegido por segredo server-only, usa locks no PostgreSQL e tem dois despertares: imediato pelo webhook e cron de recuperação. Ambos dependem de um endpoint guardado no banco que nasce nulo.
+
+Motivo: uma segunda implementação do fluxo do WhatsApp criaria divergência funcional e risco de segurança. O endpoint nulo permite publicar e testar schema/worker sem processar mensagens reais por acidente.
+
+Consequencias: a 3B permanece inerte até configurar endpoint e flag da empresa. Retry respeita ordem por conversa, o que pode atrasar mensagens posteriores quando a anterior falha. A deduplicação reduz reenvio após crash, mas a janela entre envio pela Evolution e marcação de conclusão só será fechada pela outbox da 3C. Não ativar empresa real sem testar texto, áudio e documento válidos numa Evolution de staging.
+
 ## 2026-07-13 - Fila do WhatsApp entra atrás de flag server-only
 
 Decisao: introduzir a fila inbound de forma aditiva e por empresa, mantendo o processador síncrono como padrão. A flag nasce desligada, só o `service_role` pode alterá-la e restaurações a forçam para `false`. Autenticação e anti-loop continuam antes da fila; payload de mídia guarda apenas metadados mínimos.

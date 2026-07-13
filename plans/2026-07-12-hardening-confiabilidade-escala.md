@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3 iniciada: Fatia 3A publicada em produção em 2026-07-13, inerte com feature flag desligada para todas as empresas. Fatias 3B–3E e Etapas 4–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A e 3B publicadas em produção em 2026-07-13, ambas inertes, com endpoint do worker nulo, zero empresas ativadas e zero jobs. Fatias 3C–3E e Etapas 4–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -562,7 +562,7 @@ Evolution/Evo Go
 
 ## 3.3 Fatia 3A — Fila de entrada
 
-> **STATUS Fatia 3A: publicada em produção em 2026-07-13, com zero empresas ativadas e zero jobs após o deploy.** As migrations criam `whatsapp_inbound_jobs`, RPC service-only e flag por empresa protegida contra alteração pelo navegador. O webhook só enfileira quando a flag está ativa e, caso contrário, preserva integralmente o fluxo síncrono atual. Payloads têm allowlist por tipo; mídia bruta, base64, URL temporária, `mediaKey` e segredos não entram no banco. O fallback de deduplicação usa SHA-256 e não expõe texto. Validação: 76 unitários, 58 integrações no staging, RLS, fixtures, lint, build e `verify:deploy` verdes. O worker ainda não existe, portanto a flag não deve ser ativada até a Fatia 3B.
+> **STATUS Fatia 3A: publicada em produção em 2026-07-13, com zero empresas ativadas e zero jobs após o deploy.** As migrations criam `whatsapp_inbound_jobs`, RPC service-only e flag por empresa protegida contra alteração pelo navegador. O webhook só enfileira quando a flag está ativa e, caso contrário, preserva integralmente o fluxo síncrono atual. Payloads têm allowlist por tipo; mídia bruta, base64, URL temporária, `mediaKey` e segredos não entram no banco. O fallback de deduplicação usa SHA-256 e não expõe texto. Validação: 76 unitários, 58 integrações no staging, RLS, fixtures, lint, build e `verify:deploy` verdes. A 3B também está publicada, mas a fila deve permanecer desligada até nova autorização e teste operacional.
 
 Criar tabela/RPC de fila com:
 
@@ -586,6 +586,8 @@ Regras de mídia:
 O webhook deve responder `200` após enfileirar. Evento não autorizado nunca entra na fila.
 
 ## 3.4 Fatia 3B — Worker e ordenação
+
+> **STATUS Fatia 3B: publicada em produção, ainda inerte, em 2026-07-13.** `whatsapp-worker` usa o mesmo núcleo importável do webhook, adquire jobs com `FOR UPDATE SKIP LOCKED`, preserva ordem por empresa+pessoa/telefone, renova e recupera locks, faz até 5 tentativas com backoff, envia falha permanente para `dead` e mantém retenção curta. Webhook desperta o worker sem aguardar; cron a cada minuto recupera jobs, mas o endpoint nasce nulo e mantém o mecanismo inerte. Validação: 80 unitários, 69 integrações regulares, prova opt-in de wake imediato+cron, RLS, fixtures, lint e build. Produção recebeu a migration `20260713120000` e as Functions `whatsapp-worker`/`whatsapp-webhook`; `verify:deploy` ficou verde e a consulta final confirmou endpoint nulo, zero empresas ativas e zero jobs. Pendente obrigatório antes de ativação real: áudio e documento válidos usando uma instância Evolution de staging. A garantia transacional do envio pertence à Fatia 3C.
 
 Extrair do webhook handlers independentes:
 
