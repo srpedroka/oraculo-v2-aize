@@ -20,7 +20,6 @@ import { parseJsonObject } from "./json.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
-import { renderPlanForWhatsApp } from "./plan-render.ts";
 import { applyProposal } from "./proposals.ts";
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
@@ -611,12 +610,15 @@ export async function startPlanningSession(
 ) {
   const conductor = CONDUCTORS[params.type];
   if (!conductor) throw new Error("Tipo de sessão ainda não disponível nesta fase");
+  if (!["strategic", "strategic_review"].includes(params.type) && !params.areaId) {
+    throw new Error("Selecione uma área antes de iniciar este planejamento");
+  }
   const membership = await assertCanStartSession(client, params.orgId, params.areaId, params.userId);
   if (params.type === "strategic_review" && (params.areaId || membership.role !== "owner")) {
     throw new Error("Apenas owner pode iniciar uma Revisão Estratégica da empresa");
   }
 
-  const { data: existing, error: existingError } = await client
+  let existingQuery = client
     .from("planning_sessions")
     .select("*")
     .eq("org_id", params.orgId)
@@ -625,8 +627,9 @@ export async function startPlanningSession(
     .eq("period", params.period)
     .eq("status", "active")
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  existingQuery = params.areaId ? existingQuery.eq("area_id", params.areaId) : existingQuery.is("area_id", null);
+  const { data: existing, error: existingError } = await existingQuery.maybeSingle();
   if (existingError) throw existingError;
   if (existing) {
     const conversation = await getOrCreateConversation(client, {
@@ -1250,12 +1253,11 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   const outcome = await runIdempotentCommand(key, async (tx) => {
     const summary = await applyProposal(tx, ensured.session, proposal, params.userId);
     const document = channel === "whatsapp" ? await loadLatestDocumentForProposal(tx, ensured.session, proposal) : null;
-    const documentText = document ? `\n\n---\n\n${renderPlanForWhatsApp(document.content ?? {})}` : "";
     const reply = isCloseSession
-      ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?${documentText}`
+      ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?`
       : isReviewSession
-        ? `${summary} Revisão salva no sistema.${documentText}`
-      : `${summary} O plano já está salvo no sistema.${documentText}`;
+        ? `${summary} Revisão salva no sistema.`
+      : `${summary} O plano já está salvo no sistema.`;
     const { error: updateError } = await tx
       .from("planning_sessions")
       .update({
@@ -1268,7 +1270,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
       .select("*")
       .single();
     if (updateError) throw updateError;
-    return { result: { summary, reply } };
+    return { result: { summary, reply, documentId: document?.id ?? null } };
   });
 
   const reply = String(outcome.result.reply ?? "");
@@ -1286,7 +1288,18 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
     await insertMessage(client, finalSession, "oracle", reply, channel);
   } catch (_) { /* log nao-critico */ }
 
-  return { session: finalSession, reply };
+  let document = null;
+  if (channel === "whatsapp" && outcome.result.documentId) {
+    const { data, error: documentError } = await client
+      .from("plan_documents")
+      .select("*")
+      .eq("id", String(outcome.result.documentId))
+      .maybeSingle();
+    if (documentError) throw documentError;
+    document = data;
+  }
+
+  return { session: finalSession, reply, document };
 }
 
 export async function abandonPlanningSession(client: Client, params: { sessionId: string; userId: string }) {

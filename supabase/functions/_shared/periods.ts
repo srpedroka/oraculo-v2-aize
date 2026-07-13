@@ -103,6 +103,8 @@ function quarterFromText(text: string) {
   if (direct) return Number(direct[1]);
   const ordinal = normalized.match(/\b([1-4])(?:o|º)?\s*tri/);
   if (ordinal) return Number(ordinal[1]);
+  const named = normalized.match(/\b(primeiro|segundo|terceiro|quarto)\s+trimestre\b/);
+  if (named) return ["primeiro", "segundo", "terceiro", "quarto"].indexOf(named[1]) + 1;
   return null;
 }
 

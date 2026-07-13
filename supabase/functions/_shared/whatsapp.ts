@@ -12,6 +12,16 @@ function buildSendUrls(settings: any) {
   return [...new Set(urls.filter(Boolean))];
 }
 
+function buildMediaUrls(settings: any) {
+  const baseUrl = String(settings.instance_url ?? "").replace(/\/+$/, "");
+  const instanceName = String(settings.instance_name ?? "").trim();
+  if (!baseUrl) return [];
+
+  const urls = [`${baseUrl}/send/media`];
+  if (instanceName) urls.push(`${baseUrl}/message/sendMedia/${instanceName}`);
+  return [...new Set(urls.filter(Boolean))];
+}
+
 export interface WhatsAppSendReceipt {
   httpStatus: number;
   providerMessageId: string | null;
@@ -113,6 +123,79 @@ export async function sendWhatsAppText(settings: any, keyRow: any, phone: string
   }
 
   throw new WhatsAppSendError("WhatsApp não respondeu corretamente", 502);
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+export async function sendWhatsAppDocument(
+  settings: any,
+  keyRow: any,
+  phone: string,
+  document: { bytes: Uint8Array; mimeType: string; fileName: string; caption?: string },
+) {
+  if (!settings?.instance_url || !keyRow?.api_key) throw new WhatsAppSendError("WhatsApp não configurado", 404);
+  const urls = buildMediaUrls(settings);
+  if (!urls.length) throw new WhatsAppSendError("URL do WhatsApp não configurada", 404);
+  const media = bytesToBase64(document.bytes);
+
+  for (const url of urls) {
+    const evoGo = url.endsWith("/send/media");
+    const body = evoGo
+      ? {
+        number: normalizeWhatsAppNumber(phone),
+        url: media,
+        type: "document",
+        mimetype: document.mimeType,
+        filename: document.fileName,
+        caption: document.caption ?? "",
+        formatJid: true,
+      }
+      : {
+        number: normalizeWhatsAppNumber(phone),
+        mediatype: "document",
+        mimetype: document.mimeType,
+        media,
+        fileName: document.fileName,
+        caption: document.caption ?? "",
+      };
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: keyRow.api_key },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (error) {
+      const timedOut = error instanceof DOMException && error.name === "TimeoutError";
+      throw new WhatsAppSendError(timedOut ? "Timeout ao enviar documento no WhatsApp" : "Evolution indisponível");
+    }
+
+    const parsed = await parseSendResponse(response);
+    if (response.ok) {
+      return {
+        httpStatus: response.status,
+        providerMessageId: parsed.providerMessageId,
+        providerStatus: parsed.providerStatus,
+      } satisfies WhatsAppSendReceipt;
+    }
+    if ([404, 405].includes(response.status) && url !== urls[urls.length - 1]) continue;
+    throw new WhatsAppSendError(
+      `WhatsApp não aceitou o documento (HTTP ${response.status})${parsed.providerError ? `: ${parsed.providerError}` : ""}`,
+      response.status,
+      retryAfterSeconds(response),
+    );
+  }
+
+  throw new WhatsAppSendError("WhatsApp não aceitou o documento", 502);
 }
 
 export function formatForWhatsApp(text: string) {

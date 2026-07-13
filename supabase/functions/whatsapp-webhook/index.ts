@@ -14,6 +14,7 @@ import {
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModelForFunction } from "../_shared/call-for-function.ts";
 import { buildPlanContext } from "../_shared/plan-context.ts";
+import { renderPlanDocumentPdf } from "../_shared/plan-pdf.ts";
 import { renderPlanForWhatsApp } from "../_shared/plan-render.ts";
 import { PERSONA_ORACULO } from "../_shared/conductors/persona.ts";
 import { loadOrgTone, toneDirective } from "../_shared/conductors/tone.ts";
@@ -28,7 +29,8 @@ import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type 
 import { recordAiUsage } from "../_shared/usage.ts";
 import { evaluateAiControls, isAiControlLimitError } from "../_shared/ai-controls.ts";
 import { buildEvolutionMediaAttempts } from "../_shared/evolution-media.ts";
-import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
+import { formatForWhatsApp, sendWhatsAppDocument, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
+import { explicitPlanningRequest, resolveAreaFromMessage, wantsDocumentAttachment } from "../_shared/whatsapp-planning.ts";
 import { recordWhatsAppHealthEvent } from "../_shared/whatsapp-health-events.ts";
 import { classifyWhatsAppSenderFailure } from "../_shared/whatsapp-sender.ts";
 import { isExplicitPlanningResume } from "../_shared/conversation-policy.ts";
@@ -1598,6 +1600,35 @@ async function sendFormattedWhatsApp(
   }
 }
 
+async function sendPlanDocumentWhatsApp(settings: any, keyRow: any, phone: string, document: any) {
+  const client = serviceClient();
+  try {
+    const pdf = await renderPlanDocumentPdf(document);
+    const receipt = await sendWhatsAppDocument(settings, keyRow, phone, {
+      ...pdf,
+      caption: `${String(document.title ?? "Documento Oráculo")} · v${Number(document.version ?? 1)}`,
+    });
+    await recordWhatsAppHealthEvent(client, {
+      orgId: settings.org_id,
+      eventType: "outbound_sent",
+      source: "direct",
+      httpStatus: receipt.httpStatus,
+    });
+    return true;
+  } catch (error) {
+    const failure = classifyWhatsAppSenderFailure(error);
+    await recordWhatsAppHealthEvent(client, {
+      orgId: settings.org_id,
+      eventType: "outbound_failed",
+      source: "direct",
+      errorCode: failure.code,
+      httpStatus: failure.httpStatus,
+    });
+    console.error("Erro ao enviar PDF do plano no WhatsApp", failure.code);
+    return false;
+  }
+}
+
 async function buildAnswer(
   client: ReturnType<typeof serviceClient>,
   orgId: string,
@@ -1782,15 +1813,15 @@ function formatImportedDocumentInsight(
 
 type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
 
-function inferDocumentType(message: string, planningType: "strategic" | "quarterly" | "monthly" | null): PlanDocumentType {
+function inferDocumentType(message: string): PlanDocumentType | null {
   const normalized = normalizeText(message);
   const asksClose = /\b(fechamento|fechar|check in|checkin|balanco|revisao)\b/.test(normalized);
   if (asksClose && /\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarter_close";
   if (asksClose) return "month_close";
-  if (planningType === "strategic" || /\b(estrategico|estrategia|anual|ano)\b/.test(normalized)) return "strategic";
-  if (planningType === "quarterly" || /\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarterly";
-  if (planningType === "monthly" || /\b(mes|mensal|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|abr|mai|jun|jul|ago|set|out|nov|dez)\b/.test(normalized)) return "monthly";
-  return "monthly";
+  if (/\b(estrategico|estrategia|anual|ano)\b/.test(normalized)) return "strategic";
+  if (/\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarterly";
+  if (/\b(mes|mensal|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|abr|mai|jun|jul|ago|set|out|nov|dez)\b/.test(normalized)) return "monthly";
+  return null;
 }
 
 function periodForDocument(type: PlanDocumentType, hint: string | null | undefined, message: string) {
@@ -1801,8 +1832,7 @@ function periodForDocument(type: PlanDocumentType, hint: string | null | undefin
   return periodForClose("monthly", hint, message);
 }
 
-async function resolveDocumentAreaId(client: ReturnType<typeof serviceClient>, orgId: string, message: string, currentAreaId: string | null) {
-  const normalized = normalizeText(message);
+async function loadActiveAreas(client: ReturnType<typeof serviceClient>, orgId: string) {
   const { data: areas, error } = await client
     .from("areas")
     .select("id, name")
@@ -1810,16 +1840,17 @@ async function resolveDocumentAreaId(client: ReturnType<typeof serviceClient>, o
     .is("archived_at", null)
     .order("created_at");
   if (error) throw error;
-  const match = (areas ?? []).find((area: any) => {
-    const name = normalizeText(String(area.name ?? ""));
-    return name && normalized.includes(name);
-  });
-  return match?.id ?? currentAreaId;
+  return areas ?? [];
+}
+
+async function resolveDocumentAreaId(client: ReturnType<typeof serviceClient>, orgId: string, message: string, currentAreaId: string | null) {
+  const areas = await loadActiveAreas(client, orgId);
+  return resolveAreaFromMessage(message, areas).area?.id ?? currentAreaId;
 }
 
 async function latestDocumentByQuery(client: ReturnType<typeof serviceClient>, orgId: string, type: PlanDocumentType, areaId: string | null, period: string | null) {
   let query = client.from("plan_documents").select("*").eq("org_id", orgId).eq("type", type).is("archived_at", null).order("created_at", { ascending: false }).limit(1);
-  if (areaId) query = query.eq("area_id", areaId);
+  query = areaId ? query.eq("area_id", areaId) : query.is("area_id", null);
   if (period) query = query.eq("period", period);
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
@@ -1832,27 +1863,68 @@ async function answerDocumentQuestion(
     orgId: string;
     areaId: string | null;
     message: string;
-    planningType: "strategic" | "quarterly" | "monthly" | null;
-    periodHint: string | null;
+    conversationId: string;
   },
 ) {
-  const type = inferDocumentType(params.message, params.planningType);
-  const period = periodForDocument(type, params.periodHint, params.message);
-  const areaId = type === "strategic" ? null : await resolveDocumentAreaId(client, params.orgId, params.message, params.areaId);
+  const { data: contextSession, error: contextError } = await client
+    .from("planning_sessions")
+    .select("type, period, area_id")
+    .eq("org_id", params.orgId)
+    .eq("conversation_id", params.conversationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (contextError) throw contextError;
 
-  const document =
-    await latestDocumentByQuery(client, params.orgId, type, areaId, period) ??
-    await latestDocumentByQuery(client, params.orgId, type, areaId, null) ??
-    await latestDocumentByQuery(client, params.orgId, type, null, null);
+  const explicitType = inferDocumentType(params.message);
+  const sessionType = ["strategic", "quarterly", "monthly", "month_close", "quarter_close"].includes(contextSession?.type)
+    ? contextSession.type as PlanDocumentType
+    : null;
+  const type = explicitType ?? sessionType;
+  if (!type) {
+    return {
+      reply: "Qual documento você quer receber: *Plano Estratégico*, *Plano Trimestral* ou *Plano Mensal*? Diga também a área e o período.",
+      document: null,
+      sendAsAttachment: false,
+    };
+  }
+
+  const areaId = type === "strategic"
+    ? null
+    : await resolveDocumentAreaId(client, params.orgId, params.message, contextSession?.area_id ?? params.areaId);
+  if (type !== "strategic" && !areaId) {
+    return {
+      reply: "De qual área é esse documento? Preciso da área para não te entregar um plano de outro departamento.",
+      document: null,
+      sendAsAttachment: false,
+    };
+  }
+
+  const period = explicitType
+    ? periodForDocument(type, null, params.message)
+    : String(contextSession?.period ?? "") || periodForDocument(type, null, params.message);
+  const document = await latestDocumentByQuery(client, params.orgId, type, areaId, period);
 
   if (!document) {
     const typeText = targetLabel(type === "strategic" ? "strategic" : type === "quarterly" || type === "quarter_close" ? "quarterly" : "monthly");
-    return `Ainda não encontrei um documento padrão de ${typeText} salvo no Oráculo. Posso te conduzir para criar esse plano agora, ou você pode importar um arquivo e confirmar a proposta.`;
+    const areas = await loadActiveAreas(client, params.orgId);
+    const areaName = areas.find((area: any) => area.id === areaId)?.name;
+    const scope = [typeText, areaName, period].filter(Boolean).join(" · ");
+    return {
+      reply: `Ainda não existe um documento salvo para *${scope}*. Não vou substituir por um arquivo de outra área ou período. Posso continuar a condução desse plano até gerar o documento correto.`,
+      document: null,
+      sendAsAttachment: false,
+    };
   }
 
   const rendered = renderPlanForWhatsApp(document.content ?? {});
   const versionLine = `Documento: ${document.title} · v${document.version}`;
-  return `${versionLine}\n\n${rendered}`;
+  const sendAsAttachment = wantsDocumentAttachment(params.message);
+  return {
+    reply: sendAsAttachment ? `${versionLine}\n\nVou enviar o arquivo PDF deste documento.` : `${versionLine}\n\n${rendered}`,
+    document,
+    sendAsAttachment,
+  };
 }
 
 async function classifyImportedDocument(
@@ -2435,6 +2507,56 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
       await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
     }
 
+    if (pendingContext?.type === "planning_start") {
+      const planningType = ["strategic", "quarterly", "monthly"].includes(String(pendingContext.planningType))
+        ? String(pendingContext.planningType) as "strategic" | "quarterly" | "monthly"
+        : null;
+      if (!planningType || isRejectionMessage(text)) {
+        await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
+        const reply = planningType ? "Tudo certo. Mantive a sessão anterior sem alterações." : "Esse pedido de planejamento expirou. Diga qual plano você quer iniciar.";
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "user", text: storedUserText, channel: "whatsapp" });
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "oracle", text: reply, channel: "whatsapp" });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "planning_start_cancelled" });
+      }
+
+      const areas = await loadActiveAreas(client, orgId);
+      const areaMatch = resolveAreaFromMessage(text, areas);
+      if (!areaMatch.area) {
+        const choices = areaMatch.ambiguous.length
+          ? ` Encontrei mais de uma possibilidade: ${areaMatch.ambiguous.map((item) => item.name).join(" ou ")}.`
+          : "";
+        const reply = `Não consegui identificar a área com segurança.${choices} Qual é o nome da área?`;
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "user", text: storedUserText, channel: "whatsapp" });
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "oracle", text: reply, channel: "whatsapp" });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "planning_start_missing_area" });
+      }
+
+      const sessionToAbandon = String(pendingContext.sessionIdToAbandon ?? "");
+      if (sessionToAbandon) {
+        const { error: abandonError } = await client
+          .from("planning_sessions")
+          .update({ status: "abandoned" })
+          .eq("id", sessionToAbandon)
+          .eq("user_id", profile.id)
+          .is("pending_proposal", null);
+        if (abandonError) throw abandonError;
+      }
+      await insertConversationMessage(client, { orgId, areaId: areaMatch.area.id, userId: profile.id, conversationId: conversation.id, author: "user", text: storedUserText, channel: "whatsapp" });
+      await client.from("conversations").update({ area_id: areaMatch.area.id, pending_context: {} }).eq("id", conversation.id);
+      const sessionResult = await startPlanningSession(client, {
+        orgId,
+        areaId: areaMatch.area.id,
+        type: planningType,
+        period: String(pendingContext.period ?? periodForPlanning(planningType, null, text)),
+        userId: profile.id,
+        channel: "whatsapp",
+      });
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
+      return jsonResponse({ ok: true, intent: "planning_start", sessionId: sessionResult.session.id });
+    }
+
     if (pendingContext?.type === "weekly_capture") {
       await client.from("conversations").update({ pending_context: {} }).eq("id", conversation.id);
       if (confirmationMessage) {
@@ -2583,7 +2705,7 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
 
     const { data: activeSessions, error: activeSessionError } = await client
       .from("planning_sessions")
-      .select("id, conversation_id, pending_proposal")
+      .select("id, conversation_id, pending_proposal, type, period, area_id")
       .eq("org_id", orgId)
       .eq("user_id", profile.id)
       .eq("status", "active")
@@ -2598,6 +2720,57 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         ? activeSessions?.[0] ?? null
         : (activeSessions ?? []).find((session: any) => session.conversation_id === conversation.id) ?? null;
 
+    const explicitStart = explicitPlanningRequest(text);
+    if (activeSession && explicitStart) {
+      const requestedPeriod = periodForPlanning(explicitStart, null, text);
+      if (activeSession.pending_proposal) {
+        const reply = "Esta sessão já tem uma proposta pronta aguardando confirmação. Confirme para salvar ou diga que quer descartar a proposta antes de abrir outro plano.";
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "user", text: storedUserText, channel: "whatsapp" });
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "oracle", text: reply, channel: "whatsapp" });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "planning_switch_pending_proposal" });
+      }
+
+      const areas = await loadActiveAreas(client, orgId);
+      const areaMatch = explicitStart === "strategic" ? null : resolveAreaFromMessage(text, areas);
+      const requestedAreaId = explicitStart === "strategic" ? null : areaMatch?.area?.id ?? areaId;
+      if (explicitStart !== "strategic" && !requestedAreaId) {
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+        await client.from("conversations").update({
+          pending_context: {
+            type: "planning_start",
+            planningType: explicitStart,
+            period: requestedPeriod,
+            sessionIdToAbandon: activeSession.id,
+            expiresAt,
+          },
+        }).eq("id", conversation.id);
+        const reply = "Claro. Qual é a área desse novo plano? Só vou trocar de sessão depois de identificar o departamento correto.";
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "user", text: storedUserText, channel: "whatsapp" });
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "oracle", text: reply, channel: "whatsapp" });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "planning_switch_missing_area" });
+      }
+
+      await insertConversationMessage(client, { orgId, areaId: requestedAreaId, userId: profile.id, conversationId: conversation.id, author: "user", text: storedUserText, channel: "whatsapp" });
+      const sameSession = activeSession.type === explicitStart && activeSession.period === requestedPeriod && activeSession.area_id === requestedAreaId;
+      if (!sameSession) {
+        const { error: abandonError } = await client.from("planning_sessions").update({ status: "abandoned" }).eq("id", activeSession.id).eq("user_id", profile.id);
+        if (abandonError) throw abandonError;
+      }
+      await client.from("conversations").update({ area_id: requestedAreaId, pending_context: {} }).eq("id", conversation.id);
+      const sessionResult = await startPlanningSession(client, {
+        orgId,
+        areaId: requestedAreaId,
+        type: explicitStart,
+        period: requestedPeriod,
+        userId: profile.id,
+        channel: "whatsapp",
+      });
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
+      return jsonResponse({ ok: true, intent: sameSession ? "planning_resumed" : "planning_switched", sessionId: sessionResult.session.id });
+    }
+
     if (activeSession) {
       if (activeSession.conversation_id !== conversation.id) {
         const { error: rebindError } = await client
@@ -2610,6 +2783,12 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         ? await confirmPlanningProposal(client, { sessionId: activeSession.id, userId: profile.id, channel: "whatsapp", confirmationText: storedUserText })
         : await processPlanningMessage(client, { sessionId: activeSession.id, message: storedUserText, userId: profile.id, channel: "whatsapp" });
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
+      if (sessionResult.document) {
+        const sent = await sendPlanDocumentWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.document);
+        if (!sent) {
+          await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, "O plano foi salvo, mas o envio do PDF falhou. O documento continua disponível no app em Documentos.", { forceDirect: true });
+        }
+      }
       return jsonResponse({ ok: true, session: "processed" });
     }
 
@@ -2624,13 +2803,16 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
     });
     await maybeSummarize(client, orgId, conversation);
 
-    const intent = await classifyOracleIntent(client, {
-      orgId,
-      message: text,
-      channel: "whatsapp",
-      areaId,
-      conversationId: conversation.id,
-    });
+    const deterministicPlanningType = explicitPlanningRequest(text);
+    const intent = deterministicPlanningType
+      ? { intent: "start_planning" as const, planning_type: deterministicPlanningType, period_hint: null, confidence: 1 }
+      : await classifyOracleIntent(client, {
+        orgId,
+        message: text,
+        channel: "whatsapp",
+        areaId,
+        conversationId: conversation.id,
+      });
 
     if (intent.intent === "start_planning") {
       if (!intent.planning_type) {
@@ -2648,11 +2830,32 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         return jsonResponse({ ok: true, intent: "start_planning_missing_type" });
       }
 
+      const areas = await loadActiveAreas(client, orgId);
+      const areaMatch = intent.planning_type === "strategic" ? null : resolveAreaFromMessage(text, areas);
+      const requestedAreaId = intent.planning_type === "strategic" ? null : areaMatch?.area?.id ?? areaId;
+      const requestedPeriod = periodForPlanning(intent.planning_type, intent.period_hint, text);
+      if (intent.planning_type !== "strategic" && !requestedAreaId) {
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+        await client.from("conversations").update({
+          pending_context: {
+            type: "planning_start",
+            planningType: intent.planning_type,
+            period: requestedPeriod,
+            expiresAt,
+          },
+        }).eq("id", conversation.id);
+        const reply = "Qual é a área desse plano? Preciso identificar o departamento antes de iniciar a condução.";
+        await insertConversationMessage(client, { orgId, areaId, userId: profile.id, conversationId: conversation.id, author: "oracle", text: reply, channel: "whatsapp" });
+        await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+        return jsonResponse({ ok: true, intent: "start_planning_missing_area" });
+      }
+
+      await client.from("conversations").update({ area_id: requestedAreaId, pending_context: {} }).eq("id", conversation.id);
       const sessionResult = await startPlanningSession(client, {
         orgId,
-        areaId: intent.planning_type === "strategic" ? null : areaId,
+        areaId: requestedAreaId,
         type: intent.planning_type,
-        period: periodForPlanning(intent.planning_type, intent.period_hint, text),
+        period: requestedPeriod,
         userId: profile.id,
         channel: "whatsapp",
       });
@@ -2724,12 +2927,11 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
     }
 
     if (intent.intent === "document_question") {
-      const reply = await answerDocumentQuestion(client, {
+      const result = await answerDocumentQuestion(client, {
         orgId,
         areaId,
         message: text,
-        planningType: intent.planning_type,
-        periodHint: intent.period_hint,
+        conversationId: conversation.id,
       });
       await insertConversationMessage(client, {
         orgId,
@@ -2737,10 +2939,16 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         userId: profile.id,
         conversationId: conversation.id,
         author: "oracle",
-        text: reply,
+        text: result.reply,
         channel: "whatsapp",
       });
-      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, result.reply);
+      if (result.document && result.sendAsAttachment) {
+        const sent = await sendPlanDocumentWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, result.document);
+        if (!sent) {
+          await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, "Não consegui anexar o PDF agora. O documento correto continua disponível no app em Documentos.", { forceDirect: true });
+        }
+      }
       return jsonResponse({ ok: true, intent: "document_question" });
     }
 

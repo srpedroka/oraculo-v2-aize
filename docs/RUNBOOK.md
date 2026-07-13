@@ -349,9 +349,18 @@ Fluxo esperado da Fase 4:
 
 1. `whatsapp-webhook` salva a mensagem em `chat_messages`.
 2. `_shared/intent-router.ts` usa a funcao de IA `background` para classificar a mensagem.
-3. Se a intencao for `start_planning`, o webhook chama `startPlanningSession` e responde no proprio WhatsApp.
-4. Se a intencao for `quick_update`, `_shared/quick-updates.ts` carrega objetivos/acoes do mes, identifica o alvo, valida permissao e grava a alteracao.
-5. Se houver duvida, o Oraculo pede esclarecimento em vez de gravar.
+3. Um pedido explícito de plano é reconhecido deterministicamente antes da IA. Para plano mensal/trimestral, o webhook resolve a área pela frase; se faltar, grava `pending_context.type = planning_start` e pergunta o departamento antes de criar a sessão.
+4. `startPlanningSession` retoma somente uma sessão com o mesmo tipo, período **e área**. Não aceite `area_id = null` em sessão mensal/trimestral.
+5. Se a intencao for `quick_update`, `_shared/quick-updates.ts` carrega objetivos/acoes do mes, identifica o alvo, valida permissao e grava a alteracao.
+6. Se houver duvida, o Oraculo pede esclarecimento em vez de gravar.
+
+Se o Oráculo entregar documento de outra área/período:
+
+1. Confira a sessão mais recente da conversa e seu `area_id`, `type` e `period`.
+2. A busca em `plan_documents` deve usar os três campos exatos e nunca repetir sem filtros.
+3. Se não houver correspondência, a resposta correta é informar que o documento específico ainda não existe.
+4. Pedido de `arquivo`, `PDF` ou `documento pronto` usa `POST /send/media` no Evo Go; fallback Node usa `/message/sendMedia/{instance}`.
+5. O PDF é gerado em memória por `_shared/plan-pdf.ts`; não salve base64, URL temporária ou bytes.
 
 Verifique se a classificacao esta rodando:
 
