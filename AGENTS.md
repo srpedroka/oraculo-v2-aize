@@ -114,8 +114,13 @@ pnpm run preview
 
 Testes automatizados:
 
-- Nao existe suite automatizada dedicada no momento.
-- A protecao minima antes de encerrar mudanca relevante e rodar `pnpm run lint` e `pnpm run build`.
+- `pnpm run test:unit`: Vitest local, sem rede.
+- `pnpm run test:integration`: integrações no Supabase de staging.
+- `pnpm run test:security`: matriz de RLS, papéis, segredos, lifecycle, auditoria e backup no staging.
+- `pnpm run test:e2e`: smoke público de login, somente leitura.
+- `pnpm run test:e2e:staging`: jornadas autenticadas desktop/mobile com dados descartáveis.
+- Matriz e regras: `docs/TESTING.md`.
+- Antes de encerrar mudança relevante, rode ao menos unitários, lint e build; amplie para integração/segurança/E2E conforme o risco.
 
 Deploy frontend manual:
 
@@ -269,6 +274,7 @@ Compartilhados criticos:
 - `_shared/intent-router.ts`: classificacao operacional.
 - `_shared/historical-classifier.ts`: classificacao orientativa de historicos importados.
 - `_shared/area-matching.ts`: correspondencia conservadora entre nomes equivalentes de areas; aliases semanticos so vinculam quando existe um unico candidato seguro.
+- `_shared/phone.ts`: normalizacao e equivalencia testavel de telefones/JIDs, incluindo celular brasileiro com ou sem nono digito.
 - `_shared/quick-updates.ts`: atualizacoes pequenas por WhatsApp.
 - `_shared/quick-update-policy.ts`: guardas deterministicas para confirmacoes curtas, evidencias concretas e alvo explicito nas atualizacoes rapidas.
 - `_shared/whatsapp-queue.ts`: deduplicacao sem texto em claro e payload minimo da fila inbound.
@@ -555,7 +561,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
-- Existe suíte Vitest unitária e de integração/RLS em staging, além de Playwright E2E; ampliação de cobertura continua na Etapa 4.
+- Etapa 4 / Fatia 4A concluída em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. CI, logs, métricas e Error Boundary continuam nas Fatias 4B–4E.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
@@ -565,12 +571,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 ### Pendencias conhecidas / proximos passos
 
 - Fazer teste ponta a ponta da V3 em ambiente controlado, registrando resultado no `docs/CHANGELOG.md` ou `docs/RUNBOOK.md`.
-- Considerar adicionar testes automatizados para:
-  - store e permissoes criticas;
-  - renderizacao de documentos;
-  - importacao de arquivos;
-  - fluxos de proposta/confirmacao;
-  - helpers de WhatsApp e roteamento.
+- Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
 - Avaliar code splitting para reduzir chunks grandes (`pdfjs`, importacao de arquivos e telas pesadas).
 - Manter catalogos de pricing de IA atualizados quando trocar/adicionar modelos.
 - Revisar periodicamente RLS ao criar novas tabelas ou ampliar permissoes.

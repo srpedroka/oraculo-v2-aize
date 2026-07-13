@@ -58,39 +58,7 @@ import {
   shouldQueueWhatsAppInbound,
   type WhatsAppInboundKind,
 } from "./whatsapp-queue.ts";
-
-function normalizePhone(value: unknown) {
-  const source = String(value ?? "").trim();
-  if (!source || source.includes("@lid")) return null;
-
-  const raw = source.split("@")[0].split(":")[0];
-  const digits = raw.replace(/\D/g, "");
-  return digits.length >= 8 ? `+${digits}` : null;
-}
-
-function phoneCandidates(value: unknown) {
-  const normalized = normalizePhone(value);
-  if (!normalized) return [];
-
-  const candidates = new Set<string>();
-  const add = (digits: string) => {
-    const clean = digits.replace(/\D/g, "");
-    if (clean.length >= 8) candidates.add(`+${clean}`);
-  };
-
-  const digits = normalized.replace(/\D/g, "");
-  add(digits);
-  add(digits.replace(/^0+/, ""));
-
-  const national = digits.startsWith("55") ? digits.slice(2).replace(/^0+/, "") : digits.replace(/^0+/, "");
-  if (national.length >= 10 && national.length <= 11) add(`55${national}`);
-
-  // Brazil mobile numbers can arrive with or without the ninth digit after the DDD.
-  if (national.length === 10) add(`55${national.slice(0, 2)}9${national.slice(2)}`);
-  if (national.length === 11 && national[2] === "9") add(`55${national.slice(0, 2)}${national.slice(3)}`);
-
-  return [...candidates];
-}
+import { normalizePhone, phoneCandidates, phonesMayMatch } from "./phone.ts";
 
 function firstText(...values: unknown[]) {
   for (const value of values) {
@@ -200,12 +168,6 @@ function buildEvolutionMessageKey(data: any, info: any, key: any, messageId: str
     ...(id ? { id } : {}),
     ...(participant ? { participant } : {}),
   };
-}
-
-function phonesMayMatch(a: unknown, b: unknown) {
-  const aCandidates = new Set(phoneCandidates(a).map((phone) => phone.replace(/\D/g, "")));
-  const bCandidates = phoneCandidates(b).map((phone) => phone.replace(/\D/g, ""));
-  return bCandidates.some((phone) => aCandidates.has(phone));
 }
 
 function extractSender(payload: any) {

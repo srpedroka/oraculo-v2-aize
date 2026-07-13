@@ -721,6 +721,8 @@ Mudança visível possível: uma tela simples de saúde para owners e mensagens 
 
 ## 4.2 Fatia 4A — Cobertura por risco
 
+> **STATUS: concluída em 2026-07-13.** Cobertura local para períodos, telefone, áreas, pricing, imports, idempotência, propostas, memória e formatação; matriz de segurança no staging para empresas, papéis, áreas, segredos, RPCs, arquivo, auditoria e backup; Playwright autenticado desktop/mobile para as jornadas principais com dados descartáveis. Validação: 155 unitários, fixtures, 91 integrações + 1 skip opt-in, 5 testes de segurança/RLS, 8 E2E, lint e build. Comandos e matriz em `docs/TESTING.md`. Sem mudança funcional, migration ou deploy de produção.
+
 Cobertura mínima obrigatória:
 
 ### Unitários

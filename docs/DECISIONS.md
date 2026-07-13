@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Cobertura automatizada guiada por risco
+
+Decisão: organizar a Fatia 4A por contratos críticos, não por um percentual isolado de linhas. Unitários cobrem domínio, parsers e memória; integração/RLS prova transações e autorização no staging; Playwright percorre as jornadas autenticadas em desktop e mobile usando frontend local e dados descartáveis.
+
+Motivo: uma cobertura numérica alta pode deixar sem prova exatamente os riscos mais caros do Oráculo: cruzamento de empresas, excesso de permissão, segredos acessíveis, gravação parcial, arquivo sem restauração e telas críticas que não carregam. A matriz explícita liga cada risco a um teste executável.
+
+Consequências: testes com banco recusam a referência de produção; recuperação E2E não envia email; IA e WhatsApp não recebem chaves reais; toda fixture tem limpeza obrigatória. CI, logs estruturados, alertas, axe e Error Boundary continuam separados nas Fatias 4B–4E.
+
 ## 2026-07-13 - Texto do WhatsApp não tem mais fallback síncrono
 
 Decisão: depois do piloto real, toda integração ativa usa fila inbound e outbox para texto. `whatsapp-webhook/index.ts` fica mínimo e delega ao núcleo compartilhado; o worker é o único executor de texto. Se fila ou outbox estiver indisponível, webhook/worker falham antes de qualquer mutação e deixam o provedor/retry tentar novamente.

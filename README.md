@@ -53,7 +53,7 @@ pnpm run lint
 pnpm run build
 ```
 
-`pnpm run lint` roda `tsc --noEmit`. `pnpm run test:unit` roda a suíte local; `pnpm run test:integration` usa somente o Supabase de staging configurado em `.agents-private/agent-env`; `pnpm run check` combina lint, testes e build.
+`pnpm run lint` roda `tsc --noEmit`. `pnpm run test:unit` roda a suíte local; `pnpm run test:integration` e `pnpm run test:security` usam somente o Supabase de staging configurado em `.agents-private/agent-env`; `pnpm run test:e2e:staging` abre o frontend local contra esse staging e usa dados descartáveis. `pnpm run check` combina lint, testes e build. A matriz completa está em `docs/TESTING.md`.
 
 ## Deploy
 
@@ -114,6 +114,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - Acessos e chaves: `docs/ACCESS.md`
 - Decisoes: `docs/DECISIONS.md`
 - Runbook: `docs/RUNBOOK.md`
+- Testes: `docs/TESTING.md`
 - Changelog: `docs/CHANGELOG.md`
 - Instrucao para agentes: `AGENTS.md`
 

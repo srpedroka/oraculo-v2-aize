@@ -16,6 +16,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:security": "vitest run --config vitest.security.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:staging": "E2E_STAGING=true playwright test",
     "test:fixtures": "pnpm run test:historical-import && pnpm run test:kpi-format && pnpm run test:conversation-memory",
     "test:historical-import": "node --experimental-strip-types scripts/verify-historical-import.ts",
     "test:kpi-format": "node --experimental-strip-types scripts/verify-kpi-format.ts",

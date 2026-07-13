@@ -1,5 +1,17 @@
 # Runbook
 
+## Testes por risco
+
+Antes de publicar, escolha as suítes pela superfície alterada. Unitários sempre rodam sem rede; integração, segurança e E2E autenticado exigem as variáveis de `.agents-private/agent-env` e recusam o projeto de produção.
+
+```bash
+pnpm run test:unit
+pnpm run lint
+pnpm run build
+```
+
+Para mudanças de banco, permissão, lifecycle, backup ou jornada de usuário, carregue o ambiente privado e rode também `pnpm run test:integration`, `pnpm run test:security` e `pnpm run test:e2e:staging`. A matriz, os limites e as regras de limpeza estão em `docs/TESTING.md`.
+
 Manual rapido para quando precisar rodar, diagnosticar ou recuperar o Oraculo V2.
 
 Para saber onde ficam contas, chaves, secrets e URLs administrativas, leia tambem `docs/ACCESS.md`.

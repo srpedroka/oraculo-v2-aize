@@ -283,6 +283,8 @@ Ja cobertos no `.gitignore`:
 ## Checklist antes de deploy
 
 - `pnpm run check` (lint + testes + build);
+- `pnpm run test:security` para RLS, papéis, segredos, RPCs service-only, lifecycle, auditoria e backup;
+- `pnpm run test:e2e:staging` para jornadas autenticadas com dados descartáveis, quando houver mudança de fluxo;
 - `pnpm run verify:deploy` (migrations, `verify_jwt`, frontend, segredos versionados);
 - `pnpm run lint`
 - `pnpm run build`
@@ -291,6 +293,8 @@ Ja cobertos no `.gitignore`:
 - testar login/onboarding;
 - testar rota direta no Netlify;
 - testar uma acao protegida por permissao, quando possivel.
+
+Integração, segurança e E2E autenticado possuem trava explícita contra a referência de produção. Credenciais ficam apenas em `.agents-private/agent-env`, e a fábrica falha visivelmente se não remover organização ou usuário descartável. Consulte `docs/TESTING.md`.
 
 ## Achados de hardening a corrigir (registrados na Etapa 0, 2026-07-12)
 

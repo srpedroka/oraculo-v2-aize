@@ -343,4 +343,4 @@ Backend e dados:
 - `SUPABASE_SERVICE_ROLE_KEY` nunca deve chegar ao frontend.
 - Chaves de IA devem passar apenas por Edge Functions.
 - Rotas diretas do app dependem do fallback SPA do Netlify.
-- O projeto ainda nao tem testes automatizados de UI; build e typecheck sao a protecao minima.
+- A qualidade automatizada é organizada por risco: Vitest local para domínio e parsers, integração/RLS em Supabase de staging e Playwright autenticado em frontend local contra staging, com organizações descartáveis. A matriz está em `docs/TESTING.md`; produção recebe apenas smoke E2E público e de leitura.
