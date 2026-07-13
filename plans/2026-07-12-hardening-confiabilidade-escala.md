@@ -890,6 +890,8 @@ Não trocar toda a arquitetura de uma vez. Migrar domínio por domínio com test
 
 ## 5.3 Fatia 5B — Dividir Edge Functions grandes
 
+> **STATUS: concluída em 2026-07-13.** O processador público do WhatsApp foi mantido e os handlers de evento, mídia, documentos, conversa e wake do worker foram separados. O motor de sessão foi dividido em runtime, importações e normalizadores de planos prontos. Configurações passou a usar controller tipado e componentes por aba. Não houve mudança funcional, migration ou permissão. Validação: Deno sem referências ausentes, 175 unitários, 95 integrações + 1 skip e 10 E2E desktop/mobile.
+
 No WhatsApp, preservar function pública e mover handlers para módulos.
 
 No motor de sessões, separar:

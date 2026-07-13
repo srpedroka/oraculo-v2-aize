@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Módulos críticos com fachadas compatíveis
+
+Decisão: dividir o processador do WhatsApp, o motor de sessões e Configurações por responsabilidade, preservando `handleWhatsAppWebhook`, a API de `session-engine.ts` e `src/pages/Settings.tsx` como fachadas compatíveis.
+
+Motivo: os três arquivos concentravam regras independentes e dificultavam revisão, teste e manutenção. A separação reduz o raio de cada alteração sem introduzir dois caminhos funcionais nem migrar consumidores no mesmo ciclo.
+
+Consequências: não houve mudança de payload, query, permissão ou UI. Novos módulos Deno precisam passar por checagem de referências e bundle antes do deploy; staging continua obrigatório porque o `tsc` do frontend não cobre Edge Functions. Paginação, invalidação seletiva e code splitting pertencem às Fatias 5C–5E.
+
 ## 2026-07-13 - Store por domínios com fachada compatível
 
 Decisão: decompor o store React em contrato, UI local, cliente, consultas React Query agrupadas por domínio, mapeadores e adaptadores de comandos, mantendo `AppProvider`/`useAppState` como fachada temporariamente compatível.

@@ -18,6 +18,14 @@ pnpm run lint
 pnpm run build
 ```
 
+Ao mover código de Edge Functions, verificar também as entradas afetadas com Deno. O `tsc` do frontend não cobre esses módulos:
+
+```bash
+pnpm dlx deno check --node-modules-dir=auto supabase/functions/whatsapp-webhook/index.ts supabase/functions/whatsapp-worker/index.ts supabase/functions/oracle-chat/index.ts supabase/functions/oracle-session/index.ts
+```
+
+Erros de tipagem legados podem aparecer nessa checagem; referências ausentes (`TS2304`/`TS2552`) bloqueiam o deploy.
+
 Staging (carregar as variáveis privadas sem exibi-las):
 
 ```bash
@@ -72,3 +80,4 @@ As Fatias 4A/4B provam regras críticas, jornadas principais e o gate automátic
 - `tests/e2e/error-boundary.spec.ts`: força uma falha apenas no build local, valida foco, código, recuperação, viewport desktop/mobile e zero violações Axe críticas/graves. O gatilho é protegido por `import.meta.env.DEV` e não existe no build de produção.
 - A suíte de integração usa um único Supabase de staging e roda os arquivos sequencialmente. Alguns cenários criam triggers temporários e exercitam rollback; paralelizar esses arquivos pode saturar o ambiente ou produzir interferência entre provas destrutivas.
 - `src/state/store-equivalence.test.tsx` protege a fachada pública de `useAppState` e as ações locais de UI; `src/state/domain-mappers.test.ts` protege os contratos de leitura/escrita extraídos do store para organizações, planejamento, documentos, KPIs, IA e WhatsApp.
+- A Fatia 5B repetiu a suíte completa após o deploy dos módulos extraídos: 175 unitários, 95 integrações + 1 skip opt-in e 10 E2E autenticados desktop/mobile. O cenário de PDF comprimido e os contratos de worker/outbox são regressões obrigatórias para o processador modular.

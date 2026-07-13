@@ -264,11 +264,13 @@ Compartilhados criticos:
 - `_shared/auth.ts`: sessao, membership, owner e permissao por area.
 - `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios e deteccao de retomada explicita.
 - `_shared/whatsapp-processor.ts`: núcleo único de autenticação/processamento usado pelo ingress e pelo worker; texto externo nunca usa fallback síncrono.
+- `_shared/whatsapp-event.ts`, `_shared/whatsapp-media.ts`, `_shared/whatsapp-documents.ts` e `_shared/whatsapp-conversation.ts`: parsing/autenticação, mídia em memória, importação de documentos e respostas do processador público.
 - `_shared/model.ts`: chamadas OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok.
 - `_shared/ai-router.ts`: resolve provider/modelo/chave por funcao (`planning`, `daily`, `background`).
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.
 - `_shared/conductors/tone.ts`: carrega o ajuste de tom da empresa e monta a diretiva segura para os prompts.
 - `_shared/session-engine.ts`: estado e ciclo de sessoes.
+- `_shared/session-runtime.ts`, `_shared/session-imports.ts` e `_shared/session-ready-plans.ts`: runtime comum, importações prontas e normalizadores/prompts puros do motor de sessões.
 - `_shared/proposals.ts`: aplica propostas confirmadas com validacao server-side.
 - `_shared/plan-context.ts`: contexto textual do plano e ate 5 historicos relevantes para IA.
 - `_shared/untrusted-content.ts`: fronteira para documentos não confiáveis, limites de saída da IA e validação de referências importadas por empresa.
@@ -565,7 +567,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatia 5A concluída em 2026-07-13: store dividido em módulos de contrato, UI, cliente, consultas/mapeadores por domínio e comandos, preservando `useAppState` como fachada sem alteração funcional. Próxima fatia autorizável: 5B, divisão das Edge Functions e da tela de Configurações.
+- Etapa 5 / Fatias 5A–5B concluídas em 2026-07-13: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade, preservando fachadas e comportamento. Próxima fatia autorizável: 5C, queries seletivas e paginação.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
