@@ -39,6 +39,8 @@ pnpm run test:e2e:staging
 
 Os testes que injetam falhas SQL usam `SUPABASE_STAGING_DB_URL` quando a URL e local. Em staging hospedado, usam `SUPABASE_STAGING_PROJECT_REF` e `SUPABASE_STAGING_ACCESS_TOKEN` pela Management API. A decisao fica centralizada em `tests/helpers/sql.ts`.
 
+O Supabase local precisa nascer apenas das migrations versionadas. `20260714120000_service_role_baseline_grants.sql` declara os privilégios administrativos que o ambiente hospedado provisiona para `service_role`; sem essa base, a autenticação admin funciona, mas operações REST em tabelas básicas falham com `permission denied`.
+
 Smoke público, somente leitura:
 
 ```bash

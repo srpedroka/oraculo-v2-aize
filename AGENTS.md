@@ -186,6 +186,7 @@ Migrations principais:
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
 - `supabase/migrations/20260712223000_ai_budget_alert_refresh.sql`: alertas mensais imediatos e deduplicados após registrar custo.
+- `supabase/migrations/20260714120000_service_role_baseline_grants.sql`: mantém Supabase local/hospedado equivalentes nos grants server-only do `service_role` e nos defaults de objetos futuros.
 - `supabase/migrations/20260714090000_operational_health_slos.sql`: snapshots, alertas, falhas sanitizadas de IA e cron do monitor operacional.
 - `supabase/migrations/20260714110000_frontend_error_events.sql`: correlação service-only dos códigos de ocorrência do Error Boundary.
 

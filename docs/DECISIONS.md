@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Grants do service_role são parte das migrations
+
+Decisão: declarar em migration os privilégios atuais e os default privileges do papel interno `service_role` no schema `public`, sem conceder novos acessos a `anon` ou `authenticated`.
+
+Motivo: o Supabase hospedado já provisionava esses privilégios, mas o banco local do CI era reconstruído somente pelas migrations do projeto. A divergência fazia clientes administrativos autenticarem corretamente e ainda assim receberem `permission denied`, derrubando toda a fábrica de testes.
+
+Consequências: staging, produção e CI passam a ter a mesma fundação declarativa. O papel continua server-only, protegido por segredo e RLS bypass esperado. A suíte unitária verifica a presença dos grants e a suíte de segurança confirma que papéis de usuário continuam isolados.
+
 ## 2026-07-13 - Módulos críticos com fachadas compatíveis
 
 Decisão: dividir o processador do WhatsApp, o motor de sessões e Configurações por responsabilidade, preservando `handleWhatsAppWebhook`, a API de `session-engine.ts` e `src/pages/Settings.tsx` como fachadas compatíveis.
