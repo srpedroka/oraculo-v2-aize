@@ -548,14 +548,14 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
-- Etapa 3 / Fatias 3A, 3B e 3C publicadas em producao, mas inertes: fila inbound, historico+outbox atomicos, worker/sender, locks, retry e crons prontos, com endpoints nulos, zero empresas ativadas e zero itens. Antes de ativar, testar texto, audio, documento e envio real controlado com a Evolution e obter nova autorizacao explicita.
+- Etapa 3 / Fatias 3A-3D em piloto controlado desde 2026-07-13: fila inbound e outbox estao ativas somente na empresa piloto; worker/sender configurados; demais empresas continuam no caminho sincrono. Envio real, deduplicacao 10x e ordem de mensagens passaram, sem pendencias/dead-letter. Entrada real pela Evo Go, audio e documento ainda precisam de prova antes de remover o caminho sincrono na Fatia 3E.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Nao existe suite automatizada de testes unitarios/UI/E2E.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
-- As filas inbound/outbox e endpoints duráveis continuam desligados; não ativar sem nova autorização e teste real controlado. O painel de saúde não altera esse estado.
+- As filas inbound/outbox estao ativas somente na empresa piloto. Nao expandir para outras empresas nem iniciar a Fatia 3E antes de validar entrada real, audio e documento. Em rollback, desligar flags primeiro e manter endpoints ate zerar pendencias.
 - Documentos, conversas e resumos podem conter dados privados da empresa; trate como sensiveis.
 
 ### Pendencias conhecidas / proximos passos

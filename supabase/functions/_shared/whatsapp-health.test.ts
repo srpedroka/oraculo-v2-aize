@@ -15,6 +15,8 @@ describe("saúde do WhatsApp", () => {
     expect(parseEvolutionConnectionState({ instance: { state: "open" } })).toBe("connected");
     expect(parseEvolutionConnectionState({ instance: { status: "connecting" } })).toBe("connecting");
     expect(parseEvolutionConnectionState({ state: "close" })).toBe("disconnected");
+    expect(parseEvolutionConnectionState({ data: { Connected: true, LoggedIn: true, Name: "Oráculo" } })).toBe("connected");
+    expect(parseEvolutionConnectionState({ data: { Connected: false, LoggedIn: false } })).toBe("disconnected");
     expect(parseEvolutionConnectionState({})).toBe("unknown");
   });
 

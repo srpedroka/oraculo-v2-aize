@@ -878,6 +878,8 @@ Sem a Evolution API hospedada e sem QR pareado, o painel do sistema continua fun
 
 Em `Configurações > WhatsApp`, somente owners veem o painel de saúde. Ele consulta a Evolution sem revelar chave/segredo e mostra conexão, webhook, último evento recebido, último envio confirmado, fila pendente, taxa de falha e dead-letters recentes. A URL esperada pode ser copiada e contém apenas `orgId`; tokens adicionais do Evo Go não são exibidos.
 
+Compatibilidade do diagnóstico: Evolution Node expõe rotas próprias de estado/webhook; a Evo Go atual expõe o estado em `GET /instance/status`, com `data.Connected` e `data.LoggedIn`. A Evo Go não oferece uma rota equivalente de leitura da configuração do webhook no Swagger atual. Nesse caso, `whatsapp-health` mostra o webhook como confirmado quando houve tráfego autenticado recente; sem tráfego, pede uma mensagem real em vez de declarar configuração incorreta.
+
 Alertas significam:
 
 - **Instância desconectada:** reconectar o WhatsApp na Evolution antes de testar.
@@ -887,6 +889,8 @@ Alertas significam:
 - **Falhas que exigem atenção:** abrir a lista, corrigir a causa e reprocessar somente depois que a fila correspondente estiver ativa.
 
 `Enviar teste` manda uma única mensagem para o celular internacional cadastrado no perfil do owner. Não usar repetidamente em produção. `Reprocessar` pode reenviar uma resposta e pede confirmação; com MFA crítico ligado, exige sessão `aal2`. O painel nunca ativa `inbound_queue_enabled`, `outbound_outbox_enabled`, endpoint do worker ou endpoint do sender. A retenção da telemetria é de 30 dias e não substitui logs do Supabase/Evolution.
+
+Piloto iniciado em 2026-07-13: somente a empresa piloto usa fila inbound e outbox; worker/sender estão configurados globalmente. Um envio real e os testes controlados de deduplicação/ordem passaram, sem fila ou dead-letter restante. Ainda é obrigatório provar texto real entrando pela Evo Go, seguido de áudio e documento, antes da Fatia 3E. Para rollback: desligue as duas flags da empresa, aguarde `queued|processing|retry|sending = 0` e só então zere os endpoints do worker/sender. Não desligue endpoints com itens pendentes.
 
 Configuracao atual de producao:
 

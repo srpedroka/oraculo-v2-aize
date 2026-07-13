@@ -30,6 +30,7 @@ export interface WhatsAppHealthStatus {
     messagesEnabled: boolean | null;
   };
   webhookErrorCode: string | null;
+  webhookSource: "provider" | "traffic" | "unavailable";
   expectedWebhookUrl: string;
   lastEventAt: string | null;
   lastSentAt: string | null;

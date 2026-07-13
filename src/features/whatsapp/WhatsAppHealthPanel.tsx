@@ -138,7 +138,7 @@ export function WhatsAppHealthPanel({ orgId }: { orgId: string }) {
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-text-secondary">
               <span className="inline-flex items-center gap-1.5">
                 {data.webhook.configured ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <CircleOff className="h-4 w-4 text-red-600" />}
-                Webhook {data.webhook.configured ? "correto" : "não confirmado"}
+                Webhook {data.webhook.configured ? data.webhookSource === "traffic" ? "confirmado pelo tráfego" : "correto" : "não confirmado"}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Clock3 className="h-4 w-4" /> {data.failuresLastHour}/{data.attemptsLastHour} falhas na última hora

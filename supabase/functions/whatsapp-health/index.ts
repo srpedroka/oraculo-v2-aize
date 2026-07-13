@@ -70,24 +70,37 @@ async function inspectEvolution(settings: any, keyRow: any, webhookUrl: string) 
       connectionErrorCode: baseUrl ? null : "unsafe_or_missing_url",
       webhook: emptyWebhook,
       webhookErrorCode: null,
+      providerVariant: "unknown" as const,
     };
   }
 
   const encodedName = encodeURIComponent(instanceName);
-  const [connectionResult, webhookResult] = await Promise.allSettled([
+  const [connectionResult, goConnectionResult, webhookResult] = await Promise.allSettled([
     evolutionGet(baseUrl, `/instance/connectionState/${encodedName}`, apiKey),
+    evolutionGet(baseUrl, "/instance/status", apiKey),
     evolutionGet(baseUrl, `/webhook/find/${encodedName}`, apiKey),
   ]);
 
+  const usesEvolutionGo = connectionResult.status === "rejected" && goConnectionResult.status === "fulfilled";
+  const connectionPayload = connectionResult.status === "fulfilled"
+    ? connectionResult.value
+    : goConnectionResult.status === "fulfilled"
+      ? goConnectionResult.value
+      : null;
+  const webhookFailure = webhookResult.status === "rejected" ? safeEvolutionError(webhookResult.reason) : null;
+
   return {
-    connection: connectionResult.status === "fulfilled"
-      ? parseEvolutionConnectionState(connectionResult.value)
+    connection: connectionPayload
+      ? parseEvolutionConnectionState(connectionPayload)
       : "unknown" as EvolutionConnectionState,
-    connectionErrorCode: connectionResult.status === "rejected" ? safeEvolutionError(connectionResult.reason) : null,
+    connectionErrorCode: connectionPayload
+      ? null
+      : safeEvolutionError(connectionResult.status === "rejected" ? connectionResult.reason : goConnectionResult.status === "rejected" ? goConnectionResult.reason : null),
     webhook: webhookResult.status === "fulfilled"
       ? parseEvolutionWebhookState(webhookResult.value, webhookUrl)
       : emptyWebhook,
-    webhookErrorCode: webhookResult.status === "rejected" ? safeEvolutionError(webhookResult.reason) : null,
+    webhookErrorCode: usesEvolutionGo && webhookFailure === "http_404" ? "unsupported" : webhookFailure,
+    providerVariant: usesEvolutionGo ? "evolution_go" as const : connectionResult.status === "fulfilled" ? "evolution_api" as const : "unknown" as const,
   };
 }
 
@@ -122,7 +135,9 @@ function healthAlerts(input: {
   } else if (input.connection === "unknown" && input.connectionErrorCode) {
     alerts.push({ code: "connection_unknown", tone: "warning", title: "Conexão não confirmada", detail: "A Evolution não respondeu à consulta de estado." });
   }
-  if (input.webhookErrorCode) {
+  if (input.webhookErrorCode === "unsupported") {
+    alerts.push({ code: "webhook_traffic_pending", tone: "warning", title: "Webhook aguardando confirmação", detail: "O Evo Go confirma o webhook pelo tráfego. Envie uma mensagem real para validar a entrada." });
+  } else if (input.webhookErrorCode) {
     alerts.push({ code: "webhook_unknown", tone: "warning", title: "Webhook não confirmado", detail: "Não foi possível consultar a configuração atual na Evolution." });
   } else if (!input.webhook.configured) {
     alerts.push({ code: "webhook_mismatch", tone: "critical", title: "Webhook fora do padrão", detail: "Confira a URL e habilite o evento MESSAGES_UPSERT na Evolution." });
@@ -204,6 +219,15 @@ async function loadStatus(client: ServiceClient, orgId: string) {
   const events = eventsResult.data ?? [];
   const lastEventAt = events.find((event: any) => event.event_type === "webhook_received")?.created_at ?? null;
   const lastSentAt = events.find((event: any) => ["outbound_sent", "test_sent"].includes(event.event_type))?.created_at ?? null;
+  const lastEventMinutes = ageMinutes(lastEventAt);
+  const recentWebhookTraffic = lastEventMinutes !== null && lastEventMinutes <= 72 * 60;
+  const webhookConfirmedByTraffic = evolution.providerVariant === "evolution_go"
+    && evolution.webhookErrorCode === "unsupported"
+    && Boolean(recentWebhookTraffic);
+  const webhook = webhookConfirmedByTraffic
+    ? { configured: true, enabled: null, urlMatches: true, messagesEnabled: true }
+    : evolution.webhook;
+  const webhookErrorCode = webhookConfirmedByTraffic ? null : evolution.webhookErrorCode;
   const recentAttempts = events.filter((event: any) => event.created_at >= since && ["outbound_sent", "outbound_retry", "outbound_failed", "test_sent", "test_failed"].includes(event.event_type));
   const failuresLastHour = recentAttempts.filter((event: any) => ["outbound_retry", "outbound_failed", "test_failed"].includes(event.event_type)).length;
   const pendingCount = pendingInbound + pendingOutbound;
@@ -214,8 +238,8 @@ async function loadStatus(client: ServiceClient, orgId: string) {
     enabled: Boolean(settings?.enabled),
     connection: evolution.connection,
     connectionErrorCode: evolution.connectionErrorCode,
-    webhook: evolution.webhook,
-    webhookErrorCode: evolution.webhookErrorCode,
+    webhook,
+    webhookErrorCode,
     lastEventAt,
     pendingCount,
     oldestPendingAt,
@@ -232,8 +256,9 @@ async function loadStatus(client: ServiceClient, orgId: string) {
     enabled: Boolean(settings?.enabled),
     connection: evolution.connection,
     connectionErrorCode: evolution.connectionErrorCode,
-    webhook: evolution.webhook,
-    webhookErrorCode: evolution.webhookErrorCode,
+    webhook,
+    webhookErrorCode,
+    webhookSource: webhookConfirmedByTraffic ? "traffic" : evolution.providerVariant === "evolution_api" ? "provider" : "unavailable",
     expectedWebhookUrl: webhookUrl,
     lastEventAt,
     lastSentAt,

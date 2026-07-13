@@ -7,6 +7,11 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 export function parseEvolutionConnectionState(payload: unknown): EvolutionConnectionState {
   const root = asRecord(payload);
   const instance = asRecord(root?.instance);
+  const data = asRecord(root?.data);
+  const connected = data?.Connected ?? data?.connected;
+  const loggedIn = data?.LoggedIn ?? data?.loggedIn;
+  if (connected === true && loggedIn !== false) return "connected";
+  if (connected === false || loggedIn === false) return "disconnected";
   const raw = String(instance?.state ?? instance?.status ?? root?.state ?? root?.status ?? "").trim().toLowerCase();
   if (["open", "connected", "online"].includes(raw)) return "connected";
   if (["connecting", "opening", "pairing"].includes(raw)) return "connecting";

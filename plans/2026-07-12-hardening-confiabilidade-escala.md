@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A–3D publicadas em produção em 2026-07-13; a infraestrutura durável de 3A–3C continua inerte. Fatia 3E e Etapas 4–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3: Fatias 3A–3D publicadas; piloto de 3A–3D ativo desde 2026-07-13 em uma única empresa, com envio real e provas sintéticas de deduplicação/ordem aprovados. Entrada real pela Evo Go, áudio e documento ainda pendentes. Fatia 3E e Etapas 4–8 não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -632,7 +632,9 @@ Retries sugeridos: imediato, 10s, 30s, 2min, 10min. Depois, `dead` e alerta.
 
 ## 3.6 Fatia 3D — Recuperação e saúde
 
-> **STATUS Fatia 3D: publicada em produção em 2026-07-13.** Painel owner-only, telemetria service-only de 30 dias, consulta sanitizada à Evolution, teste manual e retry condicionado à fila correspondente. Nenhuma flag/endpoint foi ativada. Validação: 89 unitários, 6 integrações específicas, lint/build, QA visual desktop/mobile e `verify:deploy`. Produção recebeu migration `20260713200000`, `whatsapp-health` v2, `whatsapp-webhook` v69 e Netlify `6a54d36b5d77e73b1a491a0b`; estado final: migration=1, filas/endpoints/jobs/outbox=0. O teste com mensagem real permanece manual no botão do owner.
+> **STATUS Fatia 3D: publicada em produção em 2026-07-13.** Painel owner-only, telemetria service-only de 30 dias, consulta sanitizada à Evolution, teste manual e retry condicionado à fila correspondente. Na publicação original, nenhuma flag/endpoint foi ativada. Validação: 89 unitários, 6 integrações específicas, lint/build, QA visual desktop/mobile e `verify:deploy`. Produção recebeu migration `20260713200000`, `whatsapp-health` v2, `whatsapp-webhook` v69 e Netlify `6a54d36b5d77e73b1a491a0b`; o estado imediatamente após aquele deploy era migration=1, filas/endpoints/jobs/outbox=0.
+
+> **PILOTO OPERACIONAL INICIADO em 2026-07-13:** worker/sender e as duas flags duráveis foram ativados somente na empresa piloto. Evo Go conectada; envio real HTTP 200 em uma tentativa; 10 entregas autenticadas do mesmo evento geraram um único job, uma única mensagem e uma única resposta; duas mensagens rápidas preservaram ordem; zero pendências e zero dead-letter ao final. O health check foi compatibilizado com `/instance/status` da Evo Go e usa tráfego autenticado como prova do webhook quando a configuração remota não pode ser consultada. Falta receber uma resposta real pela Evo Go e validar áudio/documento. Não iniciar 3E antes dessas provas.
 
 Em Configurações > WhatsApp mostrar de forma simples:
 

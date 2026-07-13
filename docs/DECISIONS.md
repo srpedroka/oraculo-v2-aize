@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Piloto durável do WhatsApp fica restrito a uma empresa
+
+Decisão: ativar `inbound_queue_enabled` e `outbound_outbox_enabled` somente na empresa piloto, mantendo os endpoints globais do worker/sender configurados e todas as demais empresas no caminho síncrono. Não executar a Fatia 3E nem remover o processador antigo até provar entrada real de texto, áudio e documento pela Evo Go.
+
+Motivo: os testes autenticados já comprovam deduplicação, ordenação, gravação e envio, mas uma chamada sintética ao webhook não comprova que a Evo Go entregará eventos reais depois de reconexão. A ativação limitada permite observar a operação sem ampliar o impacto.
+
+Consequências: rollback desliga primeiro as duas flags da empresa; os endpoints só voltam a `null` depois de zerar itens pendentes. O piloto permanece ativo enquanto filas e dead-letters estiverem zerados. A Evo Go usa `/instance/status` para conexão; quando ela não expõe a configuração do webhook, tráfego autenticado recente é a evidência operacional exibida no painel.
+
 ## 2026-07-13 - Saúde do WhatsApp é owner-only e não ativa filas
 
 Decisão: a Fatia 3D agrega telemetria técnica service-only e um painel simples em Configurações. Status pode ser consultado pelo owner; teste e retry respeitam MFA opcional. Reprocessar exige que a fila e o endpoint correspondentes já estejam ativos. O painel não altera flags, endpoints nem configuração remota da Evolution.
