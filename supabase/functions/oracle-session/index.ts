@@ -11,14 +11,20 @@ import {
   startPlanningSession,
   type PlanningSessionType,
 } from "../_shared/session-engine.ts";
+import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const requestLogId = requestId(req);
+  const startedAt = performance.now();
+  let action = "unknown";
+  let requestedOrgId: string | null = null;
   try {
     const user = await getUser(req);
     const payload = await req.json();
-    const action = String(payload.action ?? "");
+    action = String(payload.action ?? "");
+    requestedOrgId = typeof payload.orgId === "string" ? payload.orgId : null;
     const client = serviceClient();
 
     if (action === "start") {
@@ -101,6 +107,15 @@ serve(async (req) => {
 
     return jsonResponse({ error: "Ação de sessão inválida" }, 400);
   } catch (error) {
+    logStructured("error", {
+      requestId: requestLogId,
+      functionName: "oracle-session",
+      orgId: requestedOrgId,
+      operation: action,
+      durationMs: Math.round(performance.now() - startedAt),
+      status: "error",
+      errorCode: safeErrorCode(error),
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro na sessão do Oráculo" }, 400);
   }
 });

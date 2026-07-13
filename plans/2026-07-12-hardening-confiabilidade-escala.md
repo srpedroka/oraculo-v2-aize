@@ -713,6 +713,8 @@ Webhook responde rapidamente, processamento é durável, envio tem retry e nenhu
 
 # ETAPA 4 — Qualidade automatizada e observabilidade
 
+> **STATUS Fatia 4C:** concluída em 2026-07-13. Logger estruturado compartilhado conectado aos caminhos críticos `whatsapp-worker`, `whatsapp-sender`, `oracle-chat` e `oracle-session`; quatro Functions publicadas em produção. Logs não carregam conteúdo de conversa, segredos ou payloads brutos.
+
 ## 4.1 Resumo funcional que deve ser apresentado antes
 
 Esta etapa não muda os fluxos principais. Ela torna erros detectáveis antes do usuário e cria alertas quando Supabase, IA, WhatsApp, backup ou frontend apresentam problema.

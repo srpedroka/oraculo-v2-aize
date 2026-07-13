@@ -7,6 +7,7 @@ import {
   sanitizeWhatsAppSenderError,
   type QueuedWhatsAppOutboxItem,
 } from "../_shared/whatsapp-sender.ts";
+import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 
 function timingSafeEqual(a: string, b: string) {
   const left = new TextEncoder().encode(a);
@@ -33,6 +34,9 @@ serve(async (req) => {
   if (req.method !== "POST") return jsonResponse({ error: "Método não permitido" }, 405);
 
   const client = serviceClient();
+  const requestLogId = requestId(req);
+  const startedAt = performance.now();
+  let requestedOrgId: string | null = null;
   try {
     if (!(await authorizeSender(req, client))) return jsonResponse({ error: "Sender não autorizado" }, 401);
 
@@ -41,6 +45,7 @@ serve(async (req) => {
       return jsonResponse({ error: "Empresa inválida" }, 400);
     }
     const orgId = typeof body?.orgId === "string" ? body.orgId : null;
+    requestedOrgId = orgId;
     const batchSize = Math.max(1, Math.min(10, Number(body?.batchSize) || 5));
     const senderId = `sender-${crypto.randomUUID()}`;
     const summary = { claimed: 0, sent: 0, retry: 0, dead: 0 };
@@ -105,8 +110,25 @@ serve(async (req) => {
     }
 
     await client.rpc("cleanup_whatsapp_outbox");
+    logStructured("info", {
+      requestId: requestLogId,
+      functionName: "whatsapp-sender",
+      orgId: requestedOrgId,
+      operation: "send_outbox_batch",
+      durationMs: Math.round(performance.now() - startedAt),
+      status: "ok",
+    });
     return jsonResponse({ ok: true, ...summary });
   } catch (error) {
+    logStructured("error", {
+      requestId: requestLogId,
+      functionName: "whatsapp-sender",
+      orgId: requestedOrgId,
+      operation: "send_outbox_batch",
+      durationMs: Math.round(performance.now() - startedAt),
+      status: "error",
+      errorCode: safeErrorCode(error),
+    });
     return jsonResponse({ error: sanitizeWhatsAppSenderError(error) }, 500);
   }
 });

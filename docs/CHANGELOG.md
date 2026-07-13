@@ -245,3 +245,4 @@
 - Tabelas complementares do mesmo ano deixaram de gerar falso conflito; tabelas do mesmo assunto com valores divergentes continuam exigindo escolha.
 - Metadados e valores confirmados passam a ser persistidos e restaurados; multiplos candidatos selecionados sao gravados atomicamente.
 - Adicionadas fixtures puras em `pnpm run test:historical-import` cobrindo o caso Marketing/Abril 2026 e conflitos relevantes.
+- Concluída a base da Etapa 4 / Fatia 4C: logs estruturados JSON nos caminhos críticos, com request/correlation ID, operação, duração, status e códigos estáveis de erro. Redação remove URLs, tokens, telefones, e-mails e credenciais; não houve mudança funcional no app ou no WhatsApp.

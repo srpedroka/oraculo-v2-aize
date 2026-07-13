@@ -19,6 +19,7 @@ import { CONVERSATION_STYLE, conversationGuideForContext } from "../_shared/cond
 import { loadOrgTone, toneDirective } from "../_shared/conductors/tone.ts";
 import { startPlanningSession } from "../_shared/session-engine.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
+import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 
 function fallbackReview(objectives: any[]) {
   const risk = objectives.filter((objective) => ["at_risk", "late"].includes(objective.status));
@@ -47,9 +48,13 @@ function areaIdFromContext(context: string) {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const requestLogId = requestId(req);
+  const startedAt = performance.now();
+  let requestedOrgId: string | null = null;
   try {
     const user = await getUser(req);
     const { orgId, areaId = null, message = "", context = "chat" } = await req.json();
+    requestedOrgId = typeof orgId === "string" ? orgId : null;
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
 
     await assertOrgMember(user.id, orgId);
@@ -207,8 +212,27 @@ serve(async (req) => {
       channel: "web",
     });
 
+    logStructured("info", {
+      requestId: requestLogId,
+      functionName: "oracle-chat",
+      orgId: requestedOrgId,
+      userId: user.id,
+      operation: "chat",
+      durationMs: Math.round(performance.now() - startedAt),
+      status: "ok",
+      correlationId: conversation.id,
+    });
     return jsonResponse({ answer, conversationId: conversation.id });
   } catch (error) {
+    logStructured("error", {
+      requestId: requestLogId,
+      functionName: "oracle-chat",
+      orgId: requestedOrgId,
+      operation: "chat",
+      durationMs: Math.round(performance.now() - startedAt),
+      status: "error",
+      errorCode: safeErrorCode(error),
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro no Oráculo" }, 400);
   }
 });
