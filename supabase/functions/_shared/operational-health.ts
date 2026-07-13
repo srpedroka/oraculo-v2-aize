@@ -21,6 +21,7 @@ export interface OperationalMetrics {
   aiCostUsd: number;
   aiBudgetUsd: number;
   aiErrors24h: number;
+  frontendErrors24h: number;
   lastRestoreAgeDays: number | null;
 }
 
@@ -62,9 +63,11 @@ export function evaluateOperationalSignals(metrics: OperationalMetrics): Operati
   if (metrics.aiErrors24h >= 5) {
     signals.push({ code: "ai_errors_high", tone: "warning", title: "Erros de IA acima do normal", detail: `${metrics.aiErrors24h} falhas foram registradas nas últimas 24 horas.` });
   }
+  if (metrics.frontendErrors24h >= 5) {
+    signals.push({ code: "frontend_errors_high", tone: "warning", title: "Erros de tela acima do normal", detail: `${metrics.frontendErrors24h} ocorrências foram registradas nas últimas 24 horas.` });
+  }
   if (metrics.lastRestoreAgeDays === null || metrics.lastRestoreAgeDays > 90) {
     signals.push({ code: "restore_test_due", tone: "warning", title: "Teste de restauração pendente", detail: "Nenhuma restauração concluída foi registrada nos últimos 90 dias." });
   }
   return signals;
 }
-

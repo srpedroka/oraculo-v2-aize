@@ -276,7 +276,7 @@ export function Strategic() {
               </p>
             ) : null}
             {importFeedback ? <p className="mt-2 text-xs leading-5 text-[#1D7A3E]">{importFeedback}</p> : null}
-            {importError ? <p className="mt-2 text-xs leading-5 text-[#B42318]">{importError}</p> : null}
+            {importError ? <p role="alert" className="mt-2 text-xs leading-5 text-[#B42318]">{importError}</p> : null}
             <div className="mt-4">
               <div className="flex flex-wrap gap-2">
                 <Button

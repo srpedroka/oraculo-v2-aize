@@ -1520,7 +1520,7 @@ export function Settings() {
             ) : null}
           </div>
           {aiMessage ? (
-            <p className={["mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm leading-6", statusClasses(aiMessageTone)].join(" ")}>
+            <p role={aiMessageTone && aiMessageTone !== "ok" ? "alert" : "status"} aria-live="polite" className={["mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-sm leading-6", statusClasses(aiMessageTone)].join(" ")}>
               {aiMessageTone === "ok" ? <CheckCircle2 className="mt-1 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-1 h-4 w-4 shrink-0" />}
               {aiMessage}
             </p>
@@ -1694,7 +1694,7 @@ export function Settings() {
             </Button>
           </form>
           {whatsappMessage ? (
-            <p className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+            <p role="status" aria-live="polite" className="mt-3 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
               {whatsappMessage}
             </p>
           ) : null}
@@ -1834,7 +1834,7 @@ export function Settings() {
         </div>
 
         {toneMessage ? (
-          <p className="mt-4 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+          <p role="status" aria-live="polite" className="mt-4 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
             {toneMessage}
           </p>
         ) : null}

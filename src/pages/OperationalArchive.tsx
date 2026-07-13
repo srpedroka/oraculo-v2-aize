@@ -184,7 +184,7 @@ export function OperationalArchive() {
         <h1 className="text-2xl font-semibold text-text">Arquivo operacional</h1>
       </div>
 
-      {message ? <p className="border-l-2 border-status-success pl-3 text-sm text-status-success">{message}</p> : null}
+      {message ? <p role="status" aria-live="polite" className="border-l-2 border-status-success pl-3 text-sm text-status-success">{message}</p> : null}
       {error ? <p className="border-l-2 border-status-danger pl-3 text-sm text-status-danger">{error}</p> : null}
 
       {!archivedCount ? (

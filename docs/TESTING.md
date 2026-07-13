@@ -69,3 +69,5 @@ pnpm run test:e2e
 ## Limites atuais
 
 As Fatias 4A/4B provam regras críticas, jornadas principais e o gate automático, mas não medem percentual de linhas como meta de produto. Axe, Error Boundary, correlação de logs e alertas pertencem às Fatias 4C–4E.
+- `tests/e2e/error-boundary.spec.ts`: força uma falha apenas no build local, valida foco, código, recuperação, viewport desktop/mobile e zero violações Axe críticas/graves. O gatilho é protegido por `import.meta.env.DEV` e não existe no build de produção.
+- A suíte de integração usa um único Supabase de staging e roda os arquivos sequencialmente. Alguns cenários criam triggers temporários e exercitam rollback; paralelizar esses arquivos pode saturar o ambiente ou produzir interferência entre provas destrutivas.

@@ -23,8 +23,8 @@ export interface OperationalHealthStatus {
     aiCostUsd: number;
     aiBudgetUsd: number;
     aiErrors24h: number;
+    frontendErrors24h: number;
     lastRestoreAgeDays: number | null;
   };
   alerts: OperationalHealthAlert[];
 }
-

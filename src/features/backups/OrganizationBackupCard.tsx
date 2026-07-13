@@ -456,7 +456,7 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
       )}
 
       {message ? (
-        <div className={[
+        <div role={messageTone === "error" ? "alert" : "status"} aria-live="polite" className={[
           "mt-5 flex items-start gap-2 rounded-control border px-3 py-2 text-sm leading-6",
           messageTone === "ok"
             ? "border-emerald-200 bg-emerald-50 text-emerald-700"

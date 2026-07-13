@@ -1143,6 +1143,18 @@ order by last_seen_at desc;
 
 Um alerta é resolvido automaticamente quando o sinal normaliza. O monitor não bloqueia funções e não envia WhatsApp. Para pausar chamadas automáticas sem apagar histórico, defina `endpoint_url = null`; o painel owner continua podendo executar uma leitura autenticada.
 
+### Código de ocorrência do frontend
+
+Quando o usuário informar um código `ORC-XXXXXXXXXX`, consulte somente a linha sanitizada:
+
+```sql
+select occurrence_id, error_code, path, created_at
+from public.frontend_error_events
+where org_id = '<ORG_ID>' and occurrence_id = 'ORC-XXXXXXXXXX';
+```
+
+O código ajuda a localizar momento e tela, mas não contém diagnóstico completo. Nunca peça stack, token ou conteúdo empresarial ao usuário. Se a ocorrência se repetir, reproduza com os mesmos passos e use os logs estruturados do horário correspondente.
+
 ```bash
 supabase functions deploy apply-kpi-import
 supabase functions deploy company-research

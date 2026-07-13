@@ -290,7 +290,7 @@ export function MfaSecurityCard({ orgId }: { orgId: string }) {
       )}
 
       {error ? <p role="alert" className="mt-4 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-      {message ? <p className="mt-4 rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
+      {message ? <p role="status" aria-live="polite" className="mt-4 rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
     </Card>
   );
 }

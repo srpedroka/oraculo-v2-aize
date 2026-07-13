@@ -60,6 +60,18 @@ d("Fatia 4D — métricas, alertas e SLOs", () => {
     expect(resolved!.every((item) => item.resolved_at)).toBe(true);
   });
 
+  it("correlaciona uma falha de tela sem guardar mensagem ou stack", async () => {
+    const occurrenceId = `ORC-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+    const { data, error } = await coordinatorClient!.functions.invoke("operational-health", {
+      body: { action: "frontend_error", orgId: org!.orgId, occurrenceId, errorCode: "TypeError", path: "/areas/segura?token=nao-persistir" },
+    });
+    if (error) throw error;
+    expect(data).toMatchObject({ ok: true, occurrenceId });
+    const { data: event } = await serviceClient().from("frontend_error_events").select("occurrence_id, error_code, path").eq("org_id", org!.orgId).eq("occurrence_id", occurrenceId).single();
+    expect(event).toEqual({ occurrence_id: occurrenceId, error_code: "TypeError", path: "/areas/segura" });
+    expect(JSON.stringify(event)).not.toContain("token");
+  });
+
   it("bloqueia coordenador e acesso direto às tabelas técnicas", async () => {
     const invocation = await coordinatorClient!.functions.invoke("operational-health", { body: { action: "status", orgId: org!.orgId } });
     expect(invocation.error).toBeTruthy();
@@ -71,4 +83,3 @@ d("Fatia 4D — métricas, alertas e SLOs", () => {
     expect(aiErrors.error).toBeTruthy();
   });
 });
-

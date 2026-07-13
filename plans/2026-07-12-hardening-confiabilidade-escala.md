@@ -831,6 +831,8 @@ Usar Sentry ou ferramenta equivalente para frontend/Edge, removendo dados sensí
 
 ## 4.6 Fatia 4E — Error Boundary e suporte
 
+> **STATUS: concluída em 2026-07-13.** Error Boundary global substitui tela branca por recuperação com foco, código `ORC-...`, nova tentativa, recarga e Dashboard. Ocorrências autenticadas são correlacionadas no monitor sem mensagem, stack, query string ou conteúdo. Mensagens assíncronas principais usam `role`/`aria-live`. Unitários, integração e Playwright desktop/mobile com Axe cobrem falha, recuperação, isolamento, viewport e contraste.
+
 - Adicionar Error Boundary global.
 - Mostrar tela recuperável, nunca tela branca.
 - Gerar código de ocorrência/request ID.

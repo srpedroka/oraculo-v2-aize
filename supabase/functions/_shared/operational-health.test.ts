@@ -15,6 +15,7 @@ const healthy: OperationalMetrics = {
   aiCostUsd: 10,
   aiBudgetUsd: 100,
   aiErrors24h: 0,
+  frontendErrors24h: 0,
   lastRestoreAgeDays: 2,
 };
 
@@ -46,4 +47,3 @@ describe("operational health", () => {
     ]);
   });
 });
-

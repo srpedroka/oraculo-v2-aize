@@ -110,7 +110,7 @@ export function PasswordRecovery() {
             </label>
 
             {message ? (
-              <p className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+              <p role="status" aria-live="polite" className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
                 {message}
               </p>
             ) : null}
@@ -133,7 +133,7 @@ export function PasswordRecovery() {
             </label>
 
             {message ? (
-              <p className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
+              <p role="status" aria-live="polite" className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
                 {message}
               </p>
             ) : null}

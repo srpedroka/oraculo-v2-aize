@@ -725,7 +725,7 @@ export function OraclePanel() {
           ) : null}
 
           <div className="border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
-            {attachmentError ? <p className="mb-2 px-1 text-xs leading-5 text-[#B42318]">{attachmentError}</p> : null}
+            {attachmentError ? <p role="alert" className="mb-2 px-1 text-xs leading-5 text-[#B42318]">{attachmentError}</p> : null}
             <form onSubmit={submitMessage} className="flex items-center gap-2">
               <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} />
               <button

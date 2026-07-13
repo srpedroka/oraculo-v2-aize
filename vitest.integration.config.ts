@@ -9,6 +9,9 @@ export default defineConfig({
     include: ["tests/integration/**/*.test.ts"],
     exclude: ["node_modules/**", "dist/**"],
     passWithNoTests: true,
+    // Os testes usam um único staging real e alguns criam triggers temporários.
+    // Sequenciar arquivos evita saturação e interferência entre provas destrutivas.
+    fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

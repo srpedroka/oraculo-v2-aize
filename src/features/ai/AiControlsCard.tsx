@@ -166,8 +166,7 @@ export function AiControlsCard({ orgId }: { orgId: string }) {
 
       {events.length ? <div className="border-t border-border pt-4"><p className="mb-2 text-xs font-medium uppercase text-text-tertiary">Alertas recentes</p><div className="space-y-2">{events.map((event) => <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-border px-3 py-2"><div className="flex items-center gap-2"><AlertTriangle className={`h-4 w-4 ${event.blocked ? "text-red-600" : "text-amber-600"}`} /><span className="text-sm font-medium text-text">{eventLabel(event)}</span></div><span className="text-xs text-text-secondary">{event.blocked ? "Bloqueado" : "Observado"} · {new Date(event.created_at).toLocaleString("pt-BR")}</span></div>)}</div></div> : null}
       {error ? <p role="alert" className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
-      {message ? <p className="rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
+      {message ? <p role="status" aria-live="polite" className="rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
     </div>
   );
 }
-

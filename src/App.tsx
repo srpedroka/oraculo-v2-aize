@@ -19,7 +19,7 @@ import { useAppState } from "./state/store";
 function LoadingScreen() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-4 text-text">
-      <div className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm font-medium text-text-secondary shadow-card">
+      <div role="status" aria-live="polite" className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm font-medium text-text-secondary shadow-card">
         Carregando Oráculo
       </div>
     </main>
@@ -46,6 +46,10 @@ VITE_SUPABASE_ANON_KEY=sua_anon_key`}
 
 function AppRoutes() {
   const { state, session, passwordRecoveryActive } = useAppState();
+
+  if (import.meta.env.DEV && window.sessionStorage.getItem("oraculo.e2e.renderError") === "1") {
+    throw new Error("Falha de renderização controlada pelo E2E");
+  }
 
   if (!isSupabaseConfigured) return <MissingConfig />;
   if (state.loading && !session) return <LoadingScreen />;

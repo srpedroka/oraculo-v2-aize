@@ -921,7 +921,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           ) : null}
 
           {historicalFeedback ? <p className="text-xs leading-5 text-[#1D7A3E]">{historicalFeedback}</p> : null}
-          {historicalError ? <p className="text-xs leading-5 text-[#B42318]">{historicalError}</p> : null}
+          {historicalError ? <p role="alert" className="text-xs leading-5 text-[#B42318]">{historicalError}</p> : null}
           {unresolvedRequiredConflicts.length ? (
             <p className="text-xs leading-5 text-[#A16207]">
               Ainda faltam {unresolvedRequiredConflicts.length} escolha(s) obrigatória(s) para liberar o salvamento.

@@ -1,9 +1,9 @@
-import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
+import { assertOrgMember, assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { evaluateOperationalSignals, percentile95, type OperationalMetrics } from "../_shared/operational-health.ts";
 import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 
-const EXPECTED_MIGRATION_COUNT = 43;
+const EXPECTED_MIGRATION_COUNT = 44;
 const FRONTEND_URL = "https://oraculo-v2-aize.netlify.app";
 type Client = ReturnType<typeof serviceClient>;
 
@@ -58,6 +58,7 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     aiUsage,
     aiPolicy,
     aiErrors24h,
+    frontendErrors24h,
     restore,
   ] = await Promise.all([
     client.from("whatsapp_settings").select("enabled").eq("org_id", orgId).maybeSingle(),
@@ -68,6 +69,7 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     client.from("ai_usage_logs").select("total_cost_usd").eq("org_id", orgId).gte("created_at", monthStart).limit(1000),
     client.from("ai_control_policies").select("monthly_budget_usd").eq("org_id", orgId).maybeSingle(),
     count(client, "ai_function_errors", (query) => query.eq("org_id", orgId).gte("created_at", since24h)),
+    count(client, "frontend_error_events", (query) => query.eq("org_id", orgId).gte("created_at", since24h)),
     client.from("organization_restore_runs").select("completed_at").eq("source_org_id", orgId).eq("status", "completed").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
@@ -106,6 +108,7 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     aiCostUsd: (aiUsage.data ?? []).reduce((sum: number, row: any) => sum + Number(row.total_cost_usd ?? 0), 0),
     aiBudgetUsd: Number(aiPolicy.data?.monthly_budget_usd ?? 100),
     aiErrors24h,
+    frontendErrors24h,
     lastRestoreAgeDays: age(restore.data?.completed_at ?? null, 86_400_000),
   };
 }
@@ -152,6 +155,18 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     operation = String(body?.action ?? "status");
+    if (operation === "frontend_error") {
+      const user = await getUser(req);
+      orgId = String(body?.orgId ?? "");
+      await assertOrgMember(user.id, orgId);
+      const occurrenceId = String(body?.occurrenceId ?? "");
+      const errorCode = String(body?.errorCode ?? "RENDER_ERROR").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 80);
+      const path = String(body?.path ?? "/").split(/[?#]/)[0].replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 160) || "/";
+      if (!/^ORC-[A-F0-9]{10}$/.test(occurrenceId)) return jsonResponse({ error: "Código de ocorrência inválido" }, 400);
+      const { error } = await client.from("frontend_error_events").upsert({ org_id: orgId, user_id: user.id, occurrence_id: occurrenceId, error_code: errorCode, path }, { onConflict: "org_id,occurrence_id" });
+      if (error) throw error;
+      return jsonResponse({ ok: true, occurrenceId });
+    }
     const global = await globalSignals(client);
     if (operation === "cron") {
       if (!(await authorizeCron(req, client))) return jsonResponse({ error: "Monitor não autorizado" }, 401);
@@ -174,4 +189,3 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: error instanceof Error ? error.message : "Falha no monitor operacional", requestId: id }, 400);
   }
 });
-

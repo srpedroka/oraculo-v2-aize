@@ -588,7 +588,7 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
             </table>
           </div>
 
-          {message ? <p className="text-sm font-medium text-text-secondary">{message}</p> : null}
+          {message ? <p role="status" aria-live="polite" className="text-sm font-medium text-text-secondary">{message}</p> : null}
         </div>
 
         <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface px-6 py-4">

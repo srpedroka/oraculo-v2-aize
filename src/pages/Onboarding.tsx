@@ -90,7 +90,7 @@ export function Onboarding() {
             Criar empresa
           </Button>
           {createMessage ? (
-            <p className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
+            <p role="alert" className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
               {createMessage}
             </p>
           ) : null}
@@ -136,7 +136,7 @@ export function Onboarding() {
             Importar pacote de backup
           </Button>
           {backupMessage ? (
-            <p className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
+            <p role="alert" className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
               {backupMessage}
             </p>
           ) : null}

@@ -108,7 +108,7 @@ export function WhatsAppHealthPanel({ orgId }: { orgId: string }) {
       {healthQuery.isLoading ? (
         <p className="mt-5 text-sm text-text-secondary">Consultando WhatsApp...</p>
       ) : healthQuery.isError ? (
-        <p className="mt-5 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="mt-5 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {healthQuery.error instanceof Error ? healthQuery.error.message : "Não foi possível consultar o WhatsApp."}
         </p>
       ) : data ? (
