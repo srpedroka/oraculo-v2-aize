@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Store por domínios com fachada compatível
+
+Decisão: decompor o store React em contrato, UI local, cliente, consultas React Query agrupadas por domínio, mapeadores e adaptadores de comandos, mantendo `AppProvider`/`useAppState` como fachada temporariamente compatível.
+
+Motivo: trocar os 27 consumidores de uma vez aumentaria o risco de regressão funcional. A fachada permite reduzir o arquivo central e testar equivalência agora; consumidores podem adotar hooks menores gradualmente nas próximas otimizações.
+
+Consequências: nenhuma query ou operação mudou na Fatia 5A e o bundle permanece equivalente. A invalidação seletiva e a redução real de rerenders pertencem à Fatia 5D; remover a fachada só deve ocorrer depois da migração dos consumidores e de E2E equivalentes.
+
 ## 2026-07-13 - CI usa Supabase local e um unico gate de branch
 
 Decisao: pull requests e pushes para `main` executam qualidade/build e integracao em jobs independentes, finalizados pelo status estavel `CI required`. Integracao aplica migrations e serve Edge Functions em Supabase local; nenhuma credencial de producao entra no CI de contribuicao. Artefatos de falha contem apenas logs sanitizados.

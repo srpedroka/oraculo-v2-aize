@@ -59,7 +59,7 @@ Scripts reais em `package.json`:
 - `src/features/objective/`: cards, builder e editor de objetivos.
 - `src/lib/`: helpers de Supabase, importacao de arquivo, pricing de IA, periodos, formatacao, concretude e cliente do Oraculo.
 - `src/pages/`: telas principais do produto.
-- `src/state/store.tsx`: store principal, carregamento de dados, mutacoes e estado de UI.
+- `src/state/store.tsx`: fachada compatível do store; compõe contrato/UI, consultas e comandos extraídos em `src/state/store-*.ts`, `use-*.ts` e `src/state/domains/`.
 - `src/types/`: tipos compartilhados do frontend.
 - `src/data/`: seed local/historico.
 - `supabase/migrations/`: schema, RLS, realtime, tabelas de segredo bloqueadas e fundacao V3.
@@ -565,6 +565,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
+- Etapa 5 / Fatia 5A concluída em 2026-07-13: store dividido em módulos de contrato, UI, cliente, consultas/mapeadores por domínio e comandos, preservando `useAppState` como fachada sem alteração funcional. Próxima fatia autorizável: 5B, divisão das Edge Functions e da tela de Configurações.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

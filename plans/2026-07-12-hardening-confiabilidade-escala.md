@@ -871,6 +871,8 @@ Mudanças visíveis esperadas:
 
 ## 5.2 Fatia 5A — Dividir o store
 
+> **STATUS: concluída em 2026-07-13.** `store.tsx` caiu de 2.471 para menos de 600 linhas e permanece como fachada compatível. Contrato/UI/cliente, consultas React Query, mapeadores e comandos foram separados; consultas retornam grupos explícitos por domínio. Não houve mudança funcional, query, permissão, migration ou Edge Function. Equivalência validada por 175 unitários, 95 integrações + 1 skip opt-in e 10 E2E desktop/mobile.
+
 Separar `src/state/store.tsx` por domínio:
 
 - auth/organizações;
