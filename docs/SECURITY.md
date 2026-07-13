@@ -228,7 +228,7 @@ Essas tabelas nao guardam chaves reais de IA, senhas, arquivos brutos ou audios.
 
 Na Fase 3, `conversations.summary` guarda um resumo de conversa gerado por IA. Esse resumo pode conter decisoes, numeros e pendencias da empresa, portanto deve ser tratado como dado privado da organizacao. Ele nunca deve guardar chave de API, segredo de webhook, senha, URL temporaria de mídia, audio bruto ou arquivo bruto.
 
-O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. A Memoria Estrategica pode incluir ate 5 documentos historicos truncados de `plan_documents.origin = historical` nos planejamentos estrategico, trimestral, mensal e por area. A selecao prioriza o escopo da empresa e a area em foco; historicos de outras areas nao entram quando uma area especifica foi escolhida. Segredos continuam fora desse contexto.
+O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-context.ts`. Ele inclui apenas dados de produto que o usuario ja poderia acessar pela empresa/area: objetivos, planos, acoes-chave, evidencias e check-ins. A Memoria Estrategica pode incluir ate 5 documentos historicos truncados de `plan_documents.origin = historical` nos planejamentos estrategico, trimestral, mensal e por area. A selecao prioriza o escopo da empresa e a area em foco; historicos de outras areas nao entram quando uma area especifica foi escolhida. Cada histórico é delimitado por `_shared/untrusted-content.ts` como dado, nunca instrução. Segredos continuam fora desse contexto.
 
 ## Sessoes e propostas da V3
 
@@ -241,7 +241,7 @@ O contexto do plano enviado ao modelo e montado server-side por `_shared/plan-co
 
 Criacao de planos, objetivos e acoes nunca acontece apenas porque o modelo pediu. O modelo gera uma `proposal`; o usuario precisa confirmar; o servidor valida permissao; so entao o banco e alterado. Essa separacao evita que prompt injection ou erro de interpretacao grave dados sem confirmacao explicita.
 
-No fluxo de plano pronto, seja estrategico, trimestral ou mensal, texto de arquivo deve ser tratado como conteudo nao confiavel. Ele pode orientar a proposta, mas nao pode substituir as regras do sistema, exigir exposicao de segredo ou pular a confirmacao.
+No fluxo de plano pronto, seja estrategico, trimestral ou mensal, texto de arquivo e nome do arquivo são conteúdo não confiável. O bloco pode orientar a proposta, mas não pode substituir regras, exigir exposição de segredo, abrir URLs, decodificar payloads ou pular confirmação. A saída do modelo passa por limites de profundidade, nós, listas e texto, rejeita chaves perigosas e exige o tipo de proposta correto. Vínculos de objetivo estratégico são consultados por `org_id`, nível e estado ativo antes de aceitar a proposta e novamente dentro da confirmação transacional. O histórico registra apenas um recibo do arquivo, não o texto bruto.
 
 Atualizacoes rapidas por WhatsApp sao deliberadamente menores que uma proposta. Elas nao podem criar planejamento novo, trocar dono da empresa, alterar configuracao, salvar chave, convidar membro ou apagar dados. Se uma mensagem pedir algo fora desse escopo, o fluxo deve responder com orientacao ou iniciar sessao de planejamento, nao gravar direto.
 

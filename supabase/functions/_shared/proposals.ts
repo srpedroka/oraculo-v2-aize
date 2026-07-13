@@ -1,4 +1,5 @@
 import { createDocumentForProposal } from "./plan-documents.ts";
+import { assertImportedQuarterlyReferences } from "./untrusted-content.ts";
 
 type Client = any;
 
@@ -344,6 +345,7 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
 
 async function saveQuarterlyPlan(client: Client, session: any, proposal: any, userId: string) {
   if (!session.area_id) throw new Error("Plano trimestral exige uma área");
+  await assertImportedQuarterlyReferences(client, session.org_id, proposal);
   const year = yearFromPeriod(session.period);
   const annualObjectives = [];
 

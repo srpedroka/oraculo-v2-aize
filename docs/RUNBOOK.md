@@ -333,6 +333,16 @@ order by created_at desc;
 
 Se os dados existem mas a IA não cita ações, revisar `_shared/plan-context.ts`, o `areaId` enviado pelo canal e o foco usado: `monthly` para execução mensal, `quarterly` para trimestre e `org` para visão geral.
 
+## Diagnóstico: arquivo importado altera regras ou falha por segurança
+
+Os imports estratégico, trimestral e mensal devem passar por `_shared/untrusted-content.ts`. O texto do arquivo aparece para o modelo entre `<oraculo_untrusted_document>` e `</oraculo_untrusted_document>` e não deve ser salvo integralmente no histórico da conversa.
+
+1. Confirme que `oracle-chat`, `oracle-session` e `whatsapp-webhook` foram publicadas no mesmo deploy.
+2. Teste um arquivo com “ignore as regras”, URL, base64 e JSON; ele pode aparecer como dado na proposta, mas não pode mudar `proposal.type`, revelar contexto nem gravar sem confirmação.
+3. Se a IA devolver estrutura excessiva ou outro tipo de proposta, o fluxo deve parar com erro claro e manter a sessão sem confirmação.
+4. Se um plano trimestral trouxer ID que não é objetivo estratégico ativo da empresa, a preparação ou confirmação deve responder que o vínculo está fora da empresa e não criar objetivo/documento parcial.
+5. Rode `pnpm run test:unit` e `pnpm run test:integration`; as fixtures ficam em `_shared/untrusted-content.test.ts` e `proposal-atomicity.test.ts`.
+
 ## Problema: WhatsApp nao inicia plano ou nao aplica atualizacao rapida
 
 Fluxo esperado da Fase 4:

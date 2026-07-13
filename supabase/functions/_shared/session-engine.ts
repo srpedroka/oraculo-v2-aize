@@ -26,6 +26,14 @@ import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
 import { runIdempotentCommand } from "./tx-runner.ts";
 import { proposalCommandKey } from "./tx-client.ts";
+import {
+  assertImportedQuarterlyReferences,
+  assertSafeStructuredValue,
+  formatUntrustedDocument,
+  importedConversationReceipt,
+  importedProposalFromModel,
+  UNTRUSTED_CONTENT_RULES,
+} from "./untrusted-content.ts";
 
 type Client = any;
 
@@ -63,8 +71,6 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
     opening: "Vamos fazer uma Revisão Estratégica: microajustes no plano anual, sem recriar a estratégia. O que mudou no contexto e por que vale revisar agora?",
   },
 };
-
-const READY_PLAN_TEXT_LIMIT = 30000;
 
 function shallowMergeState(current: Record<string, unknown>, patch: Record<string, unknown>) {
   return { ...(current ?? {}), ...(patch ?? {}) };
@@ -243,6 +249,7 @@ function readyPlanSystemPrompt(context: string, period: string, channel: "web" |
   return [
     PERSONA_ORACULO,
     tone,
+    UNTRUSTED_CONTENT_RULES,
     "Você está importando um Plano Estratégico pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Plano Estratégico.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -377,6 +384,7 @@ function readyQuarterlyPlanSystemPrompt(context: string, period: string, channel
   return [
     PERSONA_ORACULO,
     tone,
+    UNTRUSTED_CONTENT_RULES,
     "Você está importando um Plano Trimestral pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Planos Trimestrais da área selecionada.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -494,6 +502,7 @@ function readyMonthlyPlanSystemPrompt(context: string, period: string, channel: 
   return [
     PERSONA_ORACULO,
     tone,
+    UNTRUSTED_CONTENT_RULES,
     "Você está importando um Plano Mensal pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Execução Mensal.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -733,6 +742,7 @@ export async function processPlanningMessage(
   const systemPrompt = [
     PERSONA_ORACULO,
     REGRAS_DE_SESSAO,
+    UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
     "Estado já coletado:",
@@ -765,10 +775,19 @@ export async function processPlanningMessage(
   });
 
   const parsed = parseJsonObject(result.text) as any;
+  assertSafeStructuredValue(parsed);
   const reply = typeof parsed?.reply === "string" ? parsed.reply : result.text;
   const statePatch = parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {};
   const nextPhase = validNextPhase(session.type, parsed?.next_phase) ?? session.phase;
-  const pendingProposal = parsed?.proposal ?? null;
+  const expectedProposalTypes: Partial<Record<PlanningSessionType, "save_strategic_plan" | "save_quarterly_plan" | "save_monthly_plan">> = {
+    strategic: "save_strategic_plan",
+    quarterly: "save_quarterly_plan",
+    monthly: "save_monthly_plan",
+  };
+  const expectedProposalType = expectedProposalTypes[session.type as PlanningSessionType];
+  const pendingProposal = parsed?.proposal && expectedProposalType
+    ? importedProposalFromModel({ proposal: parsed.proposal }, expectedProposalType)
+    : parsed?.proposal ?? null;
   const nextState = shallowMergeState(session.state ?? {}, statePatch);
   const completed = parsed?.done === true && !pendingProposal;
 
@@ -846,7 +865,7 @@ export async function prepareReadyStrategicPlanProposal(
         type: "strategic",
         period: params.period,
         phase: "sintese",
-        state: { periodo: params.period, importacao_plano_pronto: true, arquivo: params.fileName ?? null },
+        state: { periodo: params.period, importacao_plano_pronto: true, arquivo: params.fileName ? "arquivo importado" : null },
       })
       .select("*")
       .single();
@@ -858,17 +877,13 @@ export async function prepareReadyStrategicPlanProposal(
     buildPlanContext(client, params.orgId, { areaId: params.areaId ?? null, focus: "org" }),
     loadOrgTone(client, params.orgId),
   ]);
-  const importedText = planText.length > READY_PLAN_TEXT_LIMIT
-    ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
-    : planText;
   const userMessage = [
     "Importar plano estratégico pronto para o Oráculo.",
-    params.fileName ? `Arquivo: ${params.fileName}` : "",
-    "Texto extraído/colado:",
-    importedText,
+    `Ano/período confiável definido pelo sistema: ${params.period}`,
+    formatUntrustedDocument({ content: planText, fileName: params.fileName }),
   ].filter(Boolean).join("\n\n");
 
-  await insertMessage(client, session, "user", userMessage, channel);
+  await insertMessage(client, session, "user", importedConversationReceipt(params.fileName, "Plano estratégico"), channel);
 
   const result = await callModelForFunction(
     client,
@@ -893,7 +908,7 @@ export async function prepareReadyStrategicPlanProposal(
   });
 
   const parsed = parseJsonObject(result.text) as any;
-  const rawProposal = parsed?.proposal ?? parsed;
+  const rawProposal = importedProposalFromModel(parsed, "save_strategic_plan");
   const proposal = normalizeReadyStrategicProposal(rawProposal, params.period);
   if (!proposal.objectives.length) {
     throw new Error("O Oráculo não conseguiu identificar objetivos estratégicos no plano importado");
@@ -901,9 +916,8 @@ export async function prepareReadyStrategicPlanProposal(
 
   const reply = formatReadyStrategicPlanReply(proposal, channel);
   const nextState = shallowMergeState(session.state ?? {}, {
-    ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
     importacao_plano_pronto: true,
-    arquivo: params.fileName ?? null,
+    arquivo: params.fileName ? "arquivo importado" : null,
   });
 
   const { data: updated, error: updateError } = await client
@@ -978,7 +992,7 @@ export async function prepareReadyQuarterlyPlanProposal(
         type: "quarterly",
         period: params.period,
         phase: "sintese",
-        state: { periodo: params.period, importacao_plano_trimestral_pronto: true, arquivo: params.fileName ?? null },
+        state: { periodo: params.period, importacao_plano_trimestral_pronto: true, arquivo: params.fileName ? "arquivo importado" : null },
       })
       .select("*")
       .single();
@@ -990,18 +1004,13 @@ export async function prepareReadyQuarterlyPlanProposal(
     buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "quarterly", period: params.period }),
     loadOrgTone(client, params.orgId),
   ]);
-  const importedText = planText.length > READY_PLAN_TEXT_LIMIT
-    ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
-    : planText;
   const userMessage = [
     "Importar plano trimestral pronto para o Oráculo.",
-    params.fileName ? `Arquivo: ${params.fileName}` : "",
-    `Período: ${params.period}`,
-    "Texto extraído/colado:",
-    importedText,
+    `Período confiável definido pelo sistema: ${params.period}`,
+    formatUntrustedDocument({ content: planText, fileName: params.fileName }),
   ].filter(Boolean).join("\n\n");
 
-  await insertMessage(client, session, "user", userMessage, channel);
+  await insertMessage(client, session, "user", importedConversationReceipt(params.fileName, "Plano trimestral"), channel);
 
   const result = await callModelForFunction(
     client,
@@ -1026,17 +1035,17 @@ export async function prepareReadyQuarterlyPlanProposal(
   });
 
   const parsed = parseJsonObject(result.text) as any;
-  const rawProposal = parsed?.proposal ?? parsed;
+  const rawProposal = importedProposalFromModel(parsed, "save_quarterly_plan");
   const proposal = normalizeReadyQuarterlyProposal(rawProposal, params.period);
+  await assertImportedQuarterlyReferences(client, params.orgId, proposal);
   if (!proposal.quarterlyObjectives.length) {
     throw new Error("O Oráculo não conseguiu identificar objetivos trimestrais no plano importado");
   }
 
   const reply = formatReadyQuarterlyPlanReply(proposal, channel);
   const nextState = shallowMergeState(session.state ?? {}, {
-    ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
     importacao_plano_trimestral_pronto: true,
-    arquivo: params.fileName ?? null,
+    arquivo: params.fileName ? "arquivo importado" : null,
   });
 
   const { data: updated, error: updateError } = await client
@@ -1111,7 +1120,7 @@ export async function prepareReadyMonthlyPlanProposal(
         type: "monthly",
         period: params.period,
         phase: "sintese",
-        state: { periodo: params.period, importacao_plano_mensal_pronto: true, arquivo: params.fileName ?? null },
+        state: { periodo: params.period, importacao_plano_mensal_pronto: true, arquivo: params.fileName ? "arquivo importado" : null },
       })
       .select("*")
       .single();
@@ -1123,18 +1132,13 @@ export async function prepareReadyMonthlyPlanProposal(
     buildPlanContext(client, params.orgId, { areaId: params.areaId, focus: "monthly", period: params.period }),
     loadOrgTone(client, params.orgId),
   ]);
-  const importedText = planText.length > READY_PLAN_TEXT_LIMIT
-    ? `${planText.slice(0, READY_PLAN_TEXT_LIMIT)}\n\n[Texto cortado por limite técnico. Use apenas o conteúdo disponível e sinalize lacunas no resumo.]`
-    : planText;
   const userMessage = [
     "Importar plano mensal pronto para o Oráculo.",
-    params.fileName ? `Arquivo: ${params.fileName}` : "",
-    `Período: ${params.period}`,
-    "Texto extraído/colado:",
-    importedText,
+    `Período confiável definido pelo sistema: ${params.period}`,
+    formatUntrustedDocument({ content: planText, fileName: params.fileName }),
   ].filter(Boolean).join("\n\n");
 
-  await insertMessage(client, session, "user", userMessage, channel);
+  await insertMessage(client, session, "user", importedConversationReceipt(params.fileName, "Plano mensal"), channel);
 
   const result = await callModelForFunction(
     client,
@@ -1159,7 +1163,7 @@ export async function prepareReadyMonthlyPlanProposal(
   });
 
   const parsed = parseJsonObject(result.text) as any;
-  const rawProposal = parsed?.proposal ?? parsed;
+  const rawProposal = importedProposalFromModel(parsed, "save_monthly_plan");
   const proposal = normalizeReadyMonthlyProposal(rawProposal, params.period);
   if (!proposal.objectives.length) {
     throw new Error("O Oráculo não conseguiu identificar objetivos mensais no plano importado");
@@ -1167,9 +1171,8 @@ export async function prepareReadyMonthlyPlanProposal(
 
   const reply = formatReadyMonthlyPlanReply(proposal, channel);
   const nextState = shallowMergeState(session.state ?? {}, {
-    ...(parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {}),
     importacao_plano_mensal_pronto: true,
-    arquivo: params.fileName ?? null,
+    arquivo: params.fileName ? "arquivo importado" : null,
   });
 
   const { data: updated, error: updateError } = await client

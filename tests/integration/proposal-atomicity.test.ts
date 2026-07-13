@@ -13,6 +13,7 @@ const d = RUN ? describe : describe.skip;
 const FUNCTIONS_URL = `${process.env.SUPABASE_STAGING_URL}/functions/v1/oracle-session`;
 
 let org: DisposableOrg;
+let foreignOrg: DisposableOrg;
 let ownerJwt: string;
 const admin = RUN ? serviceClient() : (null as any);
 
@@ -78,6 +79,7 @@ function monthlyProposal(objTitle: string, actionDesc: string, parentTitle: stri
 d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
   beforeAll(async () => {
     org = await createDisposableOrg("1a");
+    foreignOrg = await createDisposableOrg("2f-foreign");
     const { data, error } = await anonClient().auth.signInWithPassword({ email: org.owner.email, password: org.owner.password });
     if (error || !data.session) throw new Error(`login do dono falhou: ${error?.message}`);
     ownerJwt = data.session.access_token;
@@ -85,6 +87,7 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
 
   afterAll(async () => {
     if (org) await destroyDisposableOrg(org);
+    if (foreignOrg) await destroyDisposableOrg(foreignOrg);
   }, 60_000);
 
   it("caso feliz: grava objetivos, ação e documento; limpa a proposta pendente", async () => {
@@ -192,5 +195,55 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     const { data: sess } = await admin.from("planning_sessions").select("pending_proposal, status").eq("id", sessionId).single();
     expect(sess.pending_proposal).not.toBeNull();
     expect(sess.status).toBe("active");
+  });
+
+  it("segurança 2F: recusa objetivo estratégico de outra organização antes de gravar", async () => {
+    const { data: foreignObjective, error: foreignError } = await admin
+      .from("objectives")
+      .insert({
+        org_id: foreignOrg.orgId,
+        area_id: null,
+        level: "strategic",
+        type: "harvest",
+        title: "Objetivo externo 2F",
+        result: "Não pode vazar",
+        metric: "Indicador externo",
+        target: "100",
+        owner: "Outra empresa",
+        status: "on_track",
+        progress: 0,
+        period: "2026",
+      })
+      .select("id")
+      .single();
+    if (foreignError) throw foreignError;
+
+    const localTitle = "Objetivo local bloqueado 2F";
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: org.areas.producaoId,
+      user_id: org.owner.id,
+      type: "quarterly",
+      period: "T3 2026",
+      pending_proposal: {
+        type: "save_quarterly_plan",
+        period: "T3 2026",
+        linkedStrategicObjectiveIds: [foreignObjective.id],
+        annualObjectives: [{ title: localTitle, linkedStrategicObjectiveId: foreignObjective.id }],
+        quarterlyObjectives: [{ title: "Trimestre protegido 2F", parentTitle: localTitle }],
+      },
+    });
+
+    const { status, body } = await confirm(sessionId);
+    expect(status).toBe(400);
+    expect(body.error).toContain("fora desta empresa");
+    expect(await countObjectivesByTitle(localTitle)).toBe(0);
+
+    const { count: docs } = await admin
+      .from("plan_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org.orgId)
+      .eq("period", "T3 2026");
+    expect(docs).toBe(0);
   });
 });

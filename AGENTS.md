@@ -246,6 +246,7 @@ Compartilhados criticos:
 - `_shared/session-engine.ts`: estado e ciclo de sessoes.
 - `_shared/proposals.ts`: aplica propostas confirmadas com validacao server-side.
 - `_shared/plan-context.ts`: contexto textual do plano e ate 5 historicos relevantes para IA.
+- `_shared/untrusted-content.ts`: fronteira para documentos não confiáveis, limites de saída da IA e validação de referências importadas por empresa.
 - `_shared/plan-documents.ts`: cria `plan_documents` deterministico.
 - `_shared/plan-render.ts`: renderiza documentos para WhatsApp.
 - `_shared/intent-router.ts`: classificacao operacional.

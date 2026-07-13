@@ -1,12 +1,20 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - Documento importado é dado, nunca instrução
+
+Decisao: todo texto de plano importado ou recuperado da Memória Estratégica entra no prompt dentro de um bloco explícito de conteúdo não confiável. A resposta da IA é limitada e validada antes de virar proposta; o texto bruto não é repetido no histórico da conversa. Referências por ID são verificadas novamente contra a empresa no momento da gravação.
+
+Motivo: PDF, DOCX, texto colado ou histórico podem conter instruções deliberadas ou acidentais para mudar regras, revelar contexto e associar IDs externos. Prompt sozinho não é fronteira de autorização; o servidor precisa reduzir contexto, aceitar apenas o contrato conhecido e revalidar referências.
+
+Consequencias: `_shared/untrusted-content.ts` é a fronteira comum; `oracle-chat`, `oracle-session` e `whatsapp-webhook` devem ser republicadas juntas quando ela mudar. A confirmação humana continua obrigatória e sem etapa extra para o usuário. A implementação está em produção desde 2026-07-12.
+
 ## 2026-07-12 - Limites de IA começam em observação
 
 Decisao: medir chamadas por pessoa/empresa e custo mensal antes do provedor, mas resolver toda empresa sem configuração para `monitor`. Os valores 10/min, 60/min e US$ 100 são referências e gatilhos de alerta, não bloqueios. `block` fica disponível apenas como escolha futura do owner.
 
 Motivo: detectar loops, abuso e crescimento de custo sem tornar o Oráculo burocrático nem interromper testes práticos. Contagem prévia cobre tentativas e concorrência; atualização posterior ao log de uso gera alertas financeiros imediatamente.
 
-Consequencias: telemetria falha aberta para preservar disponibilidade; alertas são deduplicados; confirmação em andamento tem bypass. Política e eventos entram no backup, mas restauração sempre volta para `monitor`. A implementação está validada no staging e não deve ir para produção sem nova autorização.
+Consequencias: telemetria falha aberta para preservar disponibilidade; alertas são deduplicados; confirmação em andamento tem bypass. Política e eventos entram no backup, mas restauração sempre volta para `monitor`. A implementação está em produção, com zero política de bloqueio ativa no momento da publicação.
 
 ## 2026-07-12 - MFA opcional e step-up apenas em ações críticas
 

@@ -151,7 +151,10 @@ export async function destroyDisposableOrg(handle: DisposableOrg): Promise<void>
 
   for (const user of [handle.owner, handle.coordinator, handle.admin]) {
     const { error } = await admin.auth.admin.deleteUser(user.id);
-    if (error) errors.push(`usuário ${user.email}: ${error.message}`);
+    if (error) {
+      const verification = await admin.auth.admin.getUserById(user.id);
+      if (verification.data.user) errors.push(`usuário ${user.email}: ${error.message}`);
+    }
   }
 
   const { data: still } = await admin.from("organizations").select("id").eq("id", handle.orgId).maybeSingle();

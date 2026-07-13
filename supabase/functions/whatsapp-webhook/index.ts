@@ -33,6 +33,12 @@ import {
   processPlanningMessage,
   startPlanningSession,
 } from "../_shared/session-engine.ts";
+import {
+  assertSafeStructuredValue,
+  formatUntrustedDocument,
+  importedConversationReceipt,
+  UNTRUSTED_CONTENT_RULES,
+} from "../_shared/untrusted-content.ts";
 
 function normalizePhone(value: unknown) {
   const source = String(value ?? "").trim();
@@ -1861,9 +1867,9 @@ async function classifyImportedDocument(
   const [{ data: areas }, { data: strategicPlan }, { data: areaPlans }, { data: objectives }] =
     await Promise.all([
       client.from("areas").select("id, name").eq("org_id", orgId).is("archived_at", null).order("created_at"),
-      client.from("strategic_plans").select("*").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
-      client.from("area_plans").select("*").eq("org_id", orgId),
-      client.from("objectives").select("id, title, level, area_id, period").eq("org_id", orgId).is("archived_at", null).order("created_at"),
+      client.from("strategic_plans").select("year").eq("org_id", orgId).order("year", { ascending: false }).limit(1).maybeSingle(),
+      client.from("area_plans").select("area_id, year").eq("org_id", orgId),
+      client.from("objectives").select("title, level, area_id, period").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     ]);
 
   const activeAreaIds = new Set((areas ?? []).map((area: any) => area.id));
@@ -1871,11 +1877,25 @@ async function classifyImportedDocument(
   const activeObjectives = (objectives ?? []).filter((objective: any) =>
     !objective.area_id || activeAreaIds.has(objective.area_id)
   );
+  const areaNames = new Map((areas ?? []).map((area: any) => [area.id, area.name]));
+  const classifierContext = {
+    areas: (areas ?? []).map((area: any) => area.name),
+    latestStrategicPlanYear: strategicPlan?.year ?? null,
+    areaPlans: activeAreaPlans.map((plan: any) => ({ area: areaNames.get(plan.area_id) ?? null, year: plan.year })),
+    objectives: activeObjectives.slice(0, 80).map((objective: any) => ({
+      title: String(objective.title ?? "").slice(0, 240),
+      level: objective.level,
+      area: objective.area_id ? areaNames.get(objective.area_id) ?? null : "Empresa",
+      period: objective.period,
+    })),
+    currentArea: areaId ? areaNames.get(areaId) ?? null : null,
+  };
 
   if (!aiRoute) return classifyDocumentFallback(extractedText);
 
   const systemPrompt = [
     "Você classifica documentos enviados por WhatsApp para o sistema Oráculo.",
+    UNTRUSTED_CONTENT_RULES,
     "Responda somente JSON válido, sem markdown.",
     "Targets possíveis: strategic, quarterly, monthly, evidence, unknown.",
     "Use strategic para planejamento anual da empresa, SWOT, propósito, visão, temas do ano, objetivos estratégicos e projetos prioritários.",
@@ -1884,8 +1904,8 @@ async function classifyImportedDocument(
     "Use evidence para comprovantes de avanço: laudo, contrato, relatório, foto descrita, medição, nota, resultado entregue.",
     "Se não houver segurança, use unknown.",
     "Formato obrigatório: {\"target\":\"strategic|quarterly|monthly|evidence|unknown\",\"confidence\":0.0,\"reason\":\"curto\",\"areaName\":\"ou null\",\"period\":\"ou null\",\"nextQuestion\":\"uma pergunta curta\"}",
-    "Contexto atual:",
-    JSON.stringify({ areas, strategicPlan, areaPlans: activeAreaPlans, objectives: activeObjectives, currentAreaId: areaId, contact: profile?.full_name ?? null }, null, 2),
+    "Contexto mínimo confiável do Oráculo:",
+    JSON.stringify(classifierContext, null, 2),
   ].join("\n\n");
 
   const result = await callModelForFunction(
@@ -1897,7 +1917,7 @@ async function classifyImportedDocument(
     [
       {
         role: "user",
-        content: [`Arquivo: ${fileName}`, "Texto extraído:", extractedText.slice(0, 30000)].join("\n\n"),
+        content: formatUntrustedDocument({ content: extractedText, fileName }),
       },
     ],
     aiRoute.limits,
@@ -1916,14 +1936,24 @@ async function classifyImportedDocument(
   });
 
   const parsed = parseJsonObject(result.text) as any;
+  assertSafeStructuredValue(parsed, { maxDepth: 4, maxNodes: 40, maxArrayLength: 10, maxStringLength: 1_000, maxTotalStringChars: 3_000 });
   const target = ["strategic", "quarterly", "monthly", "evidence", "unknown"].includes(parsed?.target) ? parsed.target as DocumentTarget : "unknown";
+  const confidence = Number(parsed?.confidence ?? 0.5);
+  const rawPeriod = parsed?.period ? String(parsed.period).trim().slice(0, 80) : "";
+  const safePeriod = target === "quarterly"
+    ? (/^[TQ][1-4]\s+20\d{2}$/i.test(rawPeriod) ? rawPeriod.replace(/^Q/i, "T") : null)
+    : target === "monthly"
+      ? (/^(Jan|Fev|Mar|Abr|Mai|Jun|Jul|Ago|Set|Out|Nov|Dez)\s+20\d{2}$/i.test(rawPeriod) ? rawPeriod : null)
+      : target === "strategic"
+        ? (/^20\d{2}$/.test(rawPeriod) ? rawPeriod : null)
+        : null;
   return {
     target,
-    confidence: Number(parsed?.confidence ?? 0.5),
-    reason: String(parsed?.reason ?? "Classificação feita pela IA."),
-    areaName: parsed?.areaName ? String(parsed.areaName) : null,
-    period: parsed?.period ? String(parsed.period) : null,
-    nextQuestion: parsed?.nextQuestion ? String(parsed.nextQuestion) : null,
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
+    reason: String(parsed?.reason ?? "Classificação feita pela IA.").slice(0, 500),
+    areaName: parsed?.areaName ? String(parsed.areaName).slice(0, 180) : null,
+    period: safePeriod,
+    nextQuestion: parsed?.nextQuestion ? String(parsed.nextQuestion).slice(0, 500) : null,
   };
 }
 
@@ -1960,7 +1990,7 @@ async function processIncomingDocument(
         channel: "whatsapp",
       });
       return {
-        userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+        userText: importedConversationReceipt(file.fileName, targetLabel(classification.target)),
         answer: `${prepared.reply}\n\nSe estiver coerente, responda *confirmar* que eu gravo no módulo.`,
         skipHistory: true,
       };
@@ -1975,7 +2005,7 @@ async function processIncomingDocument(
       );
       if (!matchedAreaId) {
         return {
-          userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+          userText: importedConversationReceipt(file.fileName, targetLabel(classification.target)),
           answer: `Recebi e li o arquivo "${file.fileName}". Ele parece um ${targetLabel(classification.target).toLowerCase()}, mas preciso saber de qual departamento ele é antes de montar a proposta. Me diga o nome do departamento e eu continuo.`,
           skipHistory: false,
         };
@@ -2003,7 +2033,7 @@ async function processIncomingDocument(
         });
 
       return {
-        userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+        userText: importedConversationReceipt(file.fileName, targetLabel(classification.target)),
         answer: `${prepared.reply}\n\nSe estiver coerente, responda *confirmar* que eu gravo no módulo e gero o documento padrão.`,
         skipHistory: true,
       };
@@ -2020,7 +2050,7 @@ async function processIncomingDocument(
         : `Recebi e li o arquivo "${file.fileName}". Ele parece pertencer a: ${targetLabel(classification.target)} (${confidence}% de confiança).${areaText}${periodText}\nCaminho no Oráculo: ${route}.\n${nextQuestion}`;
 
     return {
-      userText: `[Arquivo recebido] ${file.fileName} · ${targetLabel(classification.target)} · ${extractedText.slice(0, 1200)}`,
+      userText: importedConversationReceipt(file.fileName, targetLabel(classification.target)),
       answer,
       skipHistory: false,
     };

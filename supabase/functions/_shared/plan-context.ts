@@ -1,3 +1,5 @@
+import { formatUntrustedDocument } from "./untrusted-content.ts";
+
 type Client = any;
 
 export type PlanContextFocus = "org" | "area" | "quarterly" | "monthly";
@@ -41,17 +43,6 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function rawText(value: unknown) {
   return String(value ?? "").trim();
-}
-
-function truncateHistoricalText(value: unknown) {
-  const output = rawText(value)
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u00a0/g, " ")
-    .replace(/[ \t]{2,}/g, " ")
-    .replace(/\n{4,}/g, "\n\n\n")
-    .trim();
-  if (output.length <= MAX_HISTORICAL_CHARS_PER_DOC) return output;
-  return `${output.slice(0, MAX_HISTORICAL_CHARS_PER_DOC).trim()}\n[trecho truncado para controlar tokens]`;
 }
 
 function truncateProfileText(value: unknown) {
@@ -204,10 +195,11 @@ export function historicalMemoryLines(
       sourceMetadata.quarter ? `trimestre identificado: T${rawText(sourceMetadata.quarter)}` : "",
     ].filter(Boolean).join("; ");
 
-    lines.push(
-      `- ${text(document.title, "Documento histórico")} (${metadata})`,
-      truncateHistoricalText(content.raw),
-    );
+    lines.push(formatUntrustedDocument({
+      fileName: text(document.title, "Documento histórico"),
+      content: `${metadata}\n${rawText(content.raw)}`,
+      maxChars: MAX_HISTORICAL_CHARS_PER_DOC,
+    }));
   }
 
   return lines;

@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (gatilho de backup) e ✅ Fatias 2A–2E validadas e EM PRODUÇÃO por Codex em 2026-07-12; a Fatia 2F ainda aguarda briefing e autorização do dono. Etapas 3–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos), todas atômicas + idempotentes. Etapa 2 = Fatia preliminar 2A.0 (gatilho de backup) e Fatias 2A–2F (dependências, JWT, headers, MFA opcional, custo de IA e prompt injection), todas validadas em staging antes de produção. Etapas 3–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -488,6 +488,8 @@ O dono pode revisar o orçamento em Configurações > IA.
 O WhatsApp não deve ficar silencioso.
 
 ## 2.7 Fatia 2F — Prompt injection e entrada não confiável
+
+> **STATUS: concluída e em produção em 2026-07-12.** `_shared/untrusted-content.ts` delimita e neutraliza documentos, limita a estrutura devolvida pela IA e exige o tipo de proposal esperado. Imports estratégico, trimestral e mensal não guardam mais texto bruto nem nome completo do arquivo no histórico da conversa; Memória Estratégica usa os mesmos blocos não confiáveis; o classificador do WhatsApp recebe contexto mínimo sem IDs. Vínculos estratégicos de plano trimestral são conferidos contra objetivos ativos da mesma empresa tanto ao preparar quanto ao confirmar. Validado com 72 testes unitários, 50 integrações, fixtures, auditoria de dependências, lint e build; `oracle-chat`, `oracle-session` e `whatsapp-webhook` publicadas em staging e produção. `verify:deploy` ficou verde. Sem migration ou frontend.
 
 Uniformizar para plano estratégico, trimestral e mensal:
 
