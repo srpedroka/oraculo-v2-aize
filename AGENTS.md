@@ -173,6 +173,8 @@ Migrations principais:
 - `supabase/migrations/20260710193000_operational_lifecycle.sql`: arquivamento reversivel de registros operacionais e snapshots antes/depois de planos e KPIs.
 - `supabase/migrations/20260712190000_optional_owner_mfa.sql`: politica opcional de MFA por empresa.
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
+- `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
+- `supabase/migrations/20260712223000_ai_budget_alert_refresh.sql`: alertas mensais imediatos e deduplicados após registrar custo.
 
 Tabelas publicas importantes:
 
@@ -199,6 +201,8 @@ Tabelas publicas importantes:
 - `plan_documents`
 - `operational_revisions`
 - `organization_security_settings`
+- `ai_control_policies`
+- `ai_limit_events`
 
 Tabelas com segredos reais, bloqueadas para `anon` e `authenticated`:
 
@@ -217,6 +221,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `remove-member`: revoga o acesso de uma pessoa, reatribui áreas em transação e preserva perfil/histórico.
 - `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.
 - `save-ai-settings`: salva chaves de IA, provider/modelo e configuracoes por funcao.
+- `save-ai-control-policy`: salva limites e orçamento da IA; defaults permanecem em observacao sem bloqueio.
 - `save-whatsapp-settings`: salva configuracao publica e segredos da Evolution API/Evo Go.
 - `save-security-settings`: ativa/desativa a exigencia opcional de AAL2, sempre a partir de sessao AAL2.
 - `oracle-chat`: chat web em episodios de 4 horas, historico por conversa, contexto do plano e inicio de sessoes.

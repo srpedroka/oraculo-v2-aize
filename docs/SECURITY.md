@@ -106,6 +106,15 @@ Senhas nao sao salvas no frontend, na documentacao ou no banco em texto puro. A 
 - Coordenadores e admins não são obrigados a cadastrar MFA nesta versão.
 - Supabase não fornece recovery codes. Recomenda-se cadastrar dois fatores. Sem fator utilizável, um administrador deve validar a identidade e remover o fator pelo Admin Auth; a remoção de fator verificado encerra as sessões ativas.
 
+## Limites e orçamento de IA
+
+- A política nasce ausente e resolve para `monitor`: 10 chamadas por pessoa/minuto, 60 por empresa/minuto e referência mensal de US$ 100. Nenhum desses valores bloqueia por padrão.
+- Contadores ficam em tabela exclusiva de service role; incrementos concorrentes usam upsert atômico no PostgreSQL.
+- Somente owner lê alertas e altera a política. Escrita passa por `save-ai-control-policy`; se a empresa exigir MFA em ações críticas, a mudança também exige `aal2`.
+- Alertas de 70%, 90% e 100% são atualizados depois de cada custo registrado e deduplicados por empresa/mês/faixa.
+- Em falha da telemetria, a chamada continua (fail-open) e o erro técnico é logado sem conteúdo privado. Dados estratégicos nunca são removidos por limite.
+- Backups incluem política e alertas, mas restauração sempre força `enforcement_mode = monitor` para não bloquear o clone inesperadamente. Contadores efêmeros não entram no pacote.
+
 ## WhatsApp
 
 O webhook `whatsapp-webhook` aceita chamadas com o segredo configurado no cabecalho `x-oraculo-webhook-secret` ou `Authorization: Bearer`. Desde 2026-07-05 o segredo **nao** e mais aceito via query string (`?secret=`), porque vaza em logs de proxy/acesso, e a comparacao e feita em tempo constante. Excecao operacional: o Evo Go Manager nao expoe header customizado; nesse provedor, a URL pode usar `evoGoToken`, um HMAC-SHA-256 derivado do `webhook_secret` e do `orgId`, sem expor o segredo bruto. O numero recebido e normalizado e precisa existir em `profiles.phone`; numero sem cadastro recebe recusa educada e nao acessa contexto da empresa.

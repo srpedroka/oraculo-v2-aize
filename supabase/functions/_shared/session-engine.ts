@@ -750,6 +750,7 @@ export async function processPlanningMessage(
     systemPrompt,
     conversationMessagesForModel(history),
     aiRoute.limits,
+    { userId: params.userId },
   );
 
   await recordAiUsage({
@@ -877,6 +878,7 @@ export async function prepareReadyStrategicPlanProposal(
     readyPlanSystemPrompt(context, params.period, channel, toneDirective(orgTone)),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
+    { userId: params.userId },
   );
 
   await recordAiUsage({
@@ -1009,6 +1011,7 @@ export async function prepareReadyQuarterlyPlanProposal(
     readyQuarterlyPlanSystemPrompt(context, params.period, channel, toneDirective(orgTone)),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
+    { userId: params.userId },
   );
 
   await recordAiUsage({
@@ -1141,6 +1144,7 @@ export async function prepareReadyMonthlyPlanProposal(
     readyMonthlyPlanSystemPrompt(context, params.period, channel, toneDirective(orgTone)),
     [{ role: "user", content: userMessage }],
     aiRoute.limits,
+    { userId: params.userId },
   );
 
   await recordAiUsage({

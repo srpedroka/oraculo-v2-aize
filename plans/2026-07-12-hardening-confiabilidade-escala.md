@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (gatilho de backup), ✅ Fatia 2A (dependências vulneráveis), ✅ Fatia 2B (JWT/configuração declarativa) e ✅ Fatia 2C (headers do frontend) validadas e EM PRODUÇÃO por Codex em 2026-07-12; fatias 2D–2F ainda aguardam autorização do dono, uma por vez. Etapas 3–8 ainda não iniciadas.**
+> **STATUS: ✅ ETAPA 0 e ✅ ETAPA 1 concluídas e EM PRODUÇÃO por Claude Code em 2026-07-12. Etapa 1 (integridade transacional) = fatias 1A (confirmação de plano), 1B (importação de KPI), 1C (criação de empresa) e 1D (objetivo/ações/vínculos) — todas atômicas + idempotentes, cada uma revisada por verificação adversarial multiagente (que pegou bugs reais em 1B/1C/1D antes da produção). ETAPA 2 em andamento: ✅ Fatia preliminar 2A.0 (gatilho de backup) e ✅ Fatias 2A–2E validadas e EM PRODUÇÃO por Codex em 2026-07-12; a Fatia 2F ainda aguarda briefing e autorização do dono. Etapas 3–8 ainda não iniciadas.**
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -464,6 +464,8 @@ Proteções:
 - sessão antiga AAL1 recebe orientação para elevar autenticação.
 
 ## 2.6 Fatia 2E — Rate limit e orçamento de IA
+
+> **STATUS: concluída e em produção em 2026-07-12.** Decisão do dono: tudo liberado por enquanto. Defaults: 10 chamadas por pessoa/minuto, 60 por empresa/minuto e referência mensal de US$ 100, sempre em `monitor`; exceder apenas registra evento e continua. Bloqueio existe como opção futura explícita do owner. Contadores são atômicos, alertas 70/90/100 são imediatos e deduplicados, conclusão em andamento tem bypass, falha da telemetria não derruba a IA e WhatsApp recebe mensagem clara se o modo block for ativado no futuro. Política/eventos entram no backup; restauração força `monitor`. Produção recebeu as migrations `20260712220000`/`20260712223000`, nove Edge Functions e o frontend Netlify `6a54320c8619a31f8662e0cb`; `verify:deploy` ficou verde e a consulta final confirmou zero política de bloqueio ativa.
 
 Criar configuração por organização:
 

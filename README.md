@@ -91,6 +91,7 @@ As Edge Functions ficam em `supabase/functions/`:
 - `remove-member`
 - `operational-lifecycle`
 - `save-ai-settings`
+- `save-ai-control-policy`
 - `save-whatsapp-settings`
 - `save-security-settings`
 - `oracle-chat`

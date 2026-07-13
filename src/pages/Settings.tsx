@@ -27,6 +27,7 @@ import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../features/members/MemberRemovalDialog";
 import { CompanyDangerZone } from "../features/lifecycle/CompanyDangerZone";
 import { MfaSecurityCard } from "../features/security/MfaSecurityCard";
+import { AiControlsCard } from "../features/ai/AiControlsCard";
 import { findModelPricing, modelOptionsForProvider } from "../lib/aiPricing";
 import { formatDate } from "../lib/format";
 import { useAppState } from "../state/store";
@@ -281,7 +282,7 @@ export function Settings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeOrgId, companyProfile?.id]);
 
-  const [iaTab, setIaTab] = useState<"chaves" | "funcoes" | "historico">("chaves");
+  const [iaTab, setIaTab] = useState<"chaves" | "funcoes" | "limites" | "historico">("chaves");
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const whatsappWebhookUrl =
     supabaseUrl && state.activeOrgId ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/whatsapp-webhook?orgId=${state.activeOrgId}` : "";
@@ -1305,6 +1306,7 @@ export function Settings() {
             {([
               { id: "chaves", label: "Chaves" },
               { id: "funcoes", label: "Funções" },
+              { id: "limites", label: "Limites" },
               { id: "historico", label: "Histórico" },
             ] as const).map((sub) => (
               <button
@@ -1521,6 +1523,7 @@ export function Settings() {
               {aiMessage}
             </p>
           ) : null}
+          {iaTab === "limites" && state.activeOrgId ? <AiControlsCard orgId={state.activeOrgId} /> : null}
           {iaTab === "historico" ? (
           <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

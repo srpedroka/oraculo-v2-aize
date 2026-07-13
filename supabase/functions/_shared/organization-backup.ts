@@ -69,6 +69,8 @@ const TABLE_EXPORTS: Array<{ table: string; select: string; order: string }> = [
   },
   { table: "ai_function_settings", select: "*", order: "function" },
   { table: "ai_usage_logs", select: "*", order: "id" },
+  { table: "ai_control_policies", select: "*", order: "org_id" },
+  { table: "ai_limit_events", select: "*", order: "id" },
   {
     table: "whatsapp_settings",
     select: "org_id,instance_url,instance_name,connected_number,enabled,weekly_pulse_enabled,weekly_pulse_weekday,weekly_pulse_hour,updated_at",
@@ -172,6 +174,8 @@ function referencedProfileIds(organization: JsonRow, data: Record<string, JsonRo
   rowsOf(data, "objective_kpi_links").forEach((row) => add(row.created_by));
   rowsOf(data, "org_ai_tone").forEach((row) => add(row.updated_by));
   rowsOf(data, "operational_revisions").forEach((row) => add(row.changed_by));
+  rowsOf(data, "ai_control_policies").forEach((row) => add(row.updated_by));
+  rowsOf(data, "ai_limit_events").forEach((row) => add(row.user_id));
   return [...ids];
 }
 
@@ -902,6 +906,22 @@ export async function restoreOrganizationEnvelope(input: {
       org_id: targetOrgId,
     }));
     restoredCounts.ai_usage_logs = await insertRows(client, "ai_usage_logs", aiUsageLogs);
+
+    const aiControlPolicies = rowsOf(data, "ai_control_policies").map((row) => ({
+      ...row,
+      org_id: targetOrgId,
+      enforcement_mode: "monitor",
+      updated_by: mapId(userMap, row.updated_by),
+    }));
+    restoredCounts.ai_control_policies = await insertRows(client, "ai_control_policies", aiControlPolicies);
+
+    const aiLimitEvents = rowsOf(data, "ai_limit_events").map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+      org_id: targetOrgId,
+      user_id: mapId(userMap, row.user_id),
+    }));
+    restoredCounts.ai_limit_events = await insertRows(client, "ai_limit_events", aiLimitEvents);
 
     const whatsappSettings = rowsOf(data, "whatsapp_settings").map((row) => ({
       ...row,

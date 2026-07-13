@@ -178,6 +178,23 @@ Troca administrativa emergencial:
 
 Recuperação: use o segundo fator para elevar a sessão e remover o perdido. Se nenhum fator estiver acessível, valide a identidade fora do app e use Supabase Admin Auth `mfa.deleteFactor`; não registre QR, segredo TOTP ou código em chamados, docs ou logs.
 
+## Limites e orçamento de IA
+
+1. Abra `Configurações > IA > Limites` como owner.
+2. `Tudo liberado`/`Só observar e registrar` significa que nenhuma chamada será bloqueada, mesmo acima dos valores.
+3. Pessoa/minuto e empresa/minuto detectam rajadas; a referência mensal gera alertas em 70%, 90% e 100%.
+4. Não ligue `Bloquear quando exceder` sem decisão explícita do dono e teste prévio no staging.
+5. Se o modo block for ativado, uma conclusão já em andamento pode usar bypass; app e WhatsApp devem mostrar a mensagem de limite e preservar os dados.
+
+Diagnóstico:
+
+```sql
+select * from public.ai_control_policies where org_id = '<ORG_ID>';
+select kind, threshold_percent, observed_value, limit_value, blocked, created_at
+from public.ai_limit_events where org_id = '<ORG_ID>' order by created_at desc limit 30;
+select * from public.ai_monthly_usage where org_id = '<ORG_ID>' order by month_start desc;
+```
+
 ## Problema: acesso negado em escrita
 
 Possiveis causas:

@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-12 - Limites de IA começam em observação
+
+Decisao: medir chamadas por pessoa/empresa e custo mensal antes do provedor, mas resolver toda empresa sem configuração para `monitor`. Os valores 10/min, 60/min e US$ 100 são referências e gatilhos de alerta, não bloqueios. `block` fica disponível apenas como escolha futura do owner.
+
+Motivo: detectar loops, abuso e crescimento de custo sem tornar o Oráculo burocrático nem interromper testes práticos. Contagem prévia cobre tentativas e concorrência; atualização posterior ao log de uso gera alertas financeiros imediatamente.
+
+Consequencias: telemetria falha aberta para preservar disponibilidade; alertas são deduplicados; confirmação em andamento tem bypass. Política e eventos entram no backup, mas restauração sempre volta para `monitor`. A implementação está validada no staging e não deve ir para produção sem nova autorização.
+
 ## 2026-07-12 - MFA opcional e step-up apenas em ações críticas
 
 Decisao: oferecer TOTP aos owners sem desafio obrigatório no login. Cada empresa tem uma política desligada por padrão; somente uma sessão `aal2` pode ativá-la. Quando ativa, o segundo fator é exigido apenas em ações críticas, com defesa tanto nas Edge Functions quanto nas policies da Data API.

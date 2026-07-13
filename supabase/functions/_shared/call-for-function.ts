@@ -1,6 +1,7 @@
 import type { AiFunction } from "./ai-router.ts";
 import { callModel, callModelWithImage, type ModelCallOptions, type ModelImageInput } from "./model.ts";
 import { classifyModelError, type ProbeStatus } from "./model-probe.ts";
+import { evaluateAiControls, type AiControlContext } from "./ai-controls.ts";
 
 type Client = any;
 
@@ -49,7 +50,9 @@ export async function callModelForFunction(
   systemPrompt: string,
   messages: Message[],
   options: ModelCallOptions = aiRoute.limits,
+  controlContext: AiControlContext = {},
 ) {
+  await evaluateAiControls(client, orgId, controlContext);
   try {
     const result = await callModel(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, messages, options);
     await markFunctionStatus(client, orgId, fn, "ok", "runtime", "Último uso validado.");
@@ -70,7 +73,9 @@ export async function callModelWithImageForFunction(
   userText: string,
   image: ModelImageInput,
   options: ModelCallOptions = aiRoute.limits,
+  controlContext: AiControlContext = {},
 ) {
+  await evaluateAiControls(client, orgId, controlContext);
   try {
     const result = await callModelWithImage(aiRoute.provider, aiRoute.model, aiRoute.apiKey, systemPrompt, userText, image, options);
     await markFunctionStatus(client, orgId, fn, "ok", "runtime", "Último uso validado.");

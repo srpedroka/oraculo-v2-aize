@@ -452,6 +452,9 @@ verify_jwt = true
 [functions.save-ai-settings]
 verify_jwt = true
 
+[functions.save-ai-control-policy]
+verify_jwt = true
+
 [functions.save-historical-document]
 verify_jwt = true
 

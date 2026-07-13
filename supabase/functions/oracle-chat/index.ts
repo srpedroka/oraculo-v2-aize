@@ -12,6 +12,7 @@ import {
 } from "../_shared/conversations.ts";
 import { classifyOracleIntent } from "../_shared/intent-router.ts";
 import { callModelForFunction } from "../_shared/call-for-function.ts";
+import { isAiControlLimitError } from "../_shared/ai-controls.ts";
 import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context.ts";
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { CONVERSATION_STYLE, conversationGuideForContext } from "../_shared/conductors/persona.ts";
@@ -169,7 +170,16 @@ serve(async (req) => {
       ].filter(Boolean).join("\n\n");
 
       try {
-        const result = await callModelForFunction(client, orgId, "daily", aiRoute, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
+        const result = await callModelForFunction(
+          client,
+          orgId,
+          "daily",
+          aiRoute,
+          systemPrompt,
+          conversationMessagesForModel(history),
+          aiRoute.limits,
+          { userId: user.id },
+        );
         answer = result.text;
         await recordAiUsage({
           client,
@@ -183,7 +193,7 @@ serve(async (req) => {
         });
       } catch (modelError) {
         console.error("Erro ao chamar IA no chat web", modelError instanceof Error ? modelError.message : String(modelError));
-        answer = fallbackReview(objectives ?? []);
+        answer = isAiControlLimitError(modelError) ? modelError.message : fallbackReview(objectives ?? []);
       }
     }
 

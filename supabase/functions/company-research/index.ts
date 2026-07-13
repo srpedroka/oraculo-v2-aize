@@ -3,6 +3,7 @@ import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callModelWithWebSearch, type Provider } from "../_shared/model.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
+import { evaluateAiControls } from "../_shared/ai-controls.ts";
 
 const MAX_LINKS = 5;
 const DEFAULT_MODEL_BY_PROVIDER: Record<"openai" | "anthropic", string> = {
@@ -160,6 +161,7 @@ serve(async (req) => {
 
     const route = await resolveWebSearchRoute(client, orgId);
     const prompt = buildResearchPrompt({ queries, links });
+    await evaluateAiControls(client, orgId, { userId: user.id });
     const result = await callModelWithWebSearch(route.provider, route.model, route.apiKey, prompt, {
       maxTokens: 1200,
       temperature: 0.2,

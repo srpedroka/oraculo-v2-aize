@@ -27,6 +27,8 @@ Objetivos podem ser ligados aos KPIs executivos por `objective_kpi_links`. Na cr
 
 Na tela `src/pages/Settings.tsx`, o card "Tom do Oráculo" lê `org_ai_tone` para todos os membros da empresa e permite edição somente pelo owner. Presets preenchem os eixos gentil↔ácido/franco e direto↔motivador; o preset personalizado libera os sliders e uma preferência da casa de até 280 caracteres.
 
+Na aba `IA > Limites`, owners acompanham o custo do mês e configuram `ai_control_policies`. `evaluate_ai_call_controls` incrementa contadores atômicos antes de cada chamada ao provedor e grava `ai_limit_events` deduplicados. O default é `monitor`: limites excedidos não interrompem o app nem o WhatsApp. `call-for-function.ts` é a fronteira central; pesquisa web e transcrição, que usam clientes próprios, chamam o mesmo controle explicitamente. `ai_monthly_usage` agrega o custo exato com `security_invoker` e RLS das linhas de uso.
+
 Na mesma tela, owners administram `Segurança e backups`. Cada empresa tem uma política em `organization_backup_policies`; snapshots concluídos são registrados em `organization_backups` e armazenados como JSON versionado e comprimido no bucket privado `organization-backups`. O pacote inclui dados do domínio, configurações não secretas, perfis públicos ligados à empresa, manifesto, contagem por tabela e SHA-256. Chaves, senhas, mídia bruta e metadados de backups anteriores ficam fora. O download portátil é criptografado no navegador com AES-256-GCM e senha que não sai do dispositivo. A restauração sempre cria uma nova empresa, remapeia IDs e usuários existentes por email, abandona sessões que estavam ativas e mantém a origem intacta. Se a conta não tiver mais nenhuma empresa, `Onboarding.tsx` oferece a importação do pacote; o servidor só libera essa rota sem `org_id` quando o usuário autenticado realmente não possui membership.
 
 Em `Configurações > Segurança`, owners podem cadastrar TOTP pelo Supabase Auth sem tornar MFA obrigatória no login. A política `organization_security_settings.require_mfa_for_critical_actions` nasce desligada e só pode mudar por `save-security-settings` numa sessão `aal2`. Quando ligada, `_shared/auth.ts` exige `aal2` nas Edge Functions críticas e `critical_action_aal_ok(org_id)` fecha os caminhos equivalentes pela Data API/RLS. Planejamento, Dashboard, conversas e WhatsApp operacional não pedem código.
@@ -90,6 +92,9 @@ Tabelas publicas principais:
 - `organization_backup_policies`
 - `organization_backups`
 - `organization_security_settings`
+- `ai_control_policies`
+- `ai_call_counters`
+- `ai_limit_events`
 - `organization_restore_runs`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
@@ -133,6 +138,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
 - `save-security-settings`: altera a política opcional de MFA depois de validar owner e sessão `aal2`.
+- `save-ai-control-policy`: altera limites e modo de enforcement, com owner e MFA condicional.
 - `suggest-kpi-spreadsheet`: valida sessao e papel `owner`/`admin`, carrega as definicoes dos quatro KPIs e usa a funcao de IA `background` para sugerir Meta/Atingido por indicador, mes e ano a partir de planilha, imagem **ou** corpus de `plan_documents` historicos (`fromHistory`). Com historico, filtra por padrao so as lacunas (meses sem Meta/Atingido). A funcao nao grava valores.
 - `apply-kpi-import`: recebe somente a proposta confirmada, revalida os quatro KPIs/anos/meses no servidor, preserva campos antigos ausentes da proposta, grava `kpi_monthly_values` e cria um `plan_documents.kpi_history` para auditoria em Documentos.
 - `suggest-historical-metadata`: valida sessao/permissao, restringe areas candidatas e combina extracao deterministica do cabecalho com a funcao de IA `background`. Fatos explicitos vencem inferencias, divergencias viram conflitos e o fallback sem IA ainda devolve `headerMetadata`. Aceita texto ou imagem; o binario nao e persistido.

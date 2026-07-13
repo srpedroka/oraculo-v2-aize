@@ -22,6 +22,7 @@ import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { handleQuickUpdate } from "../_shared/quick-updates.ts";
 import { decodeBase64Audio, normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "../_shared/transcription.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
+import { evaluateAiControls, isAiControlLimitError } from "../_shared/ai-controls.ts";
 import { formatForWhatsApp, sendWhatsAppMessages } from "../_shared/whatsapp.ts";
 import { isExplicitPlanningResume } from "../_shared/conversation-policy.ts";
 import {
@@ -1132,6 +1133,7 @@ async function resolveDocumentFile(settings: any, keyRow: any, payload: any, dia
 async function transcribeIncomingAudio(
   client: ReturnType<typeof serviceClient>,
   orgId: string,
+  userId: string,
   whatsappSettings: any,
   whatsappKeyRow: any,
   payload: any,
@@ -1156,6 +1158,7 @@ async function transcribeIncomingAudio(
   }
 
   try {
+    await evaluateAiControls(client, orgId, { userId });
     const result = await transcribeAudioWithOpenAi(keyRow.api_key, audioFile);
     return result.text;
   } catch (error) {
@@ -1479,6 +1482,7 @@ async function buildOutOfScopeReply(
       systemPrompt,
       conversationMessagesForModel(history),
       { ...aiRoute.limits, maxTokens: Math.min(aiRoute.limits.maxTokens, 320), temperature: 0.8 },
+      { userId: profile?.id ?? null },
     );
     await recordAiUsage({
       client,
@@ -1498,6 +1502,7 @@ async function buildOutOfScopeReply(
     return answer;
   } catch (error) {
     console.error("Erro ao gerar resposta fora de escopo", error instanceof Error ? error.message : String(error));
+    if (isAiControlLimitError(error)) return error.message;
     return fallbackOutOfScopeReply(profile, message, history);
   }
 }
@@ -1677,7 +1682,16 @@ async function buildAnswer(
   ].filter(Boolean).join("\n\n");
 
   try {
-    const result = await callModelForFunction(client, orgId, "daily", aiRoute, systemPrompt, conversationMessagesForModel(history), aiRoute.limits);
+    const result = await callModelForFunction(
+      client,
+      orgId,
+      "daily",
+      aiRoute,
+      systemPrompt,
+      conversationMessagesForModel(history),
+      aiRoute.limits,
+      { userId: profile?.id ?? null },
+    );
     await recordAiUsage({
       client,
       orgId,
@@ -1691,6 +1705,7 @@ async function buildAnswer(
     return result.text;
   } catch (_error) {
     console.error("Erro ao chamar IA no WhatsApp", _error instanceof Error ? _error.message : String(_error));
+    if (isAiControlLimitError(_error)) return _error.message;
     return contextualFallback(profile, organization, objectives ?? [], message);
   }
 }
@@ -1886,6 +1901,7 @@ async function classifyImportedDocument(
       },
     ],
     aiRoute.limits,
+    { userId: profile?.id ?? null },
   );
 
   await recordAiUsage({
@@ -2163,10 +2179,14 @@ serve(async (req) => {
 
     if (!text && hasAudio) {
       try {
-        text = await transcribeIncomingAudio(client, orgId, whatsappSettings, whatsappKeyRow, payload, audioDiagnostics);
+        text = await transcribeIncomingAudio(client, orgId, profile.id, whatsappSettings, whatsappKeyRow, payload, audioDiagnostics);
         wasTranscribedAudio = Boolean(text);
       } catch (error) {
         console.error("Erro ao transcrever áudio do WhatsApp", error instanceof Error ? error.message : String(error));
+        if (isAiControlLimitError(error)) {
+          await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, error.message);
+          return jsonResponse({ ok: true, audio: "ai_limit" });
+        }
         audioDiagnostics.push("transcription-error");
       }
     }

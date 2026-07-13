@@ -33,7 +33,11 @@ async function runSql(query: string) {
 
 async function purgeOrg(orgId: string) {
   await runSql(`do $$ declare t text; begin set local session_replication_role=replica;
-    for t in select table_name from information_schema.columns where table_schema='public' and column_name='org_id' loop
+    for t in
+      select c.table_name from information_schema.columns c
+      join information_schema.tables i on i.table_schema=c.table_schema and i.table_name=c.table_name
+      where c.table_schema='public' and c.column_name='org_id' and i.table_type='BASE TABLE'
+    loop
       execute format('delete from public.%I where org_id=%L', t, '${orgId}'); end loop;
     delete from public.organizations where id='${orgId}'; end $$;`);
 }

@@ -59,5 +59,11 @@ export async function recordAiUsage({
 
   if (error) {
     console.error("Erro ao registrar uso da IA", error.message);
+    return;
+  }
+
+  const { error: alertError } = await client.rpc("refresh_ai_budget_events", { p_org_id: orgId });
+  if (alertError) {
+    console.error("Erro ao atualizar alertas de orçamento da IA", alertError.message);
   }
 }
