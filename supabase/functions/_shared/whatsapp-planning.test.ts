@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { periodForPlanning } from "./periods.ts";
-import { explicitPlanningRequest, resolveAreaFromMessage, wantsDocumentAttachment } from "./whatsapp-planning.ts";
+import { explicitPlanningRequest, isExplicitPlanningRequest, resolveAreaFromMessage, wantsDocumentAttachment } from "./whatsapp-planning.ts";
 
 const areas = [
   { id: "commercial", name: "Comercial" },
@@ -15,6 +15,15 @@ describe("roteamento de planejamento pelo WhatsApp", () => {
 
   it("não trata uma simples menção ao trimestre como troca de sessão", () => {
     expect(explicitPlanningRequest("O objetivo do trimestre é implantar o sistema")).toBeNull();
+  });
+
+  it("não transforma uma ação iniciada por Planejar em nova sessão", () => {
+    expect(isExplicitPlanningRequest("Planejar o calendário de migração e instalação do sistema")).toBe(false);
+  });
+
+  it("reconhece pedido genérico de planejamento sem inventar o tipo", () => {
+    expect(isExplicitPlanningRequest("Quero planejar")).toBe(true);
+    expect(explicitPlanningRequest("Quero planejar")).toBeNull();
   });
 
   it("resolve a área citada dentro da frase inteira", () => {

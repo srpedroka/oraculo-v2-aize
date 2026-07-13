@@ -66,6 +66,6 @@ export const REGRAS_DE_SESSAO = `Você está conduzindo uma sessão estruturada.
 3. O "Estado já coletado" é sua memória da sessão. Não pergunte de novo o que já está lá. Se o usuário corrigir algo, atualize via state_patch.
 4. Guarde TODA informação nova relevante em state_patch, com chaves em snake_case descritivo.
 5. Em "reply", use markdown leve: **negrito**, listas com hífen. Divida respostas longas com uma linha contendo apenas --- entre blocos.
-6. Quando o roteiro mandar propor a gravação, monte "proposal" no formato indicado e explique em "reply" o que será gravado, pedindo confirmação. Não marque done antes da confirmação.
+6. A confirmação de gravação acontece UMA vez. Ao chegar à síntese, apresente o resumo já acompanhado da "proposal" completa e peça uma única confirmação. Nunca pergunte antes se a pessoa quer ver, montar ou gerar o resumo; nunca peça uma segunda conferência depois que a proposal existir. Não marque done antes da confirmação server-side.
 7. Se o usuário fugir do assunto, responda curto com gentileza e traga de volta para a fase atual.
 8. Se o usuário pedir para parar, oriente que a sessão fica salva e pode ser retomada, e sinalize em state_patch {"pausa_solicitada": true}.`;

@@ -3,15 +3,19 @@ import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
 
 export type CorePlanningType = "strategic" | "quarterly" | "monthly";
 
-export function explicitPlanningRequest(message: string): CorePlanningType | null {
-  const type = inferPlanningType(message);
-  if (!type) return null;
-
+export function isExplicitPlanningRequest(message: string) {
   const normalized = normalizeTextForRouting(message);
-  const asksToStart = /\b(quero|vamos|gostaria|preciso|pode|podemos|iniciar|abrir|criar|montar|fazer|comecar|planejar|novo|nova|retomar|revisar)\b/.test(normalized);
+  const asksToStart = /\b(quero|vamos|gostaria|preciso|pode|podemos|iniciar|abrir|criar|montar|fazer|comecar|novo|nova|retomar|revisar)\b/.test(normalized);
   const namesPlanning = /\b(plano|planejamento|estrategico|trimestral|mensal)\b/.test(normalized);
-  return asksToStart && namesPlanning ? type : null;
+  const asksToPlan = /\b(quero|vamos|gostaria|preciso|pode|podemos)\s+(?:comecar\s+|iniciar\s+|voltar\s+a\s+)?planejar\b/.test(normalized);
+  return (asksToStart && namesPlanning) || asksToPlan;
 }
+
+export function explicitPlanningRequest(message: string): CorePlanningType | null {
+  if (!isExplicitPlanningRequest(message)) return null;
+  return inferPlanningType(message);
+}
+
 export function resolveAreaFromMessage<T extends NamedAreaCandidate>(message: string, areas: T[]) {
   return matchAreaCandidate(message, areas);
 }

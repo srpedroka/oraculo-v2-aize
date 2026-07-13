@@ -805,6 +805,26 @@ Evite consultar logs brutos de producao quando houver alternativa. Logs crus pod
 
 Observacao: o custo da resposta textual entra em `ai_usage_logs`. O custo específico da transcrição de áudio ainda não entra no cálculo tokenizado, porque o provedor precifica áudio por duração/modelo, não pelos mesmos campos de tokens de texto.
 
+## Problema: conversa trimestral muda sozinha para plano anual ou pede confirmacao repetida
+
+Fluxo esperado:
+
+1. Planejamento trimestral ou mensal existe somente quando há `planning_sessions` ativa com `type`, `period` e `area_id` corretos.
+2. Uma ação como "Planejar o calendário de migração" continua sendo resposta da sessão atual; isoladamente, não abre Plano Estratégico.
+3. Pedido explícito como "quero iniciar um plano trimestral para Comercial" pode abrir ou trocar a sessão.
+4. Na síntese, o Oráculo mostra resumo e conteúdo a gravar na mesma resposta e pede uma única confirmação.
+5. Depois da confirmação, o documento gerado precisa manter tipo, área e período da sessão e o PDF deve ter cabeçalho, seções, objetivos e ações, não apenas texto corrido.
+
+Diagnóstico:
+
+- Consulte `planning_sessions` pelo usuário e horário. Se a conversa parece trimestral mas não existe sessão trimestral persistida, a IA diária conduziu um fluxo informal e os dados não devem ser confirmados até reconstruir a sessão correta.
+- Consulte `operation_commands`, `operational_revisions`, objetivos e `plan_documents` antes de corrigir dados. Use o snapshot `before_data` para restaurar um plano sobrescrito; não reconstrua o anual por memória.
+- Arquive registros incorretos e preserve o comando/revisão para auditoria. Faça a correção em transação única e valide os IDs da organização, área e plano afetados.
+- Teste `isExplicitPlanningRequest` com texto de ação e pedido real, e `isConfirmationMessage` com confirmações puras e frases que apenas citam a palavra confirmação.
+- Renderize o PDF de teste para PNG e inspecione visualmente antes do deploy. Verifique também nome do arquivo e paginação.
+
+Incidente de 2026-07-13: a frase "Planejar o calendário de migração" abriu uma sessão `strategic/2026`, sobrescreveu o plano anual e gerou documento anual com conteúdo Comercial/T3. A revisão operacional permitiu restaurar o anual exatamente; o conteúdo foi reconstruído como Comercial/T3 e os registros errados foram arquivados.
+
 ## Problema: arquivo enviado pelo WhatsApp nao direciona o plano
 
 Fluxo esperado:

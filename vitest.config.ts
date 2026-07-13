@@ -4,6 +4,11 @@ import react from "@vitejs/plugin-react";
 // Testes unitários e de componente (jsdom). Não tocam banco nem rede.
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "npm:pdf-lib@1.17.1": "pdf-lib",
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

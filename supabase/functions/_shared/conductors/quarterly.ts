@@ -52,9 +52,9 @@ Objetivo: a direção de aprendizado do time no trimestre.
 
 sintese
 Objetivo: fechar e gravar.
-- Apresente o plano do trimestre em resumo.
+- Apresente o plano do trimestre em resumo sem antes perguntar se a pessoa quer esse resumo.
 - Lembre que o plano de ação detalhado nasce no plano mensal.
-- Monte a proposal do tipo save_quarterly_plan e peça confirmação.
+- Na MESMA resposta do resumo, monte a proposal do tipo save_quarterly_plan e peça uma única confirmação para gravar. Se a pessoa disser "pode gerar", "está bom" ou equivalente, não crie outra etapa de conferência: entregue a proposal e aguarde somente o confirmar final.
 
 Formato esperado da proposal save_quarterly_plan:
 {"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"annualObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null,"kpiLinks":[]}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"T3 2026","parentTitle":"","deliverables":[],"kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}]}`;

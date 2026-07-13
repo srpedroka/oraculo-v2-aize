@@ -4,6 +4,7 @@ import { parseJsonObject } from "./json.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
 import { hasConcreteQuickUpdateSignal, isNonMutatingAcknowledgement } from "./quick-update-policy.ts";
 import { recordAiUsage } from "./usage.ts";
+import { explicitPlanningRequest, isExplicitPlanningRequest } from "./whatsapp-planning.ts";
 
 type Client = any;
 
@@ -31,6 +32,19 @@ function enforceQuickUpdatePolicy(message: string, classification: IntentClassif
     intent: isNonMutatingAcknowledgement(message) ? "smalltalk" : "other",
     planning_type: null,
     period_hint: null,
+    confidence: 1,
+  };
+}
+
+export function enforceIntentPolicies(message: string, classification: IntentClassification): IntentClassification {
+  const quickUpdateSafe = enforceQuickUpdatePolicy(message, classification);
+  if (quickUpdateSafe.intent !== "start_planning") return quickUpdateSafe;
+  if (!isExplicitPlanningRequest(message)) {
+    return { intent: "other", planning_type: null, period_hint: null, confidence: 1 };
+  }
+  return {
+    ...quickUpdateSafe,
+    planning_type: explicitPlanningRequest(message),
     confidence: 1,
   };
 }
@@ -68,7 +82,7 @@ export async function classifyOracleIntent(
     return { intent: "smalltalk", planning_type: null, period_hint: null, confidence: 1 };
   }
   const aiRoute = await resolveAiFunction(client, params.orgId, "background");
-  if (!aiRoute) return enforceQuickUpdatePolicy(params.message, fallbackIntent(params.message));
+  if (!aiRoute) return enforceIntentPolicies(params.message, fallbackIntent(params.message));
 
   const systemPrompt = [
     'Você classifica a intenção de uma mensagem enviada ao Oráculo, assistente estratégico, pelo WhatsApp. Responda somente JSON válido: {"intent": "smalltalk|status|quick_update|start_planning|close_period|document_question|other", "planning_type": "strategic|quarterly|monthly|null", "period_hint": "string|null", "confidence": 0.0}',
@@ -111,7 +125,7 @@ export async function classifyOracleIntent(
     const planningType = ["strategic", "quarterly", "monthly"].includes(parsed?.planning_type)
       ? parsed.planning_type as "strategic" | "quarterly" | "monthly"
       : fallback.planning_type;
-    return enforceQuickUpdatePolicy(params.message, {
+    return enforceIntentPolicies(params.message, {
       intent,
       planning_type: planningType,
       period_hint: parsed?.period_hint ? String(parsed.period_hint) : null,
@@ -119,6 +133,6 @@ export async function classifyOracleIntent(
     });
   } catch (error) {
     console.error("Erro ao classificar intenção", error instanceof Error ? error.message : String(error));
-    return enforceQuickUpdatePolicy(params.message, fallbackIntent(params.message));
+    return enforceIntentPolicies(params.message, fallbackIntent(params.message));
   }
 }
