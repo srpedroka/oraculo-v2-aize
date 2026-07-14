@@ -30,6 +30,7 @@ serve(async (req) => {
       weeklyPulseEnabled = false,
       weeklyPulseWeekday = 5,
       weeklyPulseHour = 16,
+      expectedUpdatedAt = null,
     } = await req.json();
 
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
@@ -56,40 +57,32 @@ serve(async (req) => {
       return jsonResponse({ error: "URL, instância, chave da Evolution API e segredo do webhook são obrigatórios para ativar o WhatsApp" }, 400);
     }
 
-    if (cleanApiKey || cleanWebhookSecret) {
-      const privatePayload: Record<string, unknown> = {
-        org_id: orgId,
-        updated_at: new Date().toISOString(),
-      };
-      if (cleanApiKey) privatePayload.api_key = cleanApiKey;
-      if (cleanWebhookSecret) privatePayload.webhook_secret = cleanWebhookSecret;
-
-      const { error: privateError } = await client.from("whatsapp_instance_keys").upsert(privatePayload);
-      if (privateError) throw privateError;
-    }
-
-    const { error: settingsError } = await client.from("whatsapp_settings").upsert({
-      org_id: orgId,
-      instance_url: cleanInstanceUrl || null,
-      instance_name: cleanInstanceName || null,
-      connected_number: cleanConnectedNumber || null,
-      enabled: Boolean(enabled),
-      inbound_queue_enabled: Boolean(enabled),
-      outbound_outbox_enabled: Boolean(enabled),
-      has_api_key: cleanApiKey ? true : existingSettings?.has_api_key ?? false,
-      key_preview: cleanApiKey ? previewSecret(cleanApiKey) : existingSettings?.key_preview ?? null,
-      has_webhook_secret: cleanWebhookSecret ? true : existingSettings?.has_webhook_secret ?? false,
-      webhook_secret_preview: cleanWebhookSecret ? previewSecret(cleanWebhookSecret) : existingSettings?.webhook_secret_preview ?? null,
-      weekly_pulse_enabled: Boolean(weeklyPulseEnabled),
-      weekly_pulse_weekday: cleanPulseWeekday,
-      weekly_pulse_hour: cleanPulseHour,
-      updated_at: new Date().toISOString(),
+    const { data: savedSettings, error: settingsError } = await client.rpc("save_whatsapp_settings_if_current", {
+      p_org_id: orgId,
+      p_expected_updated_at: expectedUpdatedAt ? String(expectedUpdatedAt) : null,
+      p_instance_url: cleanInstanceUrl,
+      p_instance_name: cleanInstanceName,
+      p_connected_number: cleanConnectedNumber,
+      p_enabled: Boolean(enabled),
+      p_weekly_pulse_enabled: Boolean(weeklyPulseEnabled),
+      p_weekly_pulse_weekday: cleanPulseWeekday,
+      p_weekly_pulse_hour: cleanPulseHour,
+      p_api_key: cleanApiKey,
+      p_webhook_secret: cleanWebhookSecret,
+      p_key_preview: previewSecret(cleanApiKey) ?? null,
+      p_webhook_secret_preview: previewSecret(cleanWebhookSecret) ?? null,
     });
 
     if (settingsError) throw settingsError;
+    if (!(savedSettings as { ok?: boolean } | null)?.ok) {
+      return jsonResponse({ error: "Este dado mudou em outra sessão. Recarregue a versão atual antes de salvar novamente.", code: "CONFLICT_STALE_WRITE" }, 409);
+    }
     return jsonResponse({ ok: true });
   } catch (error) {
     if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
+    if ((error as { code?: string; message?: string })?.code === "40001" || (error as { message?: string })?.message?.includes("CONFLICT_STALE_WRITE")) {
+      return jsonResponse({ error: "Este dado mudou em outra sessão. Recarregue a versão atual antes de salvar novamente.", code: "CONFLICT_STALE_WRITE" }, 409);
+    }
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao salvar WhatsApp" }, 400);
   }
 });

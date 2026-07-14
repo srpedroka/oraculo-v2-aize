@@ -187,6 +187,7 @@ Migrations principais:
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
 - `supabase/migrations/20260712223000_ai_budget_alert_refresh.sql`: alertas mensais imediatos e deduplicados após registrar custo.
+- `supabase/migrations/20260714223000_optimistic_concurrency.sql`: versao otimista e gravacoes condicionais atomicas para objetivo, KPI e configuracoes criticas.
 - `supabase/migrations/20260714120000_service_role_baseline_grants.sql`: mantém Supabase local/hospedado equivalentes nos grants server-only do `service_role` e nos defaults de objetos futuros.
 - `supabase/migrations/20260714090000_operational_health_slos.sql`: snapshots, alertas, falhas sanitizadas de IA e cron do monitor operacional.
 - `supabase/migrations/20260714190000_s4_operational_safety.sql`: eventos de segurança service-only e classificação dos exercícios mensal/trimestral de recuperação.
@@ -571,8 +572,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatias 5A–5E concluídas em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas e rotas/importadores carregam sob demanda. O entrypoint tem orçamento automático de 200 KB gzip e foi medido em 133,7 KB.
-- Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado. A próxima fatia é 5F, concorrência e consistência de tela.
+- Etapa 5 / Fatias 5A–5F concluídas no codigo em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas, rotas/importadores carregam sob demanda e edicoes de objetivo/KPI/configuracoes criticas recusam versoes antigas sem perder o rascunho. A 5F esta validada no staging e aguarda publicacao protegida em producao.
+- Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
 - Desligar fila/outbox não reativa o modo síncrono: produz `503`/retry. Rollback exige drenar itens e republicar a versão anterior antes de desligar flags/endpoints.
@@ -582,7 +583,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - Fazer teste ponta a ponta da V3 em ambiente controlado, registrando resultado no `docs/CHANGELOG.md` ou `docs/RUNBOOK.md`.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
-- Executar a Fatia 5F: conflitos de edição com versão otimista, começando por objetivos, KPI e configurações críticas.
+- Publicar a Fatia 5F pelo workflow protegido e, depois do aceite, iniciar a Etapa 6 de governanca/LGPD/DR somente com novo briefing e autorizacao.
 - Manter catalogos de pricing de IA atualizados quando trocar/adicionar modelos.
 - Revisar periodicamente RLS ao criar novas tabelas ou ampliar permissoes.
 

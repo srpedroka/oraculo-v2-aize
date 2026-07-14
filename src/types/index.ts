@@ -87,6 +87,8 @@ export interface Objective extends OperationalLifecycle {
   areaId: string | null;
   parentId: string | null;
   period: string;
+  updatedAt?: string;
+  updatedBy?: string | null;
 }
 
 export interface StrategicProject extends OperationalLifecycle {
@@ -337,6 +339,8 @@ export interface ExecutiveKpi {
   annualTarget: number | null;
   sortOrder: number;
   createdAt: string;
+  updatedAt?: string;
+  updatedBy?: string | null;
 }
 
 export interface KpiMonthlyValue {
@@ -468,6 +472,7 @@ export interface AiSettingsSaveResult {
   ok: boolean;
   keyPreview?: string | null;
   validation?: AiValidationResult | null;
+  updatedAt?: string;
 }
 
 export interface AiFunctionSetting {
@@ -534,6 +539,7 @@ export interface WhatsAppSettings {
   weeklyPulseEnabled: boolean;
   weeklyPulseWeekday: number;
   weeklyPulseHour: number;
+  updatedAt: string | null;
 }
 
 export interface CheckIn extends OperationalLifecycle {

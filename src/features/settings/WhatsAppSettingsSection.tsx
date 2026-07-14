@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { ConflictNotice } from "../../components/ConflictNotice";
 import { OrganizationBackupCard } from "../backups/OrganizationBackupCard";
 import { AreaArchiveDialog } from "../areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../members/MemberRemovalDialog";
@@ -64,11 +65,12 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
             Use a URL pública da sua VPS/Evo Go. O segredo do webhook deve ser o mesmo salvo aqui e configurado no painel da Evolution.
           </p>
           <form onSubmit={saveWhatsApp} className="grid gap-3">
+            {scope.whatsappConflict ? <ConflictNotice onReload={scope.reloadWhatsApp} /> : null}
             <label className="flex items-center gap-2 rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm text-text-secondary">
               <input
                 type="checkbox"
                 checked={whatsappEnabled}
-                onChange={(event) => setWhatsappEnabled(event.target.checked)}
+                onChange={(event) => { scope.markWhatsAppDirty(); setWhatsappEnabled(event.target.checked); }}
                 className="h-4 w-4"
               />
               Ativar webhook do WhatsApp
@@ -78,7 +80,7 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
                 <input
                   type="checkbox"
                   checked={weeklyPulseEnabled}
-                  onChange={(event) => setWeeklyPulseEnabled(event.target.checked)}
+                  onChange={(event) => { scope.markWhatsAppDirty(); setWeeklyPulseEnabled(event.target.checked); }}
                   className="h-4 w-4"
                 />
                 Pulso semanal leve
@@ -92,7 +94,7 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
                     <span className="mb-1 block text-xs font-medium text-text-secondary">Dia</span>
                     <select
                       value={weeklyPulseWeekday}
-                      onChange={(event) => setWeeklyPulseWeekday(Number(event.target.value))}
+                      onChange={(event) => { scope.markWhatsAppDirty(); setWeeklyPulseWeekday(Number(event.target.value)); }}
                       className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
                     >
                       <option value={1}>Segunda</option>
@@ -106,7 +108,7 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
                     <span className="mb-1 block text-xs font-medium text-text-secondary">Horário</span>
                     <select
                       value={weeklyPulseHour}
-                      onChange={(event) => setWeeklyPulseHour(Number(event.target.value))}
+                      onChange={(event) => { scope.markWhatsAppDirty(); setWeeklyPulseHour(Number(event.target.value)); }}
                       className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm"
                     >
                       {[8, 9, 10, 11, 14, 15, 16, 17].map((hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}
@@ -117,19 +119,19 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
             </div>
             <input
               value={whatsappInstanceUrl}
-              onChange={(event) => setWhatsappInstanceUrl(event.target.value)}
+              onChange={(event) => { scope.markWhatsAppDirty(); setWhatsappInstanceUrl(event.target.value); }}
               placeholder="URL da Evolution API"
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
             <input
               value={whatsappInstanceName}
-              onChange={(event) => setWhatsappInstanceName(event.target.value)}
+              onChange={(event) => { scope.markWhatsAppDirty(); setWhatsappInstanceName(event.target.value); }}
               placeholder="Nome da instância"
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
             <input
               value={whatsappConnectedNumber}
-              onChange={(event) => setWhatsappConnectedNumber(normalizePhone(event.target.value))}
+              onChange={(event) => { scope.markWhatsAppDirty(); setWhatsappConnectedNumber(normalizePhone(event.target.value)); }}
               placeholder="Número conectado, ex: +5546999990000"
               className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
             />
@@ -137,7 +139,7 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
               type="password"
               autoComplete="new-password"
               value={whatsappApiKey}
-              onChange={(event) => setWhatsappApiKey(event.target.value)}
+              onChange={(event) => { scope.markWhatsAppDirty(); setWhatsappApiKey(event.target.value); }}
               placeholder={
                 state.whatsappSettings?.hasApiKey ? `Chave Evolution cadastrada ${state.whatsappSettings.keyPreview ?? ""}` : "Chave da Evolution API"
               }
@@ -147,7 +149,7 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
               type="password"
               autoComplete="new-password"
               value={whatsappWebhookSecret}
-              onChange={(event) => setWhatsappWebhookSecret(event.target.value)}
+              onChange={(event) => { scope.markWhatsAppDirty(); setWhatsappWebhookSecret(event.target.value); }}
               placeholder={
                 state.whatsappSettings?.hasWebhookSecret
                   ? `Segredo cadastrado ${state.whatsappSettings.webhookSecretPreview ?? ""}`
@@ -165,7 +167,7 @@ export function WhatsAppSettingsSection({ scope }: { scope: SettingsController }
                 />
               </label>
             ) : null}
-            <Button type="submit" icon={MessageCircle}>
+            <Button type="submit" icon={MessageCircle} disabled={scope.whatsappConflict}>
               Salvar WhatsApp
             </Button>
           </form>

@@ -1,5 +1,15 @@
 # Decisoes tecnicas
 
+## 2026-07-14 - Concorrencia otimista nas edicoes de alto valor
+
+Decisao: usar `updated_at` como versao de compare-and-swap em objetivos e configuracoes criticas, e uma RPC SQL unica para salvar definicao e meses de KPI. Conflitos retornam resultado controlado, preservam o rascunho local e exigem recarregar a versao atual antes de tentar novamente.
+
+Contexto: duas abas ou pessoas podiam partir da mesma leitura e a ultima gravacao sobrescrever silenciosamente a primeira. O editor de KPI ainda dividia definicao e meses em varias mutacoes.
+
+Alternativas: bloquear registros por toda a duracao da tela, aceitar a ultima gravacao ou criar uma tabela generica de locks. Locks longos aumentariam abandono e burocracia; ultima gravacao perderia dados; uma tabela generica adicionaria manutencao sem necessidade nesta fatia.
+
+Consequencias: o fluxo normal nao ganha etapas. O aviso aparece somente quando uma versao realmente mudou. `save_kpi_editor_if_current`, `save_ai_function_if_current` e `save_whatsapp_settings_if_current` fazem a comparacao no banco; as duas ultimas continuam executaveis apenas por `service_role`. Auditoria e backup permanecem ativos.
+
 ## 2026-07-14 - Rotas e importadores carregam sob demanda
 
 Decisao: separar cada pagina com `React.lazy`/`Suspense`, preservar o shell autenticado durante a troca e isolar dialogos/importadores pesados. O build passa a gerar manifesto e a falhar se o JavaScript inicial superar 200 KB gzip ou incluir PDF, XLSX, DOCX e ZIP.

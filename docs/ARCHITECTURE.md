@@ -45,6 +45,8 @@ Depois que objetivos sao gravados, a operacao diaria nao depende apenas do Oracu
 
 A rota `/arquivo` concentra o ciclo de vida reversível da operação. Objetivos podem ser arquivados com seus desdobramentos, ações e evidências ainda ativas; ações-chave, projetos prioritários, evidências, check-ins e documentos também podem ser retirados individualmente e restaurados. Registros arquivados saem das telas ativas, do WhatsApp e do contexto da IA. Atualizações em planos, objetivos, execução e KPIs geram snapshots antes/depois em `operational_revisions`, permitindo corrigir sem sobrescrever silenciosamente o histórico.
 
+Edicoes de alto valor usam concorrencia otimista. Objetivos comparam o `updated_at` lido pela tela antes do update. O editor de KPI envia a versao da definicao e de cada mes para `save_kpi_editor_if_current`, que valida e grava definicao + meses em uma unica instrucao SQL. Tom, modelo por funcao de IA e WhatsApp seguem o mesmo contrato de versao. Realtime atualiza a versao observada; se existir rascunho local, a UI o preserva e mostra um conflito em vez de substituir campos silenciosamente.
+
 ### Supabase
 
 Migrations principais:
@@ -75,6 +77,7 @@ Migrations principais:
 - `20260713160000_whatsapp_outbox.sql`: gravação atômica de resposta+outbox, ordem por destinatário/bloco, sender service-only, retry/dead-letter e cron inerte.
 - `20260713200000_whatsapp_health.sql`: telemetria técnica service-only, gatilhos de falha/envio, retenção de 30 dias e RPC service-only para reabrir dead-letter sem ativar filas.
 - `20260714190000_s4_operational_safety.sql`: classifica exercícios de recuperação, registra eventos sanitizados de schema destrutivo e mantém a telemetria de segurança exclusiva de `service_role`.
+- `20260714223000_optimistic_concurrency.sql`: versao otimista de objetivos/KPIs e operacoes atomicas condicionais para KPI, modelo de IA e WhatsApp.
 
 Tabelas publicas principais:
 

@@ -1029,6 +1029,8 @@ Metas iniciais:
 
 ## 5.7 Fatia 5F — Concorrência e consistência de tela
 
+> **STATUS: implementada e validada no staging em 2026-07-14; publicação em produção pendente.** Objetivos, KPI, modelo de IA, WhatsApp e tom usam versão otimista. KPI grava definição e meses atomicamente. A segunda sessão preserva o rascunho, recebe aviso e não sobrescreve a vencedora. Lint, build, 214 unitários e 5 integrações concorrentes passaram; `save-ai-settings` e `save-whatsapp-settings` estão no staging.
+
 - Tratar conflitos de edição com `updated_at`/versão otimista.
 - Avisar quando registro mudou em outra sessão.
 - Não sobrescrever silenciosamente edição mais nova.

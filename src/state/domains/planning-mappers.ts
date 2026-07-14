@@ -54,7 +54,8 @@ export function mapObjective(row: any): Objective {
     result: row.result ?? "", metric: row.metric ?? undefined, target: row.target ?? undefined, current: row.current ?? undefined,
     trend: row.trend ?? undefined, deadline: row.deadline ?? null, owner: row.owner ?? "", ownerMembershipId: row.owner_membership_id ?? null,
     evidencePlan: row.evidence_plan ?? "", status: row.status, progress: row.progress ?? 0, deliverables: row.deliverables ?? [],
-    parentId: row.parent_id ?? null, period: row.period, ...mapOperationalLifecycle(row),
+    parentId: row.parent_id ?? null, period: row.period, updatedAt: row.updated_at ?? row.created_at,
+    updatedBy: row.updated_by ?? null, ...mapOperationalLifecycle(row),
   };
 }
 

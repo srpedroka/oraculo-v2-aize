@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { ConflictNotice } from "../../components/ConflictNotice";
 import { OrganizationBackupCard } from "../backups/OrganizationBackupCard";
 import { AreaArchiveDialog } from "../areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../members/MemberRemovalDialog";
@@ -65,6 +66,7 @@ export function GovernanceSettingsSections({ scope }: { scope: SettingsControlle
 
       {showSection("tom") ? (
       <Card>
+        {scope.toneConflict ? <ConflictNotice onReload={scope.reloadTone} /> : null}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             <SlidersHorizontal className="mt-0.5 h-5 w-5 shrink-0 text-text-secondary" />
@@ -177,7 +179,7 @@ export function GovernanceSettingsSections({ scope }: { scope: SettingsControlle
                 <p className="text-xs leading-5 text-text-tertiary">
                   Os controles finos ficam disponíveis no preset Personalizado.
                 </p>
-                <Button type="button" icon={Save} disabled={savingTone} onClick={() => void saveTone()}>
+                <Button type="button" icon={Save} disabled={savingTone || scope.toneConflict} onClick={() => void saveTone()}>
                   {savingTone ? "Salvando..." : "Salvar tom"}
                 </Button>
               </div>

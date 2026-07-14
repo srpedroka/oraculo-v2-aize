@@ -1,5 +1,16 @@
 # Runbook
 
+## Validar conflito de edicao em duas abas
+
+1. No staging, abra o mesmo objetivo em duas abas e altere ambas.
+2. Salve a primeira. Na segunda, confirme o aviso de versao mais nova e que o rascunho continua visivel.
+3. Clique `Recarregar versao atual`; os campos devem assumir a primeira gravacao e o aviso deve sumir.
+4. Repita em Dashboard > Lancar KPIs. A primeira aba deve gravar definicao e os 12 meses juntos; a segunda nao pode alterar nenhum deles.
+5. Repita em Configuracoes para modelo de IA, WhatsApp e tom. O uso normal nao pede confirmacao adicional.
+6. Confira `operational_revisions`: somente a gravacao vencedora de objetivo/KPI deve gerar revisao. Nao use dados reais para esse teste.
+
+Se a tela mostrar conflito depois do proprio salvamento, confira se o Realtime trouxe `updated_at` e se o marcador local de salvamento foi definido antes da mutacao. Se uma RPC devolver `ok=false`, nao repita automaticamente: invalide a consulta e mantenha o rascunho ate a pessoa recarregar.
+
 ## Smoke de bundle e rotas lazy
 
 1. Rode `pnpm run build` e confirme a linha `Bundle inicial` abaixo de 200 KB gzip.

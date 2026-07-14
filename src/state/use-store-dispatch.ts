@@ -12,6 +12,7 @@ import type {
 import { callEdgeFunction, requireClient } from "./store-client";
 import type { AppAction } from "./store-contract";
 import { toKeyActionInsert, toObjectiveInsert } from "./domains/planning-mappers";
+import { conflictMessage } from "../lib/optimisticConcurrency";
 import {
   operationalEntityDomains,
   PLANNING_MUTATION_DOMAINS,
@@ -517,16 +518,20 @@ export function useStoreDispatch({
       if (action.type === "update_objective") {
         void (async () => {
           try {
-            const { error } = await client
+            const { data, error } = await client
               .from("objectives")
               .update(toObjectiveInsert(action.objective, orgId))
               .eq("id", action.objective.id)
-              .eq("org_id", orgId);
+              .eq("org_id", orgId)
+              .eq("updated_at", action.objective.updatedAt)
+              .select("id")
+              .maybeSingle();
             if (error) throw error;
+            if (!data) throw { code: "CONFLICT_STALE_WRITE" };
             invalidateDomains(["objectives"]);
             action.onSuccess?.(action.objective.id);
           } catch (error) {
-            action.onError?.(error instanceof Error ? error.message : "Não foi possível atualizar o objetivo.");
+            action.onError?.(conflictMessage(error, "Não foi possível atualizar o objetivo."));
           }
         })();
         return;
@@ -611,27 +616,29 @@ export function useStoreDispatch({
         return;
       }
 
-      if (action.type === "upsert_kpi_month") {
+      if (action.type === "save_kpi_editor") {
         void (async () => {
-          const rows = action.values.map((value) => ({
-            org_id: orgId,
-            kpi_id: action.kpiId,
-            year: action.year,
-            month: value.month,
-            target_value: value.targetValue ?? null,
-            target_stage: value.targetStage ?? null,
-            actual_value: value.actualValue ?? null,
-            secondary_actual: value.secondaryActual ?? null,
-            note: value.note ?? null,
-            updated_by: userId,
-            updated_at: new Date().toISOString(),
-          }));
-          const { error } = await client.from("kpi_monthly_values").upsert(rows, { onConflict: "kpi_id,year,month" });
+          const { data, error } = await client.rpc("save_kpi_editor_if_current", {
+            p_org_id: orgId,
+            p_kpi_id: action.kpiId,
+            p_year: action.year,
+            p_expected_kpi_updated_at: action.expectedKpiUpdatedAt,
+            p_annual_target: action.annualTarget,
+            p_opening_balance: action.openingBalance,
+            p_months: action.values.map((value) => value.month),
+            p_expected_month_updated_at: action.values.map((value) => value.expectedUpdatedAt),
+            p_target_values: action.values.map((value) => value.targetValue),
+            p_target_stages: action.values.map((value) => value.targetStage),
+            p_actual_values: action.values.map((value) => value.actualValue),
+            p_secondary_actuals: action.values.map((value) => value.secondaryActual),
+            p_notes: action.values.map((value) => value.note),
+          });
           if (error) throw error;
-          invalidateDomains(["kpiValues"]);
+          if (!(data as { ok?: boolean } | null)?.ok) throw new Error("CONFLICT_STALE_WRITE");
+          invalidateDomains(["kpis", "kpiValues"]);
           action.onSuccess?.();
         })().catch((error) => {
-          action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar os lançamentos.");
+          action.onError?.(conflictMessage(error, "Não foi possível salvar os lançamentos."));
         });
         return;
       }
@@ -726,7 +733,11 @@ export function useStoreDispatch({
           weeklyPulseEnabled: action.weeklyPulseEnabled,
           weeklyPulseWeekday: action.weeklyPulseWeekday,
           weeklyPulseHour: action.weeklyPulseHour,
-        }).then(() => invalidateDomains(["whatsapp"]));
+          expectedUpdatedAt: action.expectedUpdatedAt,
+        }).then(() => {
+          invalidateDomains(["whatsapp"]);
+          action.onSuccess?.();
+        }).catch((error) => action.onError?.(conflictMessage(error, "Não foi possível salvar o WhatsApp.")));
         return;
       }
 

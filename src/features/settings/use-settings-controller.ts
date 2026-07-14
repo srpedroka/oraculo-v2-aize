@@ -55,6 +55,18 @@ export function useSettingsController() {
     daily: { provider: state.aiSettings?.provider ?? "openai", model: state.aiSettings?.model ?? "gpt-5.4" },
     background: { provider: state.aiSettings?.provider ?? "openai", model: state.aiSettings?.model ?? "gpt-5.4" },
   });
+  const aiFunctionDirtyRef = useRef<Record<AiFunction, boolean>>({ planning: false, daily: false, background: false });
+  const aiFunctionBaselineRef = useRef<Record<AiFunction, string | null>>({
+    planning: state.aiFunctionSettings.find((item) => item.function === "planning")?.updatedAt ?? null,
+    daily: state.aiFunctionSettings.find((item) => item.function === "daily")?.updatedAt ?? null,
+    background: state.aiFunctionSettings.find((item) => item.function === "background")?.updatedAt ?? null,
+  });
+  const aiFunctionOwnSavePending = useRef<Record<AiFunction, boolean>>({ planning: false, daily: false, background: false });
+  const [aiFunctionConflict, setAiFunctionConflict] = useState<Record<AiFunction, boolean>>({
+    planning: false,
+    daily: false,
+    background: false,
+  });
   const [aiMessage, setAiMessage] = useState("");
   const [aiMessageTone, setAiMessageTone] = useState<AiConfigStatus | null>(null);
   const [savingProvider, setSavingProvider] = useState<AiProvider | null>(null);
@@ -67,6 +79,10 @@ export function useSettingsController() {
     drive: number;
     customNote: string;
   }>({ preset: "equilibrado", acidity: 0, drive: 0, customNote: "" });
+  const [toneDirty, setToneDirty] = useState(false);
+  const [toneConflict, setToneConflict] = useState(false);
+  const toneBaselineRef = useRef<string | null>(state.orgTone?.updatedAt ?? null);
+  const toneOwnSavePending = useRef(false);
   const [toneMessage, setToneMessage] = useState("");
   const [savingTone, setSavingTone] = useState(false);
   const [whatsappInstanceUrl, setWhatsappInstanceUrl] = useState(state.whatsappSettings?.instanceUrl ?? "");
@@ -79,6 +95,10 @@ export function useSettingsController() {
   const [weeklyPulseWeekday, setWeeklyPulseWeekday] = useState(state.whatsappSettings?.weeklyPulseWeekday ?? 5);
   const [weeklyPulseHour, setWeeklyPulseHour] = useState(state.whatsappSettings?.weeklyPulseHour ?? 16);
   const [whatsappMessage, setWhatsappMessage] = useState("");
+  const [whatsappDirty, setWhatsappDirty] = useState(false);
+  const [whatsappConflict, setWhatsappConflict] = useState(false);
+  const whatsappBaselineRef = useRef<string | null>(state.whatsappSettings?.updatedAt ?? null);
+  const whatsappOwnSavePending = useRef(false);
   const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
   const [memberInviteBusyId, setMemberInviteBusyId] = useState<string | null>(null);
   const [memberAreaBusyId, setMemberAreaBusyId] = useState<string | null>(null);
@@ -188,23 +208,71 @@ export function useSettingsController() {
   useEffect(() => {
     const legacyProvider = state.aiSettings?.provider ?? "openai";
     const legacyModel = state.aiSettings?.model ?? DEFAULT_MODEL_BY_PROVIDER[legacyProvider];
-    setAiFunctionDrafts({
-      planning: {
-        provider: state.aiFunctionSettings.find((item) => item.function === "planning")?.provider ?? legacyProvider,
-        model: state.aiFunctionSettings.find((item) => item.function === "planning")?.model ?? legacyModel,
-      },
-      daily: {
-        provider: state.aiFunctionSettings.find((item) => item.function === "daily")?.provider ?? legacyProvider,
-        model: state.aiFunctionSettings.find((item) => item.function === "daily")?.model ?? legacyModel,
-      },
-      background: {
-        provider: state.aiFunctionSettings.find((item) => item.function === "background")?.provider ?? legacyProvider,
-        model: state.aiFunctionSettings.find((item) => item.function === "background")?.model ?? legacyModel,
-      },
-    });
+    const incoming = Object.fromEntries(AI_FUNCTIONS.map(({ value }) => {
+      const persisted = state.aiFunctionSettings.find((item) => item.function === value);
+      return [value, {
+        draft: { provider: persisted?.provider ?? legacyProvider, model: persisted?.model ?? legacyModel },
+        updatedAt: persisted?.updatedAt ?? null,
+      }];
+    })) as Record<AiFunction, { draft: { provider: AiProvider; model: string }; updatedAt: string | null }>;
+    const nextConflict = { ...aiFunctionConflict };
+    const functionsToAdopt: AiFunction[] = [];
+
+    for (const { value } of AI_FUNCTIONS) {
+      const changedRemotely = incoming[value].updatedAt !== aiFunctionBaselineRef.current[value];
+      if (aiFunctionDirtyRef.current[value] && changedRemotely && !aiFunctionOwnSavePending.current[value]) {
+        nextConflict[value] = true;
+        continue;
+      }
+      if (aiFunctionDirtyRef.current[value] && !changedRemotely) continue;
+      functionsToAdopt.push(value);
+      aiFunctionOwnSavePending.current[value] = false;
+      aiFunctionDirtyRef.current[value] = false;
+      aiFunctionBaselineRef.current[value] = incoming[value].updatedAt;
+      nextConflict[value] = false;
+    }
+
+    if (functionsToAdopt.length) {
+      setAiFunctionDrafts((current) => {
+        const next = { ...current };
+        for (const value of functionsToAdopt) next[value] = incoming[value].draft;
+        return next;
+      });
+    }
+    setAiFunctionConflict(nextConflict);
+    // The conflict map is reconciled from server versions, not from its own state update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.aiFunctionSettings, state.aiSettings]);
 
+  function editAiFunctionDraft(aiFunction: AiFunction, draft: { provider: AiProvider; model: string }) {
+    aiFunctionDirtyRef.current[aiFunction] = true;
+    setAiFunctionDrafts((current) => ({ ...current, [aiFunction]: draft }));
+    setAiMessage("");
+  }
+
+  function reloadAiFunction(aiFunction: AiFunction) {
+    const legacyProvider = state.aiSettings?.provider ?? "openai";
+    const legacyModel = state.aiSettings?.model ?? DEFAULT_MODEL_BY_PROVIDER[legacyProvider];
+    const persisted = state.aiFunctionSettings.find((item) => item.function === aiFunction);
+    aiFunctionDirtyRef.current[aiFunction] = false;
+    aiFunctionOwnSavePending.current[aiFunction] = false;
+    aiFunctionBaselineRef.current[aiFunction] = persisted?.updatedAt ?? null;
+    setAiFunctionDrafts((current) => ({
+      ...current,
+      [aiFunction]: { provider: persisted?.provider ?? legacyProvider, model: persisted?.model ?? legacyModel },
+    }));
+    setAiFunctionConflict((current) => ({ ...current, [aiFunction]: false }));
+    setAiMessage("");
+  }
+
   useEffect(() => {
+    const incomingVersion = state.whatsappSettings?.updatedAt ?? null;
+    if (whatsappDirty && incomingVersion === whatsappBaselineRef.current) return;
+    if (whatsappDirty && incomingVersion !== whatsappBaselineRef.current && !whatsappOwnSavePending.current) {
+      setWhatsappConflict(true);
+      return;
+    }
+    whatsappOwnSavePending.current = false;
     setWhatsappInstanceUrl(state.whatsappSettings?.instanceUrl ?? "");
     setWhatsappInstanceName(state.whatsappSettings?.instanceName ?? "");
     setWhatsappConnectedNumber(state.whatsappSettings?.connectedNumber ?? "");
@@ -212,16 +280,72 @@ export function useSettingsController() {
     setWeeklyPulseEnabled(state.whatsappSettings?.weeklyPulseEnabled ?? false);
     setWeeklyPulseWeekday(state.whatsappSettings?.weeklyPulseWeekday ?? 5);
     setWeeklyPulseHour(state.whatsappSettings?.weeklyPulseHour ?? 16);
+    whatsappBaselineRef.current = incomingVersion;
+    setWhatsappDirty(false);
+    setWhatsappConflict(false);
+    // Only a new server version should reconcile the local draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.whatsappSettings]);
 
   useEffect(() => {
+    const incomingVersion = state.orgTone?.updatedAt ?? null;
+    if (toneDirty && incomingVersion === toneBaselineRef.current) return;
+    if (toneDirty && incomingVersion !== toneBaselineRef.current && !toneOwnSavePending.current) {
+      setToneConflict(true);
+      return;
+    }
+    toneOwnSavePending.current = false;
     setToneDraft({
       preset: state.orgTone?.preset ?? "equilibrado",
       acidity: state.orgTone?.acidity ?? 0,
       drive: state.orgTone?.drive ?? 0,
       customNote: state.orgTone?.customNote ?? "",
     });
+    toneBaselineRef.current = incomingVersion;
+    setToneDirty(false);
+    setToneConflict(false);
+    // Only a new server version should reconcile the local draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.orgTone]);
+
+  function editToneDraft(updater: Parameters<typeof setToneDraft>[0]) {
+    setToneDirty(true);
+    setToneDraft(updater);
+  }
+
+  function reloadTone() {
+    setToneDraft({
+      preset: state.orgTone?.preset ?? "equilibrado",
+      acidity: state.orgTone?.acidity ?? 0,
+      drive: state.orgTone?.drive ?? 0,
+      customNote: state.orgTone?.customNote ?? "",
+    });
+    toneBaselineRef.current = state.orgTone?.updatedAt ?? null;
+    setToneDirty(false);
+    setToneConflict(false);
+    setToneMessage("");
+  }
+
+  function markWhatsAppDirty() {
+    setWhatsappDirty(true);
+    setWhatsappMessage("");
+  }
+
+  function reloadWhatsApp() {
+    setWhatsappInstanceUrl(state.whatsappSettings?.instanceUrl ?? "");
+    setWhatsappInstanceName(state.whatsappSettings?.instanceName ?? "");
+    setWhatsappConnectedNumber(state.whatsappSettings?.connectedNumber ?? "");
+    setWhatsappEnabled(state.whatsappSettings?.enabled ?? false);
+    setWeeklyPulseEnabled(state.whatsappSettings?.weeklyPulseEnabled ?? false);
+    setWeeklyPulseWeekday(state.whatsappSettings?.weeklyPulseWeekday ?? 5);
+    setWeeklyPulseHour(state.whatsappSettings?.weeklyPulseHour ?? 16);
+    setWhatsappApiKey("");
+    setWhatsappWebhookSecret("");
+    whatsappBaselineRef.current = state.whatsappSettings?.updatedAt ?? null;
+    setWhatsappDirty(false);
+    setWhatsappConflict(false);
+    setWhatsappMessage("");
+  }
 
   function createOrganization(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -591,6 +715,11 @@ export function useSettingsController() {
 
   async function saveAiFunction(aiFunction: AiFunction) {
     const draft = aiFunctionDrafts[aiFunction];
+    if (aiFunctionConflict[aiFunction]) {
+      setAiMessage("Recarregue a versão atual antes de salvar esta função.");
+      setAiMessageTone("provider_error");
+      return;
+    }
     const modelValue = draft.model.trim();
     if (!modelValue) {
       setAiMessage("Escolha um modelo do catálogo ou informe o id de um modelo personalizado.");
@@ -600,11 +729,22 @@ export function useSettingsController() {
     setSavingFunction(aiFunction);
     setAiMessage("");
     setAiMessageTone(null);
+    aiFunctionOwnSavePending.current[aiFunction] = true;
     try {
-      const result = await saveAiFunctionSetting(aiFunction, draft.provider, modelValue);
+      const result = await saveAiFunctionSetting(
+        aiFunction,
+        draft.provider,
+        modelValue,
+        aiFunctionBaselineRef.current[aiFunction],
+      );
+      if (result.updatedAt) aiFunctionBaselineRef.current[aiFunction] = result.updatedAt;
+      aiFunctionDirtyRef.current[aiFunction] = false;
+      aiFunctionOwnSavePending.current[aiFunction] = false;
+      setAiFunctionConflict((current) => ({ ...current, [aiFunction]: false }));
       setAiMessage(validationMessage(result.validation));
       setAiMessageTone(result.validation?.status ?? "untested");
     } catch (error) {
+      aiFunctionOwnSavePending.current[aiFunction] = false;
       setAiMessage(error instanceof Error ? error.message : "Não foi possível salvar a função de IA.");
       setAiMessageTone("provider_error");
     } finally {
@@ -637,7 +777,7 @@ export function useSettingsController() {
 
   function selectTonePreset(preset: OrgTonePreset) {
     const selected = TONE_PRESETS.find((item) => item.value === preset) ?? TONE_PRESETS[0];
-    setToneDraft((current) => ({
+    editToneDraft((current) => ({
       preset,
       acidity: preset === "custom" ? current.acidity : selected.acidity,
       drive: preset === "custom" ? current.drive : selected.drive,
@@ -649,15 +789,20 @@ export function useSettingsController() {
   async function saveTone() {
     setSavingTone(true);
     setToneMessage("");
+    toneOwnSavePending.current = true;
     try {
-      await saveOrgTone({
+      const saved = await saveOrgTone({
         preset: toneDraft.preset,
         acidity: toneDraft.acidity,
         drive: toneDraft.drive,
         customNote: toneDraft.preset === "custom" ? toneDraft.customNote : null,
-      });
+      }, toneBaselineRef.current);
+      toneBaselineRef.current = saved.updatedAt;
+      setToneDirty(false);
+      setToneConflict(false);
       setToneMessage("Tom salvo e já disponível para as próximas conversas.");
     } catch (error) {
+      toneOwnSavePending.current = false;
       setToneMessage(error instanceof Error ? error.message : "Não foi possível salvar o tom.");
     } finally {
       setSavingTone(false);
@@ -666,6 +811,11 @@ export function useSettingsController() {
 
   function saveWhatsApp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (whatsappConflict) {
+      setWhatsappMessage("Recarregue a versão atual antes de salvar.");
+      return;
+    }
+    whatsappOwnSavePending.current = true;
     dispatch({
       type: "upsert_whatsapp_settings",
       instanceUrl: whatsappInstanceUrl.trim(),
@@ -677,10 +827,19 @@ export function useSettingsController() {
       weeklyPulseEnabled,
       weeklyPulseWeekday,
       weeklyPulseHour,
+      expectedUpdatedAt: whatsappBaselineRef.current,
+      onSuccess: () => {
+        setWhatsappApiKey("");
+        setWhatsappWebhookSecret("");
+        setWhatsappDirty(false);
+        setWhatsappConflict(false);
+        setWhatsappMessage("Configuração do WhatsApp salva.");
+      },
+      onError: (message) => {
+        whatsappOwnSavePending.current = false;
+        setWhatsappMessage(message);
+      },
     });
-    setWhatsappApiKey("");
-    setWhatsappWebhookSecret("");
-    setWhatsappMessage("Configuração do WhatsApp salva.");
   }
 
   return {
@@ -722,6 +881,9 @@ export function useSettingsController() {
     setProviderApiKeys,
     aiFunctionDrafts,
     setAiFunctionDrafts,
+    editAiFunctionDraft,
+    aiFunctionConflict,
+    reloadAiFunction,
     aiMessage,
     setAiMessage,
     aiMessageTone,
@@ -735,7 +897,7 @@ export function useSettingsController() {
     testingFunction,
     setTestingFunction,
     toneDraft,
-    setToneDraft,
+    setToneDraft: editToneDraft,
     toneMessage,
     setToneMessage,
     savingTone,
@@ -760,6 +922,11 @@ export function useSettingsController() {
     setWeeklyPulseHour,
     whatsappMessage,
     setWhatsappMessage,
+    toneConflict,
+    reloadTone,
+    whatsappConflict,
+    reloadWhatsApp,
+    markWhatsAppDirty,
     roleSavingId,
     setRoleSavingId,
     memberInviteBusyId,

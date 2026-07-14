@@ -1,5 +1,6 @@
 import { AlertTriangle, FileSpreadsheet, History, Save, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ConflictNotice } from "../../components/ConflictNotice";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { isKpiImageFile, KPI_IMPORT_ACCEPT, readKpiImage, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
@@ -25,6 +26,11 @@ interface KpiDraft {
   annualTarget: string;
   openingBalance: string;
   months: MonthDraft[];
+}
+
+interface KpiBaseline {
+  kpiUpdatedAt: string;
+  monthUpdatedAt: Record<number, string | null>;
 }
 
 function numberToInput(value: number | null | undefined) {
@@ -66,6 +72,17 @@ function buildDraft(kpi: ExecutiveKpi, values: KpiMonthlyValue[], year: number):
   };
 }
 
+function buildBaseline(kpi: ExecutiveKpi, values: KpiMonthlyValue[], year: number): KpiBaseline {
+  return {
+    kpiUpdatedAt: kpi.updatedAt ?? kpi.createdAt,
+    monthUpdatedAt: Object.fromEntries(KPI_MONTHS.map((_, index) => {
+      const month = index + 1;
+      const value = values.find((item) => item.kpiId === kpi.id && item.year === year && item.month === month);
+      return [month, value?.updatedAt ?? null];
+    })),
+  };
+}
+
 function monthValuesFromDraft(kpi: ExecutiveKpi, draft: KpiDraft, year: number) {
   return draft.months.map((month, index) => ({
     id: `${kpi.id}-${year}-${index + 1}`,
@@ -91,6 +108,9 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
   const [drafts, setDrafts] = useState<Record<string, KpiDraft>>(() =>
     Object.fromEntries(orderedKpis.map((kpi) => [kpi.id, buildDraft(kpi, state.kpiValues, year)])),
   );
+  const [baselines, setBaselines] = useState<Record<string, KpiBaseline>>(() =>
+    Object.fromEntries(orderedKpis.map((kpi) => [kpi.id, buildBaseline(kpi, state.kpiValues, year)])),
+  );
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [applyingImport, setApplyingImport] = useState(false);
@@ -103,8 +123,33 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
   const [message, setMessage] = useState<string | null>(null);
   const spreadsheetInputRef = useRef<HTMLInputElement>(null);
   const historyScanStarted = useRef(false);
+  const ownSavePending = useRef(false);
   const activeKpi = orderedKpis.find((kpi) => kpi.id === activeKpiId) ?? orderedKpis[0] ?? null;
   const activeDraft = activeKpi ? drafts[activeKpi.id] : null;
+  const activeBaseline = activeKpi ? baselines[activeKpi.id] : null;
+  const latestActiveBaseline = activeKpi ? buildBaseline(activeKpi, state.kpiValues, year) : null;
+  const activeConflict = Boolean(activeBaseline && latestActiveBaseline && (
+    activeBaseline.kpiUpdatedAt !== latestActiveBaseline.kpiUpdatedAt
+    || KPI_MONTHS.some((_, index) => activeBaseline.monthUpdatedAt[index + 1] !== latestActiveBaseline.monthUpdatedAt[index + 1])
+  ));
+  const activeVersionSignature = latestActiveBaseline
+    ? `${latestActiveBaseline.kpiUpdatedAt}:${KPI_MONTHS.map((_, index) => latestActiveBaseline.monthUpdatedAt[index + 1] ?? "new").join(":")}`
+    : "";
+
+  useEffect(() => {
+    if (!ownSavePending.current || !activeKpi || !latestActiveBaseline) return;
+    ownSavePending.current = false;
+    setBaselines((current) => ({ ...current, [activeKpi.id]: latestActiveBaseline }));
+    // Reconcile only when the server version changes, not on ordinary dialog renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKpi?.id, activeVersionSignature]);
+
+  function reloadActiveKpi() {
+    if (!activeKpi) return;
+    setDrafts((current) => ({ ...current, [activeKpi.id]: buildDraft(activeKpi, state.kpiValues, year) }));
+    setBaselines((current) => ({ ...current, [activeKpi.id]: buildBaseline(activeKpi, state.kpiValues, year) }));
+    setMessage(null);
+  }
 
   function updateDraft(kpiId: string, updater: (draft: KpiDraft) => KpiDraft) {
     setDrafts((current) => {
@@ -134,41 +179,39 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
   }
 
   function saveActiveKpi() {
-    if (!activeKpi || !activeDraft) return;
+    if (!activeKpi || !activeDraft || !activeBaseline) return;
+    if (activeConflict) {
+      setMessage("Recarregue a versão atual antes de salvar.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
+    ownSavePending.current = true;
 
     dispatch({
-      type: "upsert_kpi_definition",
+      type: "save_kpi_editor",
       kpiId: activeKpi.id,
+      year,
+      expectedKpiUpdatedAt: activeBaseline.kpiUpdatedAt,
       annualTarget: activeKpi.key === "cash" ? activeKpi.annualTarget : parseInputNumber(activeDraft.annualTarget),
       openingBalance: activeKpi.key === "cash" ? parseInputNumber(activeDraft.openingBalance) : activeKpi.openingBalance,
+      values: activeDraft.months.map((month, index) => ({
+        month: index + 1,
+        expectedUpdatedAt: activeBaseline.monthUpdatedAt[index + 1] ?? null,
+        targetValue: activeKpi.key === "cash" ? null : parseInputNumber(month.targetValue),
+        targetStage: activeKpi.key === "cash" ? month.targetStage || null : null,
+        actualValue: parseInputNumber(month.actualValue),
+        secondaryActual: activeKpi.secondaryUnit ? parseInputNumber(month.secondaryActual) : null,
+        note: month.note.trim() || null,
+      })),
       onError: (error) => {
+        ownSavePending.current = false;
         setSaving(false);
         setMessage(error);
       },
       onSuccess: () => {
-        dispatch({
-          type: "upsert_kpi_month",
-          kpiId: activeKpi.id,
-          year,
-          values: activeDraft.months.map((month, index) => ({
-            month: index + 1,
-            targetValue: activeKpi.key === "cash" ? null : parseInputNumber(month.targetValue),
-            targetStage: activeKpi.key === "cash" ? month.targetStage || null : null,
-            actualValue: parseInputNumber(month.actualValue),
-            secondaryActual: activeKpi.secondaryUnit ? parseInputNumber(month.secondaryActual) : null,
-            note: month.note.trim() || null,
-          })),
-          onError: (error) => {
-            setSaving(false);
-            setMessage(error);
-          },
-          onSuccess: () => {
-            setSaving(false);
-            setMessage("Lançamentos salvos.");
-          },
-        });
+        setSaving(false);
+        setMessage("Lançamentos salvos.");
       },
     });
   }
@@ -366,6 +409,7 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
         </div>
 
         <div className="space-y-5 p-6">
+          {activeConflict ? <ConflictNotice onReload={reloadActiveKpi} /> : null}
           {spreadsheetSuggestion ? (
             <section className="border border-border bg-[#F7F7F8] p-4" aria-live="polite">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -595,7 +639,7 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button icon={Save} onClick={saveActiveKpi} disabled={saving}>
+          <Button icon={Save} onClick={saveActiveKpi} disabled={saving || activeConflict}>
             {saving ? "Salvando" : "Salvar aba"}
           </Button>
         </div>

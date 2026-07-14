@@ -15,7 +15,8 @@ export function mapExecutiveKpi(row: any): ExecutiveKpi {
     direction: row.direction ?? "higher_better", flowType: row.flow_type ?? "flow", isLadder: row.is_ladder ?? false,
     ladder: Array.isArray(row.ladder) ? row.ladder.map(mapLadderStage).filter(Boolean) as LadderStage[] : [],
     openingBalance: nullableNumber(row.opening_balance), annualTarget: nullableNumber(row.annual_target),
-    sortOrder: Number(row.sort_order ?? 0), createdAt: row.created_at,
+    sortOrder: Number(row.sort_order ?? 0), createdAt: row.created_at, updatedAt: row.updated_at ?? row.created_at,
+    updatedBy: row.updated_by ?? null,
   };
 }
 

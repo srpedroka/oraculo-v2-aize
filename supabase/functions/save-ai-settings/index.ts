@@ -159,6 +159,7 @@ serve(async (req) => {
       pricingSource = "",
       mode = "save",
       validate = true,
+      expectedUpdatedAt = null,
     } = body;
     if (!orgId) return jsonResponse({ error: "Empresa obrigatória" }, 400);
 
@@ -220,17 +221,17 @@ serve(async (req) => {
     if (aiFunction) {
       if (!modelValue) return jsonResponse({ error: "Modelo obrigatório" }, 400);
 
-      const { error: fnError } = await client.from("ai_function_settings").upsert(
-        {
-          org_id: orgId,
-          function: aiFunction,
-          provider: providerValue,
-          model: modelValue,
-          updated_at: now,
-        },
-        { onConflict: "org_id,function" },
-      );
+      const { data: savedFunction, error: fnError } = await client.rpc("save_ai_function_if_current", {
+        p_org_id: orgId,
+        p_function: aiFunction,
+        p_expected_updated_at: expectedUpdatedAt ? String(expectedUpdatedAt) : null,
+        p_provider: providerValue,
+        p_model: modelValue,
+      });
       if (fnError) throw fnError;
+      if (!(savedFunction as { ok?: boolean } | null)?.ok) {
+        return jsonResponse({ error: "Este dado mudou em outra sessão. Recarregue a versão atual antes de salvar novamente.", code: "CONFLICT_STALE_WRITE" }, 409);
+      }
 
       const effectiveKey = cleanKey || await existingKey(client, orgId, providerValue);
       const validation = shouldValidate
@@ -244,7 +245,12 @@ serve(async (req) => {
           source: "save",
         })
         : null;
-      return jsonResponse({ ok: true, keyPreview, validation });
+      return jsonResponse({
+        ok: true,
+        keyPreview,
+        validation,
+        updatedAt: String((savedFunction as { updatedAt?: string } | null)?.updatedAt ?? now),
+      });
     }
 
     if (!modelValue && cleanKey) {
@@ -331,6 +337,9 @@ serve(async (req) => {
     return jsonResponse({ ok: true, keyPreview, validation });
   } catch (error) {
     if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
+    if ((error as { code?: string; message?: string })?.code === "40001" || (error as { message?: string })?.message?.includes("CONFLICT_STALE_WRITE")) {
+      return jsonResponse({ error: "Este dado mudou em outra sessão. Recarregue a versão atual antes de salvar novamente.", code: "CONFLICT_STALE_WRITE" }, 409);
+    }
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao salvar IA" }, 400);
   }
 });

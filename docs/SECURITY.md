@@ -12,6 +12,12 @@ As listas historicas paginadas sempre incluem `org_id` na consulta e continuam s
 - Documentacao pode citar nomes de variaveis, mas nunca valores secretos.
 - O mapa operacional de onde cada acesso vive fica em `docs/ACCESS.md`.
 
+## Concorrencia e integridade de edicao
+
+`updated_at` funciona como versao, nao como autorizacao. Toda gravacao continua submetida a Auth, membership, RLS e validacao server-side. Objetivos usam update condicional; KPI usa `save_kpi_editor_if_current` com `security invoker`, RLS e papel admin. As RPCs de IA e WhatsApp sao revogadas de `anon`/`authenticated` e concedidas somente a `service_role`, depois de a Edge Function validar owner e MFA opcional.
+
+Conflito nao autoriza merge automatico: a operacao retorna sem mutacao, a tela preserva o rascunho e o usuario precisa recarregar a versao atual. Segredos de IA/WhatsApp continuam fora do payload devolvido e do Realtime.
+
 ## Headers do frontend
 
 O Netlify aplica a política definida em `netlify.toml`:

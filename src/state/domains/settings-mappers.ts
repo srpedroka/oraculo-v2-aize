@@ -48,5 +48,6 @@ export function mapWhatsAppSettings(row: any): WhatsAppSettings {
     keyPreview: row.key_preview ?? null, hasWebhookSecret: row.has_webhook_secret ?? false,
     webhookSecretPreview: row.webhook_secret_preview ?? null, weeklyPulseEnabled: row.weekly_pulse_enabled ?? false,
     weeklyPulseWeekday: Number(row.weekly_pulse_weekday ?? 5), weeklyPulseHour: Number(row.weekly_pulse_hour ?? 16),
+    updatedAt: row.updated_at ?? null,
   };
 }

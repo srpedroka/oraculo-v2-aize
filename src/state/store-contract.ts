@@ -129,10 +129,13 @@ export type AppAction =
   | { type: "set_operational_item_archived"; entityType: OperationalEntityType; entityId: string; archived: boolean; reason?: string; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "upsert_kpi_definition"; kpiId: string; annualTarget?: number | null; openingBalance?: number | null; onSuccess?: () => void; onError?: (message: string) => void }
   | {
-      type: "upsert_kpi_month";
+      type: "save_kpi_editor";
       kpiId: string;
       year: number;
-      values: Array<{ month: number; targetValue?: number | null; targetStage?: string | null; actualValue?: number | null; secondaryActual?: number | null; note?: string | null }>;
+      expectedKpiUpdatedAt: string;
+      annualTarget: number | null;
+      openingBalance: number | null;
+      values: Array<{ month: number; expectedUpdatedAt: string | null; targetValue?: number | null; targetStage?: string | null; actualValue?: number | null; secondaryActual?: number | null; note?: string | null }>;
       onSuccess?: () => void;
       onError?: (message: string) => void;
     }
@@ -141,7 +144,7 @@ export type AppAction =
   | { type: "upsert_ai_settings"; provider: AiProvider; model: string; apiKey?: string; inputTokenPriceUsdPerMillion: number; outputTokenPriceUsdPerMillion: number; pricingSource?: string }
   | { type: "upsert_ai_provider_key"; provider: AiProvider; apiKey: string }
   | { type: "upsert_ai_function_settings"; function: AiFunction; provider: AiProvider; model: string }
-  | { type: "upsert_whatsapp_settings"; instanceUrl: string; instanceName: string; connectedNumber: string; apiKey?: string; webhookSecret?: string; enabled: boolean; weeklyPulseEnabled: boolean; weeklyPulseWeekday: number; weeklyPulseHour: number };
+  | { type: "upsert_whatsapp_settings"; instanceUrl: string; instanceName: string; connectedNumber: string; apiKey?: string; webhookSecret?: string; enabled: boolean; weeklyPulseEnabled: boolean; weeklyPulseWeekday: number; weeklyPulseHour: number; expectedUpdatedAt: string | null; onSuccess?: () => void; onError?: (message: string) => void };
 
 export interface AppContextValue {
   state: AppState;
@@ -156,10 +159,10 @@ export interface AppContextValue {
   updateProfile: (profile: { fullName: string; phone: string | null }) => Promise<void>;
   refresh: () => void;
   saveAiProviderKey: (provider: AiProvider, apiKey: string) => Promise<AiSettingsSaveResult>;
-  saveAiFunctionSetting: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
+  saveAiFunctionSetting: (fn: AiFunction, provider: AiProvider, model: string, expectedUpdatedAt: string | null) => Promise<AiSettingsSaveResult>;
   testAiProviderKey: (provider: AiProvider) => Promise<AiSettingsSaveResult>;
   testAiFunction: (fn: AiFunction, provider: AiProvider, model: string) => Promise<AiSettingsSaveResult>;
-  saveOrgTone: (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">) => Promise<OrgTone>;
+  saveOrgTone: (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">, expectedUpdatedAt: string | null) => Promise<OrgTone>;
   suggestKpiSpreadsheet: (input: KpiImportInput) => Promise<{ suggestion: KpiSpreadsheetSuggestion; historyDocuments?: import("../types").KpiHistoryDocumentRef[]; fromHistory?: boolean }>;
   applyKpiSpreadsheetSuggestion: (suggestion: KpiSpreadsheetSuggestion, source: { fileName: string; kind: KpiImportKind; token?: string }) => Promise<number>;
 }

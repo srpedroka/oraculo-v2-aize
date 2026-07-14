@@ -1,5 +1,6 @@
 import { Archive, Save, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ConflictNotice } from "../../components/ConflictNotice";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ProgressBar } from "../../components/ui/ProgressBar";
@@ -51,17 +52,56 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [reviewKpis, setReviewKpis] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [baselineUpdatedAt, setBaselineUpdatedAt] = useState(objective.updatedAt ?? "");
+  const [hasConflict, setHasConflict] = useState(false);
+  const ownSavePending = useRef(false);
   const evidencesQuery = usePaginatedObjectiveEvidences(state.activeOrgId, objective.id);
   const evidences = evidencesQuery.items;
 
+  function loadCurrentObjective() {
+    setType(objective.type);
+    setTitle(objective.title);
+    setResult(objective.result);
+    setMetric(objective.metric ?? "");
+    setTarget(objective.target ?? "");
+    setCurrent(objective.current ?? "");
+    setTrend(objective.trend ?? "flat");
+    setDeadline(objective.deadline ?? "");
+    setOwner(objective.owner);
+    setOwnerMembershipId(objective.ownerMembershipId ?? null);
+    setStatus(objective.status);
+    setProgress(objective.progress ?? 0);
+    setEvidencePlan(objective.evidencePlan);
+    setDeliverables((objective.deliverables ?? []).join("\n"));
+    setBaselineUpdatedAt(objective.updatedAt ?? "");
+    setHasConflict(false);
+    setSaveError("");
+  }
+
+  useEffect(() => {
+    if ((objective.updatedAt ?? "") === baselineUpdatedAt) return;
+    if (ownSavePending.current) {
+      ownSavePending.current = false;
+      setBaselineUpdatedAt(objective.updatedAt ?? "");
+      return;
+    }
+    setHasConflict(true);
+  }, [baselineUpdatedAt, objective.updatedAt]);
+
   function save() {
     if (saving) return;
+    if (hasConflict) {
+      setSaveError("Recarregue a versão atual antes de salvar.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
+    ownSavePending.current = true;
     dispatch({
       type: "update_objective",
       objective: {
         ...objective,
+        updatedAt: baselineUpdatedAt,
         type,
         title: title.trim() || objective.title,
         result: result.trim() || title.trim() || objective.result,
@@ -85,6 +125,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
         setReviewKpis(true);
       },
       onError: (message) => {
+        ownSavePending.current = false;
         setSaving(false);
         setSaveError(message);
       },
@@ -124,6 +165,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
         </div>
 
         <div className="space-y-6 p-6">
+          {hasConflict ? <ConflictNotice onReload={loadCurrentObjective} /> : null}
           <section className="grid gap-3 sm:grid-cols-2">
             {TYPE_OPTIONS.map((item) => (
               <button
@@ -307,7 +349,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button icon={Save} onClick={save} disabled={saving}>
+            <Button icon={Save} onClick={save} disabled={saving || hasConflict}>
             {saving ? "Salvando..." : "Salvar alterações"}
           </Button>
         </div> : null}

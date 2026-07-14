@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import { callEdgeFunction, requireClient } from "./store-client";
 import { mapOrgTone } from "./domains/settings-mappers";
+import { conflictMessage } from "../lib/optimisticConcurrency";
 import type { QueryDomain } from "./query-invalidation";
 
 interface UseStoreCommandsOptions {
@@ -162,18 +163,20 @@ export function useStoreCommands({
   );
 
   const saveAiFunctionSetting = useCallback(
-    async (fn: AiFunction, provider: AiProvider, model: string) => {
+    async (fn: AiFunction, provider: AiProvider, model: string, expectedUpdatedAt: string | null) => {
       if (!orgId) throw new Error("Empresa obrigatória");
       const result = await callEdgeFunction<{
         orgId: string;
         function: AiFunction;
         provider: AiProvider;
         model: string;
+        expectedUpdatedAt: string | null;
       }>("save-ai-settings", {
         orgId,
         function: fn,
         provider,
         model,
+        expectedUpdatedAt,
       }) as AiSettingsSaveResult;
       invalidateDomains(["aiSettings"]);
       return result;
@@ -222,13 +225,11 @@ export function useStoreCommands({
   );
 
   const saveOrgTone = useCallback(
-    async (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">) => {
+    async (tone: Pick<OrgTone, "preset" | "acidity" | "drive" | "customNote">, expectedUpdatedAt: string | null) => {
       if (!orgId) throw new Error("Empresa obrigatória");
       if (!userId) throw new Error("Sessão obrigatória");
       const client = requireClient();
-      const { data, error } = await client
-        .from("org_ai_tone")
-        .upsert({
+      const payload = {
           org_id: orgId,
           preset: tone.preset,
           axis_acidity: Math.max(-2, Math.min(2, Math.round(tone.acidity))),
@@ -236,10 +237,12 @@ export function useStoreCommands({
           custom_note: tone.customNote?.trim().slice(0, 280) || null,
           updated_at: new Date().toISOString(),
           updated_by: userId,
-        }, { onConflict: "org_id" })
-        .select("*")
-        .single();
-      if (error) throw error;
+      };
+      const query = expectedUpdatedAt
+        ? client.from("org_ai_tone").update(payload).eq("org_id", orgId).eq("updated_at", expectedUpdatedAt).select("*").maybeSingle()
+        : client.from("org_ai_tone").insert(payload).select("*").maybeSingle();
+      const { data, error } = await query;
+      if (error || !data) throw new Error(conflictMessage(error ?? { code: "CONFLICT_STALE_WRITE" }, "Não foi possível salvar o tom."));
       const saved = mapOrgTone(data);
       queryClient.setQueryData(["org_ai_tone", orgId], saved);
       return saved;

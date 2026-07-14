@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { ConflictNotice } from "../../components/ConflictNotice";
 import { OrganizationBackupCard } from "../backups/OrganizationBackupCard";
 import { AreaArchiveDialog } from "../areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../members/MemberRemovalDialog";
@@ -194,10 +195,10 @@ export function AiSettingsSection({ scope }: { scope: SettingsController }) {
                           value={draft.provider}
                           onChange={(event) => {
                             const nextProvider = event.target.value as AiProvider;
-                            setAiFunctionDrafts((current) => ({
-                              ...current,
-                              [item.value]: { provider: nextProvider, model: DEFAULT_MODEL_BY_PROVIDER[nextProvider] },
-                            }));
+                            scope.editAiFunctionDraft(item.value, {
+                              provider: nextProvider,
+                              model: DEFAULT_MODEL_BY_PROVIDER[nextProvider],
+                            });
                             setAiMessage("");
                           }}
                           className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
@@ -212,10 +213,10 @@ export function AiSettingsSection({ scope }: { scope: SettingsController }) {
                           value={isCatalogModel ? draft.model : CUSTOM_MODEL_VALUE}
                           onChange={(event) => {
                             const nextModel = event.target.value;
-                            setAiFunctionDrafts((current) => ({
-                              ...current,
-                              [item.value]: { ...current[item.value], model: nextModel === CUSTOM_MODEL_VALUE ? "" : nextModel },
-                            }));
+                            scope.editAiFunctionDraft(item.value, {
+                              ...draft,
+                              model: nextModel === CUSTOM_MODEL_VALUE ? "" : nextModel,
+                            });
                             setAiMessage("");
                           }}
                           className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
@@ -230,16 +231,16 @@ export function AiSettingsSection({ scope }: { scope: SettingsController }) {
                           <input
                             value={draft.model}
                             onChange={(event) => {
-                              setAiFunctionDrafts((current) => ({
-                                ...current,
-                                [item.value]: { ...current[item.value], model: event.target.value },
-                              }));
+                              scope.editAiFunctionDraft(item.value, { ...draft, model: event.target.value });
                               setAiMessage("");
                             }}
                             placeholder="Id do modelo personalizado"
                             className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
                             aria-label={`Id personalizado para ${item.title}`}
                           />
+                        ) : null}
+                        {scope.aiFunctionConflict[item.value] ? (
+                          <ConflictNotice onReload={() => scope.reloadAiFunction(item.value)} />
                         ) : null}
                         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                           <div className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2">
@@ -264,7 +265,7 @@ export function AiSettingsSection({ scope }: { scope: SettingsController }) {
                             <Button
                               type="button"
                               icon={Save}
-                              disabled={savingFunction === item.value}
+                              disabled={savingFunction === item.value || scope.aiFunctionConflict[item.value]}
                               onClick={() => saveAiFunction(item.value)}
                             >
                               {savingFunction === item.value ? "Validando..." : "Salvar função"}
