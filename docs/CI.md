@@ -16,11 +16,17 @@ O CI de pull request nao recebe credenciais de producao nem de staging hospedado
 
 O scanner `pnpm run ci:secret-scan` inspeciona somente arquivos rastreados e falha com credenciais de alta confianca ou arquivos sensiveis proibidos. Ele complementa, mas nao substitui, rotacao imediata quando um segredo for exposto.
 
-## Verificacao de producao
+## Publicacao protegida de producao
 
-O workflow manual `.github/workflows/production-verify.yml` recebe o SHA exato publicado, faz checkout desse commit e executa `pnpm run verify:deploy`. O unico secret necessario no repositorio e `SUPABASE_ACCESS_TOKEN`, disponibilizado somente nesse workflow protegido.
+O workflow manual `.github/workflows/production-release.yml` recebe um SHA completo da `main` e aceita somente `verify`, `functions` ou `migrations`. O job `Preflight without production secrets` comprova que o SHA pertence a `main`, exige o check `CI required` verde e valida os argumentos antes de abrir o GitHub Environment `production`. Esse job nao referencia nenhum segredo de producao.
 
-Antes de liberar deploy automatico, configure um environment `production` no GitHub com aprovacao do owner e associe o secret a esse environment. O deploy deve depender de `CI required`, registrar o SHA publicado e terminar com a verificacao de migrations, Edge Functions e frontend.
+Somente depois da aprovacao do owner um dos jobs protegidos recebe os secrets do Environment:
+
+- `verify`: executa apenas `verify:deploy`, sem escrita;
+- `functions`: publica somente os nomes explicitamente informados e validados;
+- `migrations`: aplica somente o conjunto pendente contido no intervalo aprovado e reexecuta o guard antes do `db push`.
+
+`DROP`, `TRUNCATE`, remoção de coluna/constraint e `DELETE` total sao recusados por padrao. A caixa `allow_destructive_migration` registra uma excecao explicita, mas nao pula CI, revisao do pacote nem aprovacao do Environment. O deploy comum do frontend permanece no fluxo Netlify existente e nao ganha aprovacao de migration.
 
 ## Diagnostico
 

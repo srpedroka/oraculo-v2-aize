@@ -304,7 +304,7 @@ Ja cobertos no `.gitignore`:
 - testar rota direta no Netlify;
 - testar uma acao protegida por permissao, quando possivel.
 
-Integração, segurança e E2E autenticado possuem trava explícita contra a referência de produção. `.agents-private/agent-env` contém somente credenciais de staging e integrações operacionais; o token administrativo do Supabase de produção fica no Chaves do macOS e só entra em subprocesso allowlisted após autorização do usuário. A fábrica falha visivelmente se não remover organização ou usuário descartável. Consulte `docs/TESTING.md` e `docs/RUNBOOK.md`.
+Integração, segurança e E2E autenticado possuem trava explícita contra a referência de produção. `.agents-private/agent-env` contém somente credenciais de staging e integrações operacionais. O caminho rotineiro de publicação usa o GitHub Environment `production`: o preflight valida SHA, `CI required`, Functions e migrations sem receber segredo; o job posterior depende da aprovação do owner. Migrations destrutivas são recusadas por padrão e migrations pendentes fora do pacote aprovado nunca entram no `db push`. O token no Chaves do macOS entra apenas no subprocesso local allowlisted de emergência. A fábrica falha visivelmente se não remover organização ou usuário descartável. Consulte `docs/TESTING.md`, `docs/CI.md` e `docs/RUNBOOK.md`.
 
 ## Achados de hardening a corrigir (registrados na Etapa 0, 2026-07-12)
 

@@ -1125,7 +1125,16 @@ Emergência quando o GitHub estiver indisponível:
 4. Registre commit, horário, motivo e resultado no handoff/changelog.
 5. Se houver suspeita de exposição, revogue o token no Supabase, gere outro e atualize o item do Chaves sem registrar o valor.
 
-Migrations e SQL administrativos não usam esse wrapper. Até a Etapa S2 concluir o workflow protegido, qualquer mudança de schema exige autorização explícita e o procedimento controlado já documentado; depois da S2, o caminho rotineiro será exclusivamente o GitHub Environment `production`.
+Migrations e SQL administrativos não usam esse wrapper. O caminho rotineiro e exclusivamente **Actions > Production release > Run workflow**:
+
+1. informe o SHA completo que ja passou em `CI required`;
+2. escolha `verify`, `functions` ou `migrations`;
+3. para Functions, informe apenas os nomes separados por espaco;
+4. para um pacote de mais de um commit, informe o `base_sha` anterior;
+5. deixe `allow_destructive_migration` desligado, salvo mudanca destrutiva deliberada e revisada;
+6. aguarde o preflight sem segredos e aprove o Environment `production` quando o GitHub solicitar.
+
+O workflow revalida o estado publicado ao final. Migration pendente fora do intervalo aprovado, nome de Function invalido, SHA sem CI verde ou operacao destrutiva sem sinalizacao encerram o job antes da escrita. O deploy de frontend sem schema continua pelo fluxo Netlify abaixo.
 
 ## Deploy frontend
 
@@ -1160,7 +1169,7 @@ Depois do deploy, valide:
 
 ## Deploy Supabase
 
-Migrations:
+Migrations rotineiras sao aplicadas somente pelo workflow `Production release`. O comando abaixo fica reservado ao staging/local e a recuperacao de emergencia documentada:
 
 ```bash
 supabase db push

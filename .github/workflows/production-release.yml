@@ -1,0 +1,216 @@
+name: Production release
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA completo aprovado pelo CI required
+        required: true
+        type: string
+      action:
+        description: Acao protegida em producao
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - functions
+          - migrations
+      functions:
+        description: Edge Functions separadas por espaco (somente action=functions)
+        required: false
+        type: string
+      base_sha:
+        description: SHA anterior do pacote; vazio usa o pai do commit
+        required: false
+        type: string
+      allow_destructive_migration:
+        description: Autorizar migration destrutiva detectada neste pacote
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+env:
+  PROJECT_REF: bkswkfazkjilwfzwzthz
+  NODE_VERSION: 22.13.0
+
+jobs:
+  preflight:
+    name: Preflight without production secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Confirm exact commit on main
+        env:
+          TARGET_SHA: ${{ inputs.commit_sha }}
+        run: |
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+      - name: Require successful CI gate for this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ inputs.commit_sha }}
+        run: |
+          checks=$(curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPOSITORY/commits/$TARGET_SHA/check-runs?per_page=100")
+          test "$(jq '[.check_runs[] | select(.name == "CI required" and .status == "completed" and .conclusion == "success")] | length' <<< "$checks")" -ge 1
+      - name: Validate explicit function list
+        if: inputs.action == 'functions'
+        env:
+          FUNCTION_INPUT: ${{ inputs.functions }}
+        run: node --experimental-strip-types scripts/production-release-guard.ts functions "$FUNCTION_INPUT"
+      - name: Guard changed migrations
+        if: inputs.action == 'migrations'
+        env:
+          TARGET_SHA: ${{ inputs.commit_sha }}
+          BASE_SHA: ${{ inputs.base_sha }}
+          ALLOW_DESTRUCTIVE: ${{ inputs.allow_destructive_migration }}
+        shell: bash
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+            base="$BASE_SHA"
+          else
+            base="$(git rev-parse "${TARGET_SHA}^")"
+          fi
+          git cat-file -e "$base^{commit}"
+          mapfile -t migrations < <(git diff --name-only --diff-filter=AM "$base" "$TARGET_SHA" -- 'supabase/migrations/*.sql')
+          test "${#migrations[@]}" -gt 0
+          args=()
+          if [ "$ALLOW_DESTRUCTIVE" = "true" ]; then args+=(--allow-destructive); fi
+          node --experimental-strip-types scripts/production-release-guard.ts migrations "${args[@]}" "${migrations[@]}"
+
+  verify-production:
+    name: Read-only production verification
+    if: inputs.action == 'verify'
+    needs: preflight
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify migrations, functions and frontend without writing
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node --experimental-strip-types scripts/run-ci-command.ts production-verify -- pnpm run verify:deploy
+
+  deploy-functions:
+    name: Deploy explicit Edge Functions
+    if: inputs.action == 'functions'
+    needs: preflight
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: pnpm install --frozen-lockfile
+      - name: Deploy allowlisted Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCTION_INPUT: ${{ inputs.functions }}
+        shell: bash
+        run: |
+          node --experimental-strip-types scripts/production-release-guard.ts functions "$FUNCTION_INPUT" > /tmp/oraculo-functions
+          mapfile -t function_names < /tmp/oraculo-functions
+          test "${#function_names[@]}" -gt 0
+          supabase functions deploy "${function_names[@]}" --project-ref "$PROJECT_REF" --use-api
+      - name: Verify published state
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node --experimental-strip-types scripts/run-ci-command.ts production-verify -- pnpm run verify:deploy
+
+  deploy-migrations:
+    name: Deploy guarded migrations
+    if: inputs.action == 'migrations'
+    needs: preflight
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: pnpm install --frozen-lockfile
+      - name: Recheck actual pending migrations after approval
+        env:
+          TARGET_SHA: ${{ inputs.commit_sha }}
+          BASE_SHA: ${{ inputs.base_sha }}
+          ALLOW_DESTRUCTIVE: ${{ inputs.allow_destructive_migration }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          if [ -n "$BASE_SHA" ]; then base="$BASE_SHA"; else base="$(git rev-parse "${TARGET_SHA}^")"; fi
+          git diff --name-only --diff-filter=AM "$base" "$TARGET_SHA" -- 'supabase/migrations/*.sql' > /tmp/changed-migrations
+          node --experimental-strip-types scripts/pending-production-migrations.ts > /tmp/pending-migrations
+          mapfile -t migrations < /tmp/pending-migrations
+          test "${#migrations[@]}" -gt 0
+          for migration in "${migrations[@]}"; do
+            grep -Fxq "$migration" /tmp/changed-migrations || {
+              echo "RECUSADO: migration pendente fora do pacote aprovado: $migration"
+              exit 1
+            }
+          done
+          args=()
+          if [ "$ALLOW_DESTRUCTIVE" = "true" ]; then args+=(--allow-destructive); fi
+          node --experimental-strip-types scripts/production-release-guard.ts migrations "${args[@]}" "${migrations[@]}"
+      - name: Apply pending migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
+      - name: Verify published state
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node --experimental-strip-types scripts/run-ci-command.ts production-verify -- pnpm run verify:deploy

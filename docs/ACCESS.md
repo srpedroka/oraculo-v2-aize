@@ -294,14 +294,16 @@ Variaveis (apenas nomes; valores so no arquivo local):
 - `NETLIFY_AUTH_TOKEN` — opcional; a CLI ja costuma estar logada em `~/Library/Preferences/netlify/config.json`.
 - `EVOLUTION_API_URL` / `EVOLUTION_INSTANCE` / `EVOLUTION_API_KEY` — opcional; so se o agente for configurar o webhook do WhatsApp direto na Evolution.
 
-O `SUPABASE_ACCESS_TOKEN` de produção fica no Chaves do macOS, item `com.oraculo.supabase.production`, conta `bkswkfazkjilwfzwzthz`, sem aplicativo confiável permanente. Cada leitura pede autorização do usuário. Os comandos versionados aceitam somente operações explícitas:
+O caminho rotineiro de producao e o GitHub Actions `Production release`. `SUPABASE_ACCESS_TOKEN` e `SUPABASE_DB_PASSWORD` ficam somente no GitHub Environment `production`, que exige aprovacao do owner antes de liberar qualquer segredo. O preflight de SHA/CI/argumentos roda sem esses valores.
+
+O `SUPABASE_ACCESS_TOKEN` tambem fica no Chaves do macOS, item `com.oraculo.supabase.production`, conta `bkswkfazkjilwfzwzthz`, sem aplicativo confiável permanente, apenas como acesso de emergencia. Cada leitura pede autorização do usuário. Os comandos locais aceitam somente operações explícitas:
 
 ```bash
 pnpm run production:verify
 pnpm run production:functions -- oracle-chat whatsapp-worker
 ```
 
-O segundo comando exige worktree limpo e aceita apenas nomes de Functions. Não existe opção para SQL ou comando arbitrário. O workflow protegido do GitHub substituirá o deploy local rotineiro na Etapa S2; o Chaves permanecerá como acesso de emergência.
+O segundo comando exige worktree limpo e aceita apenas nomes de Functions. Não existe opção local para SQL ou comando arbitrário. Migrations rotineiras passam exclusivamente pelo workflow protegido, que bloqueia operacoes destrutivas por padrao. O Chaves permanece como acesso de emergencia para verificacao e Functions.
 
 Nao duplicar aqui: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY` (ja e secret do projeto), chaves de IA (`public.ai_model_keys`), senha do banco (`.supabase-private/db-password`). Principio: guardar o minimo, cada segredo na sua fonte, nunca ecoar valores em log/chat/PR.
 
