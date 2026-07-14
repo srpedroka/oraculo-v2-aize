@@ -12,7 +12,7 @@ const FILE_FORMAT = "oraculo-organization-backup-file";
 const SCHEMA_VERSION = 1;
 const PAGE_SIZE = 1000;
 const INSERT_BATCH_SIZE = 200;
-const EXTERNAL_REQUEST_TIMEOUT_MS = 15_000;
+const EXTERNAL_REQUEST_TIMEOUT_MS = 60_000;
 
 type JsonRow = Record<string, any>;
 type BackupKind = "manual" | "event" | "daily" | "weekly" | "monthly";

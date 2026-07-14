@@ -33,6 +33,7 @@ describe("external backup retention", () => {
 
   it("bounds external calls so R2 cannot exhaust the backup worker", () => {
     expect(source).toContain("maxAttempts: 2");
+    expect(source).toContain("EXTERNAL_REQUEST_TIMEOUT_MS = 60_000");
     expect(source.match(/AbortSignal\.timeout\(EXTERNAL_REQUEST_TIMEOUT_MS\)/g)).toHaveLength(2);
   });
 });
