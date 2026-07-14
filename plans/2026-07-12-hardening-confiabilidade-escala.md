@@ -1012,7 +1012,7 @@ Teste obrigatório: em staging descartável, provar bloqueio sem confirmação/b
 
 ## 5.6 Fatia 5E — Bundle e rotas
 
-> **STATUS: concluida e validada em 2026-07-14.** Rotas e dialogos pesados usam carga sob demanda; o entrypoint caiu de aproximadamente 339,9 KB para 133,7 KB gzip. O build aplica orçamento de 200 KB e impede parsers pesados no grafo inicial. Lint, build, 211 unitarios e 10 E2E staging desktop/mobile passaram. Sem migration ou Edge Function.
+> **STATUS: concluida e em producao em 2026-07-14.** Rotas e dialogos pesados usam carga sob demanda; o entrypoint caiu de aproximadamente 339,9 KB para 133,7 KB gzip. O build aplica orçamento de 200 KB e impede parsers pesados no grafo inicial. Lint, build, 211 unitarios, 10 E2E staging desktop/mobile e smoke publico passaram. CI `29371110626`; Netlify `6a56b12c9f3477500885c5df`. Sem migration ou Edge Function.
 
 - Usar `React.lazy`/`Suspense` nas páginas.
 - Isolar Settings, PDF, XLSX e importadores pesados.
