@@ -1,19 +1,21 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { CalendarCheck, Pencil, Plus, Sprout } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { AsyncDialogFallback } from "../components/AsyncDialogFallback";
 import { Card } from "../components/ui/Card";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { Button } from "../components/ui/Button";
-import { KpiEditorDialog } from "../features/kpi/KpiEditorDialog";
 import { KpiResultBlock } from "../features/kpi/KpiResultBlock";
-import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
-import { ObjectiveEditDialog } from "../features/objective/ObjectiveEditDialog";
 import { Link, useNavigate } from "react-router-dom";
 import { previousMonthPeriod } from "../lib/periods";
 import { buildTrackItems, summarize } from "../lib/execution";
 import { useAppState } from "../state/store";
 import type { Objective } from "../types";
+
+const KpiEditorDialog = lazy(() => import("../features/kpi/KpiEditorDialog").then((module) => ({ default: module.KpiEditorDialog })));
+const ObjectiveBuilder = lazy(() => import("../features/objective/ObjectiveBuilder").then((module) => ({ default: module.ObjectiveBuilder })));
+const ObjectiveEditDialog = lazy(() => import("../features/objective/ObjectiveEditDialog").then((module) => ({ default: module.ObjectiveEditDialog })));
 
 function canEditObjective(objective: Objective | undefined, state: ReturnType<typeof useAppState>["state"]) {
   if (!objective) return false;
@@ -223,17 +225,27 @@ export function Dashboard() {
           ) : null}
         </div>
       </section>
-      {editingObjective ? <ObjectiveEditDialog objective={editingObjective} onClose={() => setEditingObjective(null)} /> : null}
-      {kpiEditorOpen ? (
-        <KpiEditorDialog
-          autoScanHistory={kpiEditorScanHistory}
-          onClose={() => {
-            setKpiEditorOpen(false);
-            setKpiEditorScanHistory(false);
-          }}
-        />
+      {editingObjective ? (
+        <Suspense fallback={<AsyncDialogFallback label="Abrindo objetivo..." />}>
+          <ObjectiveEditDialog objective={editingObjective} onClose={() => setEditingObjective(null)} />
+        </Suspense>
       ) : null}
-      {builderOpen ? <ObjectiveBuilder level="strategic" onClose={() => setBuilderOpen(false)} /> : null}
+      {kpiEditorOpen ? (
+        <Suspense fallback={<AsyncDialogFallback label="Abrindo lançamentos..." />}>
+          <KpiEditorDialog
+            autoScanHistory={kpiEditorScanHistory}
+            onClose={() => {
+              setKpiEditorOpen(false);
+              setKpiEditorScanHistory(false);
+            }}
+          />
+        </Suspense>
+      ) : null}
+      {builderOpen ? (
+        <Suspense fallback={<AsyncDialogFallback label="Abrindo novo objetivo..." />}>
+          <ObjectiveBuilder level="strategic" onClose={() => setBuilderOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

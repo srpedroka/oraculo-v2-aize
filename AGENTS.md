@@ -571,9 +571,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatias 5A–5D concluídas em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based e mutações/Realtime invalidam somente consultas afetadas.
-- Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado. Depois dela, a próxima fatia é 5E, bundle e rotas lazy.
-- Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
+- Etapa 5 / Fatias 5A–5E concluídas em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas e rotas/importadores carregam sob demanda. O entrypoint tem orçamento automático de 200 KB gzip e foi medido em 133,7 KB.
+- Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado. A próxima fatia é 5F, concorrência e consistência de tela.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
 - Desligar fila/outbox não reativa o modo síncrono: produz `503`/retry. Rollback exige drenar itens e republicar a versão anterior antes de desligar flags/endpoints.
@@ -583,7 +582,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - Fazer teste ponta a ponta da V3 em ambiente controlado, registrando resultado no `docs/CHANGELOG.md` ou `docs/RUNBOOK.md`.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
-- Avaliar code splitting para reduzir chunks grandes (`pdfjs`, importacao de arquivos e telas pesadas).
+- Executar a Fatia 5F: conflitos de edição com versão otimista, começando por objetivos, KPI e configurações críticas.
 - Manter catalogos de pricing de IA atualizados quando trocar/adicionar modelos.
 - Revisar periodicamente RLS ao criar novas tabelas ou ampliar permissoes.
 

@@ -1,14 +1,16 @@
 import { Archive, FileText, Printer, RefreshCw, Upload } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AsyncDialogFallback } from "../components/AsyncDialogFallback";
 import { PlanDocumentView } from "../components/PlanDocument";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { HistoricalImportDialog } from "../features/history/HistoricalImportDialog";
 import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 import { useAppState } from "../state/store";
 import { usePaginatedPlanDocuments } from "../state/use-paginated-records";
 import type { PlanDocument, PlanDocumentOrigin, PlanDocumentType } from "../types";
+
+const HistoricalImportDialog = lazy(() => import("../features/history/HistoricalImportDialog").then((module) => ({ default: module.HistoricalImportDialog })));
 
 const TYPE_LABEL: Record<PlanDocumentType, string> = {
   strategic: "Plano Estratégico",
@@ -294,22 +296,26 @@ export function Documents() {
           onConfirm={archiveDocument}
         />
       ) : null}
-      <HistoricalImportDialog
-        open={importOpen}
-        initialBackup={reopenBackup}
-        onClose={() => {
-          setImportOpen(false);
-          setReopenBackup(null);
-        }}
-        onSaved={(documentId, options) => {
-          if (documentId) setSelectedId(documentId);
-          setStatusMessage(
-            options?.newVersion
-              ? "Nova versão salva. A anterior continua no histórico."
-              : "Histórico salvo em Documentos.",
-          );
-        }}
-      />
+      {importOpen ? (
+        <Suspense fallback={<AsyncDialogFallback label="Abrindo importação..." />}>
+          <HistoricalImportDialog
+            open
+            initialBackup={reopenBackup}
+            onClose={() => {
+              setImportOpen(false);
+              setReopenBackup(null);
+            }}
+            onSaved={(documentId, options) => {
+              if (documentId) setSelectedId(documentId);
+              setStatusMessage(
+                options?.newVersion
+                  ? "Nova versão salva. A anterior continua no histórico."
+                  : "Histórico salvo em Documentos.",
+              );
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

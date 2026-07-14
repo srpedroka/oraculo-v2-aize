@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && pnpm run test:bundle",
     "preview": "vite preview",
     "lint": "tsc --noEmit --pretty false",
     "test": "pnpm run test:unit && pnpm run test:integration",
@@ -22,6 +22,7 @@
     "test:historical-import": "node --experimental-strip-types scripts/verify-historical-import.ts",
     "test:kpi-format": "node --experimental-strip-types scripts/verify-kpi-format.ts",
     "test:conversation-memory": "node --experimental-strip-types scripts/verify-conversation-memory.ts",
+    "test:bundle": "node --experimental-strip-types scripts/verify-bundle-budget.ts",
     "ci:secret-scan": "node --experimental-strip-types scripts/ci-secret-scan.ts",
     "ci:audit": "pnpm audit --prod --audit-level high",
     "verify:deploy": "node --experimental-strip-types scripts/verify-deploy.ts",

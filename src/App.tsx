@@ -1,20 +1,22 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { Layout } from "./components/Layout";
 import { isSupabaseConfigured } from "./lib/supabase";
-import { AreaDetail } from "./pages/AreaDetail";
-import { Areas } from "./pages/Areas";
-import { Auth } from "./pages/Auth";
-import { Dashboard } from "./pages/Dashboard";
-import { DocumentPrint } from "./pages/DocumentPrint";
-import { Documents } from "./pages/Documents";
-import { Execution } from "./pages/Execution";
-import { Onboarding } from "./pages/Onboarding";
-import { OperationalArchive } from "./pages/OperationalArchive";
-import { PasswordRecovery } from "./pages/PasswordRecovery";
-import { QuarterlyPlans } from "./pages/QuarterlyPlans";
-import { Settings } from "./pages/Settings";
-import { Strategic } from "./pages/Strategic";
 import { useAppState } from "./state/store";
+
+const Layout = lazy(() => import("./components/Layout").then((module) => ({ default: module.Layout })));
+const AreaDetail = lazy(() => import("./pages/AreaDetail").then((module) => ({ default: module.AreaDetail })));
+const Areas = lazy(() => import("./pages/Areas").then((module) => ({ default: module.Areas })));
+const Auth = lazy(() => import("./pages/Auth").then((module) => ({ default: module.Auth })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })));
+const DocumentPrint = lazy(() => import("./pages/DocumentPrint").then((module) => ({ default: module.DocumentPrint })));
+const Documents = lazy(() => import("./pages/Documents").then((module) => ({ default: module.Documents })));
+const Execution = lazy(() => import("./pages/Execution").then((module) => ({ default: module.Execution })));
+const Onboarding = lazy(() => import("./pages/Onboarding").then((module) => ({ default: module.Onboarding })));
+const OperationalArchive = lazy(() => import("./pages/OperationalArchive").then((module) => ({ default: module.OperationalArchive })));
+const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery").then((module) => ({ default: module.PasswordRecovery })));
+const QuarterlyPlans = lazy(() => import("./pages/QuarterlyPlans").then((module) => ({ default: module.QuarterlyPlans })));
+const Settings = lazy(() => import("./pages/Settings").then((module) => ({ default: module.Settings })));
+const Strategic = lazy(() => import("./pages/Strategic").then((module) => ({ default: module.Strategic })));
 
 function LoadingScreen() {
   return (
@@ -85,5 +87,9 @@ function AppRoutes() {
 }
 
 export default function App() {
-  return <AppRoutes />;
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <AppRoutes />
+    </Suspense>
+  );
 }

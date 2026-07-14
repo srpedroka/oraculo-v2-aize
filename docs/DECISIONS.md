@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-14 - Rotas e importadores carregam sob demanda
+
+Decisao: separar cada pagina com `React.lazy`/`Suspense`, preservar o shell autenticado durante a troca e isolar dialogos/importadores pesados. O build passa a gerar manifesto e a falhar se o JavaScript inicial superar 200 KB gzip ou incluir PDF, XLSX, DOCX e ZIP.
+
+Motivo: o entrypoint transferia cerca de 339,9 KB gzip e baixava recursos de telas e formatos que a maioria das sessoes nao usaria. Isso penalizava principalmente acesso mobile e tornava regressao de bundle invisivel ate a producao.
+
+Consequencias: o entrypoint medido caiu para 133,7 KB gzip, cerca de 61% menor. A primeira abertura de uma rota ou dialogo pode exibir um carregamento curto; depois o navegador reutiliza o chunk. Regras, dados, permissoes e fluxos permanecem iguais. O limite e a exclusao de parsers sao contratos de build, e o E2E da tela de acesso verifica tambem as requisicoes iniciais.
+
 ## 2026-07-14 - Cache e Realtime invalidam por dominio
 
 Decisao: centralizar em `src/state/query-invalidation.ts` as familias de chaves React Query, os pacotes de dependencias e o mapa entre tabela Realtime e dominio. Mutacoes declaram explicitamente o que alteram; o refresh manual continua completo.

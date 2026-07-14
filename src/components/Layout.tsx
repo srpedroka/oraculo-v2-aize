@@ -1,9 +1,18 @@
 import { Menu } from "lucide-react";
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAppState } from "../state/store";
 import { OraclePanel } from "./OraclePanel";
 import { Sidebar } from "./Sidebar";
 import { Button } from "./ui/Button";
+
+function PageLoading() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-live="polite">
+      <span className="text-sm font-medium text-text-secondary">Carregando tela...</span>
+    </div>
+  );
+}
 
 export function Layout() {
   const { state, dispatch } = useAppState();
@@ -25,7 +34,9 @@ export function Layout() {
 
       <main className="min-w-0 flex-1">
         <div key={location.pathname} className="animate-page-in mx-auto w-full max-w-7xl px-4 py-6 motion-reduce:animate-none sm:px-6 sm:py-8 lg:px-8">
-          <Outlet />
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
       <OraclePanel />

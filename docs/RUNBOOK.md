@@ -1,5 +1,14 @@
 # Runbook
 
+## Smoke de bundle e rotas lazy
+
+1. Rode `pnpm run build` e confirme a linha `Bundle inicial` abaixo de 200 KB gzip.
+2. Abra a tela de acesso com Network limpa e confirme que nenhum asset de `pdfjs-dist`, `pdf.worker`, `xlsx`, `mammoth` ou `jszip` foi solicitado.
+3. Entre no app em desktop e mobile e navegue por Dashboard, Estratégico, Trimestrais, Documentos, Áreas, Execução, Arquivo e Configurações; o shell deve permanecer estável durante a troca.
+4. Abra os diálogos de objetivo, KPI e importação de histórico e confirme o estado breve de carregamento seguido da janela funcional.
+5. Importe um PDF e uma planilha somente no ambiente descartável; confirme que os respectivos chunks aparecem na Network apenas depois da seleção do arquivo.
+6. Se o orçamento falhar, inspecione `dist/.vite/manifest.json`; não aumente o limite sem registrar uma decisão e uma medição equivalente.
+
 ## Smoke da invalidacao seletiva
 
 1. Com a aba Network aberta, limpe as requisicoes e registre uma evidencia em um objetivo.
