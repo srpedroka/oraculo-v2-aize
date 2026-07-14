@@ -1,8 +1,4 @@
-import {
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "npm:@aws-sdk/client-s3@3.637.0";
+import { AwsClient } from "npm:aws4fetch@1.0.20";
 import { serviceClient } from "./auth.ts";
 import { normalizeS3Endpoint } from "./s3-endpoint.ts";
 
@@ -12,7 +8,8 @@ const FILE_FORMAT = "oraculo-organization-backup-file";
 const SCHEMA_VERSION = 1;
 const PAGE_SIZE = 1000;
 const INSERT_BATCH_SIZE = 200;
-const EXTERNAL_REQUEST_TIMEOUT_MS = 60_000;
+const EXTERNAL_REQUEST_TIMEOUT_MS = 30_000;
+const EXTERNAL_REQUEST_MAX_ATTEMPTS = 2;
 
 type JsonRow = Record<string, any>;
 type BackupKind = "manual" | "event" | "daily" | "weekly" | "monthly";
@@ -212,32 +209,62 @@ function externalConfig() {
 }
 
 function externalClient(config: NonNullable<ReturnType<typeof externalConfig>>) {
-  return new S3Client({
-    endpoint: config.endpoint,
+  return new AwsClient({
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
     region: config.region,
-    forcePathStyle: true,
-    maxAttempts: 2,
-    credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-    },
+    service: "s3",
   });
+}
+
+function externalObjectUrl(
+  config: NonNullable<ReturnType<typeof externalConfig>>,
+  objectKey: string,
+) {
+  const path = [config.bucket, ...objectKey.split("/")]
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${config.endpoint}/${path}`;
+}
+
+async function externalFetch(
+  config: NonNullable<ReturnType<typeof externalConfig>>,
+  objectKey: string,
+  init: RequestInit,
+) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= EXTERNAL_REQUEST_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await externalClient(config).fetch(
+        externalObjectUrl(config, objectKey),
+        { ...init, signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS) },
+      );
+      if (response.ok) return response;
+      const responseError = new Error(`Réplica externa respondeu HTTP ${response.status}`);
+      if (response.status < 500 || attempt === EXTERNAL_REQUEST_MAX_ATTEMPTS) {
+        throw responseError;
+      }
+      lastError = responseError;
+    } catch (error) {
+      lastError = error;
+      if (attempt === EXTERNAL_REQUEST_MAX_ATTEMPTS) throw error;
+    }
+  }
+  throw lastError ?? new Error("Falha desconhecida na réplica externa");
 }
 
 async function uploadExternal(objectKey: string, body: Uint8Array) {
   const config = externalConfig();
   if (!config) return { status: "not_configured" as const, error: null };
   try {
-    await externalClient(config).send(
-      new PutObjectCommand({
-        Bucket: config.bucket,
-        Key: objectKey,
-        Body: body,
-        ContentType: "application/gzip",
-        ContentEncoding: "gzip",
-      }),
-      { abortSignal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS) },
-    );
+    await externalFetch(config, objectKey, {
+      method: "PUT",
+      body,
+      headers: {
+        "content-type": "application/gzip",
+        "content-encoding": "gzip",
+      },
+    });
     return { status: "completed" as const, error: null };
   } catch (error) {
     return { status: "failed" as const, error: errorMessage(error) };
@@ -247,12 +274,8 @@ async function uploadExternal(objectKey: string, body: Uint8Array) {
 async function downloadExternal(objectKey: string) {
   const config = externalConfig();
   if (!config) throw new Error("Cópia externa não configurada");
-  const result = await externalClient(config).send(
-    new GetObjectCommand({ Bucket: config.bucket, Key: objectKey }),
-    { abortSignal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS) },
-  );
-  if (!result.Body) throw new Error("Cópia externa vazia");
-  return new Uint8Array(await result.Body.transformToByteArray());
+  const response = await externalFetch(config, objectKey, { method: "GET" });
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 export function hasExternalBackupConfig() {
