@@ -1095,7 +1095,9 @@ Se não houver backup válido há mais de 26 horas:
 - execute um backup manual pela tela;
 - confira o bucket privado `organization-backups` no Storage.
 
-Para réplica externa, configure todos os secrets `BACKUP_S3_*` descritos em `docs/ACCESS.md` e publique `organization-backup` novamente. A coluna `external_status` deve passar a `completed`. Sem S3, gere periodicamente o pacote portátil e guarde-o fora do projeto Supabase.
+Para réplica externa, configure todos os secrets `BACKUP_S3_*` descritos em `docs/ACCESS.md` e publique `organization-backup` novamente. A coluna `external_status` deve passar a `completed`. O bucket precisa ser privado, dedicado ao Oráculo e ter lock de 90 dias. A credencial da Function deve ser limitada ao bucket; o código não emite exclusão externa. Sem S3, gere periodicamente o pacote portátil e guarde-o fora do projeto Supabase.
+
+Meta inicial de recuperação: RPO de 30 minutos para os dados de empresa incluídos no snapshot e RTO de 4 horas para restaurar uma cópia operacional. A réplica não contém chaves de IA, segredos do WhatsApp, mídia bruta nem credenciais do Supabase Auth. Em desastre total, usuários precisam ser recriados/convidados e integrações precisam ter seus segredos reconfigurados e rotacionados antes da reativação.
 
 Teste de recuperação recomendado: mensalmente restaure o snapshot mais recente como nova empresa, confira planos, documentos, KPIs e membros, e depois remova a empresa de teste pela administração apropriada. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone.
 

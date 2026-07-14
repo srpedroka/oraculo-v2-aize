@@ -1,5 +1,4 @@
 import {
-  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -249,14 +248,6 @@ async function downloadExternal(objectKey: string) {
   );
   if (!result.Body) throw new Error("Cópia externa vazia");
   return new Uint8Array(await result.Body.transformToByteArray());
-}
-
-async function deleteExternal(objectKey: string | null | undefined) {
-  const config = externalConfig();
-  if (!config || !objectKey) return;
-  await externalClient(config).send(
-    new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
-  );
 }
 
 export function hasExternalBackupConfig() {
@@ -991,20 +982,14 @@ export async function deleteOrganizationBackup(orgId: string, backupId: string) 
   const backup = await backupRow(orgId, backupId);
   const { error: storageError } = await client.storage.from(STORAGE_BUCKET).remove([backup.object_path]);
   if (storageError) throw storageError;
-  try {
-    await deleteExternal(backup.external_object_key);
-  } catch (error) {
-    throw new Error(`A cópia interna foi removida, mas a externa falhou: ${errorMessage(error)}`);
-  }
   const { error } = await client.from("organization_backups").delete().eq("id", backupId).eq("org_id", orgId);
   if (error) throw error;
 }
 
-// Remove every stored backup object (internal + external) for an organization.
-// Used before permanently deleting the org — the DB rows themselves cascade away
-// with the organization, so this only clears storage that has no FK/cascade.
+// External replicas are append-only disaster copies. Product lifecycle operations
+// remove only internal storage; the provider's retention policy owns expiration.
 export async function purgeOrganizationBackupObjects(
-  objects: Array<{ object_path?: string | null; external_object_key?: string | null }>,
+  objects: Array<{ object_path?: string | null }>,
 ) {
   const client = serviceClient();
   const paths = objects.map((item) => item.object_path).filter((path): path is string => Boolean(path));
@@ -1012,21 +997,13 @@ export async function purgeOrganizationBackupObjects(
     const { error } = await client.storage.from(STORAGE_BUCKET).remove(paths);
     if (error) throw error;
   }
-  for (const item of objects) {
-    try {
-      await deleteExternal(item.external_object_key);
-    } catch {
-      // Best effort: the org is being deleted; leave a stray external object rather than abort.
-      continue;
-    }
-  }
 }
 
 export async function cleanupExpiredOrganizationBackups(orgId: string) {
   const client = serviceClient();
   const { data, error } = await client
     .from("organization_backups")
-    .select("id,object_path,external_object_key")
+    .select("id,object_path")
     .eq("org_id", orgId)
     .eq("status", "completed")
     .not("expires_at", "is", null)
@@ -1034,11 +1011,6 @@ export async function cleanupExpiredOrganizationBackups(orgId: string) {
   if (error) throw error;
   for (const backup of data ?? []) {
     if (backup.object_path) await client.storage.from(STORAGE_BUCKET).remove([backup.object_path]);
-    try {
-      await deleteExternal(backup.external_object_key);
-    } catch {
-      continue;
-    }
     await client.from("organization_backups").delete().eq("id", backup.id);
   }
 }

@@ -139,7 +139,7 @@ serve(async (req) => {
       // rows cascade away with the organization, so we would lose the paths after.
       const { data: backupObjects, error: objectsError } = await client
         .from("organization_backups")
-        .select("object_path, external_object_key")
+        .select("object_path")
         .eq("org_id", orgId);
       if (objectsError) throw objectsError;
 

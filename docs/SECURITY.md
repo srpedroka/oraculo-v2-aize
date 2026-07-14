@@ -50,6 +50,10 @@ Secrets das Edge Functions:
 - `MONTH_TURN_SECRET` para proteger chamadas agendadas da funcao `month-turn`. **Obrigatorio**: desde 2026-07-05 a funcao falha fechada (retorna erro) se o segredo nao estiver configurado, e o segredo e comparado em tempo constante. Configurar o secret antes de habilitar o cron.
 - `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` e `BACKUP_S3_REGION` são opcionais e habilitam réplica automática fora do projeto principal. Nunca enviá-los ao frontend.
 
+A réplica externa é append-only do ponto de vista do Oráculo: a Function pode gravar e ler objetos, mas não contém operação S3 de exclusão. Excluir snapshot, empresa ou dado interno não remove a cópia externa; a retenção e expiração pertencem exclusivamente ao bucket externo bloqueado. A política inicial da S3 é retenção imutável por 90 dias.
+
+O objetivo inicial é RPO de 30 minutos e RTO de 4 horas para dados organizacionais. Segredos, chaves de provedores, mídia bruta e identidades do Supabase Auth são deliberadamente excluídos do pacote e exigem recuperação operacional separada.
+
 Segredos operacionais salvos pelo app:
 
 - chaves de IA ficam em `public.ai_model_keys`, com RLS habilitado, acesso revogado para `anon`/`authenticated` e permissao apenas para `service_role`;
