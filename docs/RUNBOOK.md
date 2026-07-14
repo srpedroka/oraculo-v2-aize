@@ -45,6 +45,7 @@ Para saber onde ficam contas, chaves, secrets e URLs administrativas, leia tambe
 - `pnpm run test:integration` e `pnpm run test:security` — usam Supabase local no CI ou staging isolado. Antes: `set -a; source .agents-private/agent-env; set +a` (carrega `SUPABASE_STAGING_*`). Sem essas variáveis, os testes pulam (não falham). A trava `assertStaging` recusa rodar se a URL apontar para produção.
 - `pnpm run test:e2e` — Playwright abre a tela de acesso em desktop e mobile (só leitura). Requer o Chromium: `node node_modules/@playwright/test/cli.js install chromium`.
 - `pnpm run verify:deploy` — verificador SÓ LEITURA da produção (migrations, `verify_jwt`, frontend, CSP/headers, cache e segredos fora do Git). Sai com erro se achar problema. Precisa de `SUPABASE_ACCESS_TOKEN`. Para validar um draft antes de produção, use `VERIFY_FRONTEND_URL=https://<deploy>.netlify.app pnpm run verify:deploy`.
+- `pnpm run production:verify` — caminho protegido para a mesma verificação: solicita ao Chaves do macOS a credencial de produção, injeta-a somente no processo filho e nunca a imprime.
 - Fábrica de teste (`tests/helpers/factory.ts`): cria a org descartável "E2E Oraculo <timestamp>" e a remove ao final (falha visível se não limpar). Nunca usa empresa real.
 
 ## Rodar localmente
@@ -1099,6 +1100,32 @@ Para réplica externa, configure todos os secrets `BACKUP_S3_*` descritos em `do
 Teste de recuperação recomendado: mensalmente restaure o snapshot mais recente como nova empresa, confira planos, documentos, KPIs e membros, e depois remova a empresa de teste pela administração apropriada. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone.
 
 O dump lógico geral via `supabase db dump` é uma camada separada e, no ambiente local atual, exige Docker Desktop ou um `pg_dump` compatível. O backup por empresa não depende de Docker.
+
+## Acesso protegido e emergência de produção
+
+O ambiente padrão dos agentes não deve conter `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL` ou `SUPABASE_SERVICE_ROLE_KEY` de produção. Para verificar o deploy:
+
+```bash
+pnpm run production:verify
+```
+
+Para publicar somente Edge Functions explicitamente autorizadas:
+
+```bash
+pnpm run production:functions -- oracle-chat whatsapp-worker
+```
+
+O macOS pedirá autorização para o item `com.oraculo.supabase.production`. Recusar a janela encerra o comando sem alterar produção. O wrapper recusa token já carregado, worktree sujo, nome inválido e qualquer ação fora da allowlist.
+
+Emergência quando o GitHub estiver indisponível:
+
+1. Confirme o commit e deixe o worktree limpo.
+2. Autorize no Chaves somente as Functions necessárias.
+3. Rode `pnpm run production:verify` ao terminar.
+4. Registre commit, horário, motivo e resultado no handoff/changelog.
+5. Se houver suspeita de exposição, revogue o token no Supabase, gere outro e atualize o item do Chaves sem registrar o valor.
+
+Migrations e SQL administrativos não usam esse wrapper. Até a Etapa S2 concluir o workflow protegido, qualquer mudança de schema exige autorização explícita e o procedimento controlado já documentado; depois da S2, o caminho rotineiro será exclusivamente o GitHub Environment `production`.
 
 ## Deploy frontend
 

@@ -25,6 +25,8 @@
     "ci:secret-scan": "node --experimental-strip-types scripts/ci-secret-scan.ts",
     "ci:audit": "pnpm audit --prod --audit-level high",
     "verify:deploy": "node --experimental-strip-types scripts/verify-deploy.ts",
+    "production:verify": "node --experimental-strip-types scripts/production-access.ts verify",
+    "production:functions": "node --experimental-strip-types scripts/production-access.ts functions",
     "check": "pnpm run lint && pnpm run test && pnpm run build"
   },
   "dependencies": {

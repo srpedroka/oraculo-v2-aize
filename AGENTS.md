@@ -590,4 +590,5 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Nunca colocar `SUPABASE_SERVICE_ROLE_KEY` no frontend.
 - Nunca registrar valores reais de chaves em README, docs, comentarios, commits ou mensagens.
 - Nunca salvar audio bruto, arquivo bruto recebido por WhatsApp, URL temporaria de midia, `mediaKey`, chave da Evolution ou chave de IA no banco.
+- Nunca carregar `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL` ou `SUPABASE_SERVICE_ROLE_KEY` de producao no ambiente padrao do agente. Verificacao e deploy de Functions usam somente os comandos allowlisted `production:*`, com autorizacao do Chaves; migration de producao segue o workflow protegido quando disponivel.
 - Ao encontrar segredo exposto: pare, remova, avise o usuario e oriente rotacao da credencial.

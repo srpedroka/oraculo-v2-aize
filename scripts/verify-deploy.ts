@@ -38,10 +38,10 @@ async function mgmt(path: string, body?: unknown) {
 }
 
 async function main() {
-  if (!token) {
-    console.error("SUPABASE_ACCESS_TOKEN ausente (produção). Carregue .agents-private/agent-env.");
-    process.exit(2);
-  }
+if (!token) {
+  console.error("SUPABASE_ACCESS_TOKEN ausente. Use pnpm run production:verify para o acesso protegido.");
+  process.exit(2);
+}
 
   const localFunctions = readdirSync("supabase/functions", { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && existsSync(join("supabase/functions", entry.name, "index.ts")))

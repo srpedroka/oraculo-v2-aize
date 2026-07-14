@@ -1,0 +1,38 @@
+# =============================================================================
+# agent-env — credenciais de operacao para agentes (Claude Code / Codex)
+# =============================================================================
+# COMO USAR:
+#   1. Copie este arquivo para `.agents-private/agent-env` (sem .example).
+#   2. O Codex (ou voce) preenche os valores reais.
+#   3. Rode `chmod 600 .agents-private/agent-env` para restringir leitura.
+#   4. Antes de operar:  set -a; source .agents-private/agent-env; set +a
+#
+# SEGURANCA:
+#   - `.agents-private/` esta no .gitignore. NUNCA commitar este arquivo.
+#   - Nao ecoar/printar estes valores em logs, chat, PR ou saida de comando.
+#   - Preencher SO o necessario. O resto fica onde ja mora (Supabase/banco).
+# =============================================================================
+
+# PRODUCAO NAO FICA NESTE ARQUIVO.
+# SUPABASE_ACCESS_TOKEN deve morar no Chaves do macOS / GitHub Environment e ser
+# liberado somente pelo fluxo protegido descrito em docs/RUNBOOK.md.
+
+# --- OPCIONAL: Netlify ---
+# A CLI ja costuma estar logada localmente (~/Library/Preferences/netlify/config.json),
+# entao `netlify deploy` funciona sem isto. Preencha so se a auth local falhar.
+# Gerar em: app.netlify.com > User settings > Applications > Personal access tokens.
+NETLIFY_AUTH_TOKEN=
+
+# --- OPCIONAL: Evolution API (so se quiser que o agente configure o webhook
+#     do WhatsApp direto, ex.: trocar a URL da instancia). A apikey tambem vive
+#     no banco em public.whatsapp_instance_keys; preencher aqui e uma conveniencia. ---
+EVOLUTION_API_URL=https://143-95-217-64.sslip.io
+EVOLUTION_INSTANCE=oraculo
+EVOLUTION_API_KEY=
+
+# --- NAO PRECISA preencher (ficam na fonte, nao duplicar aqui): ---
+#   SUPABASE_ACCESS_TOKEN       -> Chaves do macOS / GitHub Environment
+#   SUPABASE_SERVICE_ROLE_KEY  -> ja e secret do projeto Supabase (functions usam sozinhas)
+#   chaves de IA (OpenAI/Anthropic/...) -> em public.ai_model_keys
+#   senha do banco             -> em .supabase-private/db-password
+#   MONTH_TURN_SECRET / webhook_secret -> secrets do Supabase / banco

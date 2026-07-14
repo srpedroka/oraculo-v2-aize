@@ -304,7 +304,7 @@ Ja cobertos no `.gitignore`:
 - testar rota direta no Netlify;
 - testar uma acao protegida por permissao, quando possivel.
 
-Integração, segurança e E2E autenticado possuem trava explícita contra a referência de produção. Credenciais ficam apenas em `.agents-private/agent-env`, e a fábrica falha visivelmente se não remover organização ou usuário descartável. Consulte `docs/TESTING.md`.
+Integração, segurança e E2E autenticado possuem trava explícita contra a referência de produção. `.agents-private/agent-env` contém somente credenciais de staging e integrações operacionais; o token administrativo do Supabase de produção fica no Chaves do macOS e só entra em subprocesso allowlisted após autorização do usuário. A fábrica falha visivelmente se não remover organização ou usuário descartável. Consulte `docs/TESTING.md` e `docs/RUNBOOK.md`.
 
 ## Achados de hardening a corrigir (registrados na Etapa 0, 2026-07-12)
 
