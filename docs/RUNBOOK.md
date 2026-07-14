@@ -1099,6 +1099,8 @@ Para réplica externa, configure todos os secrets `BACKUP_S3_*` descritos em `do
 
 Meta inicial de recuperação: RPO de 30 minutos para os dados de empresa incluídos no snapshot e RTO de 4 horas para restaurar uma cópia operacional. A réplica não contém chaves de IA, segredos do WhatsApp, mídia bruta nem credenciais do Supabase Auth. Em desastre total, usuários precisam ser recriados/convidados e integrações precisam ter seus segredos reconfigurados e rotacionados antes da reativação.
 
+O disparo via `pg_net` usa timeout de 300 segundos. Um registro `pending` por mais de 5 minutos deve ser tratado como falha operacional: consulte os logs de `organization-backup`, não apague a cópia externa e só refile a solicitação depois de confirmar que não há execução ativa.
+
 Teste de recuperação recomendado: mensalmente restaure o snapshot mais recente como nova empresa, confira planos, documentos, KPIs e membros, e depois remova a empresa de teste pela administração apropriada. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone.
 
 O dump lógico geral via `supabase db dump` é uma camada separada e, no ambiente local atual, exige Docker Desktop ou um `pg_dump` compatível. O backup por empresa não depende de Docker.
