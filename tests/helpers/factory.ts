@@ -48,13 +48,21 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
   const coordU = await newUser("coord");
   const adminU = await newUser("admin");
 
-  const { data: org, error: orgError } = await admin
-    .from("organizations")
-    .insert({ name: label, subtitle: "descartável", created_by: ownerU.id })
-    .select("id")
-    .single();
+  let org: { id: string } | null = null;
+  let orgError: { message: string } | null = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const result = await admin
+      .from("organizations")
+      .insert({ name: label, subtitle: "descartável", created_by: ownerU.id })
+      .select("id")
+      .single();
+    org = result.data;
+    orgError = result.error;
+    if (!orgError || !/fetch failed|network error/i.test(orgError.message) || attempt === 3) break;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+  }
   if (orgError || !org) throw new Error(`falha ao criar org: ${orgError?.message}`);
-  const orgId = org.id as string;
+  const orgId = org.id;
 
   async function addMember(userId: string, role: "owner" | "coordinator" | "admin"): Promise<string> {
     const { data, error } = await admin.from("memberships").insert({ org_id: orgId, user_id: userId, role }).select("id").single();
