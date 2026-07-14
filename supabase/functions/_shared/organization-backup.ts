@@ -4,6 +4,7 @@ import {
   S3Client,
 } from "npm:@aws-sdk/client-s3@3.637.0";
 import { serviceClient } from "./auth.ts";
+import { normalizeS3Endpoint } from "./s3-endpoint.ts";
 
 const STORAGE_BUCKET = "organization-backups";
 const BACKUP_FORMAT = "oraculo-organization-backup";
@@ -11,6 +12,7 @@ const FILE_FORMAT = "oraculo-organization-backup-file";
 const SCHEMA_VERSION = 1;
 const PAGE_SIZE = 1000;
 const INSERT_BATCH_SIZE = 200;
+const EXTERNAL_REQUEST_TIMEOUT_MS = 15_000;
 
 type JsonRow = Record<string, any>;
 type BackupKind = "manual" | "event" | "daily" | "weekly" | "monthly";
@@ -201,7 +203,7 @@ function externalConfig() {
   const secretAccessKey = Deno.env.get("BACKUP_S3_SECRET_ACCESS_KEY");
   if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) return null;
   return {
-    endpoint,
+    endpoint: normalizeS3Endpoint(endpoint, bucket),
     bucket,
     accessKeyId,
     secretAccessKey,
@@ -214,6 +216,7 @@ function externalClient(config: NonNullable<ReturnType<typeof externalConfig>>) 
     endpoint: config.endpoint,
     region: config.region,
     forcePathStyle: true,
+    maxAttempts: 2,
     credentials: {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
@@ -233,6 +236,7 @@ async function uploadExternal(objectKey: string, body: Uint8Array) {
         ContentType: "application/gzip",
         ContentEncoding: "gzip",
       }),
+      { abortSignal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS) },
     );
     return { status: "completed" as const, error: null };
   } catch (error) {
@@ -245,6 +249,7 @@ async function downloadExternal(objectKey: string) {
   if (!config) throw new Error("Cópia externa não configurada");
   const result = await externalClient(config).send(
     new GetObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+    { abortSignal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS) },
   );
   if (!result.Body) throw new Error("Cópia externa vazia");
   return new Uint8Array(await result.Body.transformToByteArray());
