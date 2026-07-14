@@ -111,6 +111,14 @@ jobs:
             sleep 1
           done
           [ "$status" != "000" ]
+          for attempt in {1..60}; do
+            worker_status=$(curl -s -o /dev/null -w '%{http_code}' \
+              -X POST -H 'Content-Type: application/json' -d '{}' \
+              http://127.0.0.1:54321/functions/v1/whatsapp-worker || true)
+            [ "$worker_status" = "401" ] && break
+            sleep 1
+          done
+          [ "$worker_status" = "401" ]
       - name: Integration tests
         run: node --experimental-strip-types scripts/run-ci-command.ts integration -- pnpm run test:integration
       - name: RLS and security tests

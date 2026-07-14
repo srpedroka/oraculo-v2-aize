@@ -29,6 +29,8 @@ describe("CI workflow contract", () => {
 
   it("usa Supabase local e envia apenas logs sanitizados em falha", () => {
     expect(workflow).toContain("supabase start");
+    expect(workflow).toContain("worker_status");
+    expect(workflow).toContain('functions/v1/whatsapp-worker');
     expect(workflow).toContain("SUPABASE_STAGING_DB_URL");
     expect(workflow).toContain("if: failure()");
     expect(workflow).toContain("ci-artifacts");
