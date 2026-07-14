@@ -692,8 +692,10 @@ Consequencias: mudancas de arquitetura, ambiente, deploy e seguranca devem atual
 O monitor operacional roda a cada cinco minutos e mantém alertas deduplicados para owners. Nesta fase, nenhum alerta pausa WhatsApp, IA, backup ou acesso ao aplicativo e nenhuma notificação é enviada automaticamente. A decisão preserva a operação simples durante o piloto; bloqueios e canais externos exigem decisão posterior baseada nos SLOs observados.
 ## 2026-07-14 - Producao usa SHA aprovado e segredo tardio
 
-Decisao: substituir o workflow apenas de verificacao por um unico `Production release`, manual, ligado a um SHA completo da `main` com `CI required` verde. O preflight nao acessa segredo de producao; verificacao, deploy explicito de Functions e migrations rodam em jobs separados sob o GitHub Environment `production`, com aprovacao do owner.
+Decisao: substituir o workflow apenas de verificacao por um unico `Production release`, manual, ligado a um SHA completo da `main` com `CI required` verde. O preflight nao acessa segredo de producao; verificacao, deploy explicito de Functions e migrations rodam em jobs separados sob o GitHub Environment `production`. O owner autoriza o disparo na conversa imediatamente antes da publicacao, sem um segundo clique de reviewer no GitHub. O Environment preserva os segredos isolados e a restricao à branch `main`.
 
 Motivo: uma credencial administrativa disponivel durante desenvolvimento ou antes da validacao transforma erro de ambiente em risco de producao. Ao mesmo tempo, aprovar toda edicao de frontend ou uso normal do produto criaria burocracia sem reduzir esse risco.
+
+Consequencia: a autorização na conversa é uma regra operacional, não uma prova criptográfica entregue ao GitHub. A defesa técnica continua sendo o disparo manual por conta autenticada, SHA exato, CI verde, preflight sem segredo, escopo explícito e recusa padrão de migrations destrutivas. Push comum não aciona esse fluxo.
 
 Consequencias: frontend continua no caminho Netlify comum. Functions exigem lista explicita. Migrations sao comparadas com o pacote aprovado, o conjunto realmente pendente e um guard de operacoes destrutivas; excecao exige a sinalizacao `allow_destructive_migration`, mas continua sujeita a CI e aprovacao. O Chaves local fica somente como recuperacao de emergencia.

@@ -1136,9 +1136,11 @@ Migrations e SQL administrativos não usam esse wrapper. O caminho rotineiro e e
 3. para Functions, informe apenas os nomes separados por espaco;
 4. para um pacote de mais de um commit, informe o `base_sha` anterior;
 5. deixe `allow_destructive_migration` desligado, salvo mudanca destrutiva deliberada e revisada;
-6. aguarde o preflight sem segredos e aprove o Environment `production` quando o GitHub solicitar.
+6. antes de disparar, registre a autorização explícita do owner na conversa; depois acompanhe o workflow até o resultado final, sem uma segunda aprovação no GitHub.
 
 O workflow revalida o estado publicado ao final. Migration pendente fora do intervalo aprovado, nome de Function invalido, SHA sem CI verde ou operacao destrutiva sem sinalizacao encerram o job antes da escrita. O deploy de frontend sem schema continua pelo fluxo Netlify abaixo.
+
+A autorização na conversa é uma regra operacional e deve ocorrer imediatamente antes do `workflow_dispatch`. Ela não é validada criptograficamente pelo GitHub; a proteção técnica complementar vem do disparo manual autenticado, do SHA exato, do CI obrigatório, do preflight sem segredos, do escopo explícito e do Environment restrito à `main`. Push comum não publica Supabase em produção.
 
 ## Deploy frontend
 
