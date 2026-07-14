@@ -1000,7 +1000,7 @@ Teste obrigatório: restaurar uma cópia em ambiente isolado, comparar contagens
 
 ### S4 — Exclusões críticas e alertas
 
-> **STATUS: implementada e validada no staging em 2026-07-14; publicação protegida pendente.** A espera de 24 horas e o segundo owner continuam desligados. A política opcional de MFA foi preservada.
+> **STATUS: concluída e em produção em 2026-07-14.** A migration `20260714190000_s4_operational_safety.sql` foi publicada no run `29369406289`; as Functions `organization-lifecycle`, `organization-backup` e `operational-health` no run `29369543010`; a verificação read-only no run `29369644218` confirmou o estado esperado. A espera de 24 horas e o segundo owner continuam desligados. A política opcional de MFA foi preservada.
 
 - manter MFA + nome exato + backup recente + confirmação final para exclusão da empresa;
 - deixar espera de 24 horas e segundo owner como opções futuras, desligadas inicialmente;
