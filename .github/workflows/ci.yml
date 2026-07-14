@@ -82,7 +82,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.101.0
       - name: Start local Supabase and apply migrations
         run: node --experimental-strip-types scripts/run-ci-command.ts supabase-start -- supabase start
       - name: Export ephemeral local credentials
@@ -101,6 +101,9 @@ jobs:
         run: |
           mkdir -p ci-artifacts
           printf '%s\n' \
+            'SUPABASE_URL=http://host.docker.internal:54321' \
+            "SUPABASE_ANON_KEY=$SUPABASE_STAGING_ANON_KEY" \
+            "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_STAGING_SERVICE_ROLE_KEY" \
             'SUPABASE_DB_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres' \
             'MONTH_TURN_SECRET=ci-local-only' \
             'APP_ORIGIN=http://127.0.0.1:4174' > /tmp/oraculo-functions.env
