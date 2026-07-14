@@ -3,7 +3,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { evaluateOperationalSignals, percentile95, type OperationalMetrics } from "../_shared/operational-health.ts";
 import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 
-const EXPECTED_MIGRATION_COUNT = 44;
+const EXPECTED_MIGRATION_COUNT = 48;
 const FRONTEND_URL = "https://oraculo-v2-aize.netlify.app";
 type Client = ReturnType<typeof serviceClient>;
 
@@ -55,25 +55,33 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     inbound,
     outbound,
     backupPolicy,
+    recentBackups,
+    massArchiveCount15m,
+    destructiveSchemaChanges24h,
     aiUsage,
     aiPolicy,
     aiErrors24h,
     frontendErrors24h,
     restore,
+    disasterDrill,
   ] = await Promise.all([
     client.from("whatsapp_settings").select("enabled").eq("org_id", orgId).maybeSingle(),
     count(client, "whatsapp_health_events", (query) => query.eq("org_id", orgId).eq("event_type", "webhook_received").gte("created_at", since24h)),
     client.from("whatsapp_inbound_jobs").select("correlation_id, created_at, status").eq("org_id", orgId).gte("created_at", since24h).limit(1000),
     client.from("whatsapp_outbox").select("correlation_id, created_at, updated_at, status").eq("org_id", orgId).gte("created_at", since24h).limit(1000),
     client.from("organization_backup_policies").select("last_success_at, last_failure_at").eq("org_id", orgId).maybeSingle(),
+    client.from("organization_backups").select("external_status, created_at, completed_at").eq("org_id", orgId).eq("status", "completed").order("created_at", { ascending: false }).limit(40),
+    count(client, "operational_revisions", (query) => query.eq("org_id", orgId).eq("action", "archive").gte("created_at", new Date(now.getTime() - 15 * 60 * 1000).toISOString())),
+    count(client, "operational_safety_events", (query) => query.eq("org_id", orgId).eq("event_type", "destructive_schema_change").gte("occurred_at", since24h)),
     client.from("ai_usage_logs").select("total_cost_usd").eq("org_id", orgId).gte("created_at", monthStart).limit(1000),
     client.from("ai_control_policies").select("monthly_budget_usd").eq("org_id", orgId).maybeSingle(),
     count(client, "ai_function_errors", (query) => query.eq("org_id", orgId).gte("created_at", since24h)),
     count(client, "frontend_error_events", (query) => query.eq("org_id", orgId).gte("created_at", since24h)),
     client.from("organization_restore_runs").select("completed_at").eq("source_org_id", orgId).eq("status", "completed").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
+    client.from("organization_restore_runs").select("completed_at").eq("source_org_id", orgId).eq("status", "completed").eq("exercise_type", "disaster_drill").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
-  for (const result of [settings, inbound, outbound, backupPolicy, aiUsage, aiPolicy, restore]) {
+  for (const result of [settings, inbound, outbound, backupPolicy, recentBackups, aiUsage, aiPolicy, restore, disasterDrill]) {
     if (result.error) throw result.error;
   }
 
@@ -93,6 +101,9 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
   const deadItems = [...(inbound.data ?? []), ...(outbound.data ?? [])].filter((item: any) => item.status === "dead").length;
   const backupSuccessAt = backupPolicy.data?.last_success_at ?? null;
   const backupFailureAt = backupPolicy.data?.last_failure_at ?? null;
+  const externalBackups = (recentBackups.data ?? []).filter((item: any) => item.external_status !== "not_configured");
+  const latestExternal = externalBackups[0] ?? null;
+  const latestExternalCompleted = externalBackups.find((item: any) => item.external_status === "completed") ?? null;
 
   return {
     frontendOk: global.frontendOk,
@@ -105,11 +116,17 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     deadItems,
     backupAgeHours: age(backupSuccessAt, 3_600_000),
     backupFailed: Boolean(backupFailureAt && (!backupSuccessAt || backupFailureAt > backupSuccessAt)),
+    externalBackupConfigured: externalBackups.length > 0,
+    externalBackupAgeHours: age(latestExternalCompleted?.completed_at ?? latestExternalCompleted?.created_at ?? null, 3_600_000),
+    externalBackupFailed: latestExternal?.external_status === "failed",
+    massArchiveCount15m,
+    destructiveSchemaChanges24h,
     aiCostUsd: (aiUsage.data ?? []).reduce((sum: number, row: any) => sum + Number(row.total_cost_usd ?? 0), 0),
     aiBudgetUsd: Number(aiPolicy.data?.monthly_budget_usd ?? 100),
     aiErrors24h,
     frontendErrors24h,
     lastRestoreAgeDays: age(restore.data?.completed_at ?? null, 86_400_000),
+    lastDisasterDrillAgeDays: age(disasterDrill.data?.completed_at ?? null, 86_400_000),
   };
 }
 

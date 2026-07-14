@@ -1000,6 +1000,8 @@ Teste obrigatório: restaurar uma cópia em ambiente isolado, comparar contagens
 
 ### S4 — Exclusões críticas e alertas
 
+> **STATUS: implementada e validada no staging em 2026-07-14; publicação protegida pendente.** A espera de 24 horas e o segundo owner continuam desligados. A política opcional de MFA foi preservada.
+
 - manter MFA + nome exato + backup recente + confirmação final para exclusão da empresa;
 - deixar espera de 24 horas e segundo owner como opções futuras, desligadas inicialmente;
 - alertar sobre exclusão em massa, alteração destrutiva de schema, atraso/falha de backup, desligamento de PITR e falha da réplica externa;

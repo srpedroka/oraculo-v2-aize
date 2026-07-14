@@ -20,11 +20,17 @@ export interface OperationalHealthStatus {
     deadItems: number;
     backupAgeHours: number | null;
     backupFailed: boolean;
+    externalBackupConfigured: boolean;
+    externalBackupAgeHours: number | null;
+    externalBackupFailed: boolean;
+    massArchiveCount15m: number;
+    destructiveSchemaChanges24h: number;
     aiCostUsd: number;
     aiBudgetUsd: number;
     aiErrors24h: number;
     frontendErrors24h: number;
     lastRestoreAgeDays: number | null;
+    lastDisasterDrillAgeDays: number | null;
   };
   alerts: OperationalHealthAlert[];
 }

@@ -12,11 +12,17 @@ const healthy: OperationalMetrics = {
   deadItems: 0,
   backupAgeHours: 2,
   backupFailed: false,
+  externalBackupConfigured: true,
+  externalBackupAgeHours: 2,
+  externalBackupFailed: false,
+  massArchiveCount15m: 0,
+  destructiveSchemaChanges24h: 0,
   aiCostUsd: 10,
   aiBudgetUsd: 100,
   aiErrors24h: 0,
   frontendErrors24h: 0,
   lastRestoreAgeDays: 2,
+  lastDisasterDrillAgeDays: 2,
 };
 
 describe("operational health", () => {
@@ -37,6 +43,7 @@ describe("operational health", () => {
       backupAgeHours: 27,
       aiCostUsd: 95,
       lastRestoreAgeDays: null,
+      lastDisasterDrillAgeDays: 101,
     });
     expect(alerts.map((item) => item.code)).toEqual([
       "frontend_unavailable",
@@ -44,6 +51,21 @@ describe("operational health", () => {
       "backup_late",
       "ai_budget_near_limit",
       "restore_test_due",
+      "disaster_drill_due",
+    ]);
+  });
+
+  it("alerts on independent recovery and destructive activity", () => {
+    const alerts = evaluateOperationalSignals({
+      ...healthy,
+      externalBackupFailed: true,
+      massArchiveCount15m: 24,
+      destructiveSchemaChanges24h: 1,
+    });
+    expect(alerts.map((item) => item.code)).toEqual([
+      "external_backup_failed",
+      "mass_archive_detected",
+      "destructive_schema_change",
     ]);
   });
 });

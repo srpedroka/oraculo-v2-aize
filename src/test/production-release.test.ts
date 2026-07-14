@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { destructiveMigrationFindings, validateFunctionNames } from "../../scripts/production-release-guard";
+import { destructiveMigrationFindings, hasDestructiveAuditMarker, validateFunctionNames } from "../../scripts/production-release-guard";
 
 const originalCwd = process.cwd();
 
@@ -48,6 +48,13 @@ describe("production release guard", () => {
   it("ignora palavras destrutivas presentes apenas em comentarios", () => {
     const file = migration("-- drop table public.areas;\n/* truncate public.memberships; */\nselect 1;\n");
     expect(destructiveMigrationFindings([file])).toEqual([]);
+  });
+
+  it("exige marcador auditavel para excecao destrutiva", () => {
+    const withoutMarker = migration("drop table public.areas;\n");
+    expect(hasDestructiveAuditMarker([withoutMarker])).toBe(false);
+    const withMarker = migration("drop table public.areas;\nselect public.record_destructive_schema_change(array['20260714000000_fixture.sql']);\n");
+    expect(hasDestructiveAuditMarker([withMarker])).toBe(true);
   });
 
   it("recusa arquivo fora da pasta versionada de migrations", () => {

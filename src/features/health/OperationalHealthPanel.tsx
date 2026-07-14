@@ -51,10 +51,11 @@ export function OperationalHealthPanel({ orgId }: { orgId: string }) {
       ) : null}
       {data ? (
         <div className="mt-5 space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div className="border-l-2 border-border pl-3"><p className="text-xs text-text-tertiary">Frontend</p><p className="mt-1 text-sm font-semibold text-text">{data.metrics.frontendOk ? "Disponível" : "Indisponível"}</p></div>
             <div className="border-l-2 border-border pl-3"><p className="text-xs text-text-tertiary">WhatsApp p95</p><p className="mt-1 text-sm font-semibold text-text">{data.metrics.whatsappP95Ms === null ? "Sem amostra" : `${(data.metrics.whatsappP95Ms / 1000).toFixed(1)}s`}</p></div>
             <div className="border-l-2 border-border pl-3"><p className="text-xs text-text-tertiary">Último backup</p><p className="mt-1 text-sm font-semibold text-text">{data.metrics.backupAgeHours === null ? "Sem registro" : `${data.metrics.backupAgeHours.toFixed(1)}h`}</p></div>
+            <div className="border-l-2 border-border pl-3"><p className="text-xs text-text-tertiary">Réplica externa</p><p className="mt-1 text-sm font-semibold text-text">{data.metrics.externalBackupAgeHours === null ? "Sem registro" : `${data.metrics.externalBackupAgeHours.toFixed(1)}h`}</p></div>
             <div className="border-l-2 border-border pl-3"><p className="text-xs text-text-tertiary">Custo de IA no mês</p><p className="mt-1 text-sm font-semibold text-text">US$ {data.metrics.aiCostUsd.toFixed(2)}</p></div>
           </div>
 
@@ -76,4 +77,3 @@ export function OperationalHealthPanel({ orgId }: { orgId: string }) {
     </Card>
   );
 }
-

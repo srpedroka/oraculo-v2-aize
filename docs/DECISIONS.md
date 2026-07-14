@@ -699,3 +699,11 @@ Motivo: uma credencial administrativa disponivel durante desenvolvimento ou ante
 Consequencia: a autorização na conversa é uma regra operacional, não uma prova criptográfica entregue ao GitHub. A defesa técnica continua sendo o disparo manual por conta autenticada, SHA exato, CI verde, preflight sem segredo, escopo explícito e recusa padrão de migrations destrutivas. Push comum não aciona esse fluxo.
 
 Consequencias: frontend continua no caminho Netlify comum. Functions exigem lista explicita. Migrations sao comparadas com o pacote aprovado, o conjunto realmente pendente e um guard de operacoes destrutivas; excecao exige a sinalizacao `allow_destructive_migration`, mas continua sujeita a CI e aprovacao. O Chaves local fica somente como recuperacao de emergencia.
+
+## 2026-07-14 - Alertas de seguranca informam sem burocratizar
+
+Decisao: completar a S4 usando o painel existente de Saude operacional. Exclusao permanente exige empresa arquivada, nome exato, backup recente e confirmacao final explicita; AAL2 continua condicionado a politica opcional da empresa. Espera de 24 horas e segundo owner permanecem desligados. Replica externa, arquivamento incomum em massa, schema destrutivo e exercicios de recuperacao vencidos geram alertas informativos, sem pausar o app.
+
+Motivo: acoes irreversiveis precisam de defesa server-side e rastreabilidade, mas planejamento, WhatsApp e deploys rotineiros nao devem ganhar novos cliques. A replica R2 append-only com lock de 90 dias e a alternativa formal ao PITR desligado nesta fase.
+
+Consequencias: migrations destrutivas autorizadas precisam chamar `record_destructive_schema_change`; o guard recusa a excecao sem esse registro. Restauracoes bem-sucedidas cobrem o lembrete mensal, e exercicios originados da copia externa usam `exercise_type = disaster_drill` para a cadencia trimestral. Todos os eventos tecnicos sao service-only e sanitizados.

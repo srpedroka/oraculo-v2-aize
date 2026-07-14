@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync("supabase/functions/_shared/organization-backup.ts", "utf8");
 
 describe("organization backup restore", () => {
+  it("always gives the restored owner membership a required timestamp", () => {
+    expect(source).toContain('role: "owner", created_at: new Date().toISOString()');
+  });
+
   it("replaces restore-generated revisions with the source audit history", () => {
     const cleanup = source.indexOf('.from("operational_revisions")\n      .delete()');
     const sourceHistory = source.indexOf('rowsOf(data, "operational_revisions")', cleanup);

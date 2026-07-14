@@ -60,7 +60,7 @@ export type AppAction =
   | { type: "leave_organization"; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "archive_organization"; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "restore_organization"; onSuccess?: () => void; onError?: (message: string) => void }
-  | { type: "delete_organization"; confirmName: string; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "delete_organization"; confirmName: string; finalConfirmation: true; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
   | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }

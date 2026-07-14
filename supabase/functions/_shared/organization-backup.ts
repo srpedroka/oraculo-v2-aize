@@ -567,6 +567,7 @@ export async function restoreOrganizationEnvelope(input: {
   userId: string;
   envelope: OrganizationBackupEnvelope;
   backupId?: string | null;
+  exerciseType?: "restore" | "monthly_drill" | "disaster_drill";
 }) {
   const client = serviceClient();
   const envelope = await verifyOrganizationEnvelope(input.envelope);
@@ -587,6 +588,7 @@ export async function restoreOrganizationEnvelope(input: {
       target_org_name: targetOrgName,
       initiated_by: input.userId,
       status: "pending",
+      exercise_type: input.exerciseType ?? "restore",
     })
     .select("id")
     .single();
@@ -626,7 +628,7 @@ export async function restoreOrganizationEnvelope(input: {
     const currentMembershipId = crypto.randomUUID();
     targetMembershipByUser.set(input.userId, currentMembershipId);
     const targetMemberships: JsonRow[] = [
-      { id: currentMembershipId, org_id: targetOrgId, user_id: input.userId, role: "owner" },
+      { id: currentMembershipId, org_id: targetOrgId, user_id: input.userId, role: "owner", created_at: new Date().toISOString() },
     ];
     for (const membership of rowsOf(data, "memberships")) {
       const mappedUser = userMap.get(String(membership.user_id));

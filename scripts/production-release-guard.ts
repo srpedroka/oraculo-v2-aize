@@ -46,6 +46,13 @@ export function destructiveMigrationFindings(files: string[]): string[] {
   return findings;
 }
 
+export function hasDestructiveAuditMarker(files: string[]): boolean {
+  return files.some((file) => {
+    const source = stripSqlComments(readFileSync(resolve(file), "utf8"));
+    return /\bpublic\.record_destructive_schema_change\s*\(/i.test(source);
+  });
+}
+
 function fail(message: string): never {
   console.error(`RECUSADO: ${message}`);
   process.exit(1);
@@ -67,6 +74,9 @@ function runCli(): void {
     const findings = destructiveMigrationFindings(files);
     if (findings.length > 0 && !allowDestructive) {
       fail(`migration destrutiva exige aprovacao explicita (${findings.join("; ")}).`);
+    }
+    if (findings.length > 0 && !hasDestructiveAuditMarker(files)) {
+      fail("migration destrutiva aprovada precisa registrar public.record_destructive_schema_change(...).");
     }
     console.log(findings.length > 0 ? `Aprovacao destrutiva registrada: ${findings.join("; ")}` : "Migrations sem operacao destrutiva detectada.");
     return;

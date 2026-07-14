@@ -189,6 +189,7 @@ Migrations principais:
 - `supabase/migrations/20260712223000_ai_budget_alert_refresh.sql`: alertas mensais imediatos e deduplicados após registrar custo.
 - `supabase/migrations/20260714120000_service_role_baseline_grants.sql`: mantém Supabase local/hospedado equivalentes nos grants server-only do `service_role` e nos defaults de objetos futuros.
 - `supabase/migrations/20260714090000_operational_health_slos.sql`: snapshots, alertas, falhas sanitizadas de IA e cron do monitor operacional.
+- `supabase/migrations/20260714190000_s4_operational_safety.sql`: eventos de segurança service-only e classificação dos exercícios mensal/trimestral de recuperação.
 - `supabase/migrations/20260714110000_frontend_error_events.sql`: correlação service-only dos códigos de ocorrência do Error Boundary.
 
 Tabelas publicas importantes:
@@ -259,7 +260,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `whatsapp-webhook`: entrada HTTP mínima do WhatsApp; autentica, bloqueia loop e encaminha texto obrigatoriamente para a fila. Mídia permanece síncrona/em memória para não persistir descritores criptográficos.
 - `whatsapp-sender`: envia itens da outbox um por vez, confirma HTTP da Evolution e aplica lock, retry e dead-letter; endpoint nulo o mantem inerte.
 - `whatsapp-worker`: processa a fila com ordem por conversa, heartbeat, retry/dead-letter e segredo server-side; endpoint automatico nulo mantem o worker inerte.
-- `operational-health`: monitor owner/cron de frontend, migrations, WhatsApp, backups, IA e restauração; alertas são informativos e service-only.
+- `operational-health`: monitor owner/cron de frontend, migrations, WhatsApp, backups interno/externo, IA, retiradas em massa e exercícios de recuperação; alertas são informativos e service-only.
 
 Compartilhados criticos:
 
@@ -570,7 +571,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatias 5A–5D concluídas em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based e mutações/Realtime invalidam somente consultas afetadas. Próxima fatia autorizável: 5E, bundle e rotas lazy.
+- Etapa 5 / Fatias 5A–5D concluídas em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based e mutações/Realtime invalidam somente consultas afetadas.
+- Etapa S / S0–S3 concluídas. S4 foi implementada e validada integralmente no staging em 2026-07-14; aguarda publicação protegida. Depois dela, a próxima fatia é 5E, bundle e rotas lazy.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

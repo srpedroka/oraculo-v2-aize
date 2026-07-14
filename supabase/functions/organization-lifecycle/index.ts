@@ -114,6 +114,10 @@ serve(async (req) => {
         throw new Error("Arquive a empresa antes de excluir definitivamente");
       }
 
+      if (payload.finalConfirmation !== true) {
+        throw new Error("Confirme explicitamente a exclusão definitiva");
+      }
+
       const confirmName = asText(payload.confirmName, 200);
       if (confirmName !== org.name) {
         throw new Error("O nome digitado não confere com o da empresa");

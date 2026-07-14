@@ -1103,7 +1103,16 @@ Meta inicial de recuperação: RPO de 30 minutos para os dados de empresa inclu�
 
 O disparo via `pg_net` usa timeout de 300 segundos. Um registro `pending` por mais de 5 minutos deve ser tratado como falha operacional: consulte os logs de `organization-backup`, não apague a cópia externa e só refile a solicitação depois de confirmar que não há execução ativa.
 
-Teste de recuperação recomendado: mensalmente restaure o snapshot mais recente como nova empresa, confira planos, documentos, KPIs e membros, e depois remova a empresa de teste pela administração apropriada. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone.
+Teste de recuperação obrigatório: mensalmente restaure o snapshot mais recente como nova empresa descartável, confira planos, documentos, KPIs e membros, registre a execução como `exercise_type = monthly_drill` e depois remova a empresa de teste pela administração apropriada. A cada trimestre, repita o fluxo partindo da cópia externa e registre `exercise_type = disaster_drill`. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone. O painel Saúde operacional avisa depois de 35 dias sem restauração e 100 dias sem exercício de desastre; ele não executa nem bloqueia nada automaticamente.
+
+Alertas adicionais da S4:
+
+- réplica externa ausente, falha ou sem conclusão há mais de 26 horas;
+- 20 ou mais arquivamentos operacionais em 15 minutos;
+- migration destrutiva aprovada e auditada nas últimas 24 horas;
+- teste mensal ou exercício trimestral vencido.
+
+Uma migration destrutiva continua recusada por padrão. Quando a exceção for deliberadamente autorizada, o próprio arquivo precisa chamar `public.record_destructive_schema_change(...)`; sem esse marcador o workflow recusa o pacote mesmo com a opção destrutiva ligada. Os alertas permanecem informativos. PITR está desligado por decisão formal enquanto a réplica R2 append-only com lock de 90 dias cumprir a camada independente; qualquer troca dessa estratégia exige atualizar o monitor e repetir o exercício trimestral.
 
 Prova de recuperação de 2026-07-14:
 

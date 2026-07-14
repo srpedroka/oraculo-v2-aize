@@ -246,6 +246,7 @@ export function useStoreDispatch({
           action: "permanent_delete",
           orgId,
           confirmName: action.confirmName,
+          finalConfirmation: action.finalConfirmation,
           reason: action.reason ?? null,
         })
           .then(() => {

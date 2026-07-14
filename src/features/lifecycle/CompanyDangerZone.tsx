@@ -123,6 +123,7 @@ export function CompanyDangerZone() {
     run({
       type: "delete_organization",
       confirmName: confirmName.trim(),
+      finalConfirmation: true,
       reason: reason.trim() || null,
       onSuccess: () => {
         setBusy(false);

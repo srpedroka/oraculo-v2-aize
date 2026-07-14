@@ -141,6 +141,10 @@ Deno.serve(async (req) => {
 
     if (body.action === "restore") {
       const backupId = body.backupId ? String(body.backupId) : null;
+      const exerciseType = body.exerciseType == null ? "restore" : String(body.exerciseType);
+      if (!["restore", "monthly_drill", "disaster_drill"].includes(exerciseType)) {
+        throw new Error("Tipo de exercício de recuperação inválido");
+      }
       const envelope = backupId
         ? await loadOrganizationEnvelope(orgId, backupId)
         : await verifyOrganizationEnvelope(body.envelope);
@@ -149,6 +153,7 @@ Deno.serve(async (req) => {
         userId: user.id,
         envelope,
         backupId,
+        exerciseType: exerciseType as "restore" | "monthly_drill" | "disaster_drill",
       });
       return jsonResponse({ ok: true, ...result });
     }
