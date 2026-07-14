@@ -966,7 +966,7 @@ Resultado observado:
 
 ### S1 — Isolamento de credenciais
 
-> **STATUS: implementada em 2026-07-14; aceite operacional pendente.** O token saiu do ambiente padrão, foi guardado no Chaves do macOS sem aplicativo permanentemente autorizado e o acesso direto foi recusado. O comando protegido chegou à confirmação visual e encerrou sem tocar em produção quando ela não foi aprovada. Falta o owner executar uma vez `pnpm run production:verify` e escolher **Permitir** para comprovar o caminho positivo antes de iniciar a S2.
+> **STATUS: concluída em 2026-07-14.** O token saiu do ambiente padrão, foi guardado no Chaves do macOS sem aplicativo permanentemente autorizado e o acesso direto foi recusado. O owner autorizou **Permitir** uma única vez e `pnpm run production:verify` terminou com código `0`, comprovando o caminho protegido sem alterar produção.
 
 - retirar o token administrativo de produção do ambiente carregado por padrão por agentes;
 - manter no ambiente diário apenas credenciais de staging e dados públicos do frontend;
