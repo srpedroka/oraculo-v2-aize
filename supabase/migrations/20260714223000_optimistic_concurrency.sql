@@ -286,3 +286,7 @@ on public.objectives (org_id, id, updated_at);
 
 create index if not exists executive_kpis_version_lookup_idx
 on public.executive_kpis (org_id, id, updated_at);
+
+select public.record_destructive_schema_change(
+  array['20260714223000_optimistic_concurrency.sql']::text[]
+);
