@@ -30,6 +30,19 @@ function stampId() {
   return `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
+export function isTransientTransportError(message: string | undefined) {
+  return /fetch failed|network error|connection reset|timed out/i.test(message ?? "");
+}
+
+export async function retryTransport<T extends { error: { message: string } | null }>(operation: () => PromiseLike<T>): Promise<T> {
+  let result = await operation();
+  for (let attempt = 1; attempt < 3 && isTransientTransportError(result.error?.message); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+    result = await operation();
+  }
+  return result;
+}
+
 export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> {
   const admin = serviceClient();
   const stamp = stampId();
@@ -37,9 +50,9 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
 
   async function newUser(kind: string): Promise<{ id: string; email: string }> {
     const email = `e2e-${kind}-${stamp}-${tag}@oraculo-e2e.invalid`;
-    const { data, error } = await admin.auth.admin.createUser({ email, password: TEST_PASSWORD, email_confirm: true });
+    const { data, error } = await retryTransport(() => admin.auth.admin.createUser({ email, password: TEST_PASSWORD, email_confirm: true }));
     if (error || !data.user) throw new Error(`falha ao criar usuário ${kind}: ${error?.message}`);
-    const { error: profileError } = await admin.from("profiles").upsert({ id: data.user.id, full_name: `E2E ${kind}`, email });
+    const { error: profileError } = await retryTransport(() => admin.from("profiles").upsert({ id: data.user.id, full_name: `E2E ${kind}`, email }));
     if (profileError) throw new Error(`falha ao criar profile ${kind}: ${profileError.message}`);
     return { id: data.user.id, email };
   }
@@ -48,24 +61,16 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
   const coordU = await newUser("coord");
   const adminU = await newUser("admin");
 
-  let org: { id: string } | null = null;
-  let orgError: { message: string } | null = null;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const result = await admin
+  const { data: org, error: orgError } = await retryTransport(() => admin
       .from("organizations")
       .insert({ name: label, subtitle: "descartável", created_by: ownerU.id })
       .select("id")
-      .single();
-    org = result.data;
-    orgError = result.error;
-    if (!orgError || !/fetch failed|network error/i.test(orgError.message) || attempt === 3) break;
-    await new Promise((resolve) => setTimeout(resolve, attempt * 250));
-  }
+      .single());
   if (orgError || !org) throw new Error(`falha ao criar org: ${orgError?.message}`);
   const orgId = org.id;
 
   async function addMember(userId: string, role: "owner" | "coordinator" | "admin"): Promise<string> {
-    const { data, error } = await admin.from("memberships").insert({ org_id: orgId, user_id: userId, role }).select("id").single();
+    const { data, error } = await retryTransport(() => admin.from("memberships").insert({ org_id: orgId, user_id: userId, role }).select("id").single());
     if (error || !data) throw new Error(`falha ao criar membership ${role}: ${error?.message}`);
     return data.id as string;
   }
@@ -74,21 +79,21 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
   const coordMembershipId = await addMember(coordU.id, "coordinator");
   const adminMembershipId = await addMember(adminU.id, "admin");
 
-  const { data: producao, error: prodError } = await admin
+  const { data: producao, error: prodError } = await retryTransport(() => admin
     .from("areas")
     .insert({ org_id: orgId, name: "Produção", coordinator_id: coordMembershipId })
     .select("id")
-    .single();
+    .single());
   if (prodError || !producao) throw new Error(`falha ao criar área Produção: ${prodError?.message}`);
 
-  const { data: comercial, error: comError } = await admin
+  const { data: comercial, error: comError } = await retryTransport(() => admin
     .from("areas")
     .insert({ org_id: orgId, name: "Comercial" })
     .select("id")
-    .single();
+    .single());
   if (comError || !comercial) throw new Error(`falha ao criar área Comercial: ${comError?.message}`);
 
-  const { data: objective, error: objError } = await admin
+  const { data: objective, error: objError } = await retryTransport(() => admin
     .from("objectives")
     .insert({
       org_id: orgId,
@@ -102,7 +107,7 @@ export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> 
       owner: "",
     })
     .select("id")
-    .single();
+    .single());
   if (objError || !objective) throw new Error(`falha ao criar objetivo: ${objError?.message}`);
 
   return {
