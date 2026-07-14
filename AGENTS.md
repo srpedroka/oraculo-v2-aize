@@ -182,6 +182,7 @@ Migrations principais:
 - `supabase/migrations/20260713120000_whatsapp_worker.sql`: worker, locks, retry/dead-letter, segredo e cron inerte.
 - `supabase/migrations/20260713160000_whatsapp_outbox.sql`: outbox transacional, sender, retry/dead-letter e cron inerte de saída.
 - `supabase/migrations/20260713223000_whatsapp_durable_path_default.sql`: torna fila/outbox padrão para integrações ativas e remove o fallback síncrono de texto.
+- `supabase/migrations/20260714150000_cursor_pagination_indexes.sql`: indices compostos para listas historicas com cursor por empresa.
 - `supabase/migrations/20260712190000_optional_owner_mfa.sql`: politica opcional de MFA por empresa.
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
@@ -568,7 +569,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatias 5A–5B concluídas em 2026-07-13: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade, preservando fachadas e comportamento. Próxima fatia autorizável: 5C, queries seletivas e paginação.
+- Etapa 5 / Fatias 5A–5C concluídas em 2026-07-13: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos passaram a usar queries seletivas e paginação cursor-based sem esconder dados antigos. Próxima fatia autorizável: 5D, invalidação seletiva.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

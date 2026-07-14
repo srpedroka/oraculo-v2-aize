@@ -1,5 +1,9 @@
 # Seguranca
 
+## Paginacao e isolamento
+
+As listas historicas paginadas sempre incluem `org_id` na consulta e continuam submetidas a RLS. O cursor contem somente `created_at` e `id`, nao concede acesso e nao substitui validacao de empresa. A migration `20260714150000_cursor_pagination_indexes.sql` cria indices de leitura, sem grants, policies ou exposicao adicional. Consultas diretas de documento exigem simultaneamente o ID e a empresa ativa.
+
 ## Principios
 
 - O frontend nunca recebe segredos de servidor.

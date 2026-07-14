@@ -1,5 +1,14 @@
 # Runbook
 
+## Smoke da paginacao historica
+
+1. Em Documentos, filtre por tipo, area e periodo e confirme que a primeira pagina respeita os filtros.
+2. Com mais de 30 registros, use **Carregar mais** e confirme ausencia de repeticoes e ordenacao do mais novo para o mais antigo.
+3. No Arquivo, repita para evidencias, check-ins, documentos e historico de alteracoes; abra um documento arquivado pela acao de visualizar.
+4. Em Configuracoes > IA > Historico, carregue paginas adicionais e confirme que totais e lista crescem juntos.
+5. Abra a edicao de um objetivo com mais de 30 evidencias e confirme a carga progressiva.
+6. Arquive/restaure um registro e confirme que a lista reflete a mudanca apos a invalidacao da entidade.
+
 ## CI e bloqueio de merge
 
 Todo pull request e push para `main` deve terminar com o check `CI required` verde. Ele cobre lockfile, segredos, audit, tipos, unitarios, fixtures, build, Supabase local, Edge Functions, RLS e E2E autenticado. Nao aprove nem publique um commit com esse check vermelho. Configuracao, artefatos sanitizados e verificacao de producao por SHA: `docs/CI.md`.

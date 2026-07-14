@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { HistoricalImportDialog } from "../features/history/HistoricalImportDialog";
 import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 import { useAppState } from "../state/store";
+import { usePaginatedPlanDocuments } from "../state/use-paginated-records";
 import type { PlanDocument, PlanDocumentOrigin, PlanDocumentType } from "../types";
 
 const TYPE_LABEL: Record<PlanDocumentType, string> = {
@@ -34,7 +35,7 @@ export function Documents() {
   const { state, dispatch } = useAppState();
   const [typeFilter, setTypeFilter] = useState<"all" | PlanDocumentType>("all");
   const [areaFilter, setAreaFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -52,21 +53,12 @@ export function Documents() {
   }, [isOwner, state.areas, state.currentMembership]);
 
   const knownAreas = useMemo(() => [...state.areas, ...state.archivedAreas], [state.areas, state.archivedAreas]);
-  const periods = useMemo(() => [...new Set(state.planDocuments.map((document) => document.period))], [state.planDocuments]);
-
-  const filteredDocuments = useMemo(
-    () =>
-      state.planDocuments.filter((document) => {
-        if (typeFilter !== "all" && document.type !== typeFilter) return false;
-        if (areaFilter !== "all") {
-          if (areaFilter === "company" && document.areaId) return false;
-          if (areaFilter !== "company" && document.areaId !== areaFilter) return false;
-        }
-        if (periodFilter !== "all" && document.period !== periodFilter) return false;
-        return true;
-      }),
-    [areaFilter, periodFilter, state.planDocuments, typeFilter],
-  );
+  const documentsQuery = usePaginatedPlanDocuments(state.activeOrgId, {
+    type: typeFilter === "all" ? null : typeFilter,
+    areaId: areaFilter === "all" ? null : areaFilter,
+    period: periodFilter,
+  });
+  const filteredDocuments = documentsQuery.items;
 
   const selectedDocument = filteredDocuments.find((document) => document.id === selectedId) ?? filteredDocuments[0] ?? null;
   const canManageSelected = Boolean(
@@ -201,14 +193,12 @@ export function Documents() {
           </label>
           <label className="grid gap-1.5 text-xs font-medium text-text-tertiary">
             Período
-            <select value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text">
-              <option value="all">Todos</option>
-              {periods.map((period) => (
-                <option key={period} value={period}>
-                  {period}
-                </option>
-              ))}
-            </select>
+            <input
+              value={periodFilter}
+              onChange={(event) => setPeriodFilter(event.target.value)}
+              placeholder="Todos ou ex.: T3 2026"
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm text-text"
+            />
           </label>
         </div>
       </Card>
@@ -247,11 +237,25 @@ export function Documents() {
                 </button>
               );
             })}
+            {documentsQuery.hasNextPage ? (
+              <Button
+                variant="ghost"
+                className="w-full"
+                loading={documentsQuery.isFetchingNextPage}
+                onClick={() => documentsQuery.fetchNextPage()}
+              >
+                Carregar mais
+              </Button>
+            ) : null}
           </aside>
           <div className="min-w-0 md:max-h-[70vh] md:overflow-y-auto md:pr-1 xl:sticky xl:top-8 xl:max-h-[calc(100vh-4rem)]">
             <PlanDocumentView document={selectedDocument} />
           </div>
         </div>
+      ) : documentsQuery.isLoading ? (
+        <Card className="text-center">
+          <p className="text-sm text-text-secondary">Carregando documentos...</p>
+        </Card>
       ) : (
         <Card className="text-center">
           <p className="text-base font-semibold text-text">Nenhum documento padrão ainda.</p>

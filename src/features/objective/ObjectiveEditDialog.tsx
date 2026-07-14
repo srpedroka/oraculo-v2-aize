@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { useAppState } from "../../state/store";
+import { usePaginatedObjectiveEvidences } from "../../state/use-paginated-records";
 import type { Membership, Objective, ObjectiveType, Status } from "../../types";
 import { STATUS_LABEL, TYPE_LABEL } from "../../types";
 import { formatDate } from "../../lib/format";
@@ -50,7 +51,8 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [reviewKpis, setReviewKpis] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const evidences = state.evidences.filter((evidence) => evidence.objectiveId === objective.id);
+  const evidencesQuery = usePaginatedObjectiveEvidences(state.activeOrgId, objective.id);
+  const evidences = evidencesQuery.items;
 
   function save() {
     if (saving) return;
@@ -285,6 +287,16 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
                   </div>
                 ))}
               </div>
+              {evidencesQuery.hasNextPage ? (
+                <Button
+                  variant="ghost"
+                  className="mt-3 w-full"
+                  loading={evidencesQuery.isFetchingNextPage}
+                  onClick={() => evidencesQuery.fetchNextPage()}
+                >
+                  Carregar mais evidências
+                </Button>
+              ) : null}
             </section>
           ) : null}
           {saveError ? <p className="text-sm text-status-danger">{saveError}</p> : null}

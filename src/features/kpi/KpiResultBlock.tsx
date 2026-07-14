@@ -279,7 +279,7 @@ export function KpiResultBlock({ kpis, values, canEdit = false, onEdit, onRescue
     const value = values.find((item) => item.kpiId === kpi.id && item.year === year && item.month === focusMonth);
     return value?.actualValue === null || value?.actualValue === undefined;
   });
-  const historicalCount = state.planDocuments.filter((document) => document.origin === "historical" && !document.archivedAt).length;
+  const historicalCount = state.historicalDocumentCount;
 
   return (
     <section className="space-y-4">

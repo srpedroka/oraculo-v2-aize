@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-13 - Listas historicas usam cursor estavel e carga sob demanda
+
+Decisao: manter somente dados ativos e limitados no carregamento principal e consultar documentos, evidencias, check-ins arquivados, uso de IA e revisoes em paginas de 30 registros, ordenadas por `created_at DESC, id DESC`. O cursor usa os dois campos para nao repetir nem pular registros com o mesmo horario.
+
+Motivo: o crescimento do historico fazia login e troca de empresa transferirem colecoes que nao eram necessarias para a tela atual. Paginacao por offset ficaria instavel quando novos registros fossem inseridos durante a navegacao.
+
+Consequencias: dados antigos continuam acessiveis por filtros e botoes **Carregar mais**; documentos arquivados podem ser abertos diretamente por ID. Filtros de tipo, area, periodo e estado de arquivo sao aplicados no servidor. Contagens de impacto antes de arquivar uma area usam `count exact`, sem depender da pagina carregada. A migration `20260714150000_cursor_pagination_indexes.sql` adiciona apenas indices compostos e nao muda RLS, papeis ou dados. Invalidacao seletiva e code splitting continuam nas Fatias 5D e 5E.
+
 ## 2026-07-13 - Grants do service_role são parte das migrations
 
 Decisão: declarar em migration os privilégios atuais e os default privileges do papel interno `service_role` no schema `public`, sem conceder novos acessos a `anon` ou `authenticated`.

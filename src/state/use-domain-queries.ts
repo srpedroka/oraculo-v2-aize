@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { requireClient } from "./store-client";
 import { mapAreaPlan, mapEvidence, mapKeyAction, mapObjective, mapProject } from "./domains/planning-mappers";
-import { mapChatMessage, mapCheckIn, mapOperationalRevision, mapPlanDocument, mapPlanningSession } from "./domains/session-mappers";
+import { mapChatMessage, mapCheckIn, mapPlanDocument, mapPlanningSession } from "./domains/session-mappers";
 import { mapExecutiveKpi, mapKpiMonthlyValue, mapObjectiveKpiLink } from "./domains/kpi-mappers";
-import { mapAiFunctionSetting, mapAiProviderKeyStatus, mapAiSettings, mapAiUsageLog, mapOrgTone, mapWhatsAppSettings } from "./domains/settings-mappers";
+import { mapAiFunctionSetting, mapAiProviderKeyStatus, mapAiSettings, mapOrgTone, mapWhatsAppSettings } from "./domains/settings-mappers";
 
 export function useDomainQueries(orgId: string | null, userId: string | null) {
   const areasQuery = useQuery({
@@ -84,7 +84,14 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
     enabled: Boolean(supabase && orgId),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("evidences").select("*").eq("org_id", orgId).order("created_at", { ascending: false });
+      const { data, error } = await client
+        .from("evidences")
+        .select("*")
+        .eq("org_id", orgId)
+        .is("archived_at", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(300);
       if (error) throw error;
       return (data ?? []).map(mapEvidence);
     },
@@ -143,25 +150,31 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
         .from("plan_documents")
         .select("*")
         .eq("org_id", orgId)
-        .order("created_at", { ascending: false });
+        .is("archived_at", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50);
       if (error) throw error;
       return (data ?? []).map(mapPlanDocument);
     },
   });
 
-  const operationalRevisionsQuery = useQuery({
-    queryKey: ["operational_revisions", orgId],
+  const companyProfileQuery = useQuery({
+    queryKey: ["plan_documents", orgId, "company-profile"],
     enabled: Boolean(supabase && orgId),
     queryFn: async () => {
       const client = requireClient();
       const { data, error } = await client
-        .from("operational_revisions")
+        .from("plan_documents")
         .select("*")
         .eq("org_id", orgId)
+        .eq("type", "company_profile")
+        .is("archived_at", null)
         .order("created_at", { ascending: false })
-        .limit(300);
+        .limit(1)
+        .maybeSingle();
       if (error) throw error;
-      return (data ?? []).map(mapOperationalRevision);
+      return data ? mapPlanDocument(data) : null;
     },
   });
 
@@ -236,22 +249,6 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
     },
   });
 
-  const aiUsageLogsQuery = useQuery({
-    queryKey: ["ai_usage_logs", orgId],
-    enabled: Boolean(supabase && orgId),
-    queryFn: async () => {
-      const client = requireClient();
-      const { data, error } = await client
-        .from("ai_usage_logs")
-        .select("*")
-        .eq("org_id", orgId)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return (data ?? []).map(mapAiUsageLog);
-    },
-  });
-
   const orgToneQuery = useQuery({
     queryKey: ["org_ai_tone", orgId],
     enabled: Boolean(supabase && orgId),
@@ -289,7 +286,14 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
     enabled: Boolean(supabase && orgId),
     queryFn: async () => {
       const client = requireClient();
-      const { data, error } = await client.from("check_ins").select("*").eq("org_id", orgId).order("created_at", { ascending: false });
+      const { data, error } = await client
+        .from("check_ins")
+        .select("*")
+        .eq("org_id", orgId)
+        .is("archived_at", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(120);
       if (error) throw error;
       return (data ?? []).map(mapCheckIn);
     },
@@ -299,10 +303,9 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
     areas: { areasQuery },
     planning: { areaPlansQuery, objectivesQuery, strategicProjectsQuery, strategicPlanQuery, keyActionsQuery, evidencesQuery },
     sessions: { chatMessagesQuery, planningSessionsQuery },
-    documents: { planDocumentsQuery, operationalRevisionsQuery },
+    documents: { planDocumentsQuery, companyProfileQuery },
     kpis: { executiveKpisQuery, kpiValuesQuery, objectiveKpiLinksQuery },
-    settings: { aiSettingsQuery, aiFunctionSettingsQuery, aiProviderKeyStatusesQuery, aiUsageLogsQuery, orgToneQuery, whatsappSettingsQuery },
+    settings: { aiSettingsQuery, aiFunctionSettingsQuery, aiProviderKeyStatusesQuery, orgToneQuery, whatsappSettingsQuery },
     execution: { checkInsQuery },
   };
 }
-

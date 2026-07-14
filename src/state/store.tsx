@@ -11,6 +11,7 @@ import { mapStrategicPlan } from "./domains/planning-mappers";
 import { useStoreDispatch } from "./use-store-dispatch";
 import { useStoreCommands } from "./use-store-commands";
 import { useDomainQueries } from "./use-domain-queries";
+import { useHistoricalDocumentCount } from "./use-paginated-records";
 import type { AppState } from "../types";
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -46,6 +47,7 @@ const EMPTY_STATE: AppState = {
   planningSessions: [],
   planDocuments: [],
   archivedPlanDocuments: [],
+  historicalDocumentCount: 0,
   companyProfile: null,
   operationalRevisions: [],
   executiveKpis: [],
@@ -179,11 +181,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     areas: { areasQuery },
     planning: { areaPlansQuery, objectivesQuery, strategicProjectsQuery, strategicPlanQuery, keyActionsQuery, evidencesQuery },
     sessions: { chatMessagesQuery, planningSessionsQuery },
-    documents: { planDocumentsQuery, operationalRevisionsQuery },
+    documents: { planDocumentsQuery, companyProfileQuery },
     kpis: { executiveKpisQuery, kpiValuesQuery, objectiveKpiLinksQuery },
-    settings: { aiSettingsQuery, aiFunctionSettingsQuery, aiProviderKeyStatusesQuery, aiUsageLogsQuery, orgToneQuery, whatsappSettingsQuery },
+    settings: { aiSettingsQuery, aiFunctionSettingsQuery, aiProviderKeyStatusesQuery, orgToneQuery, whatsappSettingsQuery },
     execution: { checkInsQuery },
   } = useDomainQueries(orgId, userId);
+  const historicalDocumentCountQuery = useHistoricalDocumentCount(orgId);
 
   const allAreas = useMemo(
     () => (areasQuery.data ?? []).map((row: any) => mapArea(row, orgMemberships)),
@@ -220,32 +223,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => (evidencesQuery.data ?? []).filter((evidence) => !evidence.archivedAt && activeObjectiveIds.has(evidence.objectiveId)),
     [activeObjectiveIds, evidencesQuery.data],
   );
-  const archivedEvidences = useMemo(
-    () => (evidencesQuery.data ?? []).filter((evidence) => Boolean(evidence.archivedAt)),
-    [evidencesQuery.data],
-  );
+  const archivedEvidences = useMemo(() => [], []);
   const activeCheckIns = useMemo(
     () => (checkInsQuery.data ?? []).filter((checkIn) => !checkIn.archivedAt && (!checkIn.areaId || activeAreaIds.has(checkIn.areaId))),
     [activeAreaIds, checkInsQuery.data],
   );
-  const archivedCheckIns = useMemo(
-    () => (checkInsQuery.data ?? []).filter((checkIn) => Boolean(checkIn.archivedAt)),
-    [checkInsQuery.data],
-  );
+  const archivedCheckIns = useMemo(() => [], []);
   const activePlanDocuments = useMemo(
     () => (planDocumentsQuery.data ?? []).filter((document) => !document.archivedAt),
     [planDocumentsQuery.data],
   );
-  const archivedPlanDocuments = useMemo(
-    () => (planDocumentsQuery.data ?? []).filter((document) => Boolean(document.archivedAt)),
-    [planDocumentsQuery.data],
-  );
-  const companyProfile = useMemo(() => {
-    const profiles = activePlanDocuments
-      .filter((document) => document.type === "company_profile")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return profiles[0] ?? null;
-  }, [activePlanDocuments]);
+  const archivedPlanDocuments = useMemo(() => [], []);
+  const companyProfile = companyProfileQuery.data ?? null;
   const activePlanningSessions = useMemo(
     () => (planningSessionsQuery.data ?? []).filter((planningSession) => !planningSession.areaId || activeAreaIds.has(planningSession.areaId)),
     [activeAreaIds, planningSessionsQuery.data],
@@ -331,14 +320,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       chatMessagesQuery.isLoading ||
       planningSessionsQuery.isLoading ||
       planDocumentsQuery.isLoading ||
-      operationalRevisionsQuery.isLoading ||
+      companyProfileQuery.isLoading ||
       executiveKpisQuery.isLoading ||
       kpiValuesQuery.isLoading ||
       objectiveKpiLinksQuery.isLoading ||
       aiSettingsQuery.isLoading ||
       aiFunctionSettingsQuery.isLoading ||
       aiProviderKeyStatusesQuery.isLoading ||
-      aiUsageLogsQuery.isLoading ||
+      historicalDocumentCountQuery.isLoading ||
       orgToneQuery.isLoading ||
       whatsappSettingsQuery.isLoading ||
       checkInsQuery.isLoading;
@@ -355,7 +344,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aiSettings: aiSettingsQuery.data ?? null,
       aiFunctionSettings: aiFunctionSettingsQuery.data ?? [],
       aiProviderKeyStatuses: aiProviderKeyStatusesQuery.data ?? [],
-      aiUsageLogs: aiUsageLogsQuery.data ?? [],
+      aiUsageLogs: [],
       orgTone: orgToneQuery.data ?? null,
       whatsappSettings: whatsappSettingsQuery.data ?? null,
       areas,
@@ -375,8 +364,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       planningSessions: activePlanningSessions,
       planDocuments: activePlanDocuments,
       archivedPlanDocuments,
+      historicalDocumentCount: historicalDocumentCountQuery.data ?? 0,
       companyProfile,
-      operationalRevisions: operationalRevisionsQuery.data ?? [],
+      operationalRevisions: [],
       executiveKpis: executiveKpisQuery.data ?? [],
       kpiValues: kpiValuesQuery.data ?? [],
       objectiveKpiLinks: objectiveKpiLinksQuery.data ?? [],
@@ -392,8 +382,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     aiProviderKeyStatusesQuery.isLoading,
     aiSettingsQuery.data,
     aiSettingsQuery.isLoading,
-    aiUsageLogsQuery.data,
-    aiUsageLogsQuery.isLoading,
     orgToneQuery.data,
     orgToneQuery.isLoading,
     activeAreaIds,
@@ -404,6 +392,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     activePlanDocuments,
     activePlanningSessions,
     companyProfile,
+    companyProfileQuery.isLoading,
     areaPlansQuery.data,
     areaPlansQuery.isLoading,
     areas,
@@ -445,8 +434,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     planningSessionsQuery.isLoading,
     planDocumentsQuery.data,
     planDocumentsQuery.isLoading,
-    operationalRevisionsQuery.data,
-    operationalRevisionsQuery.isLoading,
+    historicalDocumentCountQuery.data,
+    historicalDocumentCountQuery.isLoading,
     rawMembershipsQuery.isLoading,
     session,
     strategicPlan,

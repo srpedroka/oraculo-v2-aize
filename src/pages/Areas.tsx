@@ -6,6 +6,7 @@ import { Card } from "../components/ui/Card";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { AreaArchiveDialog } from "../features/areas/AreaArchiveDialog";
 import { useAppState } from "../state/store";
+import { useAreaOperationalImpact } from "../state/use-paginated-records";
 import type { Area, PlanLevel, Status } from "../types";
 
 function levelCount(level: PlanLevel, count: number) {
@@ -33,6 +34,7 @@ export function Areas() {
     () => state.memberships.filter((membership) => membership.role === "coordinator"),
     [state.memberships],
   );
+  const archiveImpactQuery = useAreaOperationalImpact(state.activeOrgId, areaToArchive?.id ?? null);
 
   function createArea(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,14 +44,7 @@ export function Areas() {
     setAreaCoordinatorId("");
   }
 
-  const archiveImpact = useMemo(() => {
-    if (!areaToArchive) return { objectives: 0, documents: 0, checkIns: 0 };
-    return {
-      objectives: state.objectives.filter((objective) => objective.areaId === areaToArchive.id).length,
-      documents: state.planDocuments.filter((document) => document.areaId === areaToArchive.id).length,
-      checkIns: state.checkIns.filter((checkIn) => checkIn.areaId === areaToArchive.id).length,
-    };
-  }, [areaToArchive, state.checkIns, state.objectives, state.planDocuments]);
+  const archiveImpact = archiveImpactQuery.data ?? { objectives: 0, documents: 0, checkIns: 0 };
 
   function archiveArea() {
     if (!areaToArchive) return;

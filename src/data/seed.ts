@@ -568,6 +568,7 @@ export const initialState: AppState = {
   archivedCheckIns: [],
   planningSessions: [],
   planDocuments: [],
+  historicalDocumentCount: 0,
   archivedPlanDocuments: [],
   companyProfile: null,
   operationalRevisions: [],

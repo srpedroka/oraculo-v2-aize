@@ -2,13 +2,15 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { PlanDocumentView } from "../components/PlanDocument";
 import { useAppState } from "../state/store";
+import { usePlanDocumentById } from "../state/use-paginated-records";
 
 export function DocumentPrint() {
   const { documentId } = useParams();
   const { state } = useAppState();
-  const document = [...state.planDocuments, ...state.archivedPlanDocuments].find((item) => item.id === documentId);
+  const documentQuery = usePlanDocumentById(state.activeOrgId, documentId ?? null);
+  const document = documentQuery.data;
 
-  if (!document && !state.loading) return <Navigate to="/documentos" replace />;
+  if (!document && !documentQuery.isLoading) return <Navigate to="/documentos" replace />;
   if (!document) return null;
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useAppState } from "../../state/store";
+import { useAreaOperationalImpact, usePaginatedAiUsageLogs } from "../../state/use-paginated-records";
 import type {
   AiConfigStatus,
   AiFunction,
@@ -136,6 +137,10 @@ export function useSettingsController() {
   }, [state.activeOrgId, companyProfile?.id]);
 
   const [iaTab, setIaTab] = useState<"chaves" | "funcoes" | "limites" | "historico">("chaves");
+  const usageQuery = usePaginatedAiUsageLogs(
+    state.activeOrgId,
+    showSection("ia") && iaTab === "historico",
+  );
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const whatsappWebhookUrl =
     supabaseUrl && state.activeOrgId ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/whatsapp-webhook?orgId=${state.activeOrgId}` : "";
@@ -153,18 +158,12 @@ export function useSettingsController() {
     () => memberToRemove ? allAreas.filter((area) => area.coordinatorId === memberToRemove.id) : [],
     [allAreas, memberToRemove],
   );
-  const archiveImpact = useMemo(() => {
-    if (!areaToArchive) return { objectives: 0, documents: 0, checkIns: 0 };
-    return {
-      objectives: state.objectives.filter((objective) => objective.areaId === areaToArchive.id).length,
-      documents: state.planDocuments.filter((document) => document.areaId === areaToArchive.id).length,
-      checkIns: state.checkIns.filter((checkIn) => checkIn.areaId === areaToArchive.id).length,
-    };
-  }, [areaToArchive, state.checkIns, state.objectives, state.planDocuments]);
+  const archiveImpactQuery = useAreaOperationalImpact(state.activeOrgId, areaToArchive?.id ?? null);
+  const archiveImpact = archiveImpactQuery.data ?? { objectives: 0, documents: 0, checkIns: 0 };
 
   const usageSummary = useMemo(
     () =>
-      state.aiUsageLogs.reduce(
+      usageQuery.items.reduce(
         (summary, log) => ({
           totalTokens: summary.totalTokens + log.totalTokens,
           promptTokens: summary.promptTokens + log.promptTokens,
@@ -174,10 +173,10 @@ export function useSettingsController() {
         }),
         { totalTokens: 0, promptTokens: 0, completionTokens: 0, totalCostUsd: 0, calls: 0 },
       ),
-    [state.aiUsageLogs],
+    [usageQuery.items],
   );
 
-  const recentUsage = state.aiUsageLogs.slice(0, 5);
+  const recentUsage = usageQuery.items;
   const tonePreview = useMemo(
     () => [
       `O Oráculo será ${acidityPreview(toneDraft.acidity)}, com um jeito ${drivePreview(toneDraft.drive)}.`,
@@ -815,6 +814,9 @@ export function useSettingsController() {
     archiveImpact,
     usageSummary,
     recentUsage,
+    usageHasMore: Boolean(usageQuery.hasNextPage),
+    usageLoadingMore: usageQuery.isFetchingNextPage,
+    loadMoreUsage: usageQuery.fetchNextPage,
     tonePreview,
     createOrganization,
     normalizeProfileLink,
@@ -844,4 +846,3 @@ export function useSettingsController() {
 }
 
 export type SettingsController = ReturnType<typeof useSettingsController>;
-

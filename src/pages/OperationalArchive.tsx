@@ -17,6 +17,12 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { formatDate } from "../lib/format";
 import { useAppState } from "../state/store";
+import {
+  usePaginatedArchivedCheckIns,
+  usePaginatedArchivedEvidences,
+  usePaginatedOperationalRevisions,
+  usePaginatedPlanDocuments,
+} from "../state/use-paginated-records";
 import type { OperationalEntityType, OperationalRevision } from "../types";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -121,6 +127,10 @@ export function OperationalArchive() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
+  const archivedEvidencesQuery = usePaginatedArchivedEvidences(state.activeOrgId);
+  const archivedCheckInsQuery = usePaginatedArchivedCheckIns(state.activeOrgId);
+  const archivedDocumentsQuery = usePaginatedPlanDocuments(state.activeOrgId, { archived: true });
+  const revisionsQuery = usePaginatedOperationalRevisions(state.activeOrgId);
 
   const archivedObjectiveBatches = useMemo(
     () => new Set(state.archivedObjectives.map((objective) => objective.archiveBatchId).filter(Boolean)),
@@ -139,7 +149,7 @@ export function OperationalArchive() {
     [archivedObjectivesById, state.archivedObjectives],
   );
   const independentActions = state.archivedKeyActions.filter((action) => !action.archiveBatchId || !archivedObjectiveBatches.has(action.archiveBatchId));
-  const independentEvidences = state.archivedEvidences.filter((evidence) => !evidence.archiveBatchId || !archivedObjectiveBatches.has(evidence.archiveBatchId));
+  const independentEvidences = archivedEvidencesQuery.items.filter((evidence) => !evidence.archiveBatchId || !archivedObjectiveBatches.has(evidence.archiveBatchId));
   const kpiNames = useMemo(() => new Map(state.executiveKpis.map((kpi) => [kpi.id, kpi.label])), [state.executiveKpis]);
 
   function canWriteArea(areaId: string | null | undefined) {
@@ -174,8 +184,8 @@ export function OperationalArchive() {
     independentActions.length +
     state.archivedProjects.length +
     independentEvidences.length +
-    state.archivedCheckIns.length +
-    state.archivedPlanDocuments.length;
+    archivedCheckInsQuery.items.length +
+    archivedDocumentsQuery.items.length;
 
   return (
     <div className="space-y-6">
@@ -263,10 +273,15 @@ export function OperationalArchive() {
             />
           );
         })}
+        {archivedEvidencesQuery.hasNextPage ? (
+          <Button variant="ghost" className="mt-3 w-full" loading={archivedEvidencesQuery.isFetchingNextPage} onClick={() => archivedEvidencesQuery.fetchNextPage()}>
+            Carregar mais
+          </Button>
+        ) : null}
       </ArchiveSection>
 
-      <ArchiveSection title="Check-ins estornados" count={state.archivedCheckIns.length}>
-        {state.archivedCheckIns.map((checkIn) => {
+      <ArchiveSection title="Check-ins estornados" count={archivedCheckInsQuery.items.length}>
+        {archivedCheckInsQuery.items.map((checkIn) => {
           const area = checkIn.areaId ? [...state.areas, ...state.archivedAreas].find((item) => item.id === checkIn.areaId) : null;
           return (
             <ArchiveRow
@@ -282,10 +297,15 @@ export function OperationalArchive() {
             />
           );
         })}
+        {archivedCheckInsQuery.hasNextPage ? (
+          <Button variant="ghost" className="mt-3 w-full" loading={archivedCheckInsQuery.isFetchingNextPage} onClick={() => archivedCheckInsQuery.fetchNextPage()}>
+            Carregar mais
+          </Button>
+        ) : null}
       </ArchiveSection>
 
-      <ArchiveSection title="Documentos arquivados" count={state.archivedPlanDocuments.length}>
-        {state.archivedPlanDocuments.map((document) => (
+      <ArchiveSection title="Documentos arquivados" count={archivedDocumentsQuery.items.length}>
+        {archivedDocumentsQuery.items.map((document) => (
           <ArchiveRow
             key={document.id}
             icon={FileText}
@@ -299,6 +319,11 @@ export function OperationalArchive() {
             viewTo={`/documentos/${document.id}/imprimir`}
           />
         ))}
+        {archivedDocumentsQuery.hasNextPage ? (
+          <Button variant="ghost" className="mt-3 w-full" loading={archivedDocumentsQuery.isFetchingNextPage} onClick={() => archivedDocumentsQuery.fetchNextPage()}>
+            Carregar mais
+          </Button>
+        ) : null}
       </ArchiveSection>
 
       <Card>
@@ -306,9 +331,9 @@ export function OperationalArchive() {
           <History className="h-4 w-4 text-text-tertiary" />
           <h2 className="text-base font-semibold text-text">Histórico de alterações</h2>
         </div>
-        {state.operationalRevisions.length ? (
+        {revisionsQuery.items.length ? (
           <div className="divide-y divide-border">
-            {state.operationalRevisions.slice(0, 80).map((revision) => (
+            {revisionsQuery.items.map((revision) => (
               <div key={revision.id} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-text">{revisionLabel(revision, kpiNames)}</p>
@@ -317,6 +342,11 @@ export function OperationalArchive() {
                 <p className="text-xs text-text-tertiary">{formatDate(revision.createdAt)}</p>
               </div>
             ))}
+            {revisionsQuery.hasNextPage ? (
+              <Button variant="ghost" className="my-3 w-full" loading={revisionsQuery.isFetchingNextPage} onClick={() => revisionsQuery.fetchNextPage()}>
+                Carregar mais alterações
+              </Button>
+            ) : null}
           </div>
         ) : (
           <p className="py-4 text-sm text-text-secondary">As próximas correções de planos, metas e lançamentos aparecerão aqui.</p>

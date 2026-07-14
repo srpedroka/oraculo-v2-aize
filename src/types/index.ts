@@ -589,6 +589,7 @@ export interface AppState {
   planningSessions: PlanningSession[];
   planDocuments: PlanDocument[];
   archivedPlanDocuments: PlanDocument[];
+  historicalDocumentCount: number;
   companyProfile: PlanDocument | null;
   operationalRevisions: OperationalRevision[];
   executiveKpis: ExecutiveKpi[];
