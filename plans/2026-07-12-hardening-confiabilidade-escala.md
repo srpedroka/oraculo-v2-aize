@@ -978,6 +978,8 @@ Teste obrigatório: provar que um agente comum consegue desenvolver e testar no 
 
 ### S2 — Publicação protegida sem burocracia cotidiana
 
+> **STATUS: concluída em 2026-07-14.** O workflow `Production release` exige SHA completo da `main` com `CI required` verde. O Environment `production` aceita somente `main`, exige aprovação de `srpedroka`, não permite bypass e concentra os únicos secrets de Actions. O run `29349267907` comprovou preflight sem segredo, espera por aprovação e verificação read-only verde; a fixture destrutiva foi recusada nos testes e `operational-health` foi republicada sem erro somente no staging. Push direto/frontend permanecem simples; a proteção clássica adicional da branch exigiu reautenticação por e-mail e foi deliberadamente deixada fora desta fatia, pois o gate sensível independe dela.
+
 - criar um único workflow de produção ligado ao SHA aprovado e ao `CI required`;
 - associar segredos ao GitHub Environment `production`, com aprovação do owner;
 - separar verificação somente leitura de publicação;

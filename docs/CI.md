@@ -8,7 +8,7 @@ O workflow `.github/workflows/ci.yml` roda em pull requests e em todo push para 
 - `Local Supabase integration`: aplica todas as migrations em Supabase local, serve as Edge Functions, roda integracao, RLS/seguranca e E2E autenticado em desktop/mobile;
 - `CI required`: fica verde somente quando os dois jobs anteriores terminam com sucesso.
 
-Na protecao da branch `main`, exigir o status **CI required** antes de merge. Tambem exigir que a branch esteja atualizada e impedir bypass, exceto recuperacao administrativa documentada.
+O fluxo atual preserva push direto para não transformar toda alteração de frontend em pull request. Publicações sensíveis não confiam nisso: o `Production release` consulta o check **CI required** do SHA exato e falha antes do Environment quando ele não está verde. Se a equipe crescer e adotar revisão por pull request, torne o mesmo status obrigatório na proteção da `main` e exija branch atualizada.
 
 ## Segredos e artefatos
 
@@ -27,6 +27,8 @@ Somente depois da aprovacao do owner um dos jobs protegidos recebe os secrets do
 - `migrations`: aplica somente o conjunto pendente contido no intervalo aprovado e reexecuta o guard antes do `db push`.
 
 `DROP`, `TRUNCATE`, remoção de coluna/constraint e `DELETE` total sao recusados por padrao. A caixa `allow_destructive_migration` registra uma excecao explicita, mas nao pula CI, revisao do pacote nem aprovacao do Environment. O deploy comum do frontend permanece no fluxo Netlify existente e nao ganha aprovacao de migration.
+
+Configuração remota atual: Environment restrito à branch `main`, reviewer obrigatório `srpedroka`, bypass administrativo desligado e secrets somente no Environment. A primeira prova real foi o run `29349267907`: preflight verde, espera por revisão e verificação read-only concluída após aprovação.
 
 ## Diagnostico
 

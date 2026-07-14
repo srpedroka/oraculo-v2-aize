@@ -533,6 +533,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 ### Pronto
 
 - V2 publicada em producao no Netlify.
+- Publicacao sensivel protegida pelo workflow `Production release`: SHA da `main` com `CI required`, preflight sem segredo, aprovacao do owner no Environment `production`, Functions explicitas e guard de migrations destrutivas. Frontend comum continua no fluxo simples do Netlify.
 - Supabase conectado com Auth, banco, RLS, realtime e Edge Functions.
 - Login, onboarding, empresas, membros, areas e configuracoes.
 - Arquivamento reversivel de areas e remocao segura de membros, com reatribuicao de coordenacao e bloqueio do ultimo owner.
