@@ -82,7 +82,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
         with:
-          version: 2.101.0
+          version: 2.109.1
       - name: Start local Supabase and apply migrations
         run: node --experimental-strip-types scripts/run-ci-command.ts supabase-start -- supabase start
       - name: Export ephemeral local credentials
