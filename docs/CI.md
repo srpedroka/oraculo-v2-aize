@@ -27,5 +27,6 @@ Antes de liberar deploy automatico, configure um environment `production` no Git
 1. Abra o job vermelho e leia o log sanitizado do passo.
 2. Baixe o artefato `*-sanitized-*` somente se o log do passo nao bastar.
 3. Reproduza o comando indicado localmente.
-4. Em falha de Supabase, rode `supabase start`, exporte as variaveis locais e inicie `supabase functions serve` conforme o workflow. O CI fixa a CLI em `2.109.1` e injeta explicitamente `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` do stack efemero no runtime das Functions para evitar divergencia de credenciais.
-5. Nunca contorne o gate publicando outro commit ou desligando o check; corrija a causa ou registre formalmente a excecao de emergencia.
+4. Em falha de Supabase, rode `supabase start`, exporte as variaveis locais e inicie `supabase functions serve` conforme o workflow. O CI fixa a CLI em `2.109.1`; o runtime provisiona as variaveis reservadas `SUPABASE_*` automaticamente. O TOTP local fica habilitado para manter paridade com os testes de MFA do ambiente hospedado.
+5. Ao testar ausencia de autenticacao no gateway local, omita `Authorization` e `apikey`: a anon key local legada e um JWT e pode autenticar a chamada quando enviada apenas como `apikey`.
+6. Nunca contorne o gate publicando outro commit ou desligando o check; corrija a causa ou registre formalmente a excecao de emergencia.

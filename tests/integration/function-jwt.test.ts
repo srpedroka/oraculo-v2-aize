@@ -11,11 +11,11 @@ const anonKey = process.env.SUPABASE_STAGING_ANON_KEY ?? "";
 let org: DisposableOrg | null = null;
 let accessToken = "";
 
-async function callFunction(slug: string, authorization?: string) {
+async function callFunction(slug: string, authorization?: string, includeApiKey = true) {
   return fetch(`${stagingUrl}/functions/v1/${slug}`, {
     method: "POST",
     headers: {
-      apikey: anonKey,
+      ...(includeApiKey ? { apikey: anonKey } : {}),
       "content-type": "application/json",
       ...(authorization ? { authorization: `Bearer ${authorization}` } : {}),
     },
@@ -54,7 +54,9 @@ d("Fatia 2B — JWT no gateway das funções administrativas", () => {
   });
 
   it.each(FUNCTIONS)("%s recusa chamada sem JWT no gateway", async (slug) => {
-    const response = await callFunction(slug);
+    // The local legacy anon key is itself a JWT. Omitting only Authorization
+    // would still authenticate at the local gateway through the apikey header.
+    const response = await callFunction(slug, undefined, false);
     expect(response.status).toBe(401);
   });
 
