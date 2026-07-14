@@ -934,6 +934,76 @@ Exemplos:
 
 Realtime deve chamar handlers específicos por tabela.
 
+## 5.5.1 Etapa S — Proteção operacional de produção
+
+> **ORDEM ESPECIAL:** esta etapa foi incorporada ao plano mestre em 2026-07-14 e deve ser executada depois da Fatia 5D e antes da 5E. Ela não cria uma trilha paralela. Parte da antiga Fatia 6F passa a referenciar os controles de recuperação definidos aqui.
+
+Objetivo: impedir que um agente, ferramenta de desenvolvimento ou credencial administrativa consiga transformar um erro de ambiente em perda total de produção. O uso normal do app, do WhatsApp, dos planos, KPIs e documentos não muda.
+
+Regra de baixa burocracia:
+
+- desenvolvimento, testes locais/staging e uso cotidiano continuam sem nova confirmação;
+- frontend e mudanças comuns seguem o fluxo normal depois do CI;
+- proteção adicional fica restrita a credenciais de produção, migrations, mudanças de infraestrutura e exclusões irreversíveis;
+- espera longa e segundo aprovador permanecem opcionais, desligados inicialmente.
+
+### S0 — Auditoria somente leitura
+
+> **STATUS: concluída em 2026-07-14.** Nenhum código, configuração, dado, migration, Function ou frontend foi alterado em produção.
+
+Resultado observado:
+
+- repositório limpo e sincronizado no commit da Fatia 5D;
+- testes de integração continuam recusando explicitamente a referência de produção;
+- o cron interno de backup está ativo a cada 15 minutos, com política automática e snapshot por evento ligados;
+- existem 29 backups internos concluídos, zero falhas, zero pendências e 29 objetos correspondentes no bucket privado;
+- a última conclusão observada foi `2026-07-14T06:07:03Z`;
+- nenhum backup possui réplica externa e não existem secrets `BACKUP_S3_*` configurados;
+- PITR está desligado e a API de backups do projeto não listou ponto restaurável da plataforma;
+- não existe exercício de restauração registrado em `organization_restore_runs`;
+- o ambiente privado dos agentes não contém `SUPABASE_DB_URL` nem `SUPABASE_SERVICE_ROLE_KEY` de produção, mas contém um `SUPABASE_ACCESS_TOKEN` capaz de consultar e publicar no projeto;
+- o workflow versionado de produção faz verificação somente leitura, mas ainda não declara um GitHub Environment `production`; a proteção remota da branch deve ser confirmada com autenticação administrativa na S2.
+
+### S1 — Isolamento de credenciais
+
+- retirar o token administrativo de produção do ambiente carregado por padrão por agentes;
+- manter no ambiente diário apenas credenciais de staging e dados públicos do frontend;
+- guardar a credencial de produção em cofre/ambiente protegido, liberada somente durante publicação autorizada;
+- não fornecer conexão PostgreSQL direta nem `service_role` de produção a ferramentas de desenvolvimento;
+- documentar rotação, expiração, responsável e procedimento de emergência.
+
+Teste obrigatório: provar que um agente comum consegue desenvolver e testar no staging, consegue verificar produção apenas por leitura e não consegue executar query administrativa ou deploy sem abrir o fluxo protegido.
+
+### S2 — Publicação protegida sem burocracia cotidiana
+
+- criar um único workflow de produção ligado ao SHA aprovado e ao `CI required`;
+- associar segredos ao GitHub Environment `production`, com aprovação do owner;
+- separar verificação somente leitura de publicação;
+- bloquear migration destrutiva por padrão e exigir sinalização explícita quando houver `DROP`, `TRUNCATE`, remoção de coluna/tabela ou alteração equivalente;
+- manter deploy de frontend sem migration no caminho simples já existente.
+
+Teste obrigatório: publicar uma alteração inofensiva no staging, provar que o job de produção não recebe segredo antes da aprovação e confirmar que uma migration destrutiva de fixture é recusada.
+
+### S3 — Recuperação independente
+
+- ativar PITR ou escolher formalmente uma alternativa com RPO equivalente;
+- configurar réplica externa fora do projeto principal, com versionamento e retenção;
+- a credencial usada pelo Oráculo pode criar cópias, mas não deve apagar versões protegidas;
+- não remover automaticamente a última cópia externa ao excluir uma empresa;
+- definir RPO, RTO e custo aceito antes de contratar recursos.
+
+Teste obrigatório: restaurar uma cópia em ambiente isolado, comparar contagens/checksums e registrar tempo, perda máxima observada e itens deliberadamente ausentes, como chaves e WhatsApp ativo.
+
+### S4 — Exclusões críticas e alertas
+
+- manter MFA + nome exato + backup recente + confirmação final para exclusão da empresa;
+- deixar espera de 24 horas e segundo owner como opções futuras, desligadas inicialmente;
+- alertar sobre exclusão em massa, alteração destrutiva de schema, atraso/falha de backup, desligamento de PITR e falha da réplica externa;
+- executar restore drill mensal assistido e exercício de desastre trimestral;
+- manter comandos destrutivos locais limitados ao workspace e nunca aprovar prefixos genéricos para `rm`, shell ou runtime de script.
+
+Teste obrigatório: em staging descartável, provar bloqueio sem confirmação/backup/MFA quando exigida, emissão dos alertas e restauração posterior. Nunca usar empresa real nesse teste.
+
 ## 5.6 Fatia 5E — Bundle e rotas
 
 - Usar `React.lazy`/`Suspense` nas páginas.
@@ -1195,7 +1265,9 @@ O agente deve entregar:
 | 2 | Segurança | Fecha vulnerabilidades e abuso/custo |
 | 3 | WhatsApp | Resolve a principal fragilidade operacional |
 | 4 | Qualidade/observabilidade | Detecta regressões e incidentes |
-| 5 | Estrutura/escala | Reduz complexidade e degradação futura |
+| 5 | Estrutura/escala até 5D | Reduz complexidade e degradação futura |
+| S | Proteção de produção | Isola credenciais e comprova recuperação antes de continuar |
+| 5 | Estrutura/escala 5E–5F | Conclui desempenho e concorrência |
 | 6 | Governança/LGPD/DR | Prepara expansão comercial responsável |
 | 7 | Teste mestre | Aprova o conjunto como sistema único |
 
