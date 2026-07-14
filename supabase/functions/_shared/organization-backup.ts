@@ -886,6 +886,13 @@ export async function restoreOrganizationEnvelope(input: {
       executive_kpi: kpiMap,
       kpi_monthly_value: kpiValueMap,
     };
+    // Parent-link updates above fire normal audit triggers. They describe the
+    // restore process, not source history, so replace them with the snapshot.
+    const { error: restoreRevisionCleanupError } = await client
+      .from("operational_revisions")
+      .delete()
+      .eq("org_id", targetOrgId);
+    if (restoreRevisionCleanupError) throw restoreRevisionCleanupError;
     const operationalRevisions = rowsOf(data, "operational_revisions")
       .map((row) => {
         const entityId = revisionEntityMaps[String(row.entity_type)]?.get(String(row.entity_id));

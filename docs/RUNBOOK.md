@@ -1097,13 +1097,24 @@ Se não houver backup válido há mais de 26 horas:
 
 Para réplica externa, configure todos os secrets `BACKUP_S3_*` descritos em `docs/ACCESS.md` e publique `organization-backup` novamente. A coluna `external_status` deve passar a `completed`. O bucket precisa ser privado, dedicado ao Oráculo e ter lock de 90 dias. A credencial da Function deve ser limitada ao bucket; o código não emite exclusão externa. Sem S3, gere periodicamente o pacote portátil e guarde-o fora do projeto Supabase.
 
-No Cloudflare R2, a interface pode exibir a URL S3 com `/<bucket>` no final. A Function normaliza esse sufixo antes de configurar o cliente, pois o bucket também é informado em `BACKUP_S3_BUCKET`. Upload e download externos têm duas tentativas e limite total de 15 segundos; falha do R2 deve produzir `external_status = failed`, sem prender o worker nem invalidar o arquivo interno concluído.
+No Cloudflare R2, a interface pode exibir a URL S3 com `/<bucket>` no final. A Function normaliza esse sufixo antes de montar a URL assinada, pois o bucket também é informado em `BACKUP_S3_BUCKET`. Upload e download usam `aws4fetch`, recomendado pelo R2 para o runtime web, com duas tentativas de até 30 segundos cada. Falha externa deve produzir `external_status = failed`, sem prender o worker nem invalidar o arquivo interno concluído.
 
 Meta inicial de recuperação: RPO de 30 minutos para os dados de empresa incluídos no snapshot e RTO de 4 horas para restaurar uma cópia operacional. A réplica não contém chaves de IA, segredos do WhatsApp, mídia bruta nem credenciais do Supabase Auth. Em desastre total, usuários precisam ser recriados/convidados e integrações precisam ter seus segredos reconfigurados e rotacionados antes da reativação.
 
 O disparo via `pg_net` usa timeout de 300 segundos. Um registro `pending` por mais de 5 minutos deve ser tratado como falha operacional: consulte os logs de `organization-backup`, não apague a cópia externa e só refile a solicitação depois de confirmar que não há execução ativa.
 
 Teste de recuperação recomendado: mensalmente restaure o snapshot mais recente como nova empresa, confira planos, documentos, KPIs e membros, e depois remova a empresa de teste pela administração apropriada. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone.
+
+Prova de recuperação de 2026-07-14:
+
+- backup de produção `8560d405-ac16-4287-a2e4-251604234065`, com 643 registros, 114.985 bytes e SHA-256 registrado;
+- Storage interno e réplica R2 concluíram em aproximadamente 2 segundos, e o objeto foi conferido no bucket privado com o mesmo tamanho;
+- o pacote foi restaurado no staging como empresa descartável em 22,7 segundos;
+- 619 registros operacionais foram conferidos tabela a tabela; os 24 não recriados correspondem exatamente a 7 perfis de Auth, 6 memberships adicionais, 5 conversas e 6 sessões dependentes desses usuários;
+- planos, objetivos, documentos, KPIs e 39 revisões operacionais bateram com o manifesto; chaves de IA e WhatsApp ficaram ausentes e a integração permaneceu inerte;
+- o clone e o usuário técnico foram removidos após a validação.
+
+Durante a primeira execução, updates necessários para reconstruir relações pai/filho geraram duas revisões de auditoria adicionais. A restauração agora remove somente essas revisões transitórias do clone antes de inserir o histórico original do snapshot. Nunca remova revisões da empresa de origem.
 
 O dump lógico geral via `supabase db dump` é uma camada separada e, no ambiente local atual, exige Docker Desktop ou um `pg_dump` compatível. O backup por empresa não depende de Docker.
 
