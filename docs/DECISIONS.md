@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-14 - Cache e Realtime invalidam por dominio
+
+Decisao: centralizar em `src/state/query-invalidation.ts` as familias de chaves React Query, os pacotes de dependencias e o mapa entre tabela Realtime e dominio. Mutacoes declaram explicitamente o que alteram; o refresh manual continua completo.
+
+Motivo: `invalidateOrg()` fazia uma evidencia, mensagem ou log de IA disparar cerca de duas dezenas de refetches sem relacao, aumentando trafego, rerenders e perda de estado visual. Strings de query espalhadas tambem dificultavam provar que listas paginadas eram atualizadas corretamente.
+
+Consequencias: uso de IA atualiza somente historico/custo; chat atualiza conversa e, quando aplicavel, sessao; KPI importado atualiza valores e documento; lifecycle atualiza entidade, filhos necessarios, contagem e auditoria. Eventos Realtime existentes chamam handlers especificos por tabela. Nao houve mudanca de RLS, schema, payload, permissao ou fluxo funcional; novas tabelas nao foram adicionadas a publicacao Realtime nesta fatia.
+
 ## 2026-07-13 - Listas historicas usam cursor estavel e carga sob demanda
 
 Decisao: manter somente dados ativos e limitados no carregamento principal e consultar documentos, evidencias, check-ins arquivados, uso de IA e revisoes em paginas de 30 registros, ordenadas por `created_at DESC, id DESC`. O cursor usa os dois campos para nao repetir nem pular registros com o mesmo horario.

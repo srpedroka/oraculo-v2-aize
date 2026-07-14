@@ -1,5 +1,14 @@
 # Runbook
 
+## Smoke da invalidacao seletiva
+
+1. Com a aba Network aberta, limpe as requisicoes e registre uma evidencia em um objetivo.
+2. Confirme que o app atualiza evidencias/impacto sem refazer configuracoes de IA, membros, areas, WhatsApp e KPIs.
+3. Envie uma mensagem no chat web e confirme atualizacao de conversa, sessao quando iniciada e uso de IA, sem refetch geral.
+4. Importe um KPI e confirme atualizacao de `kpi_monthly_values` e `plan_documents`.
+5. Arquive/restaure um objetivo e confirme objetivos, acoes, evidencias, vinculos, auditoria e contagem coerentes.
+6. Use o refresh manual e confirme que ele continua recarregando a empresa completa.
+
 ## Smoke da paginacao historica
 
 1. Em Documentos, filtre por tipo, area e periodo e confirme que a primeira pagina respeita os filtros.

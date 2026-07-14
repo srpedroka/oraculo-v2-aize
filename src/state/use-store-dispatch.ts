@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import type { QueryClient } from "@tanstack/react-query";
 import type {
   CompanyProfileSuggestion,
   HistoricalConflict,
@@ -13,12 +12,16 @@ import type {
 import { callEdgeFunction, requireClient } from "./store-client";
 import type { AppAction } from "./store-contract";
 import { toKeyActionInsert, toObjectiveInsert } from "./domains/planning-mappers";
+import {
+  operationalEntityDomains,
+  PLANNING_MUTATION_DOMAINS,
+  type QueryDomain,
+} from "./query-invalidation";
 
 interface UseStoreDispatchOptions {
   orgId: string | null;
   userId: string | null;
-  queryClient: QueryClient;
-  invalidateOrg: () => void;
+  invalidateDomains: (domains: QueryDomain[]) => void;
   uiDispatch: (action: AppAction) => void;
   setActiveOrgId: (orgId: string | null) => void;
 }
@@ -26,8 +29,7 @@ interface UseStoreDispatchOptions {
 export function useStoreDispatch({
   orgId,
   userId,
-  queryClient,
-  invalidateOrg,
+  invalidateDomains,
   uiDispatch,
   setActiveOrgId,
 }: UseStoreDispatchOptions) {
@@ -60,7 +62,7 @@ export function useStoreDispatch({
             }) as { org: { id: string } };
             setActiveOrgId(org.id);
             window.localStorage.setItem("oraculo.activeOrgId", org.id);
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "organizations"]);
             action.onSuccess?.();
           } catch (error) {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível criar a empresa.");
@@ -77,7 +79,7 @@ export function useStoreDispatch({
           .insert({ org_id: orgId, name: action.name, coordinator_id: action.coordinatorId || null })
           .then(({ error }) => {
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["areas"]);
           });
         return;
       }
@@ -90,7 +92,7 @@ export function useStoreDispatch({
           .eq("org_id", orgId)
           .then(({ error }) => {
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["areas"]);
           });
         return;
       }
@@ -107,7 +109,7 @@ export function useStoreDispatch({
             .maybeSingle();
           if (error) throw error;
           if (!data) throw new Error("Área não encontrada ou já arquivada.");
-          invalidateOrg();
+          invalidateDomains(["areas", "areaImpact"]);
           action.onSuccess?.();
         })().catch((error) => {
           action.onError?.(error instanceof Error ? error.message : "Não foi possível arquivar a área.");
@@ -126,7 +128,7 @@ export function useStoreDispatch({
             .maybeSingle();
           if (error) throw error;
           if (!data) throw new Error("Área arquivada não encontrada.");
-          invalidateOrg();
+          invalidateDomains(["areas", "areaImpact"]);
           action.onSuccess?.();
         })().catch((error) => {
           action.onError?.(error instanceof Error ? error.message : "Não foi possível restaurar a área.");
@@ -146,7 +148,7 @@ export function useStoreDispatch({
           redirectTo: window.location.origin,
         })
           .then((result) => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "areas"]);
             action.onSuccess?.(result as { channel?: string; inviteLink?: string; detail?: string } | undefined);
           })
           .catch((error) => {
@@ -162,7 +164,7 @@ export function useStoreDispatch({
           role: action.role,
         })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(["memberships"]);
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -178,7 +180,7 @@ export function useStoreDispatch({
           areaId: action.areaId,
         })
           .then((result) => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "areas"]);
             action.onSuccess?.(result as { changedAreaIds?: string[] } | undefined);
           })
           .catch((error) => {
@@ -194,7 +196,7 @@ export function useStoreDispatch({
           areaReassignments: action.areaReassignments,
         })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "areas"]);
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -206,7 +208,7 @@ export function useStoreDispatch({
       if (action.type === "leave_organization") {
         void callEdgeFunction("organization-lifecycle", { action: "leave", orgId, reason: action.reason ?? null })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "organizations"]);
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -218,7 +220,7 @@ export function useStoreDispatch({
       if (action.type === "archive_organization") {
         void callEdgeFunction("organization-lifecycle", { action: "archive", orgId, reason: action.reason ?? null })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "organizations"]);
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -230,7 +232,7 @@ export function useStoreDispatch({
       if (action.type === "restore_organization") {
         void callEdgeFunction("organization-lifecycle", { action: "restore", orgId })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "organizations"]);
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -247,7 +249,7 @@ export function useStoreDispatch({
           reason: action.reason ?? null,
         })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(["memberships", "profiles", "organizations"]);
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -269,7 +271,7 @@ export function useStoreDispatch({
           })
           .then(({ error }) => {
             if (error) throw error;
-            queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+            invalidateDomains(["chat"]);
           });
         return;
       }
@@ -281,8 +283,7 @@ export function useStoreDispatch({
           message: action.text,
           context: action.context ?? "chat",
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
-          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+          invalidateDomains(["chat", "sessions", "aiUsage"]);
         });
         return;
       }
@@ -297,9 +298,7 @@ export function useStoreDispatch({
           period: action.period,
           channel: "web",
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
-          queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
-          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
+          invalidateDomains(["sessions", "chat"]);
         });
         return;
       }
@@ -314,9 +313,7 @@ export function useStoreDispatch({
           fileName: action.fileName ?? null,
           channel: "web",
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
-          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
-          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+          invalidateDomains(["sessions", "chat", "aiUsage"]);
         });
         return;
       }
@@ -332,9 +329,7 @@ export function useStoreDispatch({
           fileName: action.fileName ?? null,
           channel: "web",
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
-          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
-          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+          invalidateDomains(["sessions", "chat", "aiUsage"]);
         });
         return;
       }
@@ -347,7 +342,7 @@ export function useStoreDispatch({
           image: action.image ?? null,
         })
           .then((result) => {
-            queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+            invalidateDomains(["aiUsage"]);
             const payload = result as {
               suggestion: HistoricalMetadataSuggestion;
               extractedText?: string;
@@ -385,7 +380,7 @@ export function useStoreDispatch({
           savedCandidateId: action.savedCandidateId ?? null,
         })
           .then((result) => {
-            queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
+            invalidateDomains(["documents", "areaImpact"]);
             action.onSuccess?.(result as { document?: { id: string }; warning?: string | null } | undefined);
           })
           .catch((error) => {
@@ -400,7 +395,7 @@ export function useStoreDispatch({
           links: action.links ?? [],
         })
           .then((result) => {
-            queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+            invalidateDomains(["aiUsage"]);
             action.onSuccess?.((result as { suggestion: CompanyProfileSuggestion }).suggestion);
           })
           .catch((error) => {
@@ -442,7 +437,7 @@ export function useStoreDispatch({
               created_by: userId,
             });
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["documents"]);
             action.onSuccess?.();
           } catch (error) {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível confirmar o perfil da empresa.");
@@ -458,9 +453,7 @@ export function useStoreDispatch({
           message: action.text,
           channel: "web",
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
-          queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
-          queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+          invalidateDomains(["sessions", "chat", "aiUsage"]);
         });
         return;
       }
@@ -470,7 +463,7 @@ export function useStoreDispatch({
           action: "confirm",
           sessionId: action.sessionId,
           channel: "web",
-        }).then(invalidateOrg);
+        }).then(() => invalidateDomains(PLANNING_MUTATION_DOMAINS));
         return;
       }
 
@@ -478,7 +471,7 @@ export function useStoreDispatch({
         void callEdgeFunction("oracle-session", {
           action: "abandon",
           sessionId: action.sessionId,
-        }).then(invalidateOrg);
+        }).then(() => invalidateDomains(["sessions", "chat"]));
         return;
       }
 
@@ -493,7 +486,7 @@ export function useStoreDispatch({
           })
           .then(({ error }) => {
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["evidences", "areaImpact"]);
           });
         return;
       }
@@ -511,7 +504,7 @@ export function useStoreDispatch({
               keyActionRows,
               token: action.token,
             }) as { objective: { id: string } };
-            invalidateOrg();
+            invalidateDomains(["objectives", "keyActions", "areaImpact"]);
             action.onSuccess?.(objective.id);
           } catch (error) {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível criar o objetivo.");
@@ -529,7 +522,7 @@ export function useStoreDispatch({
               .eq("id", action.objective.id)
               .eq("org_id", orgId);
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["objectives"]);
             action.onSuccess?.(action.objective.id);
           } catch (error) {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível atualizar o objetivo.");
@@ -541,7 +534,7 @@ export function useStoreDispatch({
       if (action.type === "suggest_objective_kpis") {
         void callEdgeFunction("suggest-objective-kpis", { orgId, objectiveId: action.objectiveId })
           .then((result) => {
-            queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+            invalidateDomains(["aiUsage"]);
             action.onSuccess(((result as { suggestions?: ObjectiveKpiSuggestion[] }).suggestions ?? []));
           })
           .catch((error) => action.onError?.(error instanceof Error ? error.message : "Não foi possível sugerir KPIs."));
@@ -558,7 +551,7 @@ export function useStoreDispatch({
               objectiveId: action.objectiveId,
               links: action.links,
             });
-            invalidateOrg();
+            invalidateDomains(["kpiLinks"]);
             action.onSuccess?.();
           } catch (error) {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar os vínculos de KPI.");
@@ -575,7 +568,7 @@ export function useStoreDispatch({
           .eq("org_id", orgId)
           .then(({ error }) => {
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["keyActions"]);
           });
         return;
       }
@@ -589,7 +582,7 @@ export function useStoreDispatch({
           reason: action.reason ?? "",
         })
           .then(() => {
-            invalidateOrg();
+            invalidateDomains(operationalEntityDomains(action.entityType));
             action.onSuccess?.();
           })
           .catch((error) => {
@@ -609,7 +602,7 @@ export function useStoreDispatch({
             .eq("id", action.kpiId)
             .eq("org_id", orgId);
           if (error) throw error;
-          queryClient.invalidateQueries({ queryKey: ["executive_kpis", orgId] });
+          invalidateDomains(["kpis"]);
           action.onSuccess?.();
         })().catch((error) => {
           action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar o KPI.");
@@ -634,7 +627,7 @@ export function useStoreDispatch({
           }));
           const { error } = await client.from("kpi_monthly_values").upsert(rows, { onConflict: "kpi_id,year,month" });
           if (error) throw error;
-          queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
+          invalidateDomains(["kpiValues"]);
           action.onSuccess?.();
         })().catch((error) => {
           action.onError?.(error instanceof Error ? error.message : "Não foi possível salvar os lançamentos.");
@@ -660,7 +653,7 @@ export function useStoreDispatch({
           })
           .then(({ error }) => {
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["strategicPlan"]);
           });
         return;
       }
@@ -683,7 +676,7 @@ export function useStoreDispatch({
           })
           .then(({ error }) => {
             if (error) throw error;
-            invalidateOrg();
+            invalidateDomains(["areaPlans"]);
           });
         return;
       }
@@ -697,7 +690,7 @@ export function useStoreDispatch({
           inputTokenPriceUsdPerMillion: action.inputTokenPriceUsdPerMillion,
           outputTokenPriceUsdPerMillion: action.outputTokenPriceUsdPerMillion,
           pricingSource: action.pricingSource ?? "",
-        }).then(invalidateOrg);
+        }).then(() => invalidateDomains(["aiSettings"]));
         return;
       }
 
@@ -706,7 +699,7 @@ export function useStoreDispatch({
           orgId,
           provider: action.provider,
           apiKey: action.apiKey,
-        }).then(invalidateOrg);
+        }).then(() => invalidateDomains(["aiSettings"]));
         return;
       }
 
@@ -716,7 +709,7 @@ export function useStoreDispatch({
           function: action.function,
           provider: action.provider,
           model: action.model,
-        }).then(invalidateOrg);
+        }).then(() => invalidateDomains(["aiSettings"]));
         return;
       }
 
@@ -732,12 +725,11 @@ export function useStoreDispatch({
           weeklyPulseEnabled: action.weeklyPulseEnabled,
           weeklyPulseWeekday: action.weeklyPulseWeekday,
           weeklyPulseHour: action.weeklyPulseHour,
-        }).then(invalidateOrg);
+        }).then(() => invalidateDomains(["whatsapp"]));
         return;
       }
 
     },
-    [invalidateOrg, orgId, queryClient, userId],
+    [invalidateDomains, orgId, userId],
   );
 }
-

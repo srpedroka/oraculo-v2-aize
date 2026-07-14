@@ -9,7 +9,7 @@ O Oraculo V2 e um app web de execucao estrategica. O frontend roda em React/Vite
 ### Frontend
 
 - `src/App.tsx`: define rotas e bloqueios de acesso. Sem sessao, mostra login. Com sessao sem empresa, mostra onboarding. Com empresa, mostra o app.
-- `src/state/store.tsx`: fachada compatível de `AppProvider`/`useAppState`, responsável por compor os domínios e o estado final. O contrato público fica em `store-contract.ts`, UI local em `ui-state.ts`, cliente seguro em `store-client.ts`, consultas React Query agrupadas por domínio em `use-domain-queries.ts`, comandos em `use-store-commands.ts`/`use-store-dispatch.ts` e transformações em `src/state/domains/`. Essa divisão preserva os consumidores atuais enquanto permite migrá-los gradualmente para hooks menores.
+- `src/state/store.tsx`: fachada compatível de `AppProvider`/`useAppState`, responsável por compor os domínios e o estado final. O contrato público fica em `store-contract.ts`, UI local em `ui-state.ts`, cliente seguro em `store-client.ts`, consultas React Query agrupadas por domínio em `use-domain-queries.ts`, comandos em `use-store-commands.ts`/`use-store-dispatch.ts` e transformações em `src/state/domains/`. `query-invalidation.ts` centraliza as chaves e dependencias de cache: mutacoes e eventos Realtime invalidam somente os dominios afetados; apenas o refresh manual percorre o conjunto completo. Essa divisão preserva os consumidores atuais enquanto permite migrá-los gradualmente para hooks menores.
 - `src/lib/supabase.ts`: cria o cliente Supabase com sessao persistente e realtime.
 - `src/pages/`: telas de produto.
 - `src/components/`: layout, sidebar, painel do Oraculo e componentes de UI.

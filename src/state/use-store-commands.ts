@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import { callEdgeFunction, requireClient } from "./store-client";
 import { mapOrgTone } from "./domains/settings-mappers";
+import type { QueryDomain } from "./query-invalidation";
 
 interface UseStoreCommandsOptions {
   orgId: string | null;
@@ -19,6 +20,7 @@ interface UseStoreCommandsOptions {
   session: Session | null;
   queryClient: QueryClient;
   invalidateOrg: () => void;
+  invalidateDomains: (domains: QueryDomain[]) => void;
   setActiveOrgId: (orgId: string | null) => void;
   setPasswordRecoveryActive: (active: boolean) => void;
 }
@@ -29,6 +31,7 @@ export function useStoreCommands({
   session,
   queryClient,
   invalidateOrg,
+  invalidateDomains,
   setActiveOrgId,
   setPasswordRecoveryActive,
 }: UseStoreCommandsOptions) {
@@ -85,10 +88,9 @@ export function useStoreCommands({
         .eq("id", userId);
 
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      invalidateDomains(["profiles"]);
     },
-    [queryClient, session?.user.email, userId],
+    [invalidateDomains, session?.user.email, userId],
   );
 
   const refresh = useCallback(() => {
@@ -111,10 +113,10 @@ export function useStoreCommands({
         historyDocuments?: import("../types").KpiHistoryDocumentRef[];
         fromHistory?: boolean;
       };
-      queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
+      invalidateDomains(["aiUsage"]);
       return result;
     },
-    [orgId, queryClient],
+    [invalidateDomains, orgId],
   );
 
   const applyKpiSpreadsheetSuggestion = useCallback(
@@ -135,11 +137,10 @@ export function useStoreCommands({
         // = idempotente; nova importação = novo token = reaplica.
         applyToken: source.token,
       }) as { appliedCount: number };
-      queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
-      queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
+      invalidateDomains(["kpiValues", "documents"]);
       return result.appliedCount;
     },
-    [orgId, queryClient],
+    [invalidateDomains, orgId],
   );
 
   const saveAiProviderKey = useCallback(
@@ -154,10 +155,10 @@ export function useStoreCommands({
         provider,
         apiKey,
       }) as AiSettingsSaveResult;
-      invalidateOrg();
+      invalidateDomains(["aiSettings"]);
       return result;
     },
-    [invalidateOrg, orgId],
+    [invalidateDomains, orgId],
   );
 
   const saveAiFunctionSetting = useCallback(
@@ -174,10 +175,10 @@ export function useStoreCommands({
         provider,
         model,
       }) as AiSettingsSaveResult;
-      invalidateOrg();
+      invalidateDomains(["aiSettings"]);
       return result;
     },
-    [invalidateOrg, orgId],
+    [invalidateDomains, orgId],
   );
 
   const testAiProviderKey = useCallback(
@@ -192,10 +193,10 @@ export function useStoreCommands({
         provider,
         mode: "test",
       }) as AiSettingsSaveResult;
-      invalidateOrg();
+      invalidateDomains(["aiSettings", "aiUsage"]);
       return result;
     },
-    [invalidateOrg, orgId],
+    [invalidateDomains, orgId],
   );
 
   const testAiFunction = useCallback(
@@ -214,10 +215,10 @@ export function useStoreCommands({
         model,
         mode: "test",
       }) as AiSettingsSaveResult;
-      invalidateOrg();
+      invalidateDomains(["aiSettings", "aiUsage"]);
       return result;
     },
-    [invalidateOrg, orgId],
+    [invalidateDomains, orgId],
   );
 
   const saveOrgTone = useCallback(
@@ -263,4 +264,3 @@ export function useStoreCommands({
     applyKpiSpreadsheetSuggestion,
   };
 }
-

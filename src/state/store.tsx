@@ -12,6 +12,12 @@ import { useStoreDispatch } from "./use-store-dispatch";
 import { useStoreCommands } from "./use-store-commands";
 import { useDomainQueries } from "./use-domain-queries";
 import { useHistoricalDocumentCount } from "./use-paginated-records";
+import {
+  ALL_QUERY_DOMAINS,
+  invalidateQueryDomains,
+  realtimeDomainsForTable,
+  type QueryDomain,
+} from "./query-invalidation";
 import type { AppState } from "../types";
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -245,63 +251,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return mapStrategicPlan(strategicPlanQuery.data, activeProjects);
   }, [activeProjects, strategicPlanQuery.data]);
 
-  const invalidateOrg = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["memberships"] });
-    queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-    queryClient.invalidateQueries({ queryKey: ["profiles"] });
-    if (!orgId) return;
-    queryClient.invalidateQueries({ queryKey: ["organizations"] });
-    queryClient.invalidateQueries({ queryKey: ["areas", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["area_plans", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["objectives", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["strategic_projects", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["strategic_plan", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["key_actions", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["evidences", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["chat_messages", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["planning_sessions", orgId, userId] });
-    queryClient.invalidateQueries({ queryKey: ["plan_documents", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["operational_revisions", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["executive_kpis", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["kpi_monthly_values", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["objective_kpi_links", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["ai_settings", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["ai_function_settings", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["ai_provider_key_status", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["ai_usage_logs", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["org_ai_tone", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["whatsapp_settings", orgId] });
-    queryClient.invalidateQueries({ queryKey: ["check_ins", orgId] });
+  const invalidateDomains = useCallback((domains: QueryDomain[]) => {
+    invalidateQueryDomains(queryClient, { orgId, userId }, domains);
   }, [orgId, queryClient, userId]);
+
+  const invalidateOrg = useCallback(() => invalidateDomains(ALL_QUERY_DOMAINS), [invalidateDomains]);
 
   useEffect(() => {
     if (!supabase || !orgId) return;
     const client = supabase;
+    const onTable = (table: string) => () => invalidateDomains(realtimeDomainsForTable(table));
 
     const channel = client
       .channel(`oraculo-org-${orgId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "areas", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "objectives", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "key_actions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "strategic_projects", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "evidences", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "check_ins", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ai_function_settings", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "org_ai_tone", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "plan_documents", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "operational_revisions", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "executive_kpis", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "kpi_monthly_values", filter: `org_id=eq.${orgId}` }, invalidateOrg)
-      .on("postgres_changes", { event: "*", schema: "public", table: "objective_kpi_links", filter: `org_id=eq.${orgId}` }, invalidateOrg)
+      .on("postgres_changes", { event: "*", schema: "public", table: "areas", filter: `org_id=eq.${orgId}` }, onTable("areas"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "objectives", filter: `org_id=eq.${orgId}` }, onTable("objectives"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "key_actions", filter: `org_id=eq.${orgId}` }, onTable("key_actions"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "strategic_projects", filter: `org_id=eq.${orgId}` }, onTable("strategic_projects"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "evidences", filter: `org_id=eq.${orgId}` }, onTable("evidences"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "check_ins", filter: `org_id=eq.${orgId}` }, onTable("check_ins"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "ai_usage_logs", filter: `org_id=eq.${orgId}` }, onTable("ai_usage_logs"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "ai_function_settings", filter: `org_id=eq.${orgId}` }, onTable("ai_function_settings"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "ai_provider_key_status", filter: `org_id=eq.${orgId}` }, onTable("ai_provider_key_status"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "org_ai_tone", filter: `org_id=eq.${orgId}` }, onTable("org_ai_tone"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "planning_sessions", filter: `org_id=eq.${orgId}` }, onTable("planning_sessions"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "plan_documents", filter: `org_id=eq.${orgId}` }, onTable("plan_documents"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "operational_revisions", filter: `org_id=eq.${orgId}` }, onTable("operational_revisions"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "executive_kpis", filter: `org_id=eq.${orgId}` }, onTable("executive_kpis"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "kpi_monthly_values", filter: `org_id=eq.${orgId}` }, onTable("kpi_monthly_values"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "objective_kpi_links", filter: `org_id=eq.${orgId}` }, onTable("objective_kpi_links"))
       .subscribe();
 
     return () => {
       client.removeChannel(channel);
     };
-  }, [invalidateOrg, orgId]);
+  }, [invalidateDomains, orgId]);
 
   const state = useMemo<AppState>(() => {
     const loading =
@@ -447,7 +431,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     whatsappSettingsQuery.isLoading,
   ]);
 
-  const dispatch = useStoreDispatch({ orgId, userId, queryClient, invalidateOrg, uiDispatch, setActiveOrgId });
+  const dispatch = useStoreDispatch({ orgId, userId, invalidateDomains, uiDispatch, setActiveOrgId });
 
   const {
     signIn,
@@ -470,6 +454,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     session,
     queryClient,
     invalidateOrg,
+    invalidateDomains,
     setActiveOrgId,
     setPasswordRecoveryActive,
   });

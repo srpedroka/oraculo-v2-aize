@@ -569,7 +569,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatias 5A–5C concluídas em 2026-07-13: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos passaram a usar queries seletivas e paginação cursor-based sem esconder dados antigos. Próxima fatia autorizável: 5D, invalidação seletiva.
+- Etapa 5 / Fatias 5A–5D concluídas em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based e mutações/Realtime invalidam somente consultas afetadas. Próxima fatia autorizável: 5E, bundle e rotas lazy.
 - Build avisa que alguns chunks passam de 500 kB. Nao e erro, mas pode virar melhoria futura com code splitting.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

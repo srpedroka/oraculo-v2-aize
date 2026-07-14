@@ -66,6 +66,7 @@ pnpm run test:e2e
 | Arquivo, auditoria e backup | `tests/security/risk-coverage.test.ts`, `backup-trigger-delete.test.ts` |
 | Login, recuperação e onboarding | `tests/e2e/login.spec.ts`, `tests/e2e/risk-journeys.spec.ts` |
 | Dashboard/KPI, planos, documentos, áreas, execução, arquivo e configurações | `tests/e2e/risk-journeys.spec.ts` em desktop e mobile |
+| Paginação e invalidação seletiva do cache | `src/state/use-paginated-records.test.ts`, `src/state/query-invalidation.test.ts`, `tests/integration/cursor-pagination.test.ts` |
 
 ## Regras de segurança
 
