@@ -19,4 +19,20 @@ describe("retry de transporte da fabrica E2E", () => {
     await expect(retryTransport(operation)).resolves.toEqual(result);
     expect(operation).toHaveBeenCalledTimes(1);
   });
+
+  it("repete quando o fetch lança antes de formar uma resposta", async () => {
+    const operation = vi.fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce({ error: null });
+
+    await expect(retryTransport(operation)).resolves.toEqual({ error: null });
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it("não repete exceção que não seja de transporte", async () => {
+    const operation = vi.fn().mockRejectedValue(new Error("permission denied for table profiles"));
+
+    await expect(retryTransport(operation)).rejects.toThrow("permission denied for table profiles");
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
 });

@@ -35,12 +35,19 @@ export function isTransientTransportError(message: string | undefined) {
 }
 
 export async function retryTransport<T extends { error: { message: string } | null }>(operation: () => PromiseLike<T>): Promise<T> {
-  let result = await operation();
-  for (let attempt = 1; attempt < 3 && isTransientTransportError(result.error?.message); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, attempt * 250));
-    result = await operation();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const result = await operation();
+      if (!isTransientTransportError(result.error?.message) || attempt === 2) return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isTransientTransportError(message) || attempt === 2) throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 250));
   }
-  return result;
+
+  throw new Error("retry de transporte terminou sem resultado");
 }
 
 export async function createDisposableOrg(tag = "test"): Promise<DisposableOrg> {
