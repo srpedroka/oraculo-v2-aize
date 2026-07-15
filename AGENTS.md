@@ -66,7 +66,7 @@ Scripts reais em `package.json`:
 - `supabase/functions/`: Edge Functions publicadas no Supabase.
 - `supabase/functions/_shared/`: codigo compartilhado das Edge Functions.
 - `supabase/functions/_shared/conductors/`: persona e condutores do Oraculo para planejamento e fechamentos.
-- `docs/`: documentacao de arquitetura, seguranca, acessos, runbook, decisoes e changelog.
+- `docs/`: documentacao de arquitetura, seguranca, inventario de dados, acessos, runbook, decisoes e changelog.
 - `plans/`: planos de implementacao e referencia.
 - `public/`: arquivos estaticos, incluindo fallback `_redirects`.
 - `dist/`: build gerado localmente, nao deve ser versionado.
@@ -495,6 +495,7 @@ Arquivos de referencia:
 - `README.md`
 - `docs/ARCHITECTURE.md`
 - `docs/SECURITY.md`
+- `docs/DATA_INVENTORY.md`
 - `docs/ACCESS.md`
 - `docs/RUNBOOK.md`
 - `docs/DECISIONS.md`
@@ -506,7 +507,7 @@ Arquivos de referencia:
 Antes de mexer no codigo:
 
 1. Leia `README.md`.
-2. Leia `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/ACCESS.md`, `docs/RUNBOOK.md` e `docs/DECISIONS.md`.
+2. Leia `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/DATA_INVENTORY.md`, `docs/ACCESS.md`, `docs/RUNBOOK.md` e `docs/DECISIONS.md`.
 3. Rode `git status`.
 4. Se existir remoto configurado, rode `git pull` antes de alterar arquivos.
 5. Verifique se a mudanca afeta ambiente, banco, deploy, autenticacao, seguranca ou fluxo de negocio. Se afetar, atualize docs no mesmo ciclo.
@@ -573,6 +574,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
 - Etapa 5 / Fatias 5A–5F concluídas e publicadas em produção em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas, rotas/importadores carregam sob demanda e edicoes de objetivo/KPI/configuracoes criticas recusam versoes antigas sem perder o rascunho.
+- Etapa 6 / Fatia 6A concluída documentalmente em 2026-07-15: `docs/DATA_INVENTORY.md` classifica 53 tabelas, 30 Edge Functions configuradas no projeto, arquivos transitórios, provedores externos, retenção, backup, exportação/exclusão e lacunas. Não houve mudança de banco, frontend, Function, permissão ou produção.
 - Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
@@ -583,7 +585,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - Fazer teste ponta a ponta da V3 em ambiente controlado, registrando resultado no `docs/CHANGELOG.md` ou `docs/RUNBOOK.md`.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
-- Depois do aceite da Fatia 5F, iniciar a Etapa 6 de governanca/LGPD/DR somente com novo briefing e autorizacao.
+- Antes da Fatia 6B, o responsável deve validar papéis de controlador/operador, contato de privacidade, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.
 - Manter catalogos de pricing de IA atualizados quando trocar/adicionar modelos.
 - Revisar periodicamente RLS ao criar novas tabelas ou ampliar permissoes.
 

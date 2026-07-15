@@ -4,6 +4,8 @@
 
 O Oraculo V2 e um app web de execucao estrategica. O frontend roda em React/Vite e conversa diretamente com o Supabase para autenticacao, leitura e escrita de dados protegidos por RLS. A logica que exige privilegio maior, como salvar chaves de IA e acionar o modelo, fica em Supabase Edge Functions.
 
+O inventário canônico de dados e transferências fica em `docs/DATA_INVENTORY.md`. Ele cobre tabelas públicas, Auth, Storage, arquivos transitórios, Edge Functions, provedores externos, retenção e presença no pacote de backup. Novas tabelas, integrações ou destinos externos precisam atualizar esse inventário no mesmo ciclo.
+
 ## Camadas
 
 ### Frontend

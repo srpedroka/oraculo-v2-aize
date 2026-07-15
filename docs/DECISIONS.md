@@ -725,3 +725,11 @@ Decisao: completar a S4 usando o painel existente de Saude operacional. Exclusao
 Motivo: acoes irreversiveis precisam de defesa server-side e rastreabilidade, mas planejamento, WhatsApp e deploys rotineiros nao devem ganhar novos cliques. A replica R2 append-only com lock de 90 dias e a alternativa formal ao PITR desligado nesta fase.
 
 Consequencias: migrations destrutivas autorizadas precisam chamar `record_destructive_schema_change`; o guard recusa a excecao sem esse registro. Restauracoes bem-sucedidas cobrem o lembrete mensal, e exercicios originados da copia externa usam `exercise_type = disaster_drill` para a cadencia trimestral. Todos os eventos tecnicos sao service-only e sanitizados.
+
+## 2026-07-15 - Inventário precede política e automação de retenção
+
+Decisão: concluir a Fatia 6A como documentação verificável do estado atual, sem criar aceite, base legal automática, limpeza, migration, tela ou bloqueio. `docs/DATA_INVENTORY.md` passa a ser a fonte de verdade para classificação, fluxo externo, retenção, backup, exportação e exclusão.
+
+Motivo: implementar política ou apagar dados antes de saber exatamente o que existe criaria falsa conformidade e risco de perder memória estratégica. A classificação técnica também não pode decidir sozinha quem é controlador/operador ou qual base legal se aplica.
+
+Consequências: toda nova tabela, Function, mídia persistida ou provedor externo deve atualizar o inventário. A Fatia 6B depende de validação responsável dos papéis, contato, bases legais e contratos. As lacunas encontradas, inclusive manifesto incompleto das exclusões de backup e retenção ilimitada de algumas tabelas técnicas, permanecem visíveis e não foram corrigidas silenciosamente nesta fatia.

@@ -11,6 +11,13 @@ As listas historicas paginadas sempre incluem `org_id` na consulta e continuam s
 - Acoes sensiveis passam por Edge Functions com validacao de sessao.
 - Documentacao pode citar nomes de variaveis, mas nunca valores secretos.
 - O mapa operacional de onde cada acesso vive fica em `docs/ACCESS.md`.
+- O mapa de dados, classificação, retenção, exportação e provedores fica em `docs/DATA_INVENTORY.md`.
+
+## Governança e classificação de dados
+
+O Oráculo distingue dado pessoal, possível dado pessoal sensível em campo livre, informação empresarial confidencial, segredo e telemetria sanitizada. Chat, áudio transcrito, evidência, documento e proposta são sempre tratados como conteúdo potencialmente pessoal/confidencial, mesmo quando a tela não solicita dados sensíveis.
+
+A Fatia 6A documenta o comportamento atual sem escolher base legal nem papel contratual em nome do responsável. Antes de publicar política ou aceite, a organização responsável precisa validar controlador/operador/suboperadores, contato de privacidade, finalidade/base legal e termos de Supabase, Netlify, Evolution/VPS, provedores de IA e R2. Arquivos brutos processados em memória também entram no inventário; ausência de persistência não significa ausência de tratamento ou transferência.
 
 ## Concorrencia e integridade de edicao
 

@@ -1072,6 +1072,8 @@ Mudanças visíveis:
 
 ## 6.2 Fatia 6A — Inventário e classificação de dados
 
+> **STATUS: concluída documentalmente em 2026-07-15.** `docs/DATA_INVENTORY.md` cobre 53 tabelas públicas, 30 Edge Functions configuradas no projeto, o diretório legado `monthly-check-in`, Auth, Storage, mídia transitória, provedores externos, retenção, backup, exportação/exclusão e lacunas. Nenhuma migration, Function, tela, permissão, dado ou produção foi alterado. Papéis dos agentes, bases legais, contato e termos dos provedores aguardam validação responsável antes da 6B.
+
 Documentar por tabela/fluxo:
 
 - dado empresarial;
