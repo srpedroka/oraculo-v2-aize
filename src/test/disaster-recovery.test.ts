@@ -5,6 +5,7 @@ const migration = readFileSync("supabase/migrations/20260715220000_disaster_reco
 const backupSource = readFileSync("supabase/functions/_shared/organization-backup.ts", "utf8");
 const backupFunction = readFileSync("supabase/functions/organization-backup/index.ts", "utf8");
 const healthFunction = readFileSync("supabase/functions/operational-health/index.ts", "utf8");
+const backupCard = readFileSync("src/features/backups/OrganizationBackupCard.tsx", "utf8");
 
 describe("Fatia 6F — recuperação de desastre", () => {
   it("enfileira toda tabela durável exportada sem criar loop na política de backup", () => {
@@ -46,5 +47,13 @@ describe("Fatia 6F — recuperação de desastre", () => {
 
   it("atualiza a contagem esperada de migrations do monitor", () => {
     expect(healthFunction).toContain("EXPECTED_MIGRATION_COUNT = 49");
+  });
+
+  it("atualiza o seletor de empresas ao criar ou remover o clone", () => {
+    expect(backupCard).toContain('queryKey: ["memberships"]');
+    expect(backupCard).toContain('queryKey: ["organizations"]');
+
+    const discardMutation = backupCard.match(/const discardDrillMutation[\s\S]*?const deleteMutation/)?.[0] ?? "";
+    expect(discardMutation).toContain("await invalidateOrganizationAccess()");
   });
 });

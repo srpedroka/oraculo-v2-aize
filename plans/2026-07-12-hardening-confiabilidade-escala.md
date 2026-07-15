@@ -1154,7 +1154,7 @@ Guardar ator, ação, alvo, antes/depois sanitizado, timestamp e request ID.
 
 ## 6.7 Fatia 6F — Recuperação de desastre
 
-> **STATUS: validada integralmente no staging em 2026-07-15; publicação controlada em produção pendente.** RPO de 30 minutos preserva o instante da primeira mutação ainda não protegida; o teste mensal força Storage interno e o trimestral força R2. O clone mede duração, valida checksum, contagens críticas, ausência de secrets e WhatsApp/fila/outbox desligados, pode ser navegado e é removido em um comando. Incidentes owner-only usam apenas tipo, severidade e serviço, sem texto livre. Provas: 232 unitários, 25 arquivos de integração + 1 skip opt-in, matriz RLS e 11 E2E verdes + 1 skip mobile intencional, incluindo KPI, plano, documento e histórico no clone. O runbook define owner operacional, canal fora do app, sequência Supabase/Netlify/Evolution/IA e rotação de credenciais.
+> **STATUS: concluída, publicada e comprovada em produção em 2026-07-15.** RPO de 30 minutos preserva o instante da primeira mutação ainda não protegida; o teste mensal força Storage interno e o trimestral força R2. O clone mede duração, valida checksum, contagens críticas, ausência de secrets e WhatsApp/fila/outbox desligados, pode ser navegado e é removido em um comando. Incidentes owner-only usam apenas tipo, severidade e serviço, sem texto livre. Além das provas automatizadas e do staging, o exercício externo real restaurou 636 registros em 1,7 s; Dashboard/KPIs, Plano Estratégico, Documentos e Arquivo foram conferidos antes da remoção do clone. O runbook define owner operacional, canal fora do app, sequência Supabase/Netlify/Evolution/IA e rotação de credenciais.
 
 Definir:
 

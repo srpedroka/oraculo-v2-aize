@@ -121,6 +121,10 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
   }, [backupQuery.data?.policy]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["organization-backups", orgId] });
+  const invalidateOrganizationAccess = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["memberships"] });
+    await queryClient.invalidateQueries({ queryKey: ["organizations"] });
+  };
   const createMutation = useMutation({
     mutationFn: () => createBackupNow(orgId),
     onSuccess: async () => {
@@ -154,6 +158,7 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
       setMessageTone("ok");
       setMessage(`Empresa restaurada como ${result.targetOrgName}.`);
       await invalidate();
+      await invalidateOrganizationAccess();
     },
     onError: (error) => {
       setMessageTone("error");
@@ -168,6 +173,7 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
       setMessageTone("ok");
       setMessage(`Teste concluído em ${(result.durationMs / 1000).toFixed(1).replace(".", ",")}s.`);
       await invalidate();
+      await invalidateOrganizationAccess();
     },
     onError: (error) => {
       setMessageTone("error");
@@ -182,6 +188,7 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
       setMessageTone("ok");
       setMessage("Cópia de teste removida.");
       await invalidate();
+      await invalidateOrganizationAccess();
     },
     onError: (error) => {
       setMessageTone("error");
