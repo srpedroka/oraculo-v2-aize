@@ -1,5 +1,6 @@
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 import { serviceClient } from "./auth.ts";
+import { decodeBackupPayload, encodeBackupPayload } from "./backup-codec.ts";
 import { normalizeS3Endpoint } from "./s3-endpoint.ts";
 
 const STORAGE_BUCKET = "organization-backups";
@@ -209,16 +210,6 @@ async function sha256Hex(value: string | Uint8Array) {
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function gzip(value: string) {
-  const stream = new Blob([value]).stream().pipeThrough(new CompressionStream("gzip"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-
-async function gunzip(value: Uint8Array) {
-  const stream = new Blob([value]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return await new Response(stream).text();
-}
-
 function externalConfig() {
   const endpoint = Deno.env.get("BACKUP_S3_ENDPOINT");
   const bucket = Deno.env.get("BACKUP_S3_BUCKET");
@@ -288,7 +279,6 @@ async function uploadExternal(objectKey: string, body: Uint8Array) {
       body,
       headers: {
         "content-type": "application/gzip",
-        "content-encoding": "gzip",
       },
     });
     return { status: "completed" as const, error: null };
@@ -457,7 +447,7 @@ export async function createOrganizationBackup(
   const objectPath = `${orgId}/${new Date().getUTCFullYear()}/${backup.id}.json.gz`;
   try {
     const envelope = await buildOrganizationEnvelope(orgId);
-    const compressed = await gzip(JSON.stringify(envelope));
+    const compressed = await encodeBackupPayload(JSON.stringify(envelope));
     const { error: uploadError } = await client.storage
       .from(STORAGE_BUCKET)
       .upload(objectPath, compressed, {
@@ -560,7 +550,10 @@ export async function loadOrganizationEnvelopeWithSource(
     }
   }
 
-  const parsed = JSON.parse(await gunzip(compressed));
+  // Some S3-compatible clients transparently decode objects that were stored
+  // with Content-Encoding: gzip. Accept both byte representations and keep the
+  // envelope checksum as the integrity boundary.
+  const parsed = JSON.parse(await decodeBackupPayload(compressed));
   const envelope = await verifyOrganizationEnvelope(parsed);
   if (envelope.checksum !== backup.checksum) throw new Error("Checksum diferente do registro do backup");
   return { envelope, sourceKind };

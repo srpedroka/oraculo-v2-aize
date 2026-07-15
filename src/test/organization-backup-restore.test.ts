@@ -30,4 +30,10 @@ describe("organization backup restore", () => {
     expect(source).toContain("opened_by: mapId(userMap, row.opened_by)");
     expect(source).toContain("resolved_by: mapId(userMap, row.resolved_by)");
   });
+
+  it("accepts externally decoded gzip objects without weakening checksum validation", () => {
+    expect(source).toContain("decodeBackupPayload(compressed)");
+    expect(source).toContain("envelope.checksum !== backup.checksum");
+    expect(source).not.toContain('"content-encoding": "gzip"');
+  });
 });
