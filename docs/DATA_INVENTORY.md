@@ -6,7 +6,7 @@
 
 O inventário cobre 55 tabelas `public`, Supabase Auth e Storage, 30 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
 
-A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes da Fatia 6B. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
+A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes de transformar o aviso operacional da Fatia 6B em política contratual definitiva. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
 
 Bases legais não são inferidas pelo código. Até a validação responsável, a coluna equivalente deste inventário permanece como `a definir`, especialmente para cadastro, comunicações por WhatsApp, telemetria, auditoria, IA e retenção histórica. Consentimento não deve ser usado como resposta genérica quando outra hipótese for a aplicável.
 
@@ -248,16 +248,16 @@ O pacote atual exporta `organizations`, `profiles` e 25 tabelas do catálogo `TA
 
 ## 9. Lacunas priorizadas
 
-### P0 antes da Fatia 6B
+### P0 antes de uma política contratual definitiva
 
 1. Definir formalmente controlador, operador/suboperadores, contato de privacidade e responsável por incidente.
 2. Validar a base legal por finalidade; não transformar toda operação em consentimento.
 3. Confirmar termos, localização e retenção contratual de Supabase, Netlify, Evolution/VPS, IA e R2.
 4. Tornar completo o manifesto de exclusões do backup, distinguindo segredo, efêmero, auditoria e política restaurada em default seguro.
 
-### P1 nas Fatias 6B-6E
+### P1 nas Fatias 6C-6E
 
-1. Política em PT-BR versionada, com provedores e transferência de conteúdo para IA/WhatsApp/backups.
+1. Validar juridicamente e, se necessário, complementar o aviso operacional versionado publicado na Fatia 6B.
 2. Retenção automática para tabelas técnicas hoje ilimitadas, sem apagar estratégia e memória empresarial.
 3. Exportação pessoal, desligamento completo, exclusão de Auth e anonimização controlada da autoria preservada.
 4. Auditoria administrativa unificada para membros, papéis, IA, WhatsApp, MFA, backup e retenção, sempre sem secrets.

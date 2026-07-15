@@ -1091,7 +1091,7 @@ Incluir WhatsApp, áudio transcrito, documentos, prompts, logs de IA, backups e 
 
 ## 6.3 Fatia 6B — Transparência e consentimento operacional
 
-> **STATUS: implementada e validada no staging em 2026-07-15; publicação pendente.** A rota pública `/privacidade`, a aba de Configurações, o aviso não bloqueante e a ciência imutável por versão/empresa foram adicionados. A ciência é operacional, não consentimento genérico. Papéis legais, razão social e contato institucional continuam pendentes de validação responsável; até lá, o owner é o contato operacional pelo canal de convite.
+> **STATUS: concluída e publicada em 2026-07-15.** A rota pública `/privacidade`, a aba de Configurações, o aviso não bloqueante e a ciência imutável por versão/empresa foram adicionados. A ciência é operacional, não consentimento genérico. Papéis legais, razão social e contato institucional continuam pendentes de validação responsável; até lá, o owner é o contato operacional pelo canal de convite. Produção: migration no release `29409957325` e frontend Netlify `6a5768e0adf8bcc23d6749af`.
 
 Adicionar política e UI em PT-BR explicando:
 
