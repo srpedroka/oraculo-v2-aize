@@ -163,3 +163,7 @@ begin
   return old;
 end;
 $$;
+
+select public.record_destructive_schema_change(
+  array['20260715193000_administrative_audit.sql']
+);
