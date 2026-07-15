@@ -1199,6 +1199,8 @@ Este teste só ocorre depois das Etapas 0 a 6 concluídas.
 
 ## 7.1 Preparação
 
+> **STATUS: concluída no staging em 2026-07-15, sem alteração de produção.** Duas empresas e cinco usuários descartáveis formam o baseline persistente: owner/admin/dois coordenadores na A e owner separado na B. Produção/Comercial, quatro KPIs por empresa, IA em monitor com orçamento baixo, MFA crítico apenas no owner de teste e isolamento A → B foram comprovados. Sem instância real separada, o WhatsApp usa exclusivamente o caminho sintético do staging, validado em 8 integrações sem enviar mensagem. Estado e limpeza ficam em arquivo privado `600`; não executar cleanup antes do aceite final.
+
 - Criar owner, admin e dois coordenadores descartáveis.
 - Criar Organização A e Organização B.
 - Configurar áreas Produção e Comercial na A.

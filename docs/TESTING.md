@@ -47,6 +47,17 @@ Smoke público, somente leitura:
 pnpm run test:e2e
 ```
 
+Teste Mestre final no staging, com estado privado persistente entre as fases:
+
+```bash
+pnpm run test:master:setup
+pnpm run test:master:verify
+# Somente após o aceite final:
+pnpm run test:master:cleanup
+```
+
+O roteiro e o estado atual estão em `docs/MASTER_TEST.md`. As credenciais e IDs ficam apenas em `.agents-private/master-test-7a.json`, nunca no Git.
+
 ## Matriz da Fatia 4A
 
 | Risco | Cobertura principal |
