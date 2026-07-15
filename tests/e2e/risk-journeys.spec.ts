@@ -116,7 +116,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     onboardingUser = null;
   });
 
-  test("login real e módulos essenciais carregam dados da empresa", async ({ page }) => {
+  test("login real e módulos essenciais carregam dados da empresa", async ({ page }, testInfo) => {
     if (!org) throw new Error("fixture ausente");
     await login(page, org.owner.email, org.owner.password);
     await expect(page.getByRole("heading", { name: "Dashboard executivo" })).toBeVisible();
@@ -156,6 +156,20 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.reload();
     await expect(page.getByText("Ciência registrada")).toBeVisible();
 
+    await page.getByRole("tab", { name: "Minha conta" }).click();
+    await expect(page.getByRole("heading", { name: "Minha conta", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Salvar perfil" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Baixar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Excluir" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole("button", { name: "Excluir" }).click();
+    await expect(page.getByRole("heading", { name: "Excluir sua conta do Oráculo?" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`minha-conta-${testInfo.project.name}.png`), fullPage: true });
+    }
+    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+
     await page.goto("/documentos");
     await expect(page.getByRole("heading", { name: "Histórico descartável E2E" })).toBeVisible();
     await page.getByRole("button", { name: "Importar histórico" }).first().click();
@@ -174,6 +188,10 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await expect(page.getByLabel("Nome da empresa")).toBeVisible();
     await expect(page.getByRole("button", { name: "Criar empresa" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Importar pacote de backup" })).toBeVisible();
+    await page.getByRole("button", { name: "Minha conta" }).click();
+    await expect(page).toHaveURL(/\/minha-conta$/);
+    await expect(page.getByRole("heading", { name: "Dados e acesso" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Minha conta", exact: true })).toBeVisible();
   });
 
   test("recuperação informa sucesso sem disparar email real", async ({ page }) => {

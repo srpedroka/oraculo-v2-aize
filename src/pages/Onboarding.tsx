@@ -1,5 +1,6 @@
 import { FormEvent, useRef, useState } from "react";
-import { Building2, FileKey2, Upload } from "lucide-react";
+import { Building2, FileKey2, Settings, Upload } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { restorePortableBackup } from "../features/backups/api";
@@ -8,6 +9,7 @@ import { useAppState } from "../state/store";
 
 export function Onboarding() {
   const { dispatch } = useAppState();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [createMessage, setCreateMessage] = useState("");
@@ -59,7 +61,10 @@ export function Onboarding() {
     <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8 text-text">
       <Card className="w-full max-w-lg">
         <div className="mb-8">
-          <p className="text-sm font-bold tracking-normal text-[#1D2A31]">ORÁCULO</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-bold tracking-normal text-[#1D2A31]">ORÁCULO</p>
+            <Button variant="quiet" size="sm" icon={Settings} onClick={() => navigate("/minha-conta")}>Minha conta</Button>
+          </div>
           <h1 className="mt-3 text-2xl font-semibold text-text">Crie a primeira empresa</h1>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
             A empresa nasce vazia. Depois você cria áreas, coordenadores e começa pelo Plano Estratégico.

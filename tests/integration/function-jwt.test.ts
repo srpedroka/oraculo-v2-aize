@@ -4,7 +4,12 @@ import { anonClient, hasStagingEnv } from "../helpers/staging";
 
 const RUN = hasStagingEnv();
 const d = RUN ? describe : describe.skip;
-const FUNCTIONS = ["invite-member", "save-ai-settings", "save-whatsapp-settings"] as const;
+const FUNCTIONS = [
+  { slug: "invite-member", validation: /Empresa e email são obrigatórios/ },
+  { slug: "save-ai-settings", validation: /Empresa obrigatória/ },
+  { slug: "save-whatsapp-settings", validation: /Empresa obrigatória/ },
+  { slug: "personal-account", validation: /Ação inválida/ },
+] as const;
 const stagingUrl = process.env.SUPABASE_STAGING_URL ?? "";
 const anonKey = process.env.SUPABASE_STAGING_ANON_KEY ?? "";
 
@@ -39,7 +44,7 @@ d("Fatia 2B — JWT no gateway das funções administrativas", () => {
     org = null;
   }, 60_000);
 
-  it.each(FUNCTIONS)("%s mantém o preflight CORS público", async (slug) => {
+  it.each(FUNCTIONS)("$slug mantém o preflight CORS público", async ({ slug }) => {
     const response = await fetch(`${stagingUrl}/functions/v1/${slug}`, {
       method: "OPTIONS",
       headers: {
@@ -53,17 +58,17 @@ d("Fatia 2B — JWT no gateway das funções administrativas", () => {
     expect(response.headers.get("access-control-allow-origin")).toBe("*");
   });
 
-  it.each(FUNCTIONS)("%s recusa chamada sem JWT no gateway", async (slug) => {
+  it.each(FUNCTIONS)("$slug recusa chamada sem JWT no gateway", async ({ slug }) => {
     // The local legacy anon key is itself a JWT. Omitting only Authorization
     // would still authenticate at the local gateway through the apikey header.
     const response = await callFunction(slug, undefined, false);
     expect(response.status).toBe(401);
   });
 
-  it.each(FUNCTIONS)("%s aceita JWT válido e alcança a validação interna", async (slug) => {
+  it.each(FUNCTIONS)("$slug aceita JWT válido e alcança a validação interna", async ({ slug, validation }) => {
     const response = await callFunction(slug, accessToken);
     const body = await response.json();
     expect(response.status).toBe(400);
-    expect(body.error).toMatch(/Empresa (e email são obrigatórios|obrigatória)/);
+    expect(body.error).toMatch(validation);
   });
 });

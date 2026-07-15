@@ -4,7 +4,7 @@
 
 ## 1. Escopo e responsáveis
 
-O inventário cobre 56 tabelas `public`, Supabase Auth e Storage, 30 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
+O inventário cobre 57 tabelas `public`, Supabase Auth e Storage, 31 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
 
 A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes de transformar o aviso operacional da Fatia 6B em política contratual definitiva. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
 
@@ -143,6 +143,7 @@ flowchart LR
 | `data_notice_versions` | versão, publicação e resumo do aviso (`T`) | leitura pública; somente migration publica | sem expiração; backup: não, registro global |
 | `organization_data_notice_acknowledgements` | empresa, versão, owner e horário da ciência (`P/T`) | membros leem; somente owner insere; imutável pelo navegador | vida da empresa; backup: não, clone exige nova ciência |
 | `data_retention_runs` | versão, horário e contagens agregadas da limpeza (`T`) | somente serviço | 730 dias; backup: não |
+| `personal_data_requests` | tipo, status, fingerprint e resumo sanitizado da solicitação (`P/T`) | somente serviço | sobrevive à exclusão sem email/nome/telefone; backup: não |
 | `organization_lifecycle_audit` | empresa, ator/email, ação e motivo (`P/E/T`) | owner/serviço | `permanent_delete` sobrevive à empresa; backup: não |
 | `operation_commands` | idempotência, hash, status e resultado de operação (`E/P/PS?/T`) | somente serviço | concluído/falhou: 365 dias; pendente permanece; backup: não |
 | `operational_health_snapshots` | métricas sanitizadas e estado (`T`) | somente serviço; owner vê resumo | 30 dias; backup: não |
@@ -155,7 +156,7 @@ flowchart LR
 
 | Local | Dados | Retenção/controle atual |
 | --- | --- | --- |
-| `auth.users` e fatores MFA | email, credencial, sessão, identidade e TOTP (`P/S`) | gerido pelo Supabase Auth; fora do backup por empresa; exclusão pessoal ainda não existe no produto |
+| `auth.users` e fatores MFA | email, credencial, sessão, identidade e TOTP (`P/S`) | gerido pelo Supabase Auth; fora do backup por empresa; exclusão pessoal protegida pela Function `personal-account` |
 | Storage `organization-backups` | pacote gzip estruturado (`P/E/PS?`) | privado; segue `expires_at`; manual não expira |
 | Cloudflare R2 | réplica do pacote (`P/E/PS?`) | append-only para o Oráculo; lock/retention de 90 dias no bucket |
 | Navegador | sessão Supabase e rascunhos em memória (`P/S/E`) | sessão persistente do cliente; rascunhos somem ao fechar/recarregar salvo mecanismo específico |
@@ -174,6 +175,7 @@ flowchart LR
 | `set-member-area` | troca área principal do membro |
 | `remove-member` | remove acesso e reatribui coordenação sem apagar autoria |
 | `organization-lifecycle` | sair, arquivar, restaurar e excluir empresa com auditoria |
+| `personal-account` | exporta somente os dados pessoais/autorais acessíveis e exclui Auth/perfil após guardas de owner/MFA |
 | `save-security-settings` | altera política opcional de MFA após AAL2 |
 
 ### 6.2 Estratégia, documentos e IA
@@ -237,10 +239,10 @@ Referência oficial para direitos de informação, acesso, correção e elimina�
 | --- | --- | --- |
 | Exportar empresa | owner baixa pacote portátil com checksum e criptografa no navegador | manifesto lista apenas parte das exclusões técnicas; precisa ficar completo |
 | Exportar documento | impressão/PDF do documento canônico | não é exportação integral nem pessoal |
-| Exportar dados de uma pessoa | inexistente | Fatia 6D deve compor perfil, memberships, autoria e conversas acessíveis sem vazar terceiros |
-| Corrigir perfil | nome/email/telefone têm caminhos existentes, parcialmente dependentes do Auth | consolidar experiência e auditoria na 6D |
-| Sair de empresa | existente, com bloqueio do último owner | remover telefone/vínculos do canal quando a pessoa ficar sem acesso aplicável |
-| Excluir conta pessoal | inexistente no produto | criar solicitação segura, apagar Auth/perfil quando possível e anonimizar autoria empresarial preservada |
+| Exportar dados de uma pessoa | JSON sob demanda em Minha conta | inclui perfil, vínculos atuais, conversas próprias e autoria acessível; não exporta terceiros, secrets ou a empresa inteira |
+| Corrigir perfil | Minha conta consolida nome, email Auth e telefone | troca de email pode exigir confirmação do novo endereço pelo Supabase Auth |
+| Sair de empresa | bloqueia o último owner e remove o vínculo | ao perder o último vínculo, o telefone é limpo automaticamente para interromper WhatsApp |
+| Excluir conta pessoal | email digitado uma vez, MFA opcional e proteção transacional do último owner | remove Auth/perfil/vínculos; referências de autoria viram nulas e o histórico empresarial permanece |
 | Arquivar dado operacional | existente e reversível | manter como caminho padrão, sem exclusão automática de memória |
 | Excluir empresa | existente com arquivo, backup recente, nome e confirmação | política deve explicar cascata, Auth fora do pacote e réplica R2 retida |
 | Corrigir/importar backup | restauração sempre como clone | não sobrescreve origem; secrets e WhatsApp voltam inativos |
@@ -260,8 +262,7 @@ O pacote atual exporta `organizations`, `profiles` e 25 tabelas do catálogo `TA
 
 1. Validar juridicamente e, se necessário, complementar o aviso operacional versionado publicado na Fatia 6B.
 2. Retenção automática para tabelas técnicas hoje ilimitadas, sem apagar estratégia e memória empresarial.
-3. Exportação pessoal, desligamento completo, exclusão de Auth e anonimização controlada da autoria preservada.
-4. Auditoria administrativa unificada para membros, papéis, IA, WhatsApp, MFA, backup e retenção, sempre sem secrets.
+3. Auditoria administrativa unificada para membros, papéis, IA, WhatsApp, MFA, backup e retenção, sempre sem secrets.
 
 ### P2 na Fatia 6F
 

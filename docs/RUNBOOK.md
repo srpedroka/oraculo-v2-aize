@@ -1399,3 +1399,26 @@ git add .
 git commit -m "Update maintenance documentation"
 git push
 ```
+## Conta pessoal e desligamento (Fatia 6D)
+
+Fluxo normal no app:
+
+1. abra `Configurações > Minha conta` ou **Gerenciar** no menu da conta;
+2. nome, email e celular podem ser corrigidos no mesmo formulário; troca de email pode exigir confirmação do novo endereço pelo Supabase Auth;
+3. **Baixar** gera um JSON local com escopo pessoal, sem criar arquivo no Storage;
+4. **Excluir minha conta** pede o email atual uma única vez;
+5. se a pessoa for último owner, promova outro owner ou encerre a empresa e tente novamente;
+6. depois do sucesso, a sessão é encerrada e o telefone deixa de identificar a pessoa no WhatsApp.
+
+Verificação técnica em staging:
+
+```bash
+set -a
+source .agents-private/agent-env
+set +a
+node node_modules/vitest/vitest.mjs --config vitest.integration.config.ts run tests/integration/personal-account-lifecycle.test.ts --passWithNoTests=false
+```
+
+O teste deve provar três fatos: Admin Auth não apaga o último owner; uma exclusão permitida mantém registros empresariais com autoria nula; e o telefone só é removido após o último vínculo. Não teste exclusão com uma conta real nem em produção. Para diagnóstico, consulte somente status/contagens de `personal_data_requests`; não grave email, nome, telefone ou conteúdo em `result_summary`.
+
+Publicação exige a migration `20260715170000_personal_account_lifecycle.sql`, a Function `personal-account` e o frontend. A migration substitui FKs por `SET NULL`; no workflow protegido ela deve ser tratada como alteração destrutiva de schema autorizada, embora não apague linhas nem conteúdo.

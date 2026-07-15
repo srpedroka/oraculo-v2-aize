@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAppState } from "../state/store";
 import { Button } from "./ui/Button";
 
@@ -77,6 +77,7 @@ export function Sidebar() {
   const collapsed = state.ui.sidebarCollapsed;
   const mobileNavOpen = state.ui.mobileNavOpen;
   const location = useLocation();
+  const navigate = useNavigate();
   const width = collapsed ? COMPACT_WIDTH : state.ui.sidebarWidth;
   const currentProfile = state.currentProfile ?? state.currentMembership?.profile ?? null;
   const accountEmail = currentProfile?.email ?? session?.user.email ?? "";
@@ -371,6 +372,9 @@ export function Sidebar() {
                 </Button>
                 <Button variant="ghost" size="sm" icon={LogOut} onClick={() => void signOut()}>
                   Sair
+                </Button>
+                <Button variant="quiet" size="sm" icon={Settings} onClick={() => navigate("/minha-conta")}>
+                  Gerenciar
                 </Button>
               </div>
             </form>

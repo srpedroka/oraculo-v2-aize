@@ -749,3 +749,16 @@ Decisão: usar prazos globais conservadores para dados estritamente técnicos, e
 Motivo: reduzir exposição e crescimento indefinido sem transformar o Oráculo em um processo burocrático nem comprometer a memória que torna a IA útil. Prazos editáveis por empresa aumentariam complexidade e risco de uma configuração acidental apagar contexto importante.
 
 Consequências: planos, objetivos, documentos, conversas, sessões, KPIs, históricos, usuários, backups manuais, alertas abertos e auditorias críticas não entram no cron. A prévia e a execução são service-only, a execução usa lock e cada rodada guarda somente contagens sanitizadas por 730 dias. Alterar escopo ou prazo exige migration, teste de preservação e atualização do inventário/aviso quando material.
+## 2026-07-15 — Exclusão pessoal preserva a memória da empresa
+
+Decisão: separar a identidade pessoal do histórico empresarial. A pessoa pode exportar seus dados e excluir Auth/perfil/vínculos, mas planos, documentos, evidências, conversas e sessões produzidos durante o vínculo permanecem na empresa com referências pessoais nulas.
+
+Motivos:
+
+- desligamento não pode apagar a memória estratégica compartilhada;
+- `ON DELETE SET NULL` é mais simples e verificável que criar uma identidade fictícia;
+- a proteção do último owner precisa existir no banco, inclusive para Admin Auth;
+- o telefone só deve ser limpo quando não houver nenhum vínculo restante, para não quebrar outra empresa válida;
+- a exportação pessoal não deve virar um atalho para baixar dados de colegas ou a empresa inteira.
+
+Consequência: exclusão de conta usa uma confirmação por email digitado e MFA apenas quando a empresa já exige; não há espera, segundo aprovador ou aprovação recorrente. A trilha sobrevivente guarda fingerprint e resumo sanitizado, sem PII direta.

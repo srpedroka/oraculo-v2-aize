@@ -124,6 +124,7 @@ export function useSettingsController() {
     : [];
 
   const SECTIONS = [
+    { id: "conta", label: "Minha conta", ownerOnly: false },
     { id: "empresa", label: "Empresa e áreas", ownerOnly: true },
     { id: "pessoas", label: "Pessoas", ownerOnly: true },
     { id: "ia", label: "IA do Oráculo", ownerOnly: true },

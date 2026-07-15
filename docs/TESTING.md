@@ -67,6 +67,7 @@ pnpm run test:e2e
 | Login, recuperação e onboarding | `tests/e2e/login.spec.ts`, `tests/e2e/risk-journeys.spec.ts` |
 | Dashboard/KPI, planos, documentos, áreas, execução, arquivo e configurações | `tests/e2e/risk-journeys.spec.ts` em desktop e mobile |
 | Paginação e invalidação seletiva do cache | `src/state/use-paginated-records.test.ts`, `src/state/query-invalidation.test.ts`, `tests/integration/cursor-pagination.test.ts` |
+| Exclusão pessoal, último owner, anonimização e retirada do telefone | `tests/integration/personal-account-lifecycle.test.ts` |
 
 ## Regras de segurança
 

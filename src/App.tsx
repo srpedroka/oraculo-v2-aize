@@ -14,6 +14,7 @@ const Execution = lazy(() => import("./pages/Execution").then((module) => ({ def
 const Onboarding = lazy(() => import("./pages/Onboarding").then((module) => ({ default: module.Onboarding })));
 const OperationalArchive = lazy(() => import("./pages/OperationalArchive").then((module) => ({ default: module.OperationalArchive })));
 const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery").then((module) => ({ default: module.PasswordRecovery })));
+const PersonalAccount = lazy(() => import("./pages/PersonalAccount").then((module) => ({ default: module.PersonalAccount })));
 const Privacy = lazy(() => import("./pages/Privacy").then((module) => ({ default: module.Privacy })));
 const QuarterlyPlans = lazy(() => import("./pages/QuarterlyPlans").then((module) => ({ default: module.QuarterlyPlans })));
 const Settings = lazy(() => import("./pages/Settings").then((module) => ({ default: module.Settings })));
@@ -71,6 +72,7 @@ function AppRoutes() {
   }
   if (passwordRecoveryActive || window.location.pathname === "/redefinir-senha") return <PasswordRecovery />;
   if (state.loading && !state.organization) return <LoadingScreen />;
+  if (location.pathname.replace(/\/+$/, "") === "/minha-conta") return <PersonalAccount />;
   if (!state.organization) return <Onboarding />;
 
   return (

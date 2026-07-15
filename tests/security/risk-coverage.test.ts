@@ -134,6 +134,7 @@ d("Fatia 4A — matriz de permissões, lifecycle e segredos (staging)", () => {
       "whatsapp_instance_keys",
       "whatsapp_worker_secrets",
       "whatsapp_sender_secrets",
+      "personal_data_requests",
     ];
     for (const table of secretTables) {
       const result = await ownerClient.from(table).select("*").limit(1);

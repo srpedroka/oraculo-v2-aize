@@ -125,6 +125,7 @@ Tabelas publicas principais:
 - `ai_limit_events`
 - `organization_restore_runs`
 - `data_retention_runs`
+- `personal_data_requests`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 
@@ -163,6 +164,7 @@ As duas tabelas sao lidas por membros da empresa e escritas apenas por `owner` o
 - `set-member-role`: permite que owner altere membro entre `admin` e `coordinator`, ou rebaixe outro owner quando ainda existir pelo menos um owner restante. Nao promove novos owners.
 - `set-member-area`: owner troca a area principal de um membro de forma atomica via RPC `set_member_primary_area` (limpa vinculos antigos e aplica o novo, ou remove todos).
 - `remove-member`: valida owner, impede autoexclusão e remoção do último owner, aplica reatribuições de coordenação e remove somente a membership em uma transação PostgreSQL. Perfil, Auth e histórico da pessoa não são apagados.
+- `personal-account`: compõe uma exportação JSON apenas com perfil, vínculos atuais, conversas próprias e registros de autoria acessíveis; a exclusão exige email atual, respeita MFA opcional, remove Auth/perfil/vínculos e deixa o histórico empresarial com referências pessoais nulas. `personal_data_requests` guarda somente fingerprint e resumo sanitizado após a exclusão.
 - `operational-lifecycle`: valida sessão e permissão por empresa/área, chama a RPC transacional de arquivamento/restauração e impede que um coordenador restaure um lote iniciado por objetivo fora do seu escopo.
 - `save-ai-settings`: salva chaves por provedor, configura as funcoes de IA (`planning`, `daily`, `background`), valida provider/modelo/chave contra o provedor no momento do salvamento/teste, preserva o modo legado de provider/modelo unico e grava a chave real em tabela acessivel apenas por service role.
 - `save-whatsapp-settings`: salva configuracao publica do WhatsApp e segredos da Evolution API em tabela acessivel apenas por service role.
