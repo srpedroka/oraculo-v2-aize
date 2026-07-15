@@ -24,6 +24,7 @@
     "test:conversation-memory": "node --experimental-strip-types scripts/verify-conversation-memory.ts",
     "test:master:setup": "node --experimental-strip-types scripts/master-test.ts setup",
     "test:master:verify": "node --experimental-strip-types scripts/master-test.ts verify",
+    "test:master:functional": "node --experimental-strip-types scripts/master-test-functional.ts",
     "test:master:cleanup": "node --experimental-strip-types scripts/master-test.ts cleanup",
     "test:bundle": "node --experimental-strip-types scripts/verify-bundle-budget.ts",
     "ci:secret-scan": "node --experimental-strip-types scripts/ci-secret-scan.ts",
