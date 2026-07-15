@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 type MembershipRole = "owner" | "admin" | "coordinator";
 type EditableRole = "admin" | "coordinator";
@@ -56,6 +57,17 @@ serve(async (req) => {
       .eq("org_id", orgId);
 
     if (updateError) throw updateError;
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "people",
+      action: "member_role_changed",
+      targetType: "membership",
+      targetId: membershipId,
+      targetUserId: targetMembership.user_id,
+      before: { role: currentRole },
+      after: { role: nextRole },
+    });
     return jsonResponse({ ok: true, role: nextRole });
   } catch (error) {
     if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);

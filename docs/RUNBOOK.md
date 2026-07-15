@@ -1422,3 +1422,30 @@ node node_modules/vitest/vitest.mjs --config vitest.integration.config.ts run te
 O teste deve provar três fatos: Admin Auth não apaga o último owner; uma exclusão permitida mantém registros empresariais com autoria nula; e o telefone só é removido após o último vínculo. Não teste exclusão com uma conta real nem em produção. Para diagnóstico, consulte somente status/contagens de `personal_data_requests`; não grave email, nome, telefone ou conteúdo em `result_summary`.
 
 Publicação exige a migration `20260715170000_personal_account_lifecycle.sql`, a Function `personal-account` e o frontend. A migration substitui FKs por `SET NULL`; no workflow protegido ela deve ser tratada como alteração destrutiva de schema autorizada, embora não apague linhas nem conteúdo.
+
+## Auditoria administrativa (Fatia 6E)
+
+O registro é automático. O owner consulta `Configurações > Auditoria`, filtra por Pessoas, IA, WhatsApp, Segurança, Backups ou Dados e expande um item para ver estado anterior/posterior e request ID. Admin e coordenador não enxergam a aba nem recebem linhas pela RLS.
+
+Diagnóstico somente no staging ou com acesso administrativo autorizado:
+
+```sql
+select category, action, actor_name, target_type, request_id, created_at
+from public.administrative_audit_events
+where org_id = '<org_id>'
+order by created_at desc, id desc
+limit 50;
+```
+
+Nunca coloque chave, token, senha, email, telefone, prompt, mensagem ou conteúdo em `before`, `after`, `metadata`, `target_label` ou `request_id`. Use somente estado operacional mínimo e booleans como `has_api_key`. Toda nova Function administrativa deve chamar `_shared/administrative-audit.ts`, reutilizar o request ID recebido e ganhar teste de sanitização/RLS. A exclusão de conta anonimiza ator e alvo; não remova eventos manualmente.
+
+Validação de staging:
+
+```bash
+pnpm exec vitest --config vitest.config.ts run src/test/administrative-audit.test.ts
+pnpm exec vitest --config vitest.integration.config.ts run tests/integration/administrative-audit.test.ts
+pnpm exec vitest --config vitest.security.config.ts run tests/security/risk-coverage.test.ts
+pnpm run test:e2e:staging
+```
+
+Publicação exige a migration `20260715193000_administrative_audit.sql`, as Functions `invite-member`, `remove-member`, `set-member-role`, `set-member-area`, `save-ai-settings`, `save-whatsapp-settings`, `save-security-settings`, `save-ai-control-policy`, `organization-backup` e `personal-account`, além do frontend. Depois do deploy, faça uma alteração administrativa reversível em empresa descartável, confirme um único evento sem dados sensíveis e reverta a alteração.

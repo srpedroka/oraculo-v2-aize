@@ -5,6 +5,7 @@ import { probeModel, type ProbeResult, type ProbeStatus } from "../_shared/model
 import { resolveModelPricing } from "../_shared/pricing.ts";
 import type { Provider } from "../_shared/model.ts";
 import type { AiFunction } from "../_shared/ai-router.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 const AI_FUNCTIONS: AiFunction[] = ["planning", "daily", "background"];
 const PROVIDERS: Provider[] = ["openai", "anthropic", "moonshot", "xai"];
@@ -193,6 +194,16 @@ serve(async (req) => {
       return jsonResponse({ ok: true, keyPreview, validation });
     }
 
+    const hadApiKey = Boolean(await existingKey(client, orgId, providerValue));
+    const [{ data: previousFunctionSetting, error: previousFunctionError }, { data: previousAiSettings, error: previousAiSettingsError }] = await Promise.all([
+      aiFunction
+        ? client.from("ai_function_settings").select("function,provider,model").eq("org_id", orgId).eq("function", aiFunction).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      client.from("ai_settings").select("provider,model").eq("org_id", orgId).maybeSingle(),
+    ]);
+    if (previousFunctionError) throw previousFunctionError;
+    if (previousAiSettingsError) throw previousAiSettingsError;
+
     if (cleanKey) {
       const { error: keyError } = await client.from("ai_model_keys").upsert(
         {
@@ -245,6 +256,23 @@ serve(async (req) => {
           source: "save",
         })
         : null;
+      await recordAdministrativeAudit(client, req, {
+        orgId,
+        actorUserId: user.id,
+        category: "ai",
+        action: "ai_function_updated",
+        targetType: "ai_function",
+        targetId: aiFunction,
+        targetLabel: aiFunction,
+        before: previousFunctionSetting ?? {},
+        after: {
+          function: aiFunction,
+          provider: providerValue,
+          model: modelValue,
+          has_api_key: hadApiKey || Boolean(cleanKey),
+          api_key_changed: Boolean(cleanKey),
+        },
+      });
       return jsonResponse({
         ok: true,
         keyPreview,
@@ -273,6 +301,17 @@ serve(async (req) => {
           source: "save",
         })
         : null;
+      await recordAdministrativeAudit(client, req, {
+        orgId,
+        actorUserId: user.id,
+        category: "ai",
+        action: "ai_provider_key_updated",
+        targetType: "ai_provider",
+        targetId: providerValue,
+        targetLabel: providerValue,
+        before: { provider: providerValue, has_api_key: hadApiKey },
+        after: { provider: providerValue, has_api_key: true, api_key_changed: true },
+      });
       return jsonResponse({ ok: true, keyPreview, validation });
     }
 
@@ -333,6 +372,26 @@ serve(async (req) => {
         source: "save",
       })
       : null;
+
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "ai",
+      action: "ai_settings_updated",
+      targetType: "ai_settings",
+      targetId: orgId,
+      targetLabel: "Configuração padrão de IA",
+      before: { ...(previousAiSettings ?? {}), has_api_key: hadApiKey },
+      after: {
+        provider: providerValue,
+        model: finalModel,
+        has_api_key: hadApiKey || Boolean(cleanKey),
+        api_key_changed: Boolean(cleanKey),
+        inputTokenPriceUsdPerMillion: inputPrice,
+        outputTokenPriceUsdPerMillion: outputPrice,
+        pricingSource: source,
+      },
+    });
 
     return jsonResponse({ ok: true, keyPreview, validation });
   } catch (error) {

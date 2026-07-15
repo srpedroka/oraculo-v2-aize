@@ -160,18 +160,23 @@ export async function destroyDisposableOrg(handle: DisposableOrg): Promise<void>
   try {
     await purgeOrgRows(handle.orgId);
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
+    const purgeError = error instanceof Error ? error.message : String(error);
+    const { error: fallbackError } = await retryTransport(() => admin
+      .from("organizations")
+      .delete()
+      .eq("id", handle.orgId));
+    if (fallbackError) errors.push(`${purgeError} | fallback Data API: ${fallbackError.message}`);
   }
 
   for (const user of [handle.owner, handle.coordinator, handle.admin]) {
-    const { error } = await admin.auth.admin.deleteUser(user.id);
+    const { error } = await retryTransport(() => admin.auth.admin.deleteUser(user.id));
     if (error) {
-      const verification = await admin.auth.admin.getUserById(user.id);
+      const verification = await retryTransport(() => admin.auth.admin.getUserById(user.id));
       if (verification.data.user) errors.push(`usuário ${user.email}: ${error.message}`);
     }
   }
 
-  const { data: still } = await admin.from("organizations").select("id").eq("id", handle.orgId).maybeSingle();
+  const { data: still } = await retryTransport(() => admin.from("organizations").select("id").eq("id", handle.orgId).maybeSingle());
   if (still) errors.push(`org ${handle.orgId} ainda existe após a limpeza`);
 
   if (errors.length) {

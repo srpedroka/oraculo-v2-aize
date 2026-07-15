@@ -128,6 +128,47 @@ d("Fatia 4A — matriz de permissões, lifecycle e segredos (staging)", () => {
     expect(foreignWrite.error).not.toBeNull();
   });
 
+  it("mantém a auditoria administrativa imutável e visível somente ao owner", async () => {
+    if (!org || !foreignOrg) throw new Error("fixture ausente");
+    const seeded = await serviceClient().from("administrative_audit_events").insert({
+      org_id: org.orgId,
+      category: "security",
+      action: "security_test_event",
+      actor_user_id: org.owner.id,
+      actor_name: "Owner E2E",
+      target_type: "organization_security",
+      target_id: org.orgId,
+      before_data: {},
+      after_data: { enabled: true },
+      request_id: `risk-${Date.now()}`,
+    });
+    expect(seeded.error).toBeNull();
+
+    const ownerRead = await ownerClient.from("administrative_audit_events").select("action").eq("org_id", org.orgId);
+    expect(ownerRead.error).toBeNull();
+    expect(ownerRead.data?.some((event) => event.action === "security_test_event")).toBe(true);
+
+    for (const client of [coordinatorClient, adminClient]) {
+      const read = await client.from("administrative_audit_events").select("id").eq("org_id", org.orgId);
+      expect(read.error).toBeNull();
+      expect(read.data).toEqual([]);
+    }
+
+    const foreignRead = await ownerClient.from("administrative_audit_events").select("id").eq("org_id", foreignOrg.orgId);
+    expect(foreignRead.error).toBeNull();
+    expect(foreignRead.data).toEqual([]);
+
+    const ownerInsert = await ownerClient.from("administrative_audit_events").insert({
+      org_id: org.orgId,
+      category: "security",
+      action: "forged_event",
+      actor_name: "forjado",
+      target_type: "security",
+      request_id: "forged",
+    });
+    expect(ownerInsert.error).not.toBeNull();
+  });
+
   it("mantém tabelas de segredo e RPCs de worker exclusivas do service role", async () => {
     const secretTables = [
       "ai_model_keys",

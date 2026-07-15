@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 function parseAreaReassignments(value: unknown) {
   if (value == null) return {} as Record<string, string | null>;
@@ -28,7 +29,7 @@ serve(async (req) => {
     const client = serviceClient();
     const { data: targetMembership, error: targetError } = await client
       .from("memberships")
-      .select("id, user_id")
+      .select("id, user_id, role")
       .eq("id", membershipId)
       .eq("org_id", orgId)
       .maybeSingle();
@@ -39,6 +40,13 @@ serve(async (req) => {
       return jsonResponse({ error: "Use o fluxo de saída da empresa para remover o próprio acesso" }, 400);
     }
 
+    const { data: coordinatedAreas, error: areasError } = await client
+      .from("areas")
+      .select("id,name")
+      .eq("org_id", orgId)
+      .eq("coordinator_id", membershipId);
+    if (areasError) throw areasError;
+
     const { data, error } = await client.rpc("remove_organization_member", {
       p_org_id: orgId,
       p_membership_id: membershipId,
@@ -46,6 +54,22 @@ serve(async (req) => {
     });
 
     if (error) throw error;
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "people",
+      action: "member_removed",
+      targetType: "membership",
+      targetId: membershipId,
+      targetUserId: targetMembership.user_id,
+      before: {
+        role: targetMembership.role,
+        areaIds: (coordinatedAreas ?? []).map((area) => area.id),
+        areaNames: (coordinatedAreas ?? []).map((area) => area.name),
+      },
+      after: { access: "removed" },
+      metadata: { reassignedAreaCount: Object.keys(parseAreaReassignments(areaReassignments)).length },
+    });
     return jsonResponse({ ok: true, result: data });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao remover membro" }, 400);

@@ -80,6 +80,7 @@ const TABLE_EXPORTS: Array<{ table: string; select: string; order: string }> = [
   { table: "kpi_monthly_values", select: "*", order: "id" },
   { table: "objective_kpi_links", select: "*", order: "id" },
   { table: "operational_revisions", select: "*", order: "id" },
+  { table: "administrative_audit_events", select: "*", order: "id" },
   { table: "org_ai_tone", select: "*", order: "org_id" },
   {
     table: "organization_backup_policies",
@@ -172,6 +173,10 @@ function referencedProfileIds(organization: JsonRow, data: Record<string, JsonRo
   rowsOf(data, "objective_kpi_links").forEach((row) => add(row.created_by));
   rowsOf(data, "org_ai_tone").forEach((row) => add(row.updated_by));
   rowsOf(data, "operational_revisions").forEach((row) => add(row.changed_by));
+  rowsOf(data, "administrative_audit_events").forEach((row) => {
+    add(row.actor_user_id);
+    add(row.target_user_id);
+  });
   rowsOf(data, "ai_control_policies").forEach((row) => add(row.updated_by));
   rowsOf(data, "ai_limit_events").forEach((row) => add(row.user_id));
   return [...ids];
@@ -319,7 +324,7 @@ export async function buildOrganizationEnvelope(orgId: string) {
       format: BACKUP_FORMAT,
       schemaVersion: SCHEMA_VERSION,
       createdAt: new Date().toISOString(),
-      sourceVersion: "2026-07-10",
+      sourceVersion: "2026-07-15",
       sourceOrganization: {
         id: organization.id,
         name: organization.name,
@@ -909,6 +914,25 @@ export async function restoreOrganizationEnvelope(input: {
       })
       .filter(Boolean) as JsonRow[];
     restoredCounts.operational_revisions = await insertRows(client, "operational_revisions", operationalRevisions);
+
+    const administrativeAudit = rowsOf(data, "administrative_audit_events").map((row) => {
+      const targetType = String(row.target_type ?? "");
+      let targetId = row.target_id ?? null;
+      if (targetType === "membership") targetId = mapId(membershipMap, row.target_id);
+      else if (targetType === "area") targetId = mapId(areaMap, row.target_id);
+      else if (targetType === "organization" || targetId === sourceOrganization.id) targetId = targetOrgId;
+      else if (targetType === "organization_backup") targetId = null;
+      return {
+        ...row,
+        id: crypto.randomUUID(),
+        org_id: targetOrgId,
+        actor_user_id: mapId(userMap, row.actor_user_id),
+        target_user_id: mapId(userMap, row.target_user_id),
+        target_id: targetId,
+        request_id: `restore:${String(row.id)}`,
+      };
+    });
+    restoredCounts.administrative_audit_events = await insertRows(client, "administrative_audit_events", administrativeAudit);
 
     const aiSettings = rowsOf(data, "ai_settings").map((row) => ({
       ...row,

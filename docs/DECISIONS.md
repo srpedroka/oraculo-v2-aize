@@ -762,3 +762,16 @@ Motivos:
 - a exportação pessoal não deve virar um atalho para baixar dados de colegas ou a empresa inteira.
 
 Consequência: exclusão de conta usa uma confirmação por email digitado e MFA apenas quando a empresa já exige; não há espera, segundo aprovador ou aprovação recorrente. A trilha sobrevivente guarda fingerprint e resumo sanitizado, sem PII direta.
+
+## 2026-07-15 — Auditoria administrativa automática e sem nova aprovação
+
+Decisão: registrar mudanças administrativas relevantes em uma trilha única, imutável e legível somente por owner. Pessoas, modelos/limites de IA, WhatsApp, política de MFA, backups e retenção geram evento automaticamente ao concluir a operação; o fluxo original não recebe confirmação, espera ou segundo aprovador.
+
+Motivos:
+
+- investigações e recuperação precisam responder quem mudou o quê e quando;
+- request ID idempotente reduz duplicidade em retries;
+- estados anterior/posterior são úteis, mas secrets, contatos, prompts e conteúdo não pertencem à auditoria;
+- uma tabela única e um helper compartilhado mantêm sanitização e RLS consistentes.
+
+Consequências: somente Functions com `service_role`, migration ou sistema inserem; owners consultam na aba Auditoria e demais papéis não leem. A trilha acompanha o backup/clone, não entra na limpeza automática e anonimiza ator/alvo na exclusão pessoal. Falha ao registrar impede a Function de responder sucesso, evitando alteração reportada como concluída sem rastreabilidade; retries reutilizam request ID e não duplicam o evento.

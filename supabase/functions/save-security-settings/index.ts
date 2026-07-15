@@ -7,6 +7,7 @@ import {
   serviceClient,
 } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -47,6 +48,18 @@ serve(async (req) => {
       updated_at: now,
     });
     if (error) throw error;
+
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "security",
+      action: "mfa_policy_updated",
+      targetType: "organization_security",
+      targetId: orgId,
+      targetLabel: "Ações críticas",
+      before: { requireMfaForCriticalActions: Boolean(current?.require_mfa_for_critical_actions) },
+      after: { requireMfaForCriticalActions: enabled },
+    });
 
     return jsonResponse({ ok: true, requireMfaForCriticalActions: enabled });
   } catch (error) {

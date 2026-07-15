@@ -86,7 +86,7 @@ async function exportPersonalData(user: Awaited<ReturnType<typeof getUser>>, req
     ? fetchAll((from, to) => filters(client.from(table).select(select).in("org_id", orgIds)).range(from, to))
     : empty();
 
-  const [organizations, coordinatedAreas, conversations, messages, sessions, evidences, checkIns, documents, kpiValues, lifecycle] = await Promise.all([
+  const [organizations, coordinatedAreas, conversations, messages, sessions, evidences, checkIns, documents, kpiValues, lifecycle, administrativeAudit] = await Promise.all([
     orgIds.length
       ? fetchAll((from, to) => client.from("organizations").select("id, name, subtitle, archived_at, created_at").in("id", orgIds).order("created_at").range(from, to))
       : empty(),
@@ -101,6 +101,11 @@ async function exportPersonalData(user: Awaited<ReturnType<typeof getUser>>, req
     inOrganizations("plan_documents", "*", (query) => query.eq("created_by", user.id).order("created_at")),
     inOrganizations("kpi_monthly_values", "*", (query) => query.eq("updated_by", user.id).order("updated_at")),
     inOrganizations("organization_lifecycle_audit", "id, org_id, org_name, action, reason, metadata, created_at", (query) => query.eq("actor_user_id", user.id).order("created_at")),
+    inOrganizations(
+      "administrative_audit_events",
+      "id, org_id, category, action, actor_user_id, actor_name, target_type, target_id, target_user_id, target_label, before_data, after_data, metadata, request_id, source, created_at",
+      (query) => query.or(`actor_user_id.eq.${user.id},target_user_id.eq.${user.id}`).order("created_at"),
+    ),
   ]);
 
   const payload = {
@@ -122,7 +127,7 @@ async function exportPersonalData(user: Awaited<ReturnType<typeof getUser>>, req
     conversations,
     messages,
     planningSessions: sessions,
-    authoredRecords: { evidences, checkIns, documents, kpiValues, organizationLifecycle: lifecycle },
+    authoredRecords: { evidences, checkIns, documents, kpiValues, organizationLifecycle: lifecycle, administrativeAudit },
   };
 
   const counts = {
@@ -131,7 +136,7 @@ async function exportPersonalData(user: Awaited<ReturnType<typeof getUser>>, req
     conversations: conversations.length,
     messages: messages.length,
     planningSessions: sessions.length,
-    authoredRecords: evidences.length + checkIns.length + documents.length + kpiValues.length + lifecycle.length,
+    authoredRecords: evidences.length + checkIns.length + documents.length + kpiValues.length + lifecycle.length + administrativeAudit.length,
   };
   await finishRequest(requestId, "completed", counts);
   return payload;

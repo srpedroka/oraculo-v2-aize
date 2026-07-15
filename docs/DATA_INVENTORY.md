@@ -4,7 +4,7 @@
 
 ## 1. Escopo e responsáveis
 
-O inventário cobre 57 tabelas `public`, Supabase Auth e Storage, 31 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
+O inventário cobre 58 tabelas `public`, Supabase Auth e Storage, 31 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
 
 A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes de transformar o aviso operacional da Fatia 6B em política contratual definitiva. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
 
@@ -144,6 +144,7 @@ flowchart LR
 | `organization_data_notice_acknowledgements` | empresa, versão, owner e horário da ciência (`P/T`) | membros leem; somente owner insere; imutável pelo navegador | vida da empresa; backup: não, clone exige nova ciência |
 | `data_retention_runs` | versão, horário e contagens agregadas da limpeza (`T`) | somente serviço | 730 dias; backup: não |
 | `personal_data_requests` | tipo, status, fingerprint e resumo sanitizado da solicitação (`P/T`) | somente serviço | sobrevive à exclusão sem email/nome/telefone; backup: não |
+| `administrative_audit_events` | empresa, ator, ação, alvo, antes/depois sanitizado, horário e request ID (`P/E/T`) | owner lê; somente serviço grava; imutável pelo navegador | vida da empresa; ator/alvo anonimizados na exclusão; backup: sim |
 | `organization_lifecycle_audit` | empresa, ator/email, ação e motivo (`P/E/T`) | owner/serviço | `permanent_delete` sobrevive à empresa; backup: não |
 | `operation_commands` | idempotência, hash, status e resultado de operação (`E/P/PS?/T`) | somente serviço | concluído/falhou: 365 dias; pendente permanece; backup: não |
 | `operational_health_snapshots` | métricas sanitizadas e estado (`T`) | somente serviço; owner vê resumo | 30 dias; backup: não |
@@ -247,7 +248,7 @@ Referência oficial para direitos de informação, acesso, correção e elimina�
 | Excluir empresa | existente com arquivo, backup recente, nome e confirmação | política deve explicar cascata, Auth fora do pacote e réplica R2 retida |
 | Corrigir/importar backup | restauração sempre como clone | não sobrescreve origem; secrets e WhatsApp voltam inativos |
 
-O pacote atual exporta `organizations`, `profiles` e 25 tabelas do catálogo `TABLE_EXPORTS`. São deliberadamente excluídos Auth, secrets, mídia, filas e telemetria efêmera. Além disso, ficam fora algumas políticas/auditorias que o manifesto ainda não enumera individualmente, como `organization_security_settings`, `organization_lifecycle_audit` e `operational_safety_events`.
+O pacote atual exporta `organizations`, `profiles` e 26 tabelas do catálogo `TABLE_EXPORTS`, incluindo a auditoria administrativa sanitizada. São deliberadamente excluídos Auth, secrets, mídia, filas e telemetria efêmera. Além disso, ficam fora algumas políticas/auditorias que o manifesto ainda não enumera individualmente, como `organization_security_settings`, `organization_lifecycle_audit` e `operational_safety_events`.
 
 ## 9. Lacunas priorizadas
 

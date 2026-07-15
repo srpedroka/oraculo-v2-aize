@@ -25,6 +25,12 @@ A Fatia 6A documenta o comportamento atual sem escolher base legal nem papel con
 
 `preview_expired_technical_data` e `cleanup_expired_technical_data` não são executáveis por `anon` ou `authenticated`. A prévia não escreve; a limpeza usa lock transacional para impedir duas execuções simultâneas. `data_retention_runs` é service-only e guarda somente versão, horário e contagens, sem conteúdo, telefone, prompt ou identificador empresarial. O cron preserva registros pendentes, alertas abertos, conversas, planos, documentos, KPIs, usuários, backups manuais e auditorias críticas. Prazos e tabelas ficam no inventário; qualquer ampliação exige migration, teste de preservação e nova versão do aviso quando material.
 
+## Auditoria administrativa
+
+`administrative_audit_events` é uma trilha imutável de governança: `anon` não tem acesso, `authenticated` recebe somente `SELECT` e a policy restringe a leitura ao owner da empresa; `INSERT` fica com `service_role` e não existem grants de `UPDATE`/`DELETE` para o navegador. As Edge Functions usam request ID e chave única por empresa/ação para que retry não duplique o evento. O sanitizador bloqueia por nome de campo chaves de API, segredos, tokens, senhas, credenciais, autorização, email, telefone, prompt, mensagem, conteúdo, mídia e URL temporária. Somente indicadores booleanos seguros como `has_api_key` e `api_key_changed` podem permanecer. A tela nunca recebe secrets.
+
+A exclusão pessoal zera `actor_user_id`/`target_user_id` e substitui nomes por `Usuário removido`, mantendo o fato empresarial sem identificação direta. O pacote de backup inclui a trilha para continuidade da governança do clone, remapeia referências pessoais/organizacionais e continua excluindo segredos e mídia. A auditoria registra automaticamente mudanças administrativas; ela não cria aprovação, espera ou pergunta adicional no app.
+
 ## Concorrencia e integridade de edicao
 
 `updated_at` funciona como versao, nao como autorizacao. Toda gravacao continua submetida a Auth, membership, RLS e validacao server-side. Objetivos usam update condicional; KPI usa `save_kpi_editor_if_current` com `security invoker`, RLS e papel admin. As RPCs de IA e WhatsApp sao revogadas de `anon`/`authenticated` e concedidas somente a `service_role`, depois de a Edge Function validar owner e MFA opcional.
@@ -342,6 +348,6 @@ A Function `personal-account` é a única fronteira para exportação pessoal e 
 
 A exportação inclui somente o perfil da própria pessoa, vínculos atuais, conversas/sessões próprias e registros que ela criou nas empresas às quais ainda tem acesso. Não exporta perfis de colegas, chaves, credenciais, mídia bruta, backups completos ou telemetria de terceiros.
 
-Para excluir a conta, a pessoa digita o email atual e a Function respeita a política opcional de MFA de qualquer empresa vinculada. Um trigger em `profiles` repete a proteção sob lock no mesmo `DELETE` iniciado pelo Admin Auth: se a pessoa for o último owner, a operação inteira falha. Quando permitida, Auth, perfil e memberships são removidos; referências em planos, conversas, sessões, documentos, evidências, KPIs e restaurações usam `ON DELETE SET NULL`. A auditoria de ciclo da empresa sobrevive sem email/ID do ator e com `actorAnonymized=true`.
+Para excluir a conta, a pessoa digita o email atual e a Function respeita a política opcional de MFA de qualquer empresa vinculada. Um trigger em `profiles` repete a proteção sob lock no mesmo `DELETE` iniciado pelo Admin Auth: se a pessoa for o último owner, a operação inteira falha. Quando permitida, Auth, perfil e memberships são removidos; referências em planos, conversas, sessões, documentos, evidências, KPIs e restaurações usam `ON DELETE SET NULL`. A auditoria de ciclo da empresa e a auditoria administrativa sobrevivem sem email/ID do ator e com marca de anonimização.
 
 Um trigger de `memberships` limpa `profiles.phone` apenas quando não resta vínculo com nenhuma empresa. Assim, sair de uma empresa não interrompe o WhatsApp de outra; perder o último acesso interrompe a identificação pelo canal imediatamente.

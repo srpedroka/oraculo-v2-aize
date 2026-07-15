@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 function integerInRange(value: unknown, min: number, max: number, label: string) {
   const parsed = Number(value);
@@ -29,6 +30,12 @@ serve(async (req) => {
     const enforcementMode = body.enforcementMode === "block" ? "block" : "monitor";
 
     const client = serviceClient();
+    const { data: previous, error: previousError } = await client
+      .from("ai_control_policies")
+      .select("person_calls_per_minute,org_calls_per_minute,monthly_budget_usd,enforcement_mode")
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (previousError) throw previousError;
     const { data, error } = await client.from("ai_control_policies").upsert({
       org_id: orgId,
       person_calls_per_minute: personCallsPerMinute,
@@ -39,10 +46,25 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     }).select("*").single();
     if (error) throw error;
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "ai",
+      action: "ai_control_policy_updated",
+      targetType: "ai_control_policy",
+      targetId: orgId,
+      targetLabel: "Limites e orçamento de IA",
+      before: previous ?? {},
+      after: {
+        personCallsPerMinute,
+        orgCallsPerMinute,
+        monthlyBudgetUsd,
+        enforcementMode,
+      },
+    });
     return jsonResponse({ ok: true, policy: data });
   } catch (error) {
     if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);
     return jsonResponse({ error: error instanceof Error ? error.message : "Erro ao salvar limites de IA" }, 400);
   }
 });
-

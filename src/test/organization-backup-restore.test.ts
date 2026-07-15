@@ -20,4 +20,8 @@ describe("organization backup restore", () => {
     expect(sourceHistory).toBeGreaterThan(cleanup);
     expect(insert).toBeGreaterThan(sourceHistory);
   });
+
+  it("remaps audit request IDs so the clone baseline cannot collide", () => {
+    expect(source).toContain('request_id: `restore:${String(row.id)}`');
+  });
 });

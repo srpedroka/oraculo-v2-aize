@@ -226,6 +226,7 @@ Tabelas publicas importantes:
 - `organization_data_notice_acknowledgements`
 - `data_retention_runs`
 - `personal_data_requests`
+- `administrative_audit_events`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -275,6 +276,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 Compartilhados criticos:
 
 - `_shared/auth.ts`: sessao, membership, owner e permissao por area.
+- `_shared/administrative-audit.ts`: grava eventos administrativos idempotentes e sanitizados, sem segredos, contatos, prompts ou conteúdo.
 - `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios e deteccao de retomada explicita.
 - `_shared/whatsapp-processor.ts`: núcleo único de autenticação/processamento usado pelo ingress e pelo worker; texto externo nunca usa fallback síncrono.
 - `_shared/whatsapp-event.ts`, `_shared/whatsapp-media.ts`, `_shared/whatsapp-documents.ts` e `_shared/whatsapp-conversation.ts`: parsing/autenticação, mídia em memória, importação de documentos e respostas do processador público.
@@ -587,6 +589,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Etapa 6 / Fatia 6B publicada em 2026-07-15: `/privacidade`, aba de Privacidade, aviso dispensável e ciência versionada por empresa. `data_notice_versions` é público e `organization_data_notice_acknowledgements` usa RLS membro-lê/owner-insere sem update/delete. Não bloqueia o app e não equivale a consentimento genérico.
 - Etapa 6 / Fatia 6C publicada em 2026-07-15: cron diário remove apenas filas e telemetria vencidas; prévia e execução são service-only e cada execução guarda contagens sanitizadas. Planos, objetivos, documentos, conversas, usuários, backups manuais e auditorias críticas não entram na limpeza automática.
 - Etapa 6 / Fatia 6D implementada em 2026-07-15: Minha conta consolida correção de perfil, exportação pessoal e exclusão segura. O banco bloqueia a remoção do último owner, limpa o telefone sem vínculos e preserva o histórico empresarial com autoria anonimizada.
+- Etapa 6 / Fatia 6E implementada em 2026-07-15: Configurações ganhou Auditoria owner-only; alterações de pessoas, IA, WhatsApp, MFA, backup e retenção geram eventos automáticos, imutáveis, idempotentes e sanitizados. A trilha entra no backup e referências pessoais são anonimizadas na exclusão da conta.
 - Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

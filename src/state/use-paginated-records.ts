@@ -3,7 +3,7 @@ import { requireClient } from "./store-client";
 import { mapEvidence } from "./domains/planning-mappers";
 import { mapAiUsageLog } from "./domains/settings-mappers";
 import { mapCheckIn, mapOperationalRevision, mapPlanDocument } from "./domains/session-mappers";
-import type { AiUsageLog, CheckIn, Evidence, OperationalRevision, PlanDocument, PlanDocumentType } from "../types";
+import type { AdministrativeAuditCategory, AdministrativeAuditEvent, AiUsageLog, CheckIn, Evidence, OperationalRevision, PlanDocument, PlanDocumentType } from "../types";
 
 export const CURSOR_PAGE_SIZE = 30;
 
@@ -149,6 +149,41 @@ export function usePaginatedOperationalRevisions(orgId: string | null, enabled =
     enabled: Boolean(enabled && orgId),
     queryFn: (cursor) => fetchCursorPage({
       table: "operational_revisions", orgId: orgId as string, cursor, map: mapOperationalRevision,
+    }),
+  });
+}
+
+export function usePaginatedAdministrativeAudit(
+  orgId: string | null,
+  category: AdministrativeAuditCategory | null,
+  enabled = true,
+) {
+  return useCursorRecords<AdministrativeAuditEvent>({
+    queryKey: ["administrative_audit_events", orgId, category, "paged"],
+    enabled: Boolean(enabled && orgId),
+    queryFn: (cursor) => fetchCursorPage({
+      table: "administrative_audit_events",
+      orgId: orgId as string,
+      cursor,
+      configure: (query) => category ? query.eq("category", category) : query,
+      map: (row) => ({
+        id: row.id,
+        orgId: row.org_id,
+        category: row.category,
+        action: row.action,
+        actorUserId: row.actor_user_id ?? null,
+        actorName: row.actor_name,
+        targetType: row.target_type,
+        targetId: row.target_id ?? null,
+        targetUserId: row.target_user_id ?? null,
+        targetLabel: row.target_label ?? null,
+        beforeData: row.before_data ?? {},
+        afterData: row.after_data ?? {},
+        metadata: row.metadata ?? {},
+        requestId: row.request_id,
+        source: row.source,
+        createdAt: row.created_at,
+      }),
     }),
   });
 }

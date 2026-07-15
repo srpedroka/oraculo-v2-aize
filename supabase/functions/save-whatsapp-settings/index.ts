@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertCriticalActionAal2, assertOwner, getUser, isMfaRequiredError, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 function previewSecret(value: string) {
   return value ? `****${value.slice(-4)}` : undefined;
@@ -77,6 +78,37 @@ serve(async (req) => {
     if (!(savedSettings as { ok?: boolean } | null)?.ok) {
       return jsonResponse({ error: "Este dado mudou em outra sessão. Recarregue a versão atual antes de salvar novamente.", code: "CONFLICT_STALE_WRITE" }, 409);
     }
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "whatsapp",
+      action: "whatsapp_settings_updated",
+      targetType: "whatsapp_settings",
+      targetId: orgId,
+      targetLabel: "Integração WhatsApp",
+      before: {
+        enabled: Boolean(existingSettings?.enabled),
+        instanceConfigured: Boolean(existingSettings?.instance_url && existingSettings?.instance_name),
+        hasConnectedNumber: Boolean(existingSettings?.connected_number),
+        weeklyPulseEnabled: Boolean(existingSettings?.weekly_pulse_enabled),
+        weeklyPulseWeekday: existingSettings?.weekly_pulse_weekday ?? null,
+        weeklyPulseHour: existingSettings?.weekly_pulse_hour ?? null,
+        has_api_key: Boolean(existingPrivate?.api_key),
+        has_webhook_secret: Boolean(existingPrivate?.webhook_secret),
+      },
+      after: {
+        enabled: Boolean(enabled),
+        instanceConfigured: Boolean(cleanInstanceUrl && cleanInstanceName),
+        hasConnectedNumber: Boolean(cleanConnectedNumber),
+        weeklyPulseEnabled: Boolean(weeklyPulseEnabled),
+        weeklyPulseWeekday: cleanPulseWeekday,
+        weeklyPulseHour: cleanPulseHour,
+        has_api_key: hasApiKey,
+        has_webhook_secret: hasWebhookSecret,
+        api_key_changed: Boolean(cleanApiKey),
+        webhook_secret_changed: Boolean(cleanWebhookSecret),
+      },
+    });
     return jsonResponse({ ok: true });
   } catch (error) {
     if (isMfaRequiredError(error)) return jsonResponse({ error: error.message, code: error.code }, 403);

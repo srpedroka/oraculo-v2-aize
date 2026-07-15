@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { assertOwner, getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 function cleanRedirectTo(value: unknown) {
   const fallback = Deno.env.get("APP_ORIGIN") ?? "https://oraculo-v2-aize.netlify.app";
@@ -164,7 +165,19 @@ serve(async (req) => {
     const inviteLink = linkData.properties?.action_link ?? null;
     if (!invitedUser) throw new Error("Não foi possível criar ou localizar o acesso");
 
-    await saveMembership({
+    const { data: previousMembership, error: previousMembershipError } = await client
+      .from("memberships")
+      .select("id,role")
+      .eq("org_id", orgId)
+      .eq("user_id", invitedUser.id)
+      .maybeSingle();
+    if (previousMembershipError) throw previousMembershipError;
+    const { data: previousArea, error: previousAreaError } = previousMembership
+      ? await client.from("areas").select("id,name").eq("org_id", orgId).eq("coordinator_id", previousMembership.id).limit(1).maybeSingle()
+      : { data: null, error: null };
+    if (previousAreaError) throw previousAreaError;
+
+    const membership = await saveMembership({
       client,
       orgId,
       userId: invitedUser.id,
@@ -173,6 +186,19 @@ serve(async (req) => {
       phone: cleanPhone,
       role,
       areaId,
+    });
+
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "people",
+      action: previousMembership ? "member_access_updated" : "member_added",
+      targetType: "membership",
+      targetId: membership.id,
+      targetUserId: invitedUser.id,
+      targetLabel: cleanFullName,
+      before: previousMembership ? { role: previousMembership.role, areaId: previousArea?.id ?? null, areaName: previousArea?.name ?? null } : {},
+      after: { role, areaId, notificationRequested: Boolean(notify) },
     });
 
     // Cadastro silencioso: não envia mensagem.
@@ -201,6 +227,19 @@ serve(async (req) => {
         link: inviteLink,
       }),
     );
+
+    await recordAdministrativeAudit(client, req, {
+      orgId,
+      actorUserId: user.id,
+      category: "people",
+      action: "member_invited",
+      targetType: "membership",
+      targetId: membership.id,
+      targetUserId: invitedUser.id,
+      targetLabel: cleanFullName,
+      after: { channel: "whatsapp", sent: true },
+      requestId: `${req.headers.get("x-request-id") ?? crypto.randomUUID()}:invite`,
+    });
 
     return jsonResponse({ ok: true, channel: "whatsapp" });
   } catch (error) {

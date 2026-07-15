@@ -9,6 +9,7 @@ import {
   restoreOrganizationEnvelope,
   verifyOrganizationEnvelope,
 } from "../_shared/organization-backup.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
 function safeEqual(received: string, expected: string) {
   const receivedBytes = new TextEncoder().encode(received);
@@ -98,6 +99,16 @@ Deno.serve(async (req) => {
         envelope,
         backupId: null,
       });
+      await recordAdministrativeAudit(client, req, {
+        orgId: result.targetOrgId,
+        actorUserId: user.id,
+        category: "backup",
+        action: "organization_restored",
+        targetType: "organization",
+        targetId: result.targetOrgId,
+        targetLabel: result.targetOrgName,
+        after: { source: "portable_package", recordCounts: result.recordCounts },
+      });
       return jsonResponse({ ok: true, ...result });
     }
 
@@ -114,6 +125,16 @@ Deno.serve(async (req) => {
 
     if (body.action === "create") {
       const backup = await createOrganizationBackup(orgId, "manual", user.id);
+      await recordAdministrativeAudit(serviceClient(), req, {
+        orgId,
+        actorUserId: user.id,
+        category: "backup",
+        action: "backup_created",
+        targetType: "organization_backup",
+        targetId: backup.id,
+        targetLabel: "Backup manual",
+        after: { kind: backup.kind, status: backup.status, externalStatus: backup.external_status },
+      });
       return jsonResponse({ ok: true, backup });
     }
 
@@ -121,6 +142,16 @@ Deno.serve(async (req) => {
       const backupId = String(body.backupId ?? "").trim();
       if (!backupId) throw new Error("Backup não informado");
       const envelope = await loadOrganizationEnvelope(orgId, backupId);
+      await recordAdministrativeAudit(serviceClient(), req, {
+        orgId,
+        actorUserId: user.id,
+        category: "backup",
+        action: "backup_downloaded",
+        targetType: "organization_backup",
+        targetId: backupId,
+        targetLabel: "Pacote portátil",
+        after: { downloaded: true, schemaVersion: envelope.payload.manifest.schemaVersion },
+      });
       const fileName = `oraculo-${envelope.payload.manifest.sourceOrganization.name
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -155,6 +186,16 @@ Deno.serve(async (req) => {
         backupId,
         exerciseType: exerciseType as "restore" | "monthly_drill" | "disaster_drill",
       });
+      await recordAdministrativeAudit(serviceClient(), req, {
+        orgId,
+        actorUserId: user.id,
+        category: "backup",
+        action: "organization_restored",
+        targetType: "organization",
+        targetId: result.targetOrgId,
+        targetLabel: result.targetOrgName,
+        after: { backupId, exerciseType, recordCounts: result.recordCounts },
+      });
       return jsonResponse({ ok: true, ...result });
     }
 
@@ -169,6 +210,12 @@ Deno.serve(async (req) => {
         monthly_retention_days: Number(policy.monthlyRetentionDays),
       };
       const client = serviceClient();
+      const { data: previousPolicy, error: previousPolicyError } = await client
+        .from("organization_backup_policies")
+        .select("automatic_enabled,event_snapshots_enabled,event_retention_days,daily_retention_days,weekly_retention_days,monthly_retention_days")
+        .eq("org_id", orgId)
+        .maybeSingle();
+      if (previousPolicyError) throw previousPolicyError;
       const { data, error } = await client
         .from("organization_backup_policies")
         .update(patch)
@@ -176,13 +223,43 @@ Deno.serve(async (req) => {
         .select("*")
         .single();
       if (error) throw error;
+      await recordAdministrativeAudit(client, req, {
+        orgId,
+        actorUserId: user.id,
+        category: "backup",
+        action: "backup_policy_updated",
+        targetType: "backup_policy",
+        targetId: orgId,
+        targetLabel: "Política de backup",
+        before: previousPolicy ?? {},
+        after: patch,
+      });
       return jsonResponse({ ok: true, policy: data });
     }
 
     if (body.action === "delete") {
       const backupId = String(body.backupId ?? "").trim();
       if (!backupId) throw new Error("Backup não informado");
+      const client = serviceClient();
+      const { data: previousBackup, error: previousBackupError } = await client
+        .from("organization_backups")
+        .select("id,kind,status,created_at,external_status")
+        .eq("org_id", orgId)
+        .eq("id", backupId)
+        .maybeSingle();
+      if (previousBackupError) throw previousBackupError;
       await deleteOrganizationBackup(orgId, backupId);
+      await recordAdministrativeAudit(client, req, {
+        orgId,
+        actorUserId: user.id,
+        category: "backup",
+        action: "backup_deleted",
+        targetType: "organization_backup",
+        targetId: backupId,
+        targetLabel: "Backup",
+        before: previousBackup ?? {},
+        after: { deleted: true },
+      });
       return jsonResponse({ ok: true });
     }
 

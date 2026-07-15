@@ -35,6 +35,8 @@ A rota pública `/privacidade` descreve em PT-BR os dados mantidos no Supabase, 
 
 A migration `20260715140000_data_retention.sql` centraliza a retenção de telemetria e filas técnicas. `preview_expired_technical_data` é somente leitura; `cleanup_expired_technical_data` exige `service_role`/`postgres`, usa advisory lock e roda diariamente pelo `pg_cron`. Cada execução grava em `data_retention_runs` apenas contagens por tabela. O cron não alcança planos, objetivos, documentos, conversas, sessões, KPIs, histórico, usuários, backups manuais nem auditorias críticas.
 
+A migration `20260715193000_administrative_audit.sql` cria `administrative_audit_events`, trilha imutável para alterações administrativas de pessoas, IA, WhatsApp, segurança, backup e governança de dados. Somente owner lê pela RLS; navegador não insere, altera ou exclui. `_shared/administrative-audit.ts` reduz cada evento a ator, ação, alvo, estado anterior/posterior sanitizado, horário e request ID idempotente. Chaves, tokens, senhas, contatos, prompts, mensagens e conteúdo são removidos antes da gravação. A aba `Configurações > Auditoria` consulta por cursor e categoria sem adicionar confirmação ao fluxo administrativo. A trilha entra no snapshot da empresa; restauração remapeia IDs e registra também o próprio evento de restore.
+
 Na aba `WhatsApp`, owners também veem `WhatsAppHealthPanel`: conexão consultada na Evolution, correspondência da URL/evento do webhook, último evento recebido, último envio confirmado, itens pendentes, falhas recentes e alertas operacionais. `whatsapp-health` faz a leitura privilegiada e devolve apenas diagnóstico sanitizado; a URL esperada não contém segredo. Para Evolution Node, a Function consulta o estado e a configuração remota do webhook. Para Evo Go, usa `/instance/status`, normaliza `Connected`/`LoggedIn` e, como o servidor não oferece inspeção equivalente do webhook, confirma a entrega por tráfego autenticado recente. O teste envia uma única mensagem ao celular do owner. O reprocessamento de dead-letter só é liberado quando a fila correspondente, seu endpoint e a política de MFA permitem a ação; o painel nunca ativa filas ou endpoints automaticamente.
 
 Atualizações rápidas passam por duas fronteiras. `_shared/quick-update-policy.ts` impede que confirmações curtas virem mutação, exige sinal concreto e valida a qualidade mínima de evidências. `_shared/quick-updates.ts` só grava diretamente quando operação e alvo aparecem explicitamente; alvo inferido vira `conversations.pending_context(type = quick_update_confirmation)` com validade de 30 minutos e é revalidado no `sim`. Uma nova mensagem não relacionada cancela a pendência. Essa política vale para o webhook síncrono e para o worker, que reutiliza o mesmo núcleo.
@@ -85,6 +87,7 @@ Migrations principais:
 - `20260714190000_s4_operational_safety.sql`: classifica exercícios de recuperação, registra eventos sanitizados de schema destrutivo e mantém a telemetria de segurança exclusiva de `service_role`.
 - `20260714223000_optimistic_concurrency.sql`: versao otimista de objetivos/KPIs e operacoes atomicas condicionais para KPI, modelo de IA e WhatsApp.
 - `20260715140000_data_retention.sql`: prévia, limpeza diária e resumo sanitizado da retenção técnica, sem apagar memória estratégica.
+- `20260715193000_administrative_audit.sql`: trilha administrativa owner-only, sanitização, baseline de retenção e anonimização após exclusão pessoal.
 
 Tabelas publicas principais:
 
@@ -126,6 +129,7 @@ Tabelas publicas principais:
 - `organization_restore_runs`
 - `data_retention_runs`
 - `personal_data_requests`
+- `administrative_audit_events`
 
 `profiles.email` guarda o email publico usado na administracao de convites. `profiles.phone` guarda o celular em formato internacional (`+5546999990000`). Ele e unico quando preenchido e sera usado como chave de identificacao para canais externos, como WhatsApp.
 

@@ -19,6 +19,7 @@ export type OperationalRevisionEntityType =
   | OperationalEntityType
   | "executive_kpi"
   | "kpi_monthly_value";
+export type AdministrativeAuditCategory = "people" | "ai" | "whatsapp" | "security" | "backup" | "data";
 
 export interface OperationalLifecycle {
   archivedAt?: string | null;
@@ -209,6 +210,25 @@ export interface OperationalRevision {
   beforeData: Record<string, unknown>;
   afterData: Record<string, unknown>;
   changedBy: string | null;
+  createdAt: string;
+}
+
+export interface AdministrativeAuditEvent {
+  id: string;
+  orgId: string;
+  category: AdministrativeAuditCategory;
+  action: string;
+  actorUserId: string | null;
+  actorName: string;
+  targetType: string;
+  targetId: string | null;
+  targetUserId: string | null;
+  targetLabel: string | null;
+  beforeData: Record<string, unknown>;
+  afterData: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  requestId: string;
+  source: "edge_function" | "migration" | "system";
   createdAt: string;
 }
 

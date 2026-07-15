@@ -31,11 +31,32 @@ export async function runStagingSql(query: string): Promise<unknown> {
 
   const ref = required("SUPABASE_STAGING_PROJECT_REF");
   const token = required("SUPABASE_STAGING_ACCESS_TOKEN");
-  const response = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  });
-  if (!response.ok) throw new Error(`SQL de staging falhou: ${(await response.text()).slice(0, 300)}`);
-  return response.json();
+  const endpoint = `https://api.supabase.com/v1/projects/${ref}/database/query`;
+
+  const retryDelays = [1_000, 2_000, 5_000, 10_000, 20_000];
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      if (response.ok) return response.json();
+
+      const responseBody = await response.text();
+      const contentType = response.headers.get("content-type") ?? "";
+      const transient = response.status === 408 || response.status === 429 || response.status >= 500 || contentType.includes("text/html");
+      if (!transient || attempt === retryDelays.length) {
+        throw new Error(`SQL de staging falhou: ${responseBody.slice(0, 300)}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const transportFailure = /fetch failed|network error|connection reset|timed out/i.test(message);
+      if (!transportFailure || attempt === retryDelays.length) throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
+  }
+
+  throw new Error("SQL de staging terminou sem resposta");
 }

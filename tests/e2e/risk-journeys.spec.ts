@@ -75,6 +75,19 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
         after_data: { status: "at_risk" },
         changed_by: org.owner.id,
       }),
+      service.from("administrative_audit_events").insert({
+        org_id: org.orgId,
+        category: "security",
+        action: "mfa_policy_updated",
+        actor_user_id: org.owner.id,
+        actor_name: "E2E owner",
+        target_type: "organization_security",
+        target_id: org.orgId,
+        target_label: "Ações críticas",
+        before_data: { requireMfaForCriticalActions: false },
+        after_data: { requireMfaForCriticalActions: true },
+        request_id: `e2e-audit-${Date.now()}`,
+      }),
     ];
     const seeded = await Promise.all(seedOperations);
     const seedError = seeded.find((result) => result.error)?.error;
@@ -147,6 +160,14 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.getByRole("tab", { name: "WhatsApp" }).click();
     await expect(page.getByRole("heading", { name: "WhatsApp", exact: true })).toBeVisible();
     await expect(page.getByPlaceholder(/Chave da Evolution API/)).toBeVisible();
+
+    await page.getByRole("tab", { name: "Auditoria" }).click();
+    await expect(page.getByRole("heading", { name: "Auditoria administrativa" })).toBeVisible();
+    await expect(page.getByText("Política de MFA alterada")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`auditoria-${testInfo.project.name}.png`), fullPage: true });
+    }
 
     await page.getByRole("tab", { name: "Privacidade" }).click();
     await expect(page.getByRole("heading", { name: "Privacidade e uso de dados" })).toBeVisible();
