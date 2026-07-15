@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Save,
   ShieldAlert,
+  ShieldCheck,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -19,10 +20,12 @@ import { Card } from "../../components/ui/Card";
 import {
   createBackupNow,
   deleteStoredBackup,
+  discardRecoveryDrill,
   downloadBackupEnvelope,
   loadBackupState,
   restorePortableBackup,
   restoreStoredBackup,
+  runRecoveryDrill,
   updateBackupPolicy,
 } from "./api";
 import { decryptBackupFile, encryptBackupFile } from "./backupCrypto";
@@ -48,6 +51,12 @@ function formatBytes(value: number | null) {
   if (!value) return "0 KB";
   if (value < 1_048_576) return `${Math.max(1, Math.round(value / 1024))} KB`;
   return `${(value / 1_048_576).toFixed(1).replace(".", ",")} MB`;
+}
+
+function formatDuration(value: number | null | undefined) {
+  if (value == null) return "Ainda não medido";
+  if (value < 60_000) return `${(value / 1000).toFixed(1).replace(".", ",")}s`;
+  return `${Math.round(value / 60_000)} min`;
 }
 
 function statusLabel(backup: OrganizationBackupRecord) {
@@ -81,6 +90,7 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
   const [portablePassword, setPortablePassword] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [restoreResult, setRestoreResult] = useState<RestoreOrganizationResult | null>(null);
+  const [lastActionWasDrill, setLastActionWasDrill] = useState(false);
   const [policyDraft, setPolicyDraft] = useState({
     automaticEnabled: true,
     eventSnapshotsEnabled: true,
@@ -140,6 +150,7 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
       backupId ? restoreStoredBackup(orgId, backupId) : restorePortableBackup(orgId, envelope),
     onSuccess: async (result) => {
       setRestoreResult(result);
+      setLastActionWasDrill(false);
       setMessageTone("ok");
       setMessage(`Empresa restaurada como ${result.targetOrgName}.`);
       await invalidate();
@@ -147,6 +158,34 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
     onError: (error) => {
       setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "A restauração falhou.");
+    },
+  });
+  const drillMutation = useMutation({
+    mutationFn: (exerciseType: "monthly_drill" | "disaster_drill") => runRecoveryDrill(orgId, exerciseType),
+    onSuccess: async (result) => {
+      setRestoreResult(result);
+      setLastActionWasDrill(true);
+      setMessageTone("ok");
+      setMessage(`Teste concluído em ${(result.durationMs / 1000).toFixed(1).replace(".", ",")}s.`);
+      await invalidate();
+    },
+    onError: (error) => {
+      setMessageTone("error");
+      setMessage(error instanceof Error ? error.message : "O teste de recuperação falhou.");
+    },
+  });
+  const discardDrillMutation = useMutation({
+    mutationFn: (restoreRunId: string) => discardRecoveryDrill(orgId, restoreRunId),
+    onSuccess: async () => {
+      setRestoreResult(null);
+      setLastActionWasDrill(false);
+      setMessageTone("ok");
+      setMessage("Cópia de teste removida.");
+      await invalidate();
+    },
+    onError: (error) => {
+      setMessageTone("error");
+      setMessage(error instanceof Error ? error.message : "Não foi possível remover a cópia de teste.");
     },
   });
   const deleteMutation = useMutation({
@@ -168,6 +207,20 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
     [backups],
   );
   const latestRestore = backupQuery.data?.restoreRuns[0];
+  const recovery = backupQuery.data?.recovery;
+  const openDrill = backupQuery.data?.restoreRuns.find(
+    (run) => run.status === "completed" && run.exercise_type !== "restore" && !run.drill_cleaned_at && run.target_org_id,
+  );
+  const disasterDrillDue = !recovery?.lastDisasterDrillAt ||
+    Date.now() - new Date(recovery.lastDisasterDrillAt).getTime() > 100 * 86_400_000;
+  const nextDrillType: "monthly_drill" | "disaster_drill" = disasterDrillDue && backupQuery.data?.externalConfigured
+    ? "disaster_drill"
+    : "monthly_drill";
+  const recoveryStatus = recovery?.status === "protected"
+    ? { label: "Protegido", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
+    : recovery?.status === "protecting"
+      ? { label: "Protegendo", className: "border-amber-200 bg-amber-50 text-amber-700" }
+      : { label: "Atenção", className: "border-red-200 bg-red-50 text-red-700" };
   const backupIsStale = Boolean(
     policyDraft.automaticEnabled &&
       (!lastSuccess?.completed_at || Date.now() - new Date(lastSuccess.completed_at).getTime() > 26 * 60 * 60 * 1000),
@@ -234,9 +287,22 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
     deleteMutation.mutate(backup.id);
   }
 
-  function openRestoredOrganization() {
-    if (!restoreResult) return;
-    window.localStorage.setItem("oraculo.activeOrgId", restoreResult.targetOrgId);
+  function startRecoveryDrill() {
+    const source = nextDrillType === "disaster_drill" ? "a cópia externa" : "o backup interno";
+    if (!window.confirm(`Testar a recuperação usando ${source}? Uma empresa temporária será criada sem alterar a atual.`)) return;
+    drillMutation.mutate(nextDrillType);
+  }
+
+  function discardDrill() {
+    const restoreRunId = lastActionWasDrill ? restoreResult?.restoreRunId : openDrill?.id;
+    if (!restoreRunId) return;
+    if (!window.confirm("Concluir o teste e remover somente a empresa temporária?")) return;
+    discardDrillMutation.mutate(restoreRunId);
+  }
+
+  function openRestoredOrganization(targetOrgId = restoreResult?.targetOrgId) {
+    if (!targetOrgId) return;
+    window.localStorage.setItem("oraculo.activeOrgId", targetOrgId);
     window.location.assign("/");
   }
 
@@ -296,6 +362,47 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
             <div className="mt-4 flex items-start gap-2 rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Nenhum backup válido foi concluído nas últimas 26 horas.</span>
+            </div>
+          ) : null}
+
+          {recovery ? (
+            <div className="mt-6 border-t border-border pt-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-text-secondary" />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-semibold text-text">Recuperação de desastre</h3>
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${recoveryStatus.className}`}>{recoveryStatus.label}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-text-secondary">Última restauração: {dateTime(recovery.lastRestoreAt)}</p>
+                  </div>
+                </div>
+                <Button icon={ShieldCheck} loading={drillMutation.isPending} onClick={startRecoveryDrill}>
+                  Testar recuperação
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="border-l-2 border-border pl-3">
+                  <p className="text-xs text-text-tertiary">RPO</p>
+                  <p className="mt-1 text-sm font-semibold text-text">Até {recovery.rpoTargetMinutes} min</p>
+                </div>
+                <div className="border-l-2 border-border pl-3">
+                  <p className="text-xs text-text-tertiary">RTO</p>
+                  <p className="mt-1 text-sm font-semibold text-text">Até {recovery.rtoTargetMinutes / 60}h</p>
+                </div>
+                <div className="border-l-2 border-border pl-3">
+                  <p className="text-xs text-text-tertiary">Cópia externa testada</p>
+                  <p className="mt-1 text-sm font-semibold text-text">{dateTime(recovery.lastDisasterDrillAt)}</p>
+                </div>
+                <div className="border-l-2 border-border pl-3">
+                  <p className="text-xs text-text-tertiary">Tempo do pacote</p>
+                  <p className="mt-1 text-sm font-semibold text-text">{formatDuration(recovery.lastRestoreDurationMs)}</p>
+                </div>
+              </div>
+              {recovery.pendingSince ? (
+                <p className="mt-3 text-xs text-amber-700">Alteração aguardando snapshot desde {dateTime(recovery.pendingSince)}.</p>
+              ) : null}
             </div>
           ) : null}
 
@@ -478,7 +585,23 @@ export function OrganizationBackupCard({ orgId }: OrganizationBackupCardProps) {
               {restoreResult.warnings.length ? ` · ${restoreResult.warnings.length} avisos` : ""}
             </p>
           </div>
-          <Button icon={RotateCcw} onClick={openRestoredOrganization}>Abrir empresa restaurada</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button icon={RotateCcw} onClick={() => openRestoredOrganization()}>Abrir empresa restaurada</Button>
+            {lastActionWasDrill ? (
+              <Button variant="ghost" icon={Trash2} loading={discardDrillMutation.isPending} onClick={discardDrill}>Concluir teste</Button>
+            ) : null}
+          </div>
+        </div>
+      ) : openDrill ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <div>
+            <p className="text-sm font-semibold text-text">Cópia de teste aguardando conferência</p>
+            <p className="mt-1 text-xs text-text-secondary">{openDrill.target_org_name}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button icon={RotateCcw} onClick={() => openRestoredOrganization(openDrill.target_org_id ?? undefined)}>Abrir cópia</Button>
+            <Button variant="ghost" icon={Trash2} loading={discardDrillMutation.isPending} onClick={discardDrill}>Concluir teste</Button>
+          </div>
         </div>
       ) : latestRestore?.status === "failed" ? (
         <p className="mt-4 text-xs text-red-700">Última restauração: {latestRestore.error_message}</p>

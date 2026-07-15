@@ -161,6 +161,24 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await expect(page.getByRole("heading", { name: "WhatsApp", exact: true })).toBeVisible();
     await expect(page.getByPlaceholder(/Chave da Evolution API/)).toBeVisible();
 
+    await page.getByRole("tab", { name: "Backups" }).click();
+    await expect(page.getByRole("heading", { name: "Recuperação de desastre" })).toBeVisible();
+    await expect(page.getByText("Até 30 min")).toBeVisible();
+    await expect(page.getByText("Até 4h")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Testar recuperação" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`recuperacao-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.getByRole("tab", { name: "Segurança" }).click();
+    await expect(page.getByRole("heading", { name: "Saúde operacional" })).toBeVisible();
+    await page.getByRole("button", { name: "Registrar incidente" }).click();
+    await expect(page.getByText("Ocorrência", { exact: true })).toBeVisible();
+    await expect(page.getByText("Severidade", { exact: true })).toBeVisible();
+    await expect(page.getByText("Serviço principal", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
     await page.getByRole("tab", { name: "Auditoria" }).click();
     await expect(page.getByRole("heading", { name: "Auditoria administrativa" })).toBeVisible();
     await expect(page.getByText("Política de MFA alterada")).toBeVisible();

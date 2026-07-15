@@ -5,6 +5,15 @@ export interface OperationalHealthAlert {
   detail: string;
 }
 
+export interface RecoveryIncident {
+  id: string;
+  incident_type: "data_loss" | "service_outage" | "security" | "recovery_failure";
+  severity: "low" | "medium" | "high" | "critical";
+  affected_services: Array<"supabase" | "frontend" | "whatsapp" | "ai" | "backup" | "external_replica">;
+  status: "open" | "resolved";
+  opened_at: string;
+}
+
 export interface OperationalHealthStatus {
   ok: true;
   status: "healthy" | "warning" | "critical";
@@ -31,6 +40,9 @@ export interface OperationalHealthStatus {
     frontendErrors24h: number;
     lastRestoreAgeDays: number | null;
     lastDisasterDrillAgeDays: number | null;
+    openRecoveryIncidents: number;
+    criticalRecoveryIncidents: number;
   };
   alerts: OperationalHealthAlert[];
+  incidents: RecoveryIncident[];
 }

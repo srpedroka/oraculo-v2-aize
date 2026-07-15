@@ -23,6 +23,8 @@ const healthy: OperationalMetrics = {
   frontendErrors24h: 0,
   lastRestoreAgeDays: 2,
   lastDisasterDrillAgeDays: 2,
+  openRecoveryIncidents: 0,
+  criticalRecoveryIncidents: 0,
 };
 
 describe("operational health", () => {
@@ -67,5 +69,14 @@ describe("operational health", () => {
       "mass_archive_detected",
       "destructive_schema_change",
     ]);
+  });
+
+  it("promotes critical recovery incidents to a critical alert", () => {
+    const alerts = evaluateOperationalSignals({
+      ...healthy,
+      openRecoveryIncidents: 2,
+      criticalRecoveryIncidents: 1,
+    });
+    expect(alerts.map((item) => item.code)).toEqual(["critical_recovery_incident"]);
   });
 });

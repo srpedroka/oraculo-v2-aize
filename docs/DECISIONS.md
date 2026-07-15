@@ -775,3 +775,17 @@ Motivos:
 - uma tabela única e um helper compartilhado mantêm sanitização e RLS consistentes.
 
 Consequências: somente Functions com `service_role`, migration ou sistema inserem; owners consultam na aba Auditoria e demais papéis não leem. A trilha acompanha o backup/clone, não entra na limpeza automática e anonimiza ator/alvo na exclusão pessoal. Falha ao registrar impede a Function de responder sucesso, evitando alteração reportada como concluída sem rastreabilidade; retries reutilizam request ID e não duplicam o evento.
+
+## 2026-07-15 — Recuperação comprovada sem aprovação na rotina
+
+Decisão: manter a proteção automática das alterações e concentrar a prova de recuperação em um único botão owner-only. O exercício mensal lê o Storage interno; quando o ciclo trimestral estiver vencido, o mesmo botão só aceita uma réplica R2 concluída. Toda restauração cria clone, nunca sobrescreve a empresa, e só é aprovada após checksum, contagens críticas, ausência de credenciais e WhatsApp inerte.
+
+Motivos:
+
+- RPO precisa partir da primeira alteração ainda não protegida, não do último evento recebido;
+- testar somente o backup interno não comprova independência do projeto principal;
+- um clone navegável prova mais que a existência do arquivo;
+- incidentes precisam de trilha própria, mas texto livre aumentaria risco de guardar segredos ou conteúdo sensível;
+- confirmações em cada gravação diária tornariam estratégia e WhatsApp burocráticos sem melhorar a capacidade de restaurar.
+
+Consequências: a operação comum continua sem clique novo. Owners veem RPO de 30 minutos, RTO de 4 horas, pendência e duração do pacote; abrem/resolvem incidentes por seletores estruturados. O runbook define owner operacional, canal fora do app, ordem Supabase/Netlify/Evolution/IA e rotação de credenciais. A comunicação externa e o responsável jurídico continuam dependendo de validação formal, não de decisão automática do software.

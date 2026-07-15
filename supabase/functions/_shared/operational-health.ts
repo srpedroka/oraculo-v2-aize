@@ -29,6 +29,8 @@ export interface OperationalMetrics {
   frontendErrors24h: number;
   lastRestoreAgeDays: number | null;
   lastDisasterDrillAgeDays: number | null;
+  openRecoveryIncidents: number;
+  criticalRecoveryIncidents: number;
 }
 
 export function percentile95(values: number[]) {
@@ -90,6 +92,11 @@ export function evaluateOperationalSignals(metrics: OperationalMetrics): Operati
   }
   if (metrics.lastDisasterDrillAgeDays === null || metrics.lastDisasterDrillAgeDays > 100) {
     signals.push({ code: "disaster_drill_due", tone: "warning", title: "Exercício trimestral pendente", detail: "Nenhum exercício completo de desastre foi registrado nos últimos 100 dias." });
+  }
+  if (metrics.criticalRecoveryIncidents > 0) {
+    signals.push({ code: "critical_recovery_incident", tone: "critical", title: "Incidente crítico em aberto", detail: `${metrics.criticalRecoveryIncidents} incidente(s) crítico(s) aguardam resolução.` });
+  } else if (metrics.openRecoveryIncidents > 0) {
+    signals.push({ code: "recovery_incident_open", tone: "warning", title: "Incidente em acompanhamento", detail: `${metrics.openRecoveryIncidents} incidente(s) operacionais permanecem abertos.` });
   }
   return signals;
 }

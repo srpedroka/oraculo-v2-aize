@@ -53,6 +53,14 @@ export function restoreStoredBackup(orgId: string, backupId: string) {
   return invokeBackup<RestoreOrganizationResult>({ action: "restore", orgId, backupId });
 }
 
+export function runRecoveryDrill(orgId: string, exerciseType: "monthly_drill" | "disaster_drill") {
+  return invokeBackup<RestoreOrganizationResult>({ action: "drill", orgId, exerciseType });
+}
+
+export function discardRecoveryDrill(orgId: string, restoreRunId: string) {
+  return invokeBackup<{ ok: true }>({ action: "discard_drill", orgId, restoreRunId });
+}
+
 export function restorePortableBackup(orgId: string | null, envelope: unknown) {
   return invokeBackup<RestoreOrganizationResult>({ action: "restore", ...(orgId ? { orgId } : {}), envelope });
 }

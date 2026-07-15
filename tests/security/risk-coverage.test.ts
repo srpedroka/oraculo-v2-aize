@@ -169,6 +169,34 @@ d("Fatia 4A — matriz de permissões, lifecycle e segredos (staging)", () => {
     expect(ownerInsert.error).not.toBeNull();
   });
 
+  it("mantém incidentes de recuperação visíveis somente ao owner e sem escrita do navegador", async () => {
+    if (!org || !foreignOrg) throw new Error("fixture ausente");
+    const incidentId = crypto.randomUUID();
+    const seeded = await serviceClient().from("organization_recovery_incidents").insert({
+      id: incidentId,
+      org_id: org.orgId,
+      incident_type: "service_outage",
+      severity: "high",
+      affected_services: ["supabase"],
+      request_id: `risk-${Date.now()}`,
+    });
+    expect(seeded.error).toBeNull();
+    const ownerRead = await ownerClient.from("organization_recovery_incidents").select("id").eq("id", incidentId);
+    const coordinatorRead = await coordinatorClient.from("organization_recovery_incidents").select("id").eq("org_id", org.orgId);
+    const foreignRead = await ownerClient.from("organization_recovery_incidents").select("id").eq("org_id", foreignOrg.orgId);
+    const forged = await ownerClient.from("organization_recovery_incidents").insert({
+      org_id: org.orgId,
+      incident_type: "security",
+      severity: "low",
+      affected_services: ["frontend"],
+      request_id: "forged",
+    });
+    expect(ownerRead.data).toEqual([{ id: incidentId }]);
+    expect(coordinatorRead.data).toEqual([]);
+    expect(foreignRead.data).toEqual([]);
+    expect(forged.error).not.toBeNull();
+  });
+
   it("mantém tabelas de segredo e RPCs de worker exclusivas do service role", async () => {
     const secretTables = [
       "ai_model_keys",

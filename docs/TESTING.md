@@ -69,6 +69,7 @@ pnpm run test:e2e
 | Paginação e invalidação seletiva do cache | `src/state/use-paginated-records.test.ts`, `src/state/query-invalidation.test.ts`, `tests/integration/cursor-pagination.test.ts` |
 | Exclusão pessoal, último owner, anonimização e retirada do telefone | `tests/integration/personal-account-lifecycle.test.ts` |
 | Auditoria administrativa, sanitização, RLS owner-only, idempotência e tela responsiva | `src/test/administrative-audit.test.ts`, `tests/integration/administrative-audit.test.ts`, `tests/security/risk-coverage.test.ts`, `tests/e2e/risk-journeys.spec.ts` |
+| RPO, incidentes, fonte interna/R2, checksum, contagens, clone inerte e limpeza | `src/test/disaster-recovery.test.ts`, `tests/integration/disaster-recovery.test.ts`, `tests/security/risk-coverage.test.ts`, `tests/e2e/disaster-recovery.spec.ts` |
 
 ## Regras de segurança
 
@@ -78,6 +79,7 @@ pnpm run test:e2e
 - O E2E de recuperação intercepta a requisição; não envia email real.
 - Configurações de IA e WhatsApp são apenas inspecionadas no E2E; nenhuma chave real é preenchida.
 - Falha de limpeza torna a suíte vermelha.
+- A limpeza descartável remove `organization_restore_runs` antes dos backups porque esses registros usam `source_org_id`/`target_org_id`, não `org_id`; isso evita referências órfãs quando a fixture desliga triggers para a purga defensiva.
 
 ## Limites atuais
 

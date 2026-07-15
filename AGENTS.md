@@ -188,6 +188,7 @@ Migrations principais:
 - `supabase/migrations/20260712193000_mfa_rls_defense.sql`: defesa AAL2 condicional nas policies de acoes criticas.
 - `supabase/migrations/20260712220000_ai_controls.sql`: limites, orçamento, contadores e alertas de IA em modo monitor por padrão.
 - `supabase/migrations/20260712223000_ai_budget_alert_refresh.sql`: alertas mensais imediatos e deduplicados após registrar custo.
+- `supabase/migrations/20260715220000_disaster_recovery.sql`: RPO mensurável, verificação de restores, incidentes estruturados e cobertura dos gatilhos de backup.
 - `supabase/migrations/20260714223000_optimistic_concurrency.sql`: versao otimista e gravacoes condicionais atomicas para objetivo, KPI e configuracoes criticas.
 - `supabase/migrations/20260714120000_service_role_baseline_grants.sql`: mantém Supabase local/hospedado equivalentes nos grants server-only do `service_role` e nos defaults de objetos futuros.
 - `supabase/migrations/20260714090000_operational_health_slos.sql`: snapshots, alertas, falhas sanitizadas de IA e cron do monitor operacional.
@@ -227,6 +228,7 @@ Tabelas publicas importantes:
 - `data_retention_runs`
 - `personal_data_requests`
 - `administrative_audit_events`
+- `organization_recovery_incidents`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -265,7 +267,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `suggest-kpi-spreadsheet`: interpreta tabela de planilha ou imagem com a funcao `background` e propõe lançamentos de KPI para confirmação por owner/admin.
 - `suggest-objective-kpis`: sugere ate dois KPIs existentes para um objetivo e nunca grava sem confirmacao.
 - `apply-kpi-import`: valida a proposta confirmada, grava valores por ano/mês e cria um documento histórico de KPIs sem guardar o arquivo ou imagem bruta.
-- `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional.
+- `organization-backup`: cria, baixa, remove e restaura snapshots completos por empresa, com cron protegido, checksum, Storage privado e réplica S3 opcional; executa exercícios internos/externos verificados e remove somente o clone de teste.
 - `whatsapp-health`: diagnóstico owner-only da Evolution/webhook/filas, teste manual e retry controlado, sem expor segredo ou conteúdo.
 - `suggest-historical-metadata`: sugere tipo, area, periodo e titulo para historicos importados usando a funcao de IA `background`, com fallback heuristico e confirmacao obrigatoria antes de gravar.
 - `whatsapp-webhook`: entrada HTTP mínima do WhatsApp; autentica, bloqueia loop e encaminha texto obrigatoriamente para a fila. Mídia permanece síncrona/em memória para não persistir descritores criptográficos.
@@ -560,6 +562,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Revisao mensal com confianca, bloqueio e compromisso seguinte; pulso semanal leve opcional por WhatsApp.
 - Vinculos confirmados entre objetivos e KPIs, sugeridos pela IA e exibidos no Dashboard.
 - Backups por empresa com snapshot manual/automático, pacote portátil criptografado e restauração como clone.
+- Recuperação de desastre owner-only com RPO/RTO visíveis, teste mensal interno, exercício trimestral forçado pelo R2, clone verificado e incidentes estruturados sem texto livre.
 - Importacao de planilha ou imagem de KPIs (`.xlsx`, `.xls`, `.csv`, JPG, PNG e WEBP) com proposta da IA de bastidores, histórico/documento e confirmacao antes de gravar Meta/Atingido.
 - Plano Estrategico com importacao de PDF/PPTX/DOCX/TXT e proposta estruturada.
 - Planos Trimestrais com importacao por area e confirmacao.
@@ -590,6 +593,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Etapa 6 / Fatia 6C publicada em 2026-07-15: cron diário remove apenas filas e telemetria vencidas; prévia e execução são service-only e cada execução guarda contagens sanitizadas. Planos, objetivos, documentos, conversas, usuários, backups manuais e auditorias críticas não entram na limpeza automática.
 - Etapa 6 / Fatia 6D publicada em 2026-07-15: Minha conta consolida correção de perfil, exportação pessoal e exclusão segura. O banco bloqueia a remoção do último owner, limpa o telefone sem vínculos e preserva o histórico empresarial com autoria anonimizada.
 - Etapa 6 / Fatia 6E publicada em 2026-07-15: Configurações ganhou Auditoria owner-only; alterações de pessoas, IA, WhatsApp, MFA, backup e retenção geram eventos automáticos, imutáveis, idempotentes e sanitizados. A trilha entra no backup e referências pessoais são anonimizadas na exclusão da conta.
+- Etapa 6 / Fatia 6F validada no staging em 2026-07-15: RPO de 30 minutos parte da primeira alteração pendente; teste mensal usa Storage interno e o trimestral força R2; clones com checksum/contagens/segredos/WhatsApp verificados são navegáveis e removidos em um comando. Incidentes são owner-only e estruturados. Pendente apenas publicação controlada e exercício externo de produção.
 - Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

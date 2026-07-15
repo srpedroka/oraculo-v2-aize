@@ -1134,7 +1134,27 @@ Meta inicial de recuperação: RPO de 30 minutos para os dados de empresa inclu�
 
 O disparo via `pg_net` usa timeout de 300 segundos. Um registro `pending` por mais de 5 minutos deve ser tratado como falha operacional: consulte os logs de `organization-backup`, não apague a cópia externa e só refile a solicitação depois de confirmar que não há execução ativa.
 
-Teste de recuperação obrigatório: mensalmente restaure o snapshot mais recente como nova empresa descartável, confira planos, documentos, KPIs e membros, registre a execução como `exercise_type = monthly_drill` e depois remova a empresa de teste pela administração apropriada. A cada trimestre, repita o fluxo partindo da cópia externa e registre `exercise_type = disaster_drill`. Chaves de IA e WhatsApp devem continuar ausentes/desativadas no clone. O painel Saúde operacional avisa depois de 35 dias sem restauração e 100 dias sem exercício de desastre; ele não executa nem bloqueia nada automaticamente.
+Teste de recuperação obrigatório: mensalmente, o owner abre `Configurações > Backups` e usa `Testar recuperação`. O botão escolhe o snapshot interno no ciclo mensal e, quando o exercício trimestral estiver vencido e o R2 configurado, obriga a leitura da cópia externa. A Function cria um clone, mede a duração, confere checksum, contagens críticas, ausência de segredos e WhatsApp/fila/outbox desligados. Abra o clone e confira Dashboard/KPIs, Plano Estratégico, Documentos e Arquivo; depois volte à empresa de origem e use `Concluir teste`. O painel Saúde operacional avisa depois de 35 dias sem restauração e 100 dias sem exercício externo; ele informa, mas não bloqueia a rotina.
+
+### Incidente e recuperação completa
+
+- Responsável inicial: um owner da organização. Se o owner principal estiver indisponível, outro owner assume; coordenadores informam impacto, mas não restauram nem reativam integrações.
+- Canal: use telefone/WhatsApp direto entre os responsáveis, fora do Oráculo quando houver suspeita de indisponibilidade ou comprometimento. O registro técnico do app é estruturado e não substitui a avaliação jurídica sobre comunicação a clientes, titulares ou ANPD.
+- Registro: em `Configurações > Segurança > Saúde operacional`, use o ícone `Registrar incidente`, escolhendo ocorrência, severidade e serviço. Não há texto livre; não coloque segredo, mensagem, documento ou dado pessoal em logs/tickets técnicos.
+
+Sequência de recuperação:
+
+1. Marque o horário percebido, abra o incidente e suspenda mudanças sensíveis. Se o app ainda estiver acessível e o WhatsApp puder duplicar ou vazar resposta, desative a integração até a investigação terminar.
+2. Confirme o escopo: Supabase/Auth, frontend Netlify, WhatsApp/Evolution, provedores de IA, backup interno e R2. Preserve logs sanitizados e não apague cópias externas.
+3. Recupere Supabase primeiro: valide projeto, migrations e Functions. Se o projeto de origem estiver íntegro, use `Testar recuperação`; em perda total, restabeleça o frontend/Function a partir do commit aprovado e restaure a última cópia externa como clone.
+4. Exija `verification.passed = true`: checksum, tabelas críticas, segredos ausentes e WhatsApp inerte. Faça login e abra Dashboard/KPIs, Plano Estratégico, Documentos e Arquivo antes de aceitar o clone.
+5. Recupere o frontend Netlify a partir do mesmo SHA aprovado e execute smoke desktop/mobile. Não aponte usuários para um deploy não verificado.
+6. Rotacione credenciais potencialmente expostas: Supabase/service role quando aplicável, R2, Evolution/webhook, IA e tokens de deploy. Cadastre os novos valores somente nos cofres/painéis corretos.
+7. Reconfigure Evolution e provedores no clone. Mantenha WhatsApp, fila e outbox desligados até conexão, URL com `orgId`, segredo do webhook e envio controlado passarem.
+8. Meça o resultado: `pendingSince` até o último snapshot aceito representa a perda potencial observável; `duration_ms` mede o pacote; o RTO completo termina somente quando app, dados e integrações críticas voltarem e forem testados.
+9. Marque o incidente como resolvido, registre a decisão no changelog/runbook sem conteúdo sensível e conclua/remova clones que não viraram a nova operação.
+
+Metas: RPO de até 30 minutos e RTO completo de até 4 horas. Ultrapassar qualquer meta mantém o status em atenção, exige investigação da causa e novo exercício após a correção.
 
 Alertas adicionais da S4:
 

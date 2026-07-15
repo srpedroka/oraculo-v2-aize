@@ -2,10 +2,15 @@ import { assertOrgMember, assertOwner, getUser, serviceClient } from "../_shared
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { evaluateOperationalSignals, percentile95, type OperationalMetrics } from "../_shared/operational-health.ts";
 import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
+import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
-const EXPECTED_MIGRATION_COUNT = 48;
+const EXPECTED_MIGRATION_COUNT = 49;
 const FRONTEND_URL = "https://oraculo-v2-aize.netlify.app";
 type Client = ReturnType<typeof serviceClient>;
+
+const INCIDENT_TYPES = new Set(["data_loss", "service_outage", "security", "recovery_failure"]);
+const INCIDENT_SEVERITIES = new Set(["low", "medium", "high", "critical"]);
+const INCIDENT_SERVICES = new Set(["supabase", "frontend", "whatsapp", "ai", "backup", "external_replica"]);
 
 function timingSafeEqual(a: string, b: string) {
   const left = new TextEncoder().encode(a);
@@ -36,6 +41,32 @@ async function authorizeCron(req: Request, client: Client) {
   return Boolean(received && data?.cron_secret && timingSafeEqual(received, data.cron_secret));
 }
 
+function recoveryIncidentInput(body: Record<string, any>) {
+  const incidentType = String(body.incidentType ?? "");
+  const severity = String(body.severity ?? "");
+  const affectedServices = [...new Set(
+    (Array.isArray(body.affectedServices) ? body.affectedServices : [])
+      .map((value: unknown) => String(value))
+      .filter((value: string) => INCIDENT_SERVICES.has(value)),
+  )];
+  if (!INCIDENT_TYPES.has(incidentType)) throw new Error("Tipo de incidente inválido");
+  if (!INCIDENT_SEVERITIES.has(severity)) throw new Error("Severidade inválida");
+  if (!affectedServices.length) throw new Error("Informe ao menos um serviço afetado");
+  return { incidentType, severity, affectedServices };
+}
+
+async function listOpenIncidents(client: Client, orgId: string) {
+  const { data, error } = await client
+    .from("organization_recovery_incidents")
+    .select("id,incident_type,severity,affected_services,status,opened_at")
+    .eq("org_id", orgId)
+    .eq("status", "open")
+    .order("opened_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data ?? [];
+}
+
 async function globalSignals(client: Client) {
   const [frontend, migration] = await Promise.all([
     fetch(FRONTEND_URL, { method: "HEAD", signal: AbortSignal.timeout(8_000) }).catch(() => null),
@@ -64,6 +95,7 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     frontendErrors24h,
     restore,
     disasterDrill,
+    openIncidents,
   ] = await Promise.all([
     client.from("whatsapp_settings").select("enabled").eq("org_id", orgId).maybeSingle(),
     count(client, "whatsapp_health_events", (query) => query.eq("org_id", orgId).eq("event_type", "webhook_received").gte("created_at", since24h)),
@@ -79,9 +111,10 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     count(client, "frontend_error_events", (query) => query.eq("org_id", orgId).gte("created_at", since24h)),
     client.from("organization_restore_runs").select("completed_at").eq("source_org_id", orgId).eq("status", "completed").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
     client.from("organization_restore_runs").select("completed_at").eq("source_org_id", orgId).eq("status", "completed").eq("exercise_type", "disaster_drill").order("completed_at", { ascending: false }).limit(1).maybeSingle(),
+    client.from("organization_recovery_incidents").select("severity").eq("org_id", orgId).eq("status", "open").limit(100),
   ]);
 
-  for (const result of [settings, inbound, outbound, backupPolicy, recentBackups, aiUsage, aiPolicy, restore, disasterDrill]) {
+  for (const result of [settings, inbound, outbound, backupPolicy, recentBackups, aiUsage, aiPolicy, restore, disasterDrill, openIncidents]) {
     if (result.error) throw result.error;
   }
 
@@ -127,6 +160,8 @@ async function collectMetrics(client: Client, orgId: string, global: { frontendO
     frontendErrors24h,
     lastRestoreAgeDays: age(restore.data?.completed_at ?? null, 86_400_000),
     lastDisasterDrillAgeDays: age(disasterDrill.data?.completed_at ?? null, 86_400_000),
+    openRecoveryIncidents: (openIncidents.data ?? []).length,
+    criticalRecoveryIncidents: (openIncidents.data ?? []).filter((incident: any) => incident.severity === "critical").length,
   };
 }
 
@@ -184,6 +219,81 @@ Deno.serve(async (req) => {
       if (error) throw error;
       return jsonResponse({ ok: true, occurrenceId });
     }
+
+    if (operation === "incident_open" || operation === "incident_resolve") {
+      const user = await getUser(req);
+      orgId = String(body?.orgId ?? "");
+      await assertOwner(user.id, orgId);
+
+      if (operation === "incident_open") {
+        const input = recoveryIncidentInput(body);
+        const { error: insertError } = await client
+          .from("organization_recovery_incidents")
+          .upsert({
+            org_id: orgId,
+            incident_type: input.incidentType,
+            severity: input.severity,
+            affected_services: input.affectedServices,
+            opened_by: user.id,
+            request_id: id,
+          }, { onConflict: "org_id,request_id", ignoreDuplicates: true });
+        if (insertError) throw insertError;
+        const { data: incident, error: incidentError } = await client
+          .from("organization_recovery_incidents")
+          .select("id,incident_type,severity,affected_services,status,opened_at")
+          .eq("org_id", orgId)
+          .eq("request_id", id)
+          .single();
+        if (incidentError) throw incidentError;
+        await recordAdministrativeAudit(client, req, {
+          orgId,
+          actorUserId: user.id,
+          category: "security",
+          action: "recovery_incident_opened",
+          targetType: "recovery_incident",
+          targetId: incident.id,
+          targetLabel: "Incidente de recuperação",
+          after: {
+            incidentType: incident.incident_type,
+            severity: incident.severity,
+            affectedServices: incident.affected_services,
+            status: incident.status,
+          },
+        });
+        return jsonResponse({ ok: true, incident });
+      }
+
+      const incidentId = String(body?.incidentId ?? "").trim();
+      if (!/^[0-9a-f-]{36}$/i.test(incidentId)) throw new Error("Incidente inválido");
+      const { data: previous, error: previousError } = await client
+        .from("organization_recovery_incidents")
+        .select("id,incident_type,severity,affected_services,status,opened_at")
+        .eq("id", incidentId)
+        .eq("org_id", orgId)
+        .maybeSingle();
+      if (previousError) throw previousError;
+      if (!previous) throw new Error("Incidente não encontrado");
+      if (previous.status !== "resolved") {
+        const { error: resolveError } = await client
+          .from("organization_recovery_incidents")
+          .update({ status: "resolved", resolved_by: user.id, resolved_at: new Date().toISOString() })
+          .eq("id", incidentId)
+          .eq("org_id", orgId);
+        if (resolveError) throw resolveError;
+      }
+      await recordAdministrativeAudit(client, req, {
+        orgId,
+        actorUserId: user.id,
+        category: "security",
+        action: "recovery_incident_resolved",
+        targetType: "recovery_incident",
+        targetId: incidentId,
+        targetLabel: "Incidente de recuperação",
+        before: previous,
+        after: { status: "resolved" },
+      });
+      return jsonResponse({ ok: true });
+    }
     const global = await globalSignals(client);
     if (operation === "cron") {
       if (!(await authorizeCron(req, client))) return jsonResponse({ error: "Monitor não autorizado" }, 401);
@@ -199,8 +309,9 @@ Deno.serve(async (req) => {
     orgId = String(body?.orgId ?? "");
     await assertOwner(user.id, orgId);
     const result = await checkOrganization(client, orgId, global);
+    const incidents = await listOpenIncidents(client, orgId);
     logStructured("info", { requestId: id, functionName: "operational-health", orgId, userId: user.id, operation, durationMs: Math.round(performance.now() - startedAt), status: "ok" });
-    return jsonResponse({ ok: true, ...result });
+    return jsonResponse({ ok: true, ...result, incidents });
   } catch (error) {
     logStructured("error", { requestId: id, functionName: "operational-health", orgId, operation, durationMs: Math.round(performance.now() - startedAt), status: "error", errorCode: safeErrorCode(error) });
     return jsonResponse({ error: error instanceof Error ? error.message : "Falha no monitor operacional", requestId: id }, 400);

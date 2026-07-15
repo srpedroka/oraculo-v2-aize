@@ -1,9 +1,9 @@
 import { supabase } from "../../lib/supabase";
-import type { OperationalHealthStatus } from "./types";
+import type { OperationalHealthStatus, RecoveryIncident } from "./types";
 
-export async function loadOperationalHealth(orgId: string) {
+async function invokeOperationalHealth<T>(body: Record<string, unknown>) {
   if (!supabase) throw new Error("Supabase não configurado.");
-  const { data, error } = await supabase.functions.invoke("operational-health", { body: { action: "status", orgId } });
+  const { data, error } = await supabase.functions.invoke("operational-health", { body });
   if (error) {
     const response = (error as { context?: unknown })?.context;
     if (response instanceof Response) {
@@ -13,6 +13,28 @@ export async function loadOperationalHealth(orgId: string) {
     throw error;
   }
   if (data?.error) throw new Error(String(data.error));
-  return data as OperationalHealthStatus;
+  return data as T;
 }
 
+export function loadOperationalHealth(orgId: string) {
+  return invokeOperationalHealth<OperationalHealthStatus>({ action: "status", orgId });
+}
+
+export function openRecoveryIncident(
+  orgId: string,
+  input: {
+    incidentType: RecoveryIncident["incident_type"];
+    severity: RecoveryIncident["severity"];
+    affectedServices: RecoveryIncident["affected_services"];
+  },
+) {
+  return invokeOperationalHealth<{ ok: true; incident: RecoveryIncident }>({
+    action: "incident_open",
+    orgId,
+    ...input,
+  });
+}
+
+export function resolveRecoveryIncident(orgId: string, incidentId: string) {
+  return invokeOperationalHealth<{ ok: true }>({ action: "incident_resolve", orgId, incidentId });
+}

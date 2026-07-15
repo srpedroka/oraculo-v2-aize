@@ -13,6 +13,22 @@ const EXTERNAL_REQUEST_MAX_ATTEMPTS = 2;
 
 type JsonRow = Record<string, any>;
 type BackupKind = "manual" | "event" | "daily" | "weekly" | "monthly";
+export type BackupSourceKind = "unknown" | "internal" | "external" | "portable";
+
+const RECOVERY_CRITICAL_TABLES = [
+  "areas",
+  "strategic_plans",
+  "area_plans",
+  "objectives",
+  "key_actions",
+  "strategic_projects",
+  "evidences",
+  "check_ins",
+  "plan_documents",
+  "executive_kpis",
+  "kpi_monthly_values",
+  "objective_kpi_links",
+] as const;
 
 type BackupPolicy = {
   org_id: string;
@@ -81,6 +97,7 @@ const TABLE_EXPORTS: Array<{ table: string; select: string; order: string }> = [
   { table: "objective_kpi_links", select: "*", order: "id" },
   { table: "operational_revisions", select: "*", order: "id" },
   { table: "administrative_audit_events", select: "*", order: "id" },
+  { table: "organization_recovery_incidents", select: "*", order: "id" },
   { table: "org_ai_tone", select: "*", order: "org_id" },
   {
     table: "organization_backup_policies",
@@ -176,6 +193,10 @@ function referencedProfileIds(organization: JsonRow, data: Record<string, JsonRo
   rowsOf(data, "administrative_audit_events").forEach((row) => {
     add(row.actor_user_id);
     add(row.target_user_id);
+  });
+  rowsOf(data, "organization_recovery_incidents").forEach((row) => {
+    add(row.opened_by);
+    add(row.resolved_by);
   });
   rowsOf(data, "ai_control_policies").forEach((row) => add(row.updated_by));
   rowsOf(data, "ai_limit_events").forEach((row) => add(row.user_id));
@@ -510,22 +531,43 @@ async function backupRow(orgId: string, backupId: string) {
   return data as JsonRow;
 }
 
-export async function loadOrganizationEnvelope(orgId: string, backupId: string) {
+export async function loadOrganizationEnvelopeWithSource(
+  orgId: string,
+  backupId: string,
+  source: "auto" | "internal" | "external" = "auto",
+) {
   const client = serviceClient();
   const backup = await backupRow(orgId, backupId);
-  const { data, error } = await client.storage.from(STORAGE_BUCKET).download(backup.object_path);
   let compressed: Uint8Array;
-  if (!error && data) {
-    compressed = new Uint8Array(await data.arrayBuffer());
-  } else if (backup.external_status === "completed" && backup.external_object_key) {
+  let sourceKind: BackupSourceKind;
+
+  if (source === "external") {
+    if (backup.external_status !== "completed" || !backup.external_object_key) {
+      throw new Error("Cópia externa concluída não encontrada para este backup");
+    }
     compressed = await downloadExternal(backup.external_object_key);
+    sourceKind = "external";
   } else {
-    throw new Error(`Arquivo interno do backup indisponível: ${error?.message ?? "sem conteúdo"}`);
+    const { data, error } = await client.storage.from(STORAGE_BUCKET).download(backup.object_path);
+    if (!error && data) {
+      compressed = new Uint8Array(await data.arrayBuffer());
+      sourceKind = "internal";
+    } else if (source === "auto" && backup.external_status === "completed" && backup.external_object_key) {
+      compressed = await downloadExternal(backup.external_object_key);
+      sourceKind = "external";
+    } else {
+      throw new Error(`Arquivo interno do backup indisponível: ${error?.message ?? "sem conteúdo"}`);
+    }
   }
+
   const parsed = JSON.parse(await gunzip(compressed));
   const envelope = await verifyOrganizationEnvelope(parsed);
   if (envelope.checksum !== backup.checksum) throw new Error("Checksum diferente do registro do backup");
-  return envelope;
+  return { envelope, sourceKind };
+}
+
+export async function loadOrganizationEnvelope(orgId: string, backupId: string) {
+  return (await loadOrganizationEnvelopeWithSource(orgId, backupId)).envelope;
 }
 
 async function insertRows(
@@ -567,13 +609,49 @@ function restoredOrganizationName(sourceName: string) {
   return `${sourceName} - restauração ${date}`;
 }
 
+async function verifyRestoredOrganization(
+  client: ReturnType<typeof serviceClient>,
+  targetOrgId: string,
+  expectedCounts: Record<string, number>,
+  restoredCounts: Record<string, number>,
+) {
+  const mismatchedTables = RECOVERY_CRITICAL_TABLES.filter(
+    (table) => Number(restoredCounts[table] ?? 0) !== Number(expectedCounts[table] ?? 0),
+  );
+  const [aiKeys, whatsappKeys, whatsappSettings] = await Promise.all([
+    client.from("ai_model_keys").select("org_id", { count: "exact", head: true }).eq("org_id", targetOrgId),
+    client.from("whatsapp_instance_keys").select("org_id", { count: "exact", head: true }).eq("org_id", targetOrgId),
+    client.from("whatsapp_settings").select("enabled,inbound_queue_enabled,outbound_outbox_enabled").eq("org_id", targetOrgId).maybeSingle(),
+  ]);
+  for (const result of [aiKeys, whatsappKeys, whatsappSettings]) {
+    if (result.error) throw result.error;
+  }
+
+  const secretsExcluded = Number(aiKeys.count ?? 0) === 0 && Number(whatsappKeys.count ?? 0) === 0;
+  const whatsappDisabled = !whatsappSettings.data || (
+    whatsappSettings.data.enabled !== true &&
+    whatsappSettings.data.inbound_queue_enabled !== true &&
+    whatsappSettings.data.outbound_outbox_enabled !== true
+  );
+  return {
+    passed: mismatchedTables.length === 0 && secretsExcluded && whatsappDisabled,
+    checksumVerified: true,
+    criticalCountsMatch: mismatchedTables.length === 0,
+    mismatchedTables,
+    secretsExcluded,
+    whatsappDisabled,
+  };
+}
+
 export async function restoreOrganizationEnvelope(input: {
   auditOrgId: string | null;
   userId: string;
   envelope: OrganizationBackupEnvelope;
   backupId?: string | null;
   exerciseType?: "restore" | "monthly_drill" | "disaster_drill";
+  sourceKind?: BackupSourceKind;
 }) {
+  const startedAt = performance.now();
   const client = serviceClient();
   const envelope = await verifyOrganizationEnvelope(input.envelope);
   const data = envelope.payload.data;
@@ -583,6 +661,8 @@ export async function restoreOrganizationEnvelope(input: {
   const targetOrgName = restoredOrganizationName(String(sourceOrganization.name));
   const warnings: string[] = [];
   const restoredCounts: Record<string, number> = {};
+  let verification: JsonRow = {};
+  const sourceKind = input.sourceKind ?? (input.backupId ? "unknown" : "portable");
 
   const { data: restoreRun, error: restoreRunError } = await client
     .from("organization_restore_runs")
@@ -594,6 +674,8 @@ export async function restoreOrganizationEnvelope(input: {
       initiated_by: input.userId,
       status: "pending",
       exercise_type: input.exerciseType ?? "restore",
+      source_kind: sourceKind,
+      source_checksum: envelope.checksum,
     })
     .select("id")
     .single();
@@ -934,6 +1016,20 @@ export async function restoreOrganizationEnvelope(input: {
     });
     restoredCounts.administrative_audit_events = await insertRows(client, "administrative_audit_events", administrativeAudit);
 
+    const recoveryIncidents = rowsOf(data, "organization_recovery_incidents").map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+      org_id: targetOrgId,
+      opened_by: mapId(userMap, row.opened_by),
+      resolved_by: mapId(userMap, row.resolved_by),
+      request_id: `restore:${String(row.id)}`,
+    }));
+    restoredCounts.organization_recovery_incidents = await insertRows(
+      client,
+      "organization_recovery_incidents",
+      recoveryIncidents,
+    );
+
     const aiSettings = rowsOf(data, "ai_settings").map((row) => ({
       ...row,
       org_id: targetOrgId,
@@ -1016,23 +1112,50 @@ export async function restoreOrganizationEnvelope(input: {
     restoredCounts.organization_backup_policies = 1;
 
     await client.from("organization_backup_requests").delete().eq("org_id", targetOrgId);
+    verification = await verifyRestoredOrganization(
+      client,
+      targetOrgId,
+      envelope.payload.manifest.recordCounts,
+      restoredCounts,
+    );
+    if (verification.passed !== true) {
+      throw new Error("A verificação automática da restauração encontrou divergências");
+    }
     const uniqueWarnings = [...new Set(warnings)];
+    const durationMs = Math.max(0, Math.round(performance.now() - startedAt));
     await client
       .from("organization_restore_runs")
       .update({
         status: "completed",
         record_counts: restoredCounts,
         warnings: uniqueWarnings,
+        duration_ms: durationMs,
+        verification,
         completed_at: new Date().toISOString(),
       })
       .eq("id", restoreRun.id);
-    return { targetOrgId, targetOrgName, recordCounts: restoredCounts, warnings: uniqueWarnings };
+    return {
+      restoreRunId: restoreRun.id,
+      targetOrgId,
+      targetOrgName,
+      recordCounts: restoredCounts,
+      warnings: uniqueWarnings,
+      sourceKind,
+      durationMs,
+      verification,
+    };
   } catch (error) {
     const message = errorMessage(error);
     await client.from("organizations").delete().eq("id", targetOrgId);
     await client
       .from("organization_restore_runs")
-      .update({ status: "failed", error_message: message, completed_at: new Date().toISOString() })
+      .update({
+        status: "failed",
+        error_message: message,
+        duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+        verification,
+        completed_at: new Date().toISOString(),
+      })
       .eq("id", restoreRun.id);
     throw error;
   }

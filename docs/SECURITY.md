@@ -77,7 +77,9 @@ Secrets das Edge Functions:
 
 A réplica externa é append-only do ponto de vista do Oráculo: a Function pode gravar e ler objetos, mas não contém operação S3 de exclusão. Excluir snapshot, empresa ou dado interno não remove a cópia externa; a retenção e expiração pertencem exclusivamente ao bucket externo bloqueado. A política inicial da S3 é retenção imutável por 90 dias.
 
-O objetivo inicial é RPO de 30 minutos e RTO de 4 horas para dados organizacionais. Segredos, chaves de provedores, mídia bruta e identidades do Supabase Auth são deliberadamente excluídos do pacote e exigem recuperação operacional separada.
+O objetivo inicial é RPO de 30 minutos e RTO de 4 horas para dados organizacionais. O relógio do RPO começa na primeira mutação durável ainda não protegida e não é empurrado por alterações posteriores; o cron de backup roda a cada 15 minutos. A duração gravada em `organization_restore_runs.duration_ms` mede a reconstrução e verificação do pacote, enquanto o RTO de 4 horas cobre o incidente completo, inclusive infraestrutura e reconfiguração. Segredos, chaves de provedores, mídia bruta e identidades do Supabase Auth são deliberadamente excluídos do pacote e exigem recuperação operacional separada.
+
+Exercícios mensais restauram obrigatoriamente o objeto interno; exercícios trimestrais restauram obrigatoriamente o objeto do R2 e falham se a réplica externa não estiver disponível. O clone precisa passar por checksum, comparação das tabelas críticas, ausência de `ai_model_keys`/`whatsapp_instance_keys` e confirmação de WhatsApp/fila/outbox desligados. `organization_recovery_incidents` tem RLS owner-only, revoga escrita de `authenticated` e recebe apenas tipo, severidade, serviços afetados, ator, horário e request ID pela Function `operational-health`; não há campo livre para segredos ou conteúdo empresarial.
 
 Segredos operacionais salvos pelo app:
 

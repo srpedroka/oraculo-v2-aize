@@ -45,8 +45,34 @@ export interface OrganizationRestoreRun {
   record_counts: Record<string, number>;
   warnings: string[];
   error_message: string | null;
+  exercise_type: "restore" | "monthly_drill" | "disaster_drill";
+  source_kind: "unknown" | "internal" | "external" | "portable";
+  source_checksum: string | null;
+  duration_ms: number | null;
+  verification: {
+    passed?: boolean;
+    checksumVerified?: boolean;
+    criticalCountsMatch?: boolean;
+    secretsExcluded?: boolean;
+    whatsappDisabled?: boolean;
+  };
+  drill_cleaned_at: string | null;
   created_at: string;
   completed_at: string | null;
+}
+
+export interface OrganizationRecoveryStatus {
+  rpoTargetMinutes: number;
+  rtoTargetMinutes: number;
+  status: "protected" | "protecting" | "attention";
+  pendingSince: string | null;
+  pendingReason: string | null;
+  lastBackupAt: string | null;
+  lastExternalBackupAt: string | null;
+  lastRestoreAt: string | null;
+  lastRestoreDurationMs: number | null;
+  lastMonthlyDrillAt: string | null;
+  lastDisasterDrillAt: string | null;
 }
 
 export interface OrganizationBackupState {
@@ -54,6 +80,7 @@ export interface OrganizationBackupState {
   backups: OrganizationBackupRecord[];
   restoreRuns: OrganizationRestoreRun[];
   externalConfigured: boolean;
+  recovery: OrganizationRecoveryStatus;
 }
 
 export interface RestoreOrganizationResult {
@@ -62,4 +89,8 @@ export interface RestoreOrganizationResult {
   targetOrgName: string;
   recordCounts: Record<string, number>;
   warnings: string[];
+  restoreRunId: string;
+  sourceKind: "unknown" | "internal" | "external" | "portable";
+  durationMs: number;
+  verification: OrganizationRestoreRun["verification"];
 }

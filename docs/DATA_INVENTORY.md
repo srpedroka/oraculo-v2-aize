@@ -4,7 +4,7 @@
 
 ## 1. Escopo e responsáveis
 
-O inventário cobre 58 tabelas `public`, Supabase Auth e Storage, 31 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
+O inventário cobre 59 tabelas `public`, Supabase Auth e Storage, 31 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
 
 A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes de transformar o aviso operacional da Fatia 6B em política contratual definitiva. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
 
@@ -136,7 +136,8 @@ flowchart LR
 | --- | --- | --- | --- |
 | `organization_backup_policies` | agenda, prazos e falha sanitizada (`E/T`) | owner | vida da empresa; backup: sim |
 | `organization_backups` | caminho, checksum, manifesto, tamanho, status e ator (`P/E/T`) | owner; serviço grava | evento 7d, diário 30d, semanal 84d, mensal 730d; manual sem expiração; backup: não |
-| `organization_restore_runs` | origem/destino, contagens, warnings e ator (`P/E/T`) | owner | sem limpeza automática; backup: não |
+| `organization_restore_runs` | origem/destino, fonte interna/externa/portátil, checksum, duração, verificação, limpeza e ator (`P/E/T`) | owner | sem limpeza automática; backup: não |
+| `organization_recovery_incidents` | tipo, severidade, serviços, status, atores, horários e request ID (`P/T`) | owner lê; somente serviço abre/resolve | sem texto livre; vida da empresa; backup: sim |
 | `organization_backup_requests` | motivo e horário de solicitação (`E/T`) | somente serviço | removido ao processar; backup: não |
 | `organization_backup_secrets` | segredo do cron (`S`) | somente serviço | até rotação; backup: não |
 | `organization_security_settings` | exigência opcional de MFA e ator (`P/S/T`) | membros leem política; owner altera em AAL2 | vida da empresa; não é restaurado, clone volta ao default seguro; backup: não |
@@ -215,8 +216,8 @@ flowchart LR
 
 | Function | Tratamento principal |
 | --- | --- |
-| `organization-backup` | cria/lista/baixa/remove/restaura pacote e replica no R2 |
-| `operational-health` | agrega métricas sanitizadas, alertas e erros do frontend |
+| `organization-backup` | cria/lista/baixa/remove/restaura pacote, replica no R2 e executa/limpa exercícios interno e externo verificados |
+| `operational-health` | agrega métricas sanitizadas, alertas e erros do frontend; owner abre/resolve incidentes estruturados |
 
 ## 7. Retenção após a Fatia 6C
 
@@ -230,7 +231,7 @@ flowchart LR
 | Idempotência | concluído/falhou 365d | comando ainda em processamento nunca é removido pela retenção |
 | Backups internos | 7/30/84/730 dias; manual indefinido | decidir expiração de manual e deixar o owner informado |
 | R2 | lock de 90 dias, exclusão fora do app | tornar a permanência visível na política e no atendimento a exclusões |
-| Incidentes de dados pessoais | não há registro dedicado | criar processo/registro na 6F; não reutilizar telemetria efêmera como registro de incidente |
+| Incidentes de recuperação/segurança | registro estruturado sem texto livre, preservado no backup | owner abre/resolve pela Function; avaliação jurídica e comunicação externa continuam fora do automatismo |
 
 Referência oficial para direitos de informação, acesso, correção e eliminação: [Direitos dos titulares - ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares). Referência para incidente e critérios de comunicação: [Comunicação de Incidente de Segurança - ANPD](https://www.gov.br/anpd/pt-br/canais_atendimento/agente-de-tratamento/comunicado-de-incidente-de-seguranca-cis).
 
@@ -248,7 +249,7 @@ Referência oficial para direitos de informação, acesso, correção e elimina�
 | Excluir empresa | existente com arquivo, backup recente, nome e confirmação | política deve explicar cascata, Auth fora do pacote e réplica R2 retida |
 | Corrigir/importar backup | restauração sempre como clone | não sobrescreve origem; secrets e WhatsApp voltam inativos |
 
-O pacote atual exporta `organizations`, `profiles` e 26 tabelas do catálogo `TABLE_EXPORTS`, incluindo a auditoria administrativa sanitizada. São deliberadamente excluídos Auth, secrets, mídia, filas e telemetria efêmera. Além disso, ficam fora algumas políticas/auditorias que o manifesto ainda não enumera individualmente, como `organization_security_settings`, `organization_lifecycle_audit` e `operational_safety_events`.
+O pacote atual exporta `organizations`, `profiles` e 27 tabelas do catálogo `TABLE_EXPORTS`, incluindo auditoria administrativa e incidentes estruturados sanitizados. São deliberadamente excluídos Auth, secrets, mídia, filas e telemetria efêmera. Além disso, ficam fora algumas políticas/auditorias que o manifesto ainda não enumera individualmente, como `organization_security_settings`, `organization_lifecycle_audit` e `operational_safety_events`.
 
 ## 9. Lacunas priorizadas
 
@@ -265,16 +266,16 @@ O pacote atual exporta `organizations`, `profiles` e 26 tabelas do catálogo `TA
 2. Retenção automática para tabelas técnicas hoje ilimitadas, sem apagar estratégia e memória empresarial.
 3. Auditoria administrativa unificada para membros, papéis, IA, WhatsApp, MFA, backup e retenção, sempre sem secrets.
 
-### P2 na Fatia 6F
+### Controles técnicos implementados na Fatia 6F
 
-1. Formalizar responsável, canal e roteiro de incidente, incluindo rotação de credenciais.
-2. Criar registro de incidentes separado de alertas operacionais comuns.
-3. Consolidar a prova já existente de RPO 30 minutos, RTO 4 horas, teste mensal e exercício trimestral R2.
+1. Owner operacional, canal fora do Oráculo, roteiro por serviço e rotação de credenciais estão no runbook; responsável jurídico e comunicação externa ainda exigem validação formal.
+2. `organization_recovery_incidents` separa incidentes dos alertas efêmeros, sem texto livre ou conteúdo de negócio.
+3. RPO de 30 minutos, RTO de 4 horas, teste mensal interno e exercício trimestral forçado pelo R2 aparecem no produto e nos testes.
 
 ## 10. Critério de cobertura da 6A
 
-- As 56 tabelas `public` aparecem nominalmente neste documento.
-- As 30 Functions do `supabase/config.toml` aparecem nominalmente; o diretório legado também está identificado.
+- As 59 tabelas `public` aparecem nominalmente neste documento.
+- As 31 Functions do `supabase/config.toml` aparecem nominalmente; o diretório legado também está identificado.
 - Auth, Storage, memória transitória, logs externos e R2 estão mapeados.
 - Todo destino externo conhecido possui dados, finalidade e pendência contratual registrados.
 - Nenhum segredo, telefone, email, documento ou ID real foi copiado.

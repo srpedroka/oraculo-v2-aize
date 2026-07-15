@@ -137,6 +137,10 @@ async function purgeOrgRows(orgId: string): Promise<void> {
 declare t text;
 begin
   set local session_replication_role = replica;
+  -- Restore runs use source_org_id/target_org_id instead of org_id. Remove them
+  -- before their backup rows so the trigger-free cleanup cannot leave broken FKs.
+  delete from public.organization_restore_runs
+  where source_org_id = '${orgId}' or target_org_id = '${orgId}';
   for t in
     select c.table_name
     from information_schema.columns c

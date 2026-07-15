@@ -24,4 +24,10 @@ describe("organization backup restore", () => {
   it("remaps audit request IDs so the clone baseline cannot collide", () => {
     expect(source).toContain('request_id: `restore:${String(row.id)}`');
   });
+
+  it("restores sanitized recovery incidents with remapped actors", () => {
+    expect(source).toContain('rowsOf(data, "organization_recovery_incidents")');
+    expect(source).toContain("opened_by: mapId(userMap, row.opened_by)");
+    expect(source).toContain("resolved_by: mapId(userMap, row.resolved_by)");
+  });
 });
