@@ -1107,7 +1107,7 @@ Não usar checkbox genérico sem ligação com versão da política. Registrar v
 
 ## 6.4 Fatia 6C — Retenção e minimização
 
-> **STATUS: implementada e validada no staging em 2026-07-15; publicação pendente.** Limpeza diária service-only com prévia somente-leitura, lock, resumo sanitizado e prazos conservadores para filas/telemetria. Memória estratégica, conversas, documentos, usuários, backups manuais e auditorias críticas ficam fora do cron. Aviso operacional atualizado para `2026-07-15-r2` sem bloqueio.
+> **STATUS: concluída e publicada em 2026-07-15.** Limpeza diária service-only com prévia somente-leitura, lock, resumo sanitizado e prazos conservadores para filas/telemetria. Memória estratégica, conversas, documentos, usuários, backups manuais e auditorias críticas ficam fora do cron. Aviso operacional `2026-07-15-r2` continua não bloqueante. Produção: migration no release `29415679776` e frontend Netlify `6a577ec20e60fd17a0314196`.
 
 Definir e implementar políticas para:
 
