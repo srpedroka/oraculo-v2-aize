@@ -148,6 +148,14 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await expect(page.getByRole("heading", { name: "WhatsApp", exact: true })).toBeVisible();
     await expect(page.getByPlaceholder(/Chave da Evolution API/)).toBeVisible();
 
+    await page.getByRole("tab", { name: "Privacidade" }).click();
+    await expect(page.getByRole("heading", { name: "Privacidade e uso de dados" })).toBeVisible();
+    await expect(page.getByText("Owner da organização")).toBeVisible();
+    await page.getByRole("button", { name: "Registrar ciência da versão 2026-07-15" }).click();
+    await expect(page.getByText("Ciência registrada")).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("Ciência registrada")).toBeVisible();
+
     await page.goto("/documentos");
     await expect(page.getByRole("heading", { name: "Histórico descartável E2E" })).toBeVisible();
     await page.getByRole("button", { name: "Importar histórico" }).first().click();

@@ -4,7 +4,7 @@
 
 ## 1. Escopo e responsáveis
 
-O inventário cobre 53 tabelas `public`, Supabase Auth e Storage, 30 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
+O inventário cobre 55 tabelas `public`, Supabase Auth e Storage, 30 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
 
 A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes da Fatia 6B. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
 
@@ -140,6 +140,8 @@ flowchart LR
 | `organization_backup_requests` | motivo e horário de solicitação (`E/T`) | somente serviço | removido ao processar; backup: não |
 | `organization_backup_secrets` | segredo do cron (`S`) | somente serviço | até rotação; backup: não |
 | `organization_security_settings` | exigência opcional de MFA e ator (`P/S/T`) | membros leem política; owner altera em AAL2 | vida da empresa; não é restaurado, clone volta ao default seguro; backup: não |
+| `data_notice_versions` | versão, publicação e resumo do aviso (`T`) | leitura pública; somente migration publica | sem expiração; backup: não, registro global |
+| `organization_data_notice_acknowledgements` | empresa, versão, owner e horário da ciência (`P/T`) | membros leem; somente owner insere; imutável pelo navegador | vida da empresa; backup: não, clone exige nova ciência |
 | `organization_lifecycle_audit` | empresa, ator/email, ação e motivo (`P/E/T`) | owner/serviço | `permanent_delete` sobrevive à empresa; backup: não |
 | `operation_commands` | idempotência, hash, status e resultado de operação (`E/P/PS?/T`) | somente serviço | sem limpeza automática; backup: não |
 | `operational_health_snapshots` | métricas sanitizadas e estado (`T`) | somente serviço; owner vê resumo | 30 dias; backup: não |
@@ -268,7 +270,7 @@ O pacote atual exporta `organizations`, `profiles` e 25 tabelas do catálogo `TA
 
 ## 10. Critério de cobertura da 6A
 
-- As 53 tabelas `public` aparecem nominalmente neste documento.
+- As 55 tabelas `public` aparecem nominalmente neste documento.
 - As 30 Functions do `supabase/config.toml` aparecem nominalmente; o diretório legado também está identificado.
 - Auth, Storage, memória transitória, logs externos e R2 estão mapeados.
 - Todo destino externo conhecido possui dados, finalidade e pendência contratual registrados.

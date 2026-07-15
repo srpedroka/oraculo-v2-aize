@@ -733,3 +733,11 @@ Decisão: concluir a Fatia 6A como documentação verificável do estado atual, 
 Motivo: implementar política ou apagar dados antes de saber exatamente o que existe criaria falsa conformidade e risco de perder memória estratégica. A classificação técnica também não pode decidir sozinha quem é controlador/operador ou qual base legal se aplica.
 
 Consequências: toda nova tabela, Function, mídia persistida ou provedor externo deve atualizar o inventário. A Fatia 6B depende de validação responsável dos papéis, contato, bases legais e contratos. As lacunas encontradas, inclusive manifesto incompleto das exclusões de backup e retenção ilimitada de algumas tabelas técnicas, permanecem visíveis e não foram corrigidas silenciosamente nesta fatia.
+
+## 2026-07-15 - Ciência operacional versionada sem bloqueio
+
+Decisão: publicar um aviso operacional de dados em PT-BR e registrar uma única ciência por versão e empresa, feita pelo owner. O aviso é público, aparece também nas Configurações e pode gerar uma chamada discreta no shell; dispensar ou não registrar nunca bloqueia login, planejamento, Dashboard ou WhatsApp.
+
+Motivo: transparência precisa acompanhar o comportamento real do produto sem transformar toda finalidade em consentimento genérico nem criar confirmações repetidas. A versão e o ator tornam a ciência auditável, enquanto RLS e ausência de update/delete preservam o registro.
+
+Consequências: o contato operacional inicial é o owner pelo canal de convite/operação. Razão social, contato institucional, papéis contratuais, bases legais e termos dos suboperadores continuam dependendo de validação responsável; o aviso não se apresenta como parecer jurídico. Clones restaurados não herdam a ciência e devem registrar a versão novamente.

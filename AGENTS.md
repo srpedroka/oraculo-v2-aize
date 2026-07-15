@@ -151,6 +151,7 @@ supabase functions deploy whatsapp-webhook oracle-chat --project-ref bkswkfazkji
   - `/execucao`: Execucao Viva;
   - `/arquivo`: arquivo operacional e historico de alteracoes;
   - `/configuracoes`: configuracoes de conta, empresa, IA, WhatsApp e membros;
+  - `/privacidade`: aviso público de privacidade e uso de dados;
   - `/redefinir-senha`: recuperacao de senha.
 - `src/state/store.tsx`: principal ponte entre frontend e Supabase.
 - `src/lib/supabase.ts`: cliente Supabase do navegador e checagem de configuracao.
@@ -192,6 +193,7 @@ Migrations principais:
 - `supabase/migrations/20260714090000_operational_health_slos.sql`: snapshots, alertas, falhas sanitizadas de IA e cron do monitor operacional.
 - `supabase/migrations/20260714190000_s4_operational_safety.sql`: eventos de segurança service-only e classificação dos exercícios mensal/trimestral de recuperação.
 - `supabase/migrations/20260714110000_frontend_error_events.sql`: correlação service-only dos códigos de ocorrência do Error Boundary.
+- `supabase/migrations/20260715100000_data_notice_acknowledgements.sql`: versões públicas do aviso e ciência imutável por empresa, com RLS membro-lê/owner-insere.
 
 Tabelas publicas importantes:
 
@@ -218,6 +220,8 @@ Tabelas publicas importantes:
 - `whatsapp_worker_secrets`
 - `whatsapp_outbox`
 - `whatsapp_sender_secrets`
+- `data_notice_versions`
+- `organization_data_notice_acknowledgements`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -574,7 +578,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
 - Etapa 5 / Fatias 5A–5F concluídas e publicadas em produção em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas, rotas/importadores carregam sob demanda e edicoes de objetivo/KPI/configuracoes criticas recusam versoes antigas sem perder o rascunho.
-- Etapa 6 / Fatia 6A concluída documentalmente em 2026-07-15: `docs/DATA_INVENTORY.md` classifica 53 tabelas, 30 Edge Functions configuradas no projeto, arquivos transitórios, provedores externos, retenção, backup, exportação/exclusão e lacunas. Não houve mudança de banco, frontend, Function, permissão ou produção.
+- Etapa 6 / Fatia 6A concluída documentalmente em 2026-07-15: `docs/DATA_INVENTORY.md` classifica as tabelas públicas, 30 Edge Functions configuradas no projeto, arquivos transitórios, provedores externos, retenção, backup, exportação/exclusão e lacunas.
+- Etapa 6 / Fatia 6B implementada no staging em 2026-07-15: `/privacidade`, aba de Privacidade, aviso dispensável e ciência versionada por empresa. `data_notice_versions` é público e `organization_data_notice_acknowledgements` usa RLS membro-lê/owner-insere sem update/delete. Não bloqueia o app e não equivale a consentimento genérico.
 - Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
@@ -585,7 +590,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - Fazer teste ponta a ponta da V3 em ambiente controlado, registrando resultado no `docs/CHANGELOG.md` ou `docs/RUNBOOK.md`.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
-- Antes da Fatia 6B, o responsável deve validar papéis de controlador/operador, contato de privacidade, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.
+- Antes de transformar o aviso operacional em política contratual definitiva, o responsável deve validar papéis de controlador/operador, razão social, contato institucional, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.
 - Manter catalogos de pricing de IA atualizados quando trocar/adicionar modelos.
 - Revisar periodicamente RLS ao criar novas tabelas ou ampliar permissoes.
 

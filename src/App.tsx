@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { isSupabaseConfigured } from "./lib/supabase";
 import { useAppState } from "./state/store";
 
@@ -14,6 +14,7 @@ const Execution = lazy(() => import("./pages/Execution").then((module) => ({ def
 const Onboarding = lazy(() => import("./pages/Onboarding").then((module) => ({ default: module.Onboarding })));
 const OperationalArchive = lazy(() => import("./pages/OperationalArchive").then((module) => ({ default: module.OperationalArchive })));
 const PasswordRecovery = lazy(() => import("./pages/PasswordRecovery").then((module) => ({ default: module.PasswordRecovery })));
+const Privacy = lazy(() => import("./pages/Privacy").then((module) => ({ default: module.Privacy })));
 const QuarterlyPlans = lazy(() => import("./pages/QuarterlyPlans").then((module) => ({ default: module.QuarterlyPlans })));
 const Settings = lazy(() => import("./pages/Settings").then((module) => ({ default: module.Settings })));
 const Strategic = lazy(() => import("./pages/Strategic").then((module) => ({ default: module.Strategic })));
@@ -48,6 +49,11 @@ VITE_SUPABASE_ANON_KEY=sua_anon_key`}
 
 function AppRoutes() {
   const { state, session, passwordRecoveryActive } = useAppState();
+  const location = useLocation();
+
+  if (location.pathname.replace(/\/+$/, "") === "/privacidade") {
+    return <Privacy />;
+  }
 
   if (import.meta.env.DEV && window.sessionStorage.getItem("oraculo.e2e.renderError") === "1") {
     throw new Error("Falha de renderização controlada pelo E2E");

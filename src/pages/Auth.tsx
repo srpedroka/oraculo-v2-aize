@@ -121,6 +121,12 @@ export function Auth() {
         >
           {mode === "signin" ? "Criar uma conta" : "Já tenho conta"}
         </button>
+
+        <p className="mt-5 border-t border-border pt-4 text-center text-xs text-text-tertiary">
+          <Link to="/privacidade" className="font-medium hover:text-text hover:underline">
+            Privacidade e uso de dados
+          </Link>
+        </p>
       </Card>
     </main>
   );

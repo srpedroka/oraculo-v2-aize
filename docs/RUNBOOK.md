@@ -1,5 +1,16 @@
 # Runbook
 
+## Validar privacidade e ciência versionada
+
+1. Abra `/privacidade` sem sessão e confirme HTTP 200, versão visível e seções de Supabase, IA, WhatsApp/áudio, documentos, retenção/backups e direitos.
+2. Entre como owner. O aviso discreto pode aparecer, mas deve permitir continuar usando o app ou ser dispensado sem bloquear nenhuma rota.
+3. Abra `Configurações > Privacidade`, leia o aviso completo e registre ciência da versão. Recarregue: o status deve permanecer e o aviso não deve voltar.
+4. Entre como coordenador/admin da mesma empresa: o status é legível, mas o botão de registro não aparece.
+5. Em empresa descartável diferente, confirme que a ciência da primeira não é visível. Não teste RLS em empresa real.
+6. Uma nova versão relevante exige nova linha em `data_notice_versions` e mudança de `DATA_NOTICE_VERSION`; não altere nem apague aceites antigos.
+
+Rollback de UI: retire banner, aba e rota do frontend. A tabela pode permanecer inerte e imutável. Rollback de banco só deve ser considerado antes de existir aceite real; depois disso, preserve a auditoria.
+
 ## Validar conflito de edicao em duas abas
 
 1. No staging, abra o mesmo objetivo em duas abas e altere ambas.

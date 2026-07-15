@@ -1091,6 +1091,8 @@ Incluir WhatsApp, áudio transcrito, documentos, prompts, logs de IA, backups e 
 
 ## 6.3 Fatia 6B — Transparência e consentimento operacional
 
+> **STATUS: implementada e validada no staging em 2026-07-15; publicação pendente.** A rota pública `/privacidade`, a aba de Configurações, o aviso não bloqueante e a ciência imutável por versão/empresa foram adicionados. A ciência é operacional, não consentimento genérico. Papéis legais, razão social e contato institucional continuam pendentes de validação responsável; até lá, o owner é o contato operacional pelo canal de convite.
+
 Adicionar política e UI em PT-BR explicando:
 
 - quais dados vão para Supabase;

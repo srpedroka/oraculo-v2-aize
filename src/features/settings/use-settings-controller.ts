@@ -130,6 +130,7 @@ export function useSettingsController() {
     { id: "whatsapp", label: "WhatsApp", ownerOnly: true },
     { id: "seguranca", label: "Segurança", ownerOnly: true },
     { id: "backups", label: "Backups", ownerOnly: true },
+    { id: "privacidade", label: "Privacidade", ownerOnly: false },
     { id: "tom", label: "Tom do Oráculo", ownerOnly: false },
     { id: "perigo", label: "Zona de perigo", ownerOnly: false },
   ];

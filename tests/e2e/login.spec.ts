@@ -12,4 +12,9 @@ test("a tela de acesso carrega com email e botão de entrar", async ({ page }) =
   await page.waitForLoadState("networkidle");
 
   expect(requestedPaths.filter((path) => /pdfjs-dist|pdf\.worker|xlsx|mammoth|jszip/i.test(path))).toEqual([]);
+
+  await page.getByRole("link", { name: "Privacidade e uso de dados" }).click();
+  await expect(page).toHaveURL(/\/privacidade$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Privacidade e uso de dados" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "WhatsApp, áudio e arquivos" })).toBeVisible();
 });

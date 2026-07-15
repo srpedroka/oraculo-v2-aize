@@ -30,6 +30,7 @@ import { MfaSecurityCard } from "../security/MfaSecurityCard";
 import { AiControlsCard } from "../ai/AiControlsCard";
 import { WhatsAppHealthPanel } from "../whatsapp/WhatsAppHealthPanel";
 import { OperationalHealthPanel } from "../health/OperationalHealthPanel";
+import { PrivacySettingsSection } from "../privacy/PrivacySettingsSection";
 import { findModelPricing, modelOptionsForProvider } from "../../lib/aiPricing";
 import { formatDate } from "../../lib/format";
 import type { AiFunction, AiProvider, MembershipRole, OrgTonePreset } from "../../types";
@@ -62,6 +63,10 @@ export function GovernanceSettingsSections({ scope }: { scope: SettingsControlle
           <MfaSecurityCard orgId={state.activeOrgId} />
           <OperationalHealthPanel orgId={state.activeOrgId} />
         </div>
+      ) : null}
+
+      {showSection("privacidade") && state.activeOrgId ? (
+        <PrivacySettingsSection orgId={state.activeOrgId} isOwner={isOwner} />
       ) : null}
 
       {showSection("tom") ? (
