@@ -3,7 +3,7 @@ import { anonClient, hasStagingEnv, serviceClient } from "../helpers/staging";
 import { createDisposableOrg, destroyDisposableOrg, type DisposableOrg } from "../helpers/factory";
 import { runStagingSql } from "../helpers/sql";
 
-const NOTICE_VERSION = "2026-07-15";
+const NOTICE_VERSION = "2026-07-15-r2";
 
 describe.skipIf(!hasStagingEnv())("ciência versionada do aviso de dados (staging)", () => {
   it("permite ciência somente pelo owner, mantém leitura na empresa e isola outras organizações", async () => {

@@ -194,6 +194,7 @@ Migrations principais:
 - `supabase/migrations/20260714190000_s4_operational_safety.sql`: eventos de segurança service-only e classificação dos exercícios mensal/trimestral de recuperação.
 - `supabase/migrations/20260714110000_frontend_error_events.sql`: correlação service-only dos códigos de ocorrência do Error Boundary.
 - `supabase/migrations/20260715100000_data_notice_acknowledgements.sql`: versões públicas do aviso e ciência imutável por empresa, com RLS membro-lê/owner-insere.
+- `supabase/migrations/20260715140000_data_retention.sql`: retenção técnica diária, prévia service-only, resumo sanitizado e preservação explícita da memória estratégica.
 
 Tabelas publicas importantes:
 
@@ -222,6 +223,7 @@ Tabelas publicas importantes:
 - `whatsapp_sender_secrets`
 - `data_notice_versions`
 - `organization_data_notice_acknowledgements`
+- `data_retention_runs`
 - `conversations`
 - `planning_sessions`
 - `plan_documents`
@@ -580,6 +582,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Etapa 5 / Fatias 5A–5F concluídas e publicadas em produção em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas, rotas/importadores carregam sob demanda e edicoes de objetivo/KPI/configuracoes criticas recusam versoes antigas sem perder o rascunho.
 - Etapa 6 / Fatia 6A concluída documentalmente em 2026-07-15: `docs/DATA_INVENTORY.md` classifica as tabelas públicas, 30 Edge Functions configuradas no projeto, arquivos transitórios, provedores externos, retenção, backup, exportação/exclusão e lacunas.
 - Etapa 6 / Fatia 6B publicada em 2026-07-15: `/privacidade`, aba de Privacidade, aviso dispensável e ciência versionada por empresa. `data_notice_versions` é público e `organization_data_notice_acknowledgements` usa RLS membro-lê/owner-insere sem update/delete. Não bloqueia o app e não equivale a consentimento genérico.
+- Etapa 6 / Fatia 6C implementada no staging em 2026-07-15: cron diário remove apenas filas e telemetria vencidas; prévia e execução são service-only e cada execução guarda contagens sanitizadas. Planos, objetivos, documentos, conversas, usuários, backups manuais e auditorias críticas não entram na limpeza automática. Produção ainda pendente.
 - Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.

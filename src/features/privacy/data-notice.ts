@@ -1,4 +1,4 @@
-export const DATA_NOTICE_VERSION = "2026-07-15";
+export const DATA_NOTICE_VERSION = "2026-07-15-r2";
 export const DATA_NOTICE_PUBLISHED_AT = "15 de julho de 2026";
 
 export const DATA_NOTICE_PROVIDERS = ["OpenAI", "Anthropic", "xAI", "Moonshot"] as const;

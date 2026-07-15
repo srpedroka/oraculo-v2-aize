@@ -21,6 +21,10 @@ A Fatia 6A documenta o comportamento atual sem escolher base legal nem papel con
 
 `data_notice_versions` é legível publicamente e contém somente versão, data e resumo. `organization_data_notice_acknowledgements` tem RLS: membros da empresa leem, somente owner insere, e não há `UPDATE` ou `DELETE` para navegador. O grant de inserção aceita somente empresa e versão; ator e horário são definidos pelo banco e não podem ser forjados pelo cliente. Se a conta Auth do ator for excluída, `accepted_by` vira nulo e data/versão/empresa permanecem como auditoria anonimizada. O registro não entra no pacote portátil; um clone restaurado precisa registrar ciência novamente. A UI não recebe chaves, prompts privados ou conteúdo para mostrar o estado de privacidade.
 
+## Retenção técnica
+
+`preview_expired_technical_data` e `cleanup_expired_technical_data` não são executáveis por `anon` ou `authenticated`. A prévia não escreve; a limpeza usa lock transacional para impedir duas execuções simultâneas. `data_retention_runs` é service-only e guarda somente versão, horário e contagens, sem conteúdo, telefone, prompt ou identificador empresarial. O cron preserva registros pendentes, alertas abertos, conversas, planos, documentos, KPIs, usuários, backups manuais e auditorias críticas. Prazos e tabelas ficam no inventário; qualquer ampliação exige migration, teste de preservação e nova versão do aviso quando material.
+
 ## Concorrencia e integridade de edicao
 
 `updated_at` funciona como versao, nao como autorizacao. Toda gravacao continua submetida a Auth, membership, RLS e validacao server-side. Objetivos usam update condicional; KPI usa `save_kpi_editor_if_current` com `security invoker`, RLS e papel admin. As RPCs de IA e WhatsApp sao revogadas de `anon`/`authenticated` e concedidas somente a `service_role`, depois de a Edge Function validar owner e MFA opcional.

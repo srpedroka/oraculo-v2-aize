@@ -1238,6 +1238,31 @@ Edge Functions:
 
 `supabase/config.toml` e a fonte de verdade de `verify_jwt` para todas as funcoes. Nao dependa de flags manuais para definir a politica: depois do deploy, rode `pnpm run verify:deploy`. As funcoes publicas permitidas sao `whatsapp-webhook`, `month-turn`, `weekly-pulse`, `deadline-nudges`, `organization-backup`, `operational-health`, `whatsapp-sender` e `whatsapp-worker`; todas validam segredo ou autorizacao dentro da funcao.
 
+## Retenção técnica automática
+
+O cron `oraculo-data-retention` roda diariamente às 04:20 UTC. Ele não exige ação do usuário e não apaga planos, objetivos, documentos, conversas, sessões, KPIs, usuários, backups manuais ou auditorias críticas. Antes de investigar ou alterar a política, consulte a prévia somente-leitura com credencial administrativa no staging:
+
+```sql
+select public.preview_expired_technical_data();
+```
+
+Diagnóstico do agendamento e das últimas execuções:
+
+```sql
+select jobname, schedule, active
+from cron.job
+where jobname = 'oraculo-data-retention';
+
+select policy_version, deleted_counts, executed_at
+from public.data_retention_runs
+order by executed_at desc
+limit 10;
+```
+
+`anon`, membros e owners não executam a prévia/limpeza nem leem `data_retention_runs`. Não rode `cleanup_expired_technical_data` manualmente em produção para “testar”; valide no staging e deixe o cron executar. Para pausar em incidente, desative apenas o job no banco e preserve a tabela/funções para diagnóstico. Qualquer novo `DELETE` exige atualizar `docs/DATA_INVENTORY.md`, teste com registro vencido/recente e prova de que a memória correspondente permanece.
+
+Prazos: filas concluídas 24h, dead 7d, deduplicação/saúde 30d, erros e alertas resolvidos 90d, pulsos/lembretes 180d, comandos finalizados 365d e uso/limites de IA 730d. Itens pendentes e alertas abertos não expiram nessa rotina.
+
 ## Monitor operacional
 
 O cron `oraculo-operational-health` roda a cada cinco minutos. A Function `operational-health` mede frontend, migrations, webhook, p95 do WhatsApp, fila/outbox, backup, custo/falhas de IA e restauração. O endpoint e o segredo ficam em `operational_monitor_secrets`; nunca copie o segredo para frontend ou logs.

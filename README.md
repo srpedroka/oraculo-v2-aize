@@ -4,7 +4,7 @@ Oraculo e um sistema de execucao estrategica. Ele ajuda a empresa a enxergar se 
 
 A V2 inclui autenticacao, empresas, membros, areas, planos estrategicos, planos trimestrais, execucao mensal, evidencias, check-ins, arquivo operacional reversivel e um painel de IA estrategica com Supabase e Netlify.
 
-O aviso público `/privacidade` explica o tratamento operacional de dados, IA, WhatsApp, arquivos e backups. Em Configurações, o owner registra ciência uma vez por versão e empresa, sem bloquear o uso diário.
+O aviso público `/privacidade` explica o tratamento operacional de dados, IA, WhatsApp, arquivos e backups. Em Configurações, o owner registra ciência uma vez por versão e empresa, sem bloquear o uso diário. Dados técnicos vencidos são limpos diariamente por uma política fixa e conservadora; memória estratégica, documentos, conversas e auditorias críticas ficam fora dessa automação.
 
 ## Stack
 

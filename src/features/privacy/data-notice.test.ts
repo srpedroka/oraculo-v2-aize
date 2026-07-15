@@ -8,7 +8,7 @@ import {
 
 describe("data notice", () => {
   it("mantém uma versão explícita e uma dispensa isolada por empresa e versão", () => {
-    expect(DATA_NOTICE_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(DATA_NOTICE_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}(?:-r\d+)?$/);
     expect(DATA_NOTICE_DISMISS_KEY("org-a")).toContain(`org-a.${DATA_NOTICE_VERSION}`);
     expect(DATA_NOTICE_DISMISS_KEY("org-a")).not.toBe(DATA_NOTICE_DISMISS_KEY("org-b"));
   });

@@ -1107,6 +1107,8 @@ Não usar checkbox genérico sem ligação com versão da política. Registrar v
 
 ## 6.4 Fatia 6C — Retenção e minimização
 
+> **STATUS: implementada e validada no staging em 2026-07-15; publicação pendente.** Limpeza diária service-only com prévia somente-leitura, lock, resumo sanitizado e prazos conservadores para filas/telemetria. Memória estratégica, conversas, documentos, usuários, backups manuais e auditorias críticas ficam fora do cron. Aviso operacional atualizado para `2026-07-15-r2` sem bloqueio.
+
 Definir e implementar políticas para:
 
 - conversas arquivadas;

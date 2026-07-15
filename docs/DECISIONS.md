@@ -741,3 +741,11 @@ Decisão: publicar um aviso operacional de dados em PT-BR e registrar uma única
 Motivo: transparência precisa acompanhar o comportamento real do produto sem transformar toda finalidade em consentimento genérico nem criar confirmações repetidas. A versão e o ator tornam a ciência auditável, enquanto RLS e ausência de update/delete preservam o registro.
 
 Consequências: o contato operacional inicial é o owner pelo canal de convite/operação. Razão social, contato institucional, papéis contratuais, bases legais e termos dos suboperadores continuam dependendo de validação responsável; o aviso não se apresenta como parecer jurídico. Clones restaurados não herdam a ciência e devem registrar a versão novamente.
+
+## 2026-07-15 - Retenção técnica automática sem apagar memória
+
+Decisão: usar prazos globais conservadores para dados estritamente técnicos, executados uma vez ao dia por `pg_cron`, sem adicionar configurações ou confirmações ao trabalho cotidiano. A política remove filas concluídas/mortas, deduplicação, telemetria, erros, lembretes, comandos finalizados e registros de custo/limite após suas janelas documentadas. A versão material do aviso passa a `2026-07-15-r2`.
+
+Motivo: reduzir exposição e crescimento indefinido sem transformar o Oráculo em um processo burocrático nem comprometer a memória que torna a IA útil. Prazos editáveis por empresa aumentariam complexidade e risco de uma configuração acidental apagar contexto importante.
+
+Consequências: planos, objetivos, documentos, conversas, sessões, KPIs, históricos, usuários, backups manuais, alertas abertos e auditorias críticas não entram no cron. A prévia e a execução são service-only, a execução usa lock e cada rodada guarda somente contagens sanitizadas por 730 dias. Alterar escopo ou prazo exige migration, teste de preservação e atualização do inventário/aviso quando material.

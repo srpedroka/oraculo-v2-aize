@@ -49,8 +49,9 @@ const sections = [
     icon: LockKeyhole,
     title: "Retenção, segurança e backups",
     paragraphs: [
-      "Planos, documentos, conversas e auditorias permanecem enquanto forem necessários para a memória estratégica e a operação da empresa, até arquivamento ou exclusão autorizada. Filas e telemetria técnica têm retenções menores e servem para recuperação e diagnóstico.",
-      "Backups ficam em armazenamento privado, com checksum e retenção configurável. O pacote portátil é criptografado no navegador com a senha escolhida pelo owner. Segredos, chaves de IA, credenciais do WhatsApp e mídia bruta não entram nesse pacote.",
+      "Planos, objetivos, documentos, conversas, KPIs, históricos e auditorias críticas não entram na limpeza automática: permanecem como memória estratégica até arquivamento ou exclusão autorizada. Perfis sem empresa também não são apagados automaticamente.",
+      "A limpeza técnica ocorre diariamente: filas concluídas saem após 24 horas e falhas encerradas após 7 dias; deduplicação e saúde ficam por 30 dias; erros e alertas resolvidos por 90 dias; lembretes por 180 dias; comandos concluídos por 1 ano; custos e limites de IA por 2 anos. Itens pendentes e alertas ainda abertos são preservados.",
+      "Backups automáticos seguem a política configurada da empresa; backups manuais não expiram automaticamente. A réplica externa tem retenção própria e pode sobreviver à exclusão interna. O pacote portátil é criptografado no navegador e não inclui segredos, credenciais nem mídia bruta.",
     ],
   },
   {

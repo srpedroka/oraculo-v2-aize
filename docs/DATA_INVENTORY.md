@@ -4,7 +4,7 @@
 
 ## 1. Escopo e responsáveis
 
-O inventário cobre 55 tabelas `public`, Supabase Auth e Storage, 30 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
+O inventário cobre 56 tabelas `public`, Supabase Auth e Storage, 30 Edge Functions configuradas, o frontend Netlify, WhatsApp/Evolution, quatro provedores de IA, pesquisa web e a réplica Cloudflare R2. Arquivos brutos processados apenas em memória também entram no mapa, mesmo quando não viram linha no banco.
 
 A empresa cliente decide por que e como usa os dados de seus colaboradores, planos e operação dentro do Oráculo. A posição contratual do fornecedor do Oráculo, dos provedores de infraestrutura e dos provedores de IA precisa ser formalmente validada pelo responsável jurídico antes de transformar o aviso operacional da Fatia 6B em política contratual definitiva. A referência técnica para distinguir controlador, operador e suboperador é o [Guia de agentes de tratamento da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/nova-versao-do-guia-dos-agentes-de-tratamento).
 
@@ -106,11 +106,11 @@ flowchart LR
 | `ai_settings` | provedor/modelo e preços, sem chave (`E/T`) | membros leem; owner escreve | vida da empresa; backup: sim |
 | `ai_function_settings` | modelo por função e status sanitizado (`E/T`) | membros leem; owner escreve | vida da empresa; backup: sim |
 | `org_ai_tone` | preset, eixos e preferência textual (`E/P/PS?`) | membros leem; owner escreve | vida da empresa; backup: sim |
-| `ai_usage_logs` | provedor, modelo, tokens, custo, canal, pessoa e metadados limitados (`P/T`) | membros conforme RLS | sem limpeza automática; backup: sim |
+| `ai_usage_logs` | provedor, modelo, tokens, custo, canal, pessoa e metadados limitados (`P/T`) | membros conforme RLS | 730 dias; backup: sim enquanto presente |
 | `ai_control_policies` | limites, orçamento e ator (`E/P/T`) | owner | vida da empresa; backup: sim |
 | `ai_call_counters` | contagem por janela/pessoa/empresa (`P/T`) | somente serviço | removido após 2 horas; backup: não, efêmero |
-| `ai_limit_events` | limite, pessoa, custo e horário (`P/T`) | owner/serviço | sem limpeza automática; backup: sim |
-| `ai_function_errors` | função, provedor, modelo e código sanitizado (`T`) | somente serviço | sem limpeza automática; backup: não |
+| `ai_limit_events` | limite, pessoa, custo e horário (`P/T`) | owner/serviço | 730 dias; backup: sim enquanto presente |
+| `ai_function_errors` | função, provedor, modelo e código sanitizado (`T`) | somente serviço | 90 dias; backup: não |
 | `ai_provider_key_status` | existência/preview e validação, sem chave (`S/T`) | membros veem estado mascarado; serviço escreve | removido com empresa; backup: não |
 | `ai_model_keys` | chave API por provedor (`S`) | somente `service_role` | até rotação/exclusão; backup: não |
 
@@ -120,14 +120,14 @@ flowchart LR
 | --- | --- | --- | --- |
 | `whatsapp_settings` | URL/instância, número conectado, flags e agenda (`P/E/T`) | membros leem parte pública; owner configura | vida da empresa; backup: sim, sem segredo e restaurado inerte |
 | `whatsapp_instance_keys` | chave Evolution e segredo do webhook (`S`) | somente serviço | até rotação/exclusão; backup: não |
-| `whatsapp_processed_events` | chave técnica de deduplicação (`T`) | somente serviço | sem limpeza automática; backup: não |
+| `whatsapp_processed_events` | chave técnica de deduplicação (`T`) | somente serviço | 30 dias; backup: não |
 | `whatsapp_inbound_jobs` | telefone, texto mínimo, pessoa, status e erro sanitizado (`P/E/PS?/T`) | somente serviço | concluído: 24h; dead: 7 dias; backup: não |
 | `whatsapp_worker_secrets` | segredo e endpoint do worker (`S`) | somente serviço | até rotação; backup: não |
 | `whatsapp_outbox` | telefone destino, resposta, status e IDs do provedor (`P/E/PS?/T`) | somente serviço | enviado: 24h; dead: 7 dias; backup: não |
 | `whatsapp_sender_secrets` | segredo e endpoint do sender (`S`) | somente serviço | até rotação; backup: não |
 | `whatsapp_health_events` | evento, status HTTP, IDs e erro sanitizado (`T`) | somente serviço; owner vê agregado | 30 dias; backup: não |
-| `weekly_pulse_log` | empresa, pessoa/área, período e envio (`P/T`) | somente serviço | sem limpeza automática; backup: não |
-| `deadline_nudge_log` | lembrete, pessoa/alvo e envio (`P/E/T`) | somente serviço | sem limpeza automática; backup: não |
+| `weekly_pulse_log` | empresa, pessoa/área, período e envio (`P/T`) | somente serviço | 180 dias; backup: não |
+| `deadline_nudge_log` | lembrete, pessoa/alvo e envio (`P/E/T`) | somente serviço | 180 dias; backup: não |
 | `deadline_nudge_secrets` | segredo do cron (`S`) | somente serviço | até rotação; backup: não |
 
 ### 5.5 Backup, segurança e operação
@@ -142,13 +142,14 @@ flowchart LR
 | `organization_security_settings` | exigência opcional de MFA e ator (`P/S/T`) | membros leem política; owner altera em AAL2 | vida da empresa; não é restaurado, clone volta ao default seguro; backup: não |
 | `data_notice_versions` | versão, publicação e resumo do aviso (`T`) | leitura pública; somente migration publica | sem expiração; backup: não, registro global |
 | `organization_data_notice_acknowledgements` | empresa, versão, owner e horário da ciência (`P/T`) | membros leem; somente owner insere; imutável pelo navegador | vida da empresa; backup: não, clone exige nova ciência |
+| `data_retention_runs` | versão, horário e contagens agregadas da limpeza (`T`) | somente serviço | 730 dias; backup: não |
 | `organization_lifecycle_audit` | empresa, ator/email, ação e motivo (`P/E/T`) | owner/serviço | `permanent_delete` sobrevive à empresa; backup: não |
-| `operation_commands` | idempotência, hash, status e resultado de operação (`E/P/PS?/T`) | somente serviço | sem limpeza automática; backup: não |
+| `operation_commands` | idempotência, hash, status e resultado de operação (`E/P/PS?/T`) | somente serviço | concluído/falhou: 365 dias; pendente permanece; backup: não |
 | `operational_health_snapshots` | métricas sanitizadas e estado (`T`) | somente serviço; owner vê resumo | 30 dias; backup: não |
-| `operational_alerts` | alerta ativo/resolvido e detalhe sanitizado (`T`) | somente serviço; owner vê resumo | sem limpeza automática, por código; backup: não |
+| `operational_alerts` | alerta ativo/resolvido e detalhe sanitizado (`T`) | somente serviço; owner vê resumo | resolvido: 90 dias; aberto permanece; backup: não |
 | `operational_monitor_secrets` | segredo/endpoint do monitor (`S`) | somente serviço | até rotação; backup: não |
 | `operational_safety_events` | alteração destrutiva de schema por empresa (`T`) | somente serviço | sem limpeza; pode sobreviver com `org_id` nulo; backup: não |
-| `frontend_error_events` | pessoa, código de ocorrência, tipo e rota sem query (`P/T`) | somente serviço; qualquer membro pode registrar o próprio evento | sem limpeza automática; backup: não |
+| `frontend_error_events` | pessoa, código de ocorrência, tipo e rota sem query (`P/T`) | somente serviço; qualquer membro pode registrar o próprio evento | 90 dias; backup: não |
 
 ### 5.6 Dados fora das tabelas públicas
 
@@ -214,19 +215,19 @@ flowchart LR
 | `organization-backup` | cria/lista/baixa/remove/restaura pacote e replica no R2 |
 | `operational-health` | agrega métricas sanitizadas, alertas e erros do frontend |
 
-## 7. Retenção atual e decisões para a Fatia 6C
+## 7. Retenção após a Fatia 6C
 
-| Grupo | Situação atual | Decisão necessária, sem implementação na 6A |
+| Grupo | Política implementada | Proteção deliberada |
 | --- | --- | --- |
 | Planos, objetivos, documentos, KPIs e auditoria | preservação sem prazo; arquivo reversível | manter memória estratégica como regra e definir exclusão apenas por empresa/solicitação válida |
-| Conversas e sessões | sem prazo automático | definir se existe janela configurável sem quebrar memória histórica |
-| IA: uso, limites e erros | contador 2h; demais eventos sem prazo | separar registro financeiro, segurança e telemetria; definir prazos distintos |
-| WhatsApp | fila/outbox com 24h/7d; saúde 30d; dedup/pulsos/lembretes sem prazo | criar limpeza para tabelas técnicas não limitadas sem tocar em `chat_messages` |
-| Saúde operacional | snapshots 30d; alertas por código; frontend/AI errors sem prazo | definir 30/90 dias para telemetria e preservar somente incidentes necessários |
-| Idempotência | `operation_commands` sem prazo | definir janela compatível com retries e auditoria de gravações críticas |
+| Conversas e sessões | sem limpeza automática | memória e sessões permanecem; exclusão é explícita, não cronológica |
+| IA: uso, limites e erros | contador 2h; erros 90d; uso/limites 730d | custo recente permanece consultável; conteúdo de negócio não entra nesses erros |
+| WhatsApp | fila/outbox 24h/7d; saúde/dedup 30d; pulsos/lembretes 180d | pendências permanecem; `chat_messages` não entra no cron |
+| Saúde operacional | snapshots 30d; erros/alertas resolvidos 90d | alerta aberto e evento de segurança permanecem |
+| Idempotência | concluído/falhou 365d | comando ainda em processamento nunca é removido pela retenção |
 | Backups internos | 7/30/84/730 dias; manual indefinido | decidir expiração de manual e deixar o owner informado |
 | R2 | lock de 90 dias, exclusão fora do app | tornar a permanência visível na política e no atendimento a exclusões |
-| Incidentes de dados pessoais | não há registro dedicado | criar processo/registro na 6F; o RCIS exige registro dos incidentes aplicáveis por pelo menos cinco anos |
+| Incidentes de dados pessoais | não há registro dedicado | criar processo/registro na 6F; não reutilizar telemetria efêmera como registro de incidente |
 
 Referência oficial para direitos de informação, acesso, correção e eliminação: [Direitos dos titulares - ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares). Referência para incidente e critérios de comunicação: [Comunicação de Incidente de Segurança - ANPD](https://www.gov.br/anpd/pt-br/canais_atendimento/agente-de-tratamento/comunicado-de-incidente-de-seguranca-cis).
 
@@ -270,7 +271,7 @@ O pacote atual exporta `organizations`, `profiles` e 25 tabelas do catálogo `TA
 
 ## 10. Critério de cobertura da 6A
 
-- As 55 tabelas `public` aparecem nominalmente neste documento.
+- As 56 tabelas `public` aparecem nominalmente neste documento.
 - As 30 Functions do `supabase/config.toml` aparecem nominalmente; o diretório legado também está identificado.
 - Auth, Storage, memória transitória, logs externos e R2 estão mapeados.
 - Todo destino externo conhecido possui dados, finalidade e pendência contratual registrados.

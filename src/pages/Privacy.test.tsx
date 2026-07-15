@@ -11,6 +11,8 @@ describe("Privacy", () => {
     expect(screen.getByText(/Supabase hospeda autenticação/)).toBeInTheDocument();
     expect(screen.getByText(/OpenAI, Anthropic, xAI, Moonshot/)).toBeInTheDocument();
     expect(screen.getByText(/O Oráculo não grava o arquivo ou áudio bruto/)).toBeInTheDocument();
+    expect(screen.getByText(/filas concluídas saem após 24 horas/)).toBeInTheDocument();
+    expect(screen.getByText(/não entram na limpeza automática/)).toBeInTheDocument();
     expect(screen.getByText(/pacote portátil é criptografado/)).toBeInTheDocument();
     expect(screen.getByText(/Isso não bloqueia login, planejamento, Dashboard ou WhatsApp/)).toBeInTheDocument();
   });

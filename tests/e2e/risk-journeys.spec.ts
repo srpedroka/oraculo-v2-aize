@@ -151,7 +151,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.getByRole("tab", { name: "Privacidade" }).click();
     await expect(page.getByRole("heading", { name: "Privacidade e uso de dados" })).toBeVisible();
     await expect(page.getByText("Owner da organização")).toBeVisible();
-    await page.getByRole("button", { name: "Registrar ciência da versão 2026-07-15" }).click();
+    await page.getByRole("button", { name: "Registrar ciência da versão 2026-07-15-r2" }).click();
     await expect(page.getByText("Ciência registrada")).toBeVisible();
     await page.reload();
     await expect(page.getByText("Ciência registrada")).toBeVisible();
