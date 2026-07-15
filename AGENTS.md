@@ -572,7 +572,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.
 - Etapa 4 / Fatias 4A–4E concluídas em 2026-07-13: suíte por risco cobre domínio/importação, idempotência, memória, RLS, papéis, segredos, arquivo/auditoria/backup e jornadas autenticadas desktop/mobile com dados descartáveis. O GitHub Actions usa Supabase local, logs sanitizados e o gate `CI required`; caminhos críticos têm logs estruturados, métricas/SLOs e Error Boundary global com código de ocorrência sanitizado.
-- Etapa 5 / Fatias 5A–5F concluídas no codigo em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas, rotas/importadores carregam sob demanda e edicoes de objetivo/KPI/configuracoes criticas recusam versoes antigas sem perder o rascunho. A 5F esta validada no staging e aguarda publicacao protegida em producao.
+- Etapa 5 / Fatias 5A–5F concluídas e publicadas em produção em 2026-07-14: store, processador do WhatsApp, motor de sessões e Configurações foram divididos por domínio/responsabilidade; históricos usam paginação cursor-based, mutações/Realtime invalidam somente consultas afetadas, rotas/importadores carregam sob demanda e edicoes de objetivo/KPI/configuracoes criticas recusam versoes antigas sem perder o rascunho.
 - Etapa S / S0–S4 concluídas e em produção em 2026-07-14. A S4 publicou a migration de segurança e as Functions `organization-lifecycle`, `organization-backup` e `operational-health`; a verificação read-only posterior confirmou o estado esperado.
 - Plano Mensal por arquivo no app ainda depende de sessao mensal ativa; pelo WhatsApp ja existe importacao mensal estruturada com confirmacao.
 - O deploy de Edge Functions depende de CLI/Supabase autenticado e deve seguir o runbook.
@@ -583,7 +583,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 - Fazer teste ponta a ponta da V3 em ambiente controlado, registrando resultado no `docs/CHANGELOG.md` ou `docs/RUNBOOK.md`.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
-- Publicar a Fatia 5F pelo workflow protegido e, depois do aceite, iniciar a Etapa 6 de governanca/LGPD/DR somente com novo briefing e autorizacao.
+- Depois do aceite da Fatia 5F, iniciar a Etapa 6 de governanca/LGPD/DR somente com novo briefing e autorizacao.
 - Manter catalogos de pricing de IA atualizados quando trocar/adicionar modelos.
 - Revisar periodicamente RLS ao criar novas tabelas ou ampliar permissoes.
 

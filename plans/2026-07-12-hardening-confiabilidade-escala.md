@@ -1029,7 +1029,7 @@ Metas iniciais:
 
 ## 5.7 Fatia 5F — Concorrência e consistência de tela
 
-> **STATUS: implementada e validada no staging em 2026-07-14; publicação em produção pendente.** Objetivos, KPI, modelo de IA, WhatsApp e tom usam versão otimista. KPI grava definição e meses atomicamente. A segunda sessão preserva o rascunho, recebe aviso e não sobrescreve a vencedora. Lint, build, 214 unitários e 5 integrações concorrentes passaram; `save-ai-settings` e `save-whatsapp-settings` estão no staging.
+> **STATUS: concluída e publicada em produção em 2026-07-14.** Objetivos, KPI, modelo de IA, WhatsApp e tom usam versão otimista. KPI grava definição e meses atomicamente. A segunda sessão preserva o rascunho, recebe aviso e não sobrescreve a vencedora. Lint, build, 214 unitários e 5 integrações concorrentes passaram. Migration no release `29377933084`, Functions no `29378061342`, frontend Netlify `6a56cf6f8589befd6e9166ad` e verificação read-only no `29378202417`.
 
 - Tratar conflitos de edição com `updated_at`/versão otimista.
 - Avisar quando registro mudou em outra sessão.
