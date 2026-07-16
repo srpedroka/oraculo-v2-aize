@@ -259,6 +259,10 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
       ["Propósito", asRecord(asRecord(content.strategic).direcionadores).proposito],
       ["Visão", asRecord(asRecord(content.strategic).direcionadores).visao],
       ["Temas", asArray<string>(asRecord(content.strategic).temas).join("; ")],
+      ["Renúncias", asArray<string>(asRecord(content.strategic).renuncias).join("; ")],
+      ["Riscos", asArray<string>(asRecord(content.strategic).riscos).join("; ")],
+      ["Decisões pendentes", asArray<string>(asRecord(content.strategic).decisoes_pendentes).join("; ")],
+      ["Aprendizados anteriores", asArray<string>(asRecord(content.strategic).aprendizados_historicos).join("; ")],
     ]
     : [
       ["Objetivo anual", reference.objetivo_anual],
@@ -288,13 +292,25 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
       drawLines(titleLines, { x: objectiveX, width: objectiveWidth, size: 15, lineHeight: 19, font: medium, color: COLORS.text, gapAfter: 2 });
       const meta = [
         objectiveTypeLabel(objective.tipo),
+        asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
         asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
         asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
         asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
       ].filter(Boolean).join(" · ");
       drawLines([meta], { x: objectiveX, width: objectiveWidth, size: 7.8, lineHeight: 11, font: medium, color: COLORS.tertiary, gapAfter: 8 });
       drawKeyValue("Resultado esperado", objective.resultado, 58);
+      drawKeyValue("Fonte", objective.fonte, 58);
       drawKeyValue("Vínculo", objective.vinculo, 58);
+
+      const strategies = asArray<string>(objective.estrategias);
+      if (strategies.length) {
+        drawLines(["ESTRATÉGIAS"], { x: objectiveX, width: objectiveWidth, size: 7.5, lineHeight: 11, font: medium, color: COLORS.tertiary, gapAfter: 2 });
+        for (const strategy of strategies) {
+          page.drawCircle({ x: objectiveX + 2, y: y + 3, size: 1.4, color: COLORS.tertiary });
+          drawLines([strategy], { x: objectiveX + 12, width: objectiveWidth - 12, size: 9, lineHeight: 13, gapAfter: 2 });
+        }
+        y -= 5;
+      }
 
       const deliverables = asArray<string>(objective.entregas);
       if (deliverables.length) {

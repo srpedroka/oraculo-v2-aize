@@ -8,6 +8,7 @@ import {
   buildDeterministicChecks,
   buildSessionRequests,
   comparisonFingerprint,
+  hasOnlyGroundedYears,
   q1Gate,
   sanitizeEvaluationValue,
   selectApplicableRubric,
@@ -163,6 +164,12 @@ describe("strategic evaluation runner Q1", () => {
     expect(JSON.stringify(sanitized)).not.toContain("123e4567");
     expect(JSON.stringify(sanitized)).not.toContain("person@business.example");
     expect(sanitized.nested).toBe("safe synthetic text");
+  });
+
+  it("rejects years inferred into historical memory without an explicit source", () => {
+    expect(hasOnlyGroundedYears(["No ciclo anterior faltou baseline"], ["ciclo anterior"])).toBe(true);
+    expect(hasOnlyGroundedYears(["Em 2025 faltou baseline"], ["ciclo anterior", "plano 2026"])).toBe(false);
+    expect(hasOnlyGroundedYears(["Em 2025 faltou baseline"], ["plano anterior de 2025"])).toBe(true);
   });
 
   it("keeps comparison fingerprints stable when runtime and cost vary", () => {

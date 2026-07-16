@@ -10,6 +10,7 @@ import {
   buildStrategicQualityGate,
   buildDeterministicChecks,
   comparisonFingerprint,
+  hasOnlyGroundedYears,
   parseJsonObject,
   q1Gate,
   sanitizeEvaluationText,
@@ -373,11 +374,11 @@ async function targetPlanState(handle: EvaluationOrg, evaluationCase: StrategicE
   const year = Number(evaluationCase.period.match(/20\d{2}/)?.[0] ?? 2026);
   const [strategicPlans, objectives, documents] = await Promise.all([
     admin.from("strategic_plans")
-      .select("id,year,drivers,swot,themes,rituals,executive_summary")
+      .select("id,year,profile,drivers,swot,themes,rituals,executive_summary")
       .eq("org_id", handle.orgId)
       .eq("year", year),
     admin.from("objectives")
-      .select("id,title,metric,target,owner,period,area_id,deliverables")
+      .select("id,title,metric,target,current,deadline,owner,evidence_plan,period,area_id,deliverables")
       .eq("org_id", handle.orgId)
       .is("area_id", null)
       .eq("level", "strategic")
@@ -427,29 +428,57 @@ function requiredProposalFieldsPresent(proposal: Record<string, any>, evaluation
     if (!swot || ![swot.strengths, swot.weaknesses, swot.opportunities, swot.threats].every((items) => Array.isArray(items) && items.length)) return false;
   }
   if (evaluationCase.expected.requiresRituals && (!Array.isArray(proposal.rituals) || !proposal.rituals.length)) return false;
+  if (evaluationCase.expected.requiresRisks && (!Array.isArray(proposal.risks) || !proposal.risks.length)) return false;
+  if (evaluationCase.expected.requiresRenunciations && (!Array.isArray(proposal.renunciations) || !proposal.renunciations.length)) return false;
+  if (evaluationCase.expected.requiresHistoricalLessons && (!Array.isArray(proposal.historicalLessons) || !proposal.historicalLessons.length)) return false;
+  if (!hasOnlyGroundedYears(proposal.historicalLessons, [evaluationCase.seed.previousAnnualSignal, ...evaluationCase.turns])) return false;
+  if (evaluationCase.expected.requiresPendingDecisions && (!Array.isArray(proposal.pendingDecisions) || !proposal.pendingDecisions.length)) return false;
   return objectives.every((objective) => {
     if (!String(objective.title ?? "").trim()) return false;
     if (evaluationCase.expected.requiresMetric && !String(objective.metric ?? "").trim()) return false;
     if (evaluationCase.expected.requiresTarget && !String(objective.target ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresBaseline && !String(objective.current ?? objective.baseline ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresDeadline && !String(objective.deadline ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresStrategies && (!Array.isArray(objective.strategies) || objective.strategies.length < 1)) return false;
     if (evaluationCase.expected.requiresOwner && !String(objective.owner ?? "").trim()) return false;
     return true;
   });
 }
 
 function proposalMatchesDatabase(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>, evaluationCase: StrategicEvaluationCase) {
-  const proposalTitles = annualObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
+  const proposalObjectives = annualObjectives(proposal);
+  const proposalTitles = proposalObjectives.map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
   const databaseTitles = state.objectives.map((item: any) => String(item.title ?? "").trim().toLowerCase());
+  const profile = state.strategicPlans[0]?.profile ?? {};
   return state.strategicPlans.length === 1
+    && JSON.stringify(profile.renunciations ?? []) === JSON.stringify(proposal.renunciations ?? [])
+    && JSON.stringify(profile.risks ?? []) === JSON.stringify(proposal.risks ?? [])
+    && JSON.stringify(profile.pendingDecisions ?? []) === JSON.stringify(proposal.pendingDecisions ?? [])
+    && JSON.stringify(profile.historicalLessons ?? []) === JSON.stringify(proposal.historicalLessons ?? [])
     && proposalTitles.length > 0
     && proposalTitles.every((title) => databaseTitles.includes(title))
-    && state.objectives.every((item: any) => item.area_id === null && item.period === evaluationCase.period);
+    && state.objectives.every((item: any) => {
+      const source = proposalObjectives.find((objective) => String(objective.title ?? "").trim().toLowerCase() === String(item.title ?? "").trim().toLowerCase());
+      return item.area_id === null
+        && item.period === evaluationCase.period
+        && String(item.current ?? "") === String(source?.current ?? source?.baseline ?? "")
+        && String(item.evidence_plan ?? "") === String(source?.source ?? "")
+        && JSON.stringify(item.deliverables ?? []) === JSON.stringify(source?.strategies ?? []);
+    });
 }
 
 function proposalMatchesDocument(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>) {
   if (state.documents.length !== 1) return false;
   const documentSource = JSON.stringify(state.documents[0]?.content ?? {}).toLowerCase();
-  const titles = annualObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
-  return titles.length > 0 && titles.every((title) => documentSource.includes(title));
+  const objectives = annualObjectives(proposal);
+  const requiredValues = [
+    ...objectives.flatMap((item) => [item.title, item.current ?? item.baseline, item.source, ...(item.strategies ?? [])]),
+    ...(proposal.risks ?? []),
+    ...(proposal.renunciations ?? []),
+    ...(proposal.pendingDecisions ?? []),
+    ...(proposal.historicalLessons ?? []),
+  ].map((item) => String(item ?? "").trim().toLowerCase()).filter(Boolean);
+  return objectives.length > 0 && requiredValues.every((value) => documentSource.includes(value));
 }
 
 async function runJudge(params: {

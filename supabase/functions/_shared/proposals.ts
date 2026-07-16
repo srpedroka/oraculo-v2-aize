@@ -15,6 +15,10 @@ function asText(value: unknown, fallback = "") {
   return text || fallback;
 }
 
+function asTextArray(value: unknown) {
+  return asArray(value).map((item) => asText(item)).filter(Boolean);
+}
+
 function asObjectiveType(value: unknown) {
   const text = asText(value).toLowerCase();
   if (text === "seed" || text.includes("plantio") || text.includes("evolu")) return "seed";
@@ -284,6 +288,7 @@ async function ensureQuarterlyParent(client: Client, session: any, titleHint: st
 async function saveStrategicPlan(client: Client, session: any, proposal: any, userId: string) {
   const year = Number(proposal.year ?? yearFromPeriod(session.period));
   const themes = asArray<string>(proposal.themes).length ? asArray<string>(proposal.themes) : [asText(proposal.theme ?? proposal.tema_do_ano)].filter(Boolean);
+  const profile = proposal.profile && typeof proposal.profile === "object" && !Array.isArray(proposal.profile) ? proposal.profile : {};
 
   const { data: plan, error } = await client
     .from("strategic_plans")
@@ -291,7 +296,13 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
       {
         org_id: session.org_id,
         year,
-        profile: proposal.profile ?? {},
+        profile: {
+          ...profile,
+          renunciations: asTextArray(proposal.renunciations ?? proposal.renuncias),
+          risks: asTextArray(proposal.risks ?? proposal.riscos ?? proposal.riscos_estrategicos),
+          pendingDecisions: asTextArray(proposal.pendingDecisions ?? proposal.pending_decisions ?? proposal.decisoes_pendentes),
+          historicalLessons: asTextArray(proposal.historicalLessons ?? proposal.historical_lessons ?? proposal.aprendizados_historicos),
+        },
         drivers: proposal.drivers ?? {},
         swot: proposal.swot ?? {},
         themes,
@@ -317,7 +328,11 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
       result: asText(objective.result),
       metric: asText(objective.metric),
       target: asText(objective.target),
+      current: asText(objective.current ?? objective.baseline ?? objective.valor_atual),
+      deadline: cleanDate(objective.deadline ?? objective.prazo),
       owner: asText(objective.owner),
+      evidence_plan: asText(objective.source ?? objective.fonte),
+      deliverables: asTextArray(objective.strategies ?? objective.estrategias ?? objective.deliverables ?? objective.entregas),
       status: "on_track",
       progress: 0,
       period: asText(objective.period, String(year)),

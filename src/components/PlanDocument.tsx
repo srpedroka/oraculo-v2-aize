@@ -62,8 +62,10 @@ function KeyValue({ label, value }: { label: string; value: unknown }) {
 function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
   const actions = asArray<Record<string, unknown>>(objective.acoes);
   const deliverables = asArray<string>(objective.entregas);
+  const strategies = asArray<string>(objective.estrategias);
   const meta = [
     asText(objective.tipo),
+    asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
     asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
     asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
     asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
@@ -80,7 +82,14 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
           {meta.length ? <p className="mt-2 text-xs font-medium leading-5 text-text-tertiary">{meta.join(" · ")}</p> : null}
         </div>
         <KeyValue label="Resultado esperado" value={objective.resultado} />
+        <KeyValue label="Fonte" value={objective.fonte} />
         <KeyValue label="Vínculo" value={objective.vinculo} />
+        {strategies.length ? (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Estratégias</p>
+            <TextList items={strategies} />
+          </div>
+        ) : null}
         {deliverables.length ? (
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Entregas</p>
@@ -114,6 +123,12 @@ function StrategicSection({ content }: { content: Record<string, unknown> }) {
   const drivers = asRecord(strategic.direcionadores);
   const swot = asRecord(strategic.swot);
   const projects = asArray<Record<string, unknown>>(strategic.projetos);
+  const swotGroups = [
+    { title: "Forças", items: asArray<string>(swot.forcas) },
+    { title: "Fraquezas", items: asArray<string>(swot.fraquezas) },
+    { title: "Oportunidades", items: asArray<string>(swot.oportunidades) },
+    { title: "Ameaças", items: asArray<string>(swot.ameacas) },
+  ].filter((group) => group.items.length);
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -121,26 +136,22 @@ function StrategicSection({ content }: { content: Record<string, unknown> }) {
         <KeyValue label="Propósito" value={drivers.proposito} />
         <KeyValue label="Visão" value={drivers.visao} />
         <KeyValue label="Temas" value={asArray<string>(strategic.temas).join("; ")} />
+        <KeyValue label="Renúncias" value={asArray<string>(strategic.renuncias).join("; ")} />
+        <KeyValue label="Riscos" value={asArray<string>(strategic.riscos).join("; ")} />
+        <KeyValue label="Decisões pendentes" value={asArray<string>(strategic.decisoes_pendentes).join("; ")} />
+        <KeyValue label="Aprendizados anteriores" value={asArray<string>(strategic.aprendizados_historicos).join("; ")} />
         <KeyValue label="Rituais" value={asArray<string>(strategic.rituais).join("; ")} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Forças</p>
-          <TextList items={asArray<string>(swot.forcas)} />
+      {swotGroups.length ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {swotGroups.map((group) => (
+            <div key={group.title}>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">{group.title}</p>
+              <TextList items={group.items} />
+            </div>
+          ))}
         </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Fraquezas</p>
-          <TextList items={asArray<string>(swot.fraquezas)} />
-        </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Oportunidades</p>
-          <TextList items={asArray<string>(swot.oportunidades)} />
-        </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Ameaças</p>
-          <TextList items={asArray<string>(swot.ameacas)} />
-        </div>
-      </div>
+      ) : null}
       {projects.length ? (
         <div className="space-y-2 lg:col-span-2">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Projetos Prioritários</p>

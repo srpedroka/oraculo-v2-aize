@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q1-r2`
 
-Status: implementado; Q0 R2 aprovada, gate tecnico Q1 aprovado e gate de qualidade Q1 bloqueado.
+Status: implementado; Q0 R2 e gate automatizado Q1 aprovados, revisão humana do owner pendente.
 
 ## Objetivo
 
@@ -106,4 +106,4 @@ Q1 somente e aprovada quando o caso anual minimo terminar com:
 - todas as rubricas aplicaveis com pelo menos 80 e media conjunta de pelo menos 85;
 - nenhuma falha critica confirmada e revisao humana do owner concluida.
 
-Resultado de 2026-07-16: técnica aprovada; qualidade bloqueada em 47,50 (Condução), 66,25 (Plano Anual) e média 56,88. O condutor repetiu confirmações, desafiou pouco o plano e a proposta perdeu baselines. O acumulado é US$ 0,115062 e o staging foi limpo. Corrigir e repetir Q1 antes de Q2.
+Resultado final de 2026-07-16: técnica aprovada; Condução 86,25; Plano Anual 92,50; média 89,38; zero candidato crítico. A rodada final custou US$ 0,081603 e o acumulado de todas as tentativas foi US$ 0,428801. O staging foi limpo após cada execução. A correção está somente na `oracle-session` de staging; o owner precisa revisar o plano e autorizar produção antes de Q2.

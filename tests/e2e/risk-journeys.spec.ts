@@ -66,6 +66,37 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
         version: 1,
         created_by: org.owner.id,
       }),
+      service.from("plan_documents").insert({
+        org_id: org.orgId,
+        type: "strategic",
+        origin: "session",
+        period: "2026",
+        title: "Plano anual de qualidade E2E",
+        content: {
+          empresa: "Empresa E2E",
+          periodo: "2026",
+          strategic: {
+            temas: ["Crescer com previsibilidade"],
+            renuncias: ["Nao abrir projetos paralelos"],
+            riscos: ["Crescer sem margem"],
+            decisoes_pendentes: ["Definir substituto para responsabilidades concentradas"],
+            aprendizados_historicos: ["No ciclo anterior faltaram dono e rotina de decisao"],
+          },
+          objetivos: [
+            {
+              numero: 1,
+              titulo: "Aumentar a previsibilidade da receita",
+              atual: "55%",
+              indicador: "Receita prevista realizada",
+              meta: "80%",
+              fonte: "CRM",
+              estrategias: ["Revisar o funil semanalmente"],
+            },
+          ],
+        },
+        version: 1,
+        created_by: org.owner.id,
+      }),
       service.from("operational_revisions").insert({
         org_id: org.orgId,
         entity_type: "objective",
@@ -223,7 +254,18 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.getByRole("button", { name: "Fechar", exact: true }).click();
 
     await page.goto("/documentos");
-    await expect(page.getByRole("heading", { name: "Histórico descartável E2E" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Histórico descartável E2E/ })).toBeVisible();
+    await page.getByRole("button", { name: /Plano anual de qualidade E2E/ }).click();
+    await expect(page.getByRole("heading", { name: "Plano anual de qualidade E2E" })).toBeVisible();
+    await expect(page.getByText("Renúncias:")).toBeVisible();
+    await expect(page.getByText("Decisões pendentes:")).toBeVisible();
+    await expect(page.getByText("Aprendizados anteriores:")).toBeVisible();
+    await expect(page.getByText(/Baseline: 55%/)).toBeVisible();
+    await expect(page.getByText("Revisar o funil semanalmente")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`plano-anual-${testInfo.project.name}.png`), fullPage: true });
+    }
     await page.getByRole("button", { name: "Importar histórico" }).first().click();
     await expect(page.getByRole("heading", { name: "Importar histórico" })).toBeVisible();
     await expect(page.locator('input[type="file"]')).toHaveAttribute("accept", /\.pdf/);
