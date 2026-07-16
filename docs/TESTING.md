@@ -99,7 +99,22 @@ A Q2 adiciona 29 casos de referencia em cinco blocos. O verificador confere sche
 pnpm run test:strategic-cases
 ```
 
-O gate humano e legivel em `docs/STRATEGIC_QUALITY_CASES.md`. O manifesto permanece `candidate-for-owner-review` ate o owner confirmar os blocos Q2A-Q2E; somente depois a Q3 pode executar baseline pago.
+O gate humano e legivel em `docs/STRATEGIC_QUALITY_CASES.md`. O manifesto esta `owner-approved`; a execucao Q3 fica fora do CI porque chama provider pago e exige autorizacao explicita.
+
+O runner Q3 reutiliza as travas da Q1 e pode retomar sem repetir rodadas registradas:
+
+```bash
+pnpm run eval:strategic:q3 -- preflight
+pnpm run eval:strategic:q3 -- phase Q3A
+pnpm run eval:strategic:q3 -- phase Q3B
+pnpm run eval:strategic:q3 -- phase Q3C
+pnpm run eval:strategic:q3 -- phase Q3D
+pnpm run eval:strategic:q3 -- deterministic
+pnpm run eval:strategic:q3 -- summary
+pnpm run eval:strategic:q3 -- human-packet
+```
+
+Transcricoes, propostas, ledger e pacote humano ficam em `.agents-private/` com permissao `600`. O relatorio sanitizado e versionado fica em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`. Nao use `archive-calibration`, `archive-errors`, `cleanup-stale` ou `repair-execution-checks` fora de um incidente documentado do laboratorio.
 
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 

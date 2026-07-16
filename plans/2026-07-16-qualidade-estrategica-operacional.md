@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q0 R2 e Q1 concluídas em produção; Q2 aprovada; próxima fatia Q3**
+Status: **em execução; Q3 medida no staging e reprovada no gate automatico; revisao humana pendente antes da Q4**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -419,6 +419,8 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 ### Gate Q3
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
+
+Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O gate automatico esta reprovado. Oito casos deterministas passaram e UX passou no E2E tecnico, permanecendo no aceite humano. Incremento total US$ 1,512869; acumulado do plano US$ 1,950646. Relatorio em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`; pacote privado cego aguarda revisao do owner. Nao iniciar Q4 antes desse gate humano.
 
 ## Q4 — Correções orientadas pela evidência
 
