@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **baseline executada; gate automatico reprovado; revisao humana do owner pendente**
+Status: **baseline executada; gate automatico reprovado; revisao humana qualitativa concluida**
 
 ## Escopo
 
@@ -56,7 +56,20 @@ O E2E de recuperacao de erro passou em desktop e mobile, sem overflow e sem viol
 4. **Validacao final:** proteger a unica confirmacao e impedir proposta incompleta antes de gravar.
 5. **Confiabilidade:** diagnosticar o erro generico de `oracle-session` e reduzir variabilidade entre rodadas equivalentes.
 
-Nao houve correcao funcional na Q3. A Q4 so deve comecar depois de revisar a amostra humana e aprovar essa ordem de defeitos.
+## Revisao humana do owner
+
+O owner confirmou em 2026-07-16 que a conducao e o principal defeito. A conversa precisa se adaptar tanto ao gestor que entrega um bloco completo quanto ao gestor que responde pouco. Quando faltar informacao, a proxima pergunta deve partir da resposta anterior, abrir duas ou tres possibilidades concretas e sempre aproximar a conversa de uma decisao ou acao executavel.
+
+O tom desejado e casual, tranquilo e objetivo, sem parecer entrevista, formulario ou consultoria excessivamente formal. O owner tambem priorizou a recuperacao dos planos trimestrais e mensais, a avaliacao das saidas derivadas e um polimento menor em revisoes e fechamentos. Nenhuma nota humana numerica foi inferida.
+
+A evidencia separa causa e efeito:
+
+- somente 6/16 rodadas trimestrais chegaram a proposta; quando chegaram, a nota media do plano foi 84,17;
+- somente 1/8 rodadas mensais chegou a proposta; portanto, a nota 7,19 e dominada pela falha de progressao da conversa;
+- 4/12 saidas derivadas receberam zero porque nenhuma proposta existiu; entre as oito com proposta, a media foi 76,72;
+- entre os cinco fechamentos/revisoes que chegaram a proposta, a media foi 82,50.
+
+Assim, a Q4 deve corrigir primeiro estado e conducao, depois lacunas especificas dos planos e das saidas. O briefing funcional esta em `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md` e ainda precisa de aprovacao antes de alterar runtime.
 
 ## Custo
 
@@ -73,4 +86,3 @@ Nenhuma compra, recarga, assinatura ou deploy foi feito.
 ## Evidencia privada
 
 Transcricoes e propostas sanitizadas ficam fora do Git em `.agents-private/`. O pacote cego para o owner e `.agents-private/strategic-q3-human-review.md`; ele omite notas e falhas do judge. O resumo estruturado e `.agents-private/strategic-q3-baseline-summary.json`.
-

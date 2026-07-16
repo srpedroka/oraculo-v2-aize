@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q3 medida no staging e reprovada no gate automatico; revisao humana pendente antes da Q4**
+Status: **em execução; Q3 medida e revisada pelo owner; briefing Q4 aguarda aprovacao**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O gate automatico esta reprovado. Oito casos deterministas passaram e UX passou no E2E tecnico, permanecendo no aceite humano. Incremento total US$ 1,512869; acumulado do plano US$ 1,950646. Relatorio em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`; pacote privado cego aguarda revisao do owner. Nao iniciar Q4 antes desse gate humano.
+Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O gate automatico esta reprovado. O owner concluiu a revisao humana qualitativa e confirmou conducao adaptativa, perguntas orientadas a acao, tom casual/objetivo, recuperacao de trimestral/mensal, avaliacao real das saidas e polimento dos fechamentos. Incremento total US$ 1,512869; acumulado do plano US$ 1,950646. Relatorio em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`; briefing candidato em `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md`. Q4 so inicia apos aprovacao desse briefing.
 
 ## Q4 — Correções orientadas pela evidência
 

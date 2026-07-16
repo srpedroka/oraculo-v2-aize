@@ -812,3 +812,11 @@ Decisão: qualquer compra, upgrade, assinatura, recarga ou nova cobrança exige 
 Motivo: 67 deploys de produção consumiram 1.005 créditos do ciclo Netlify, pausando o site por limite. O owner autorizou uma compra única de 500 créditos por US$ 5, o app foi restaurado e a recarga automática permaneceu desligada. Para o plano integrado, o owner ampliou a autorização para até US$ 20 acumulados em APIs de IA do Oráculo, com aviso em US$ 15 e parada preventiva em US$ 19.
 
 Consequências: agentes devem informar custo antes da ação, nunca inferir autorização financeira e agrupar publicações. O saldo de serviços deve entrar no preflight operacional.
+
+## 2026-07-16 - Conducao adaptativa orientada a decisao e acao
+
+Decisao: sessoes de planejamento nao devem funcionar como formularios fase a fase. O Oraculo aproveita todos os fatos de uma resposta, pula etapas ja satisfeitas e pergunta somente a primeira lacuna que muda uma decisao. Quando a resposta for vaga, oferece duas ou tres possibilidades concretas e neutras; quando estiver completa, segue para sintese e uma unica confirmacao.
+
+Motivo: a baseline Q3 mostrou que 19/40 rodadas nao chegaram a proposta. Trimestrais que chegaram tiveram media 84,17 e fechamentos/revisoes 82,50, indicando que a rigidez da conversa e a principal causa das notas baixas. Repetir a mesma pergunta ou exigir campos nao bloqueantes prejudica gestores experientes e nao ajuda quem ainda precisa organizar o pensamento.
+
+Consequencias: cada pergunta deve partir da resposta anterior e aproximar resultado, escolha, meta ou acao executavel. O tom visivel e casual, tranquilo e objetivo; nomes de fase, estado interno e chaves de schema nunca aparecem. Trimestral e mensal podem registrar excecao consciente de alinhamento em vez de mudar de ritual. A implementacao e os testes seguem `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md` e dependem de aprovacao explicita antes de alterar runtime.
