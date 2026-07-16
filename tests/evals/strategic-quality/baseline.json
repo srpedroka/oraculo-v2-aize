@@ -4,6 +4,18 @@
   "capturedAt": "2026-07-16",
   "sourceCommit": "27ac833",
   "description": "Linha de partida anterior a qualquer correcao orientada pelas avaliacoes Q0-Q6.",
+  "intentionalCorrections": [
+    {
+      "date": "2026-07-16",
+      "gate": "Q1",
+      "reason": "Uma confirmacao final, preservacao de baseline, riscos, renuncias, estrategias e aprendizado historico no plano anual."
+    },
+    {
+      "date": "2026-07-16",
+      "gate": "Q1-review-alignment",
+      "reason": "Revisao estrategica adaptativa em lote, uma confirmacao final e contexto completo de indicador, baseline, meta e prazo."
+    }
+  ],
   "runtimeAssignments": [
     {
       "function": "planning",
@@ -32,17 +44,17 @@
     { "path": "supabase/functions/_shared/conductors/persona.ts", "sha256": "180b954856ff190e49c78a586e407edf7fed7316227c90610a41b33d01d30586" },
     { "path": "supabase/functions/_shared/conductors/quarter-close.ts", "sha256": "0421278818e612118f58aebf807bb458fbf899da81eacf3d4d93de5af44225c7" },
     { "path": "supabase/functions/_shared/conductors/quarterly.ts", "sha256": "14e42c349162c6204530dd53c7031de9ad13d1bf6777c23229adbfac787987f7" },
-    { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "2c82966be9bdbee18ed55cedbdc3aff456b600f884acac1cb9dbf62fa33a2533" },
-    { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "30cdf84763d63bd65f86e387ca9e6cf63a0ecaf5058d8216d122b413a505ce18" },
+    { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "31f948fff81143be95d0eb5bf21a67ab88fdacde9fabd687548be0187dc41a7e" },
+    { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "5835c554fef96c327887fca0bb008117e7395feaefcb04abaec45e237f70bb3e" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
     { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "d17edea1edf68e0545ae0e342144c7b93d6c7e53c77925593cf903ecef036b85" },
     { "path": "supabase/functions/_shared/session-runtime.ts", "sha256": "12995aaf4d99eb1db2713d2378ee852e422e4bd895b19a237b49144a6ce2d010" },
-    { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "6635d497974cb093ad307c80365eed187953969c70c41d777f54126531e6e51c" },
+    { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "3011e41405148bdc510ad80ffd89b4252dc86e57721d00774bc15c71f4002c47" },
     { "path": "supabase/functions/_shared/session-imports.ts", "sha256": "d9ed3d6f0c0f8db62b8a9d029fdee77604b827d7aa348b5e69f2ff2322697820" },
-    { "path": "supabase/functions/_shared/plan-context.ts", "sha256": "8f1c12a08514e6a462aa5c2d2284b16337db8d1b0f5cdc04d55fac1098d6ddc7" },
+    { "path": "supabase/functions/_shared/plan-context.ts", "sha256": "77b847dd474e06415725b3de77f5f2b10b3fc5e5ecd79b1cdcbd45d784afc480" },
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "666f946c74f18f18f0636b14710cb892935db892f030c5e68e679b0abe04f5f5" },
-    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "aa437e0c88a540543fb813784ecce30fdff0a9c230aa97d1f1a91912f351688d" },
-    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "c03e38b6748d0afc762189256a9232fbe69bf3b32cc098a11715faae61e48c8d" }
+    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "1afc00a5415af935bff9d03f77fdc676ba611eb652ddde3014894f18217d0c0a" },
+    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "930392e6d54dd55f68755d549008c8dbc7f410a7c4595d14ecdb849c2fdec747" }
   ]
 }

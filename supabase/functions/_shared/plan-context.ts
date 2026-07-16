@@ -93,14 +93,16 @@ function typeLabel(type: unknown) {
   return TYPE_LABEL[String(type ?? "")] ?? text(type, "Tipo não informado");
 }
 
-function objectiveLine(objective: any) {
+export function objectiveLine(objective: any) {
   const details = [
     objective.id ? `id: ${objective.id}` : "",
     `${levelLabel(objective.level)}`,
     `${typeLabel(objective.type)}`,
     objective.period ? `período: ${objective.period}` : "",
+    `indicador: ${text(objective.metric)}`,
     `meta: ${text(objective.target)}`,
     `atual: ${text(objective.current)}`,
+    `prazo: ${text(objective.deadline)}`,
     `dono: ${text(objective.owner)}`,
     `progresso: ${Number(objective.progress ?? 0)}%`,
   ].filter(Boolean);

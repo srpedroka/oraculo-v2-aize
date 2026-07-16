@@ -63,6 +63,10 @@ export function normalizeReadyStrategicProposal(rawProposal: any, period: string
       threats: asTextArray(swot.threats ?? swot.ameacas).slice(0, 8),
     },
     themes: asTextArray(rawProposal?.themes ?? rawProposal?.temas ?? rawProposal?.theme ?? rawProposal?.tema_do_ano).slice(0, 4),
+    renunciations: asTextArray(rawProposal?.renunciations ?? rawProposal?.renuncias).slice(0, 8),
+    risks: asTextArray(rawProposal?.risks ?? rawProposal?.riscos ?? rawProposal?.riscos_estrategicos).slice(0, 8),
+    pendingDecisions: asTextArray(rawProposal?.pendingDecisions ?? rawProposal?.pending_decisions ?? rawProposal?.decisoes_pendentes).slice(0, 8),
+    historicalLessons: asTextArray(rawProposal?.historicalLessons ?? rawProposal?.historical_lessons ?? rawProposal?.aprendizados_historicos).slice(0, 8),
     rituals: asTextArray(rawProposal?.rituals ?? rawProposal?.rituais).slice(0, 8),
     executiveSummary: asText(rawProposal?.executiveSummary ?? rawProposal?.executive_summary ?? rawProposal?.resumoExecutivo),
     objectives: asArray<any>(rawProposal?.objectives ?? rawProposal?.objetivos)
@@ -70,8 +74,12 @@ export function normalizeReadyStrategicProposal(rawProposal: any, period: string
         title: asText(objective?.title ?? objective?.titulo, "Objetivo estratégico"),
         type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
         result: asText(objective?.result ?? objective?.resultado),
+        current: asText(objective?.current ?? objective?.baseline ?? objective?.valor_atual ?? objective?.atual),
         metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
         target: asText(objective?.target ?? objective?.meta),
+        deadline: asText(objective?.deadline ?? objective?.prazo),
+        source: asText(objective?.source ?? objective?.fonte),
+        strategies: asTextArray(objective?.strategies ?? objective?.estrategias).slice(0, 8),
         owner: asText(objective?.owner ?? objective?.responsavel),
         period: asText(objective?.period ?? objective?.periodo, String(year)),
         kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
@@ -105,12 +113,14 @@ function missingReadyPlanFields(proposal: ReturnType<typeof normalizeReadyStrate
   if (!asText(proposal.drivers.vision)) missing.push("visão");
 
   const objectivesWithoutMetric = proposal.objectives.filter((objective) => !asText(objective.metric)).length;
+  const objectivesWithoutBaseline = proposal.objectives.filter((objective) => !asText(objective.current)).length;
   const objectivesWithoutTarget = proposal.objectives.filter((objective) => !asText(objective.target)).length;
   const objectivesWithoutOwner = proposal.objectives.filter((objective) => !asText(objective.owner)).length;
   const projectsWithoutOwner = proposal.projects.filter((project) => !asText(project.owner)).length;
   const projectsWithoutDeadline = proposal.projects.filter((project) => !asText(project.deadline)).length;
 
   if (objectivesWithoutMetric) missing.push(`${objectivesWithoutMetric} objetivo(s) sem indicador`);
+  if (objectivesWithoutBaseline) missing.push(`${objectivesWithoutBaseline} objetivo(s) sem baseline`);
   if (objectivesWithoutTarget) missing.push(`${objectivesWithoutTarget} objetivo(s) sem meta`);
   if (objectivesWithoutOwner) missing.push(`${objectivesWithoutOwner} objetivo(s) sem responsável`);
   if (projectsWithoutOwner) missing.push(`${projectsWithoutOwner} projeto(s) sem responsável`);
@@ -127,8 +137,11 @@ export function formatReadyStrategicPlanReply(
   const objectiveLines = proposal.objectives.map((objective) => {
     const details = [
       objective.result,
+      objective.current ? `Baseline: ${objective.current}` : "",
       objective.metric ? `Indicador: ${objective.metric}` : "",
       objective.target ? `Meta: ${objective.target}` : "",
+      objective.deadline ? `Prazo: ${objective.deadline}` : "",
+      objective.source ? `Fonte: ${objective.source}` : "",
       objective.owner ? `Dono: ${objective.owner}` : "",
       objective.kpiLinks.length ? `KPIs sugeridos: ${kpiLinkLabels(objective.kpiLinks).join(", ")}` : "",
     ].filter(Boolean).join(" | ");
@@ -180,7 +193,7 @@ export function readyPlanSystemPrompt(context: string, period: string, channel: 
     "Agrupe objetivos parecidos. Prefira 3 a 6 objetivos estratégicos e até 7 projetos prioritários.",
     "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se não houver prazo, use string vazia.",
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
-    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"2026","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_pronto":true},"next_phase":"sintese","proposal":{"type":"save_strategic_plan","year":2026,"profile":{"sector":"","size":"","region":"","founded":"","mainPain":""},"drivers":{"purpose":"","vision":"","values":[]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]},"themes":[],"renunciations":[],"risks":[],"pendingDecisions":[],"historicalLessons":[],"rituals":[],"executiveSummary":"","objectives":[{"title":"","type":"harvest|seed","result":"","current":"","metric":"","target":"","deadline":"","source":"","strategies":[],"owner":"","period":"2026","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}],"projects":[{"name":"","owner":"","deadline":"","linkedObjectiveTitle":""}]}}',
     `Ano/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,

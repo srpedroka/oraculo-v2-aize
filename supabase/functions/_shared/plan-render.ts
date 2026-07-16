@@ -31,6 +31,7 @@ function objectiveBlock(objective: any) {
   const header = `*${asText(objective.numero, "1")}. ${asText(objective.titulo, "Objetivo")}*`;
   const meta = [
     asText(objective.tipo) ? `Tipo: ${asText(objective.tipo)}` : "",
+    asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
     asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
     asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
     asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
@@ -38,11 +39,13 @@ function objectiveBlock(objective: any) {
     objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
   ].filter(Boolean);
   const result = asText(objective.resultado) ? [`Resultado esperado: ${asText(objective.resultado)}`] : [];
+  const source = asText(objective.fonte) ? [`Fonte: ${asText(objective.fonte)}`] : [];
   const link = asText(objective.vinculo) ? [`Vínculo: ${asText(objective.vinculo)}`] : [];
+  const strategies = asArray<string>(objective.estrategias).length ? [`Estratégias: ${asArray<string>(objective.estrategias).join("; ")}`] : [];
   const deliverables = asArray<string>(objective.entregas).length ? [`Entregas: ${asArray<string>(objective.entregas).join("; ")}`] : [];
   const actions = asArray<any>(objective.acoes).map(actionLine);
   const evidence = asText(objective.evidencia) ? [`Evidência: ${asText(objective.evidencia)}`] : [];
-  return [header, ...meta, ...result, ...link, ...deliverables, ...actions, ...evidence].filter(Boolean).join("\n");
+  return [header, ...meta, ...result, ...source, ...link, ...strategies, ...deliverables, ...actions, ...evidence].filter(Boolean).join("\n");
 }
 
 export function renderPlanForWhatsApp(content: any) {
@@ -63,6 +66,20 @@ export function renderPlanForWhatsApp(content: any) {
     header.push("");
     header.push("*Contexto rápido*");
     header.push(...context.slice(0, 4).map((item) => `- ${item}`));
+  }
+
+  const strategic = content?.strategic && typeof content.strategic === "object" ? content.strategic : {};
+  const renunciations = asArray<string>(strategic.renuncias);
+  const risks = asArray<string>(strategic.riscos);
+  const pendingDecisions = asArray<string>(strategic.decisoes_pendentes);
+  const historicalLessons = asArray<string>(strategic.aprendizados_historicos);
+  if (renunciations.length || risks.length || pendingDecisions.length || historicalLessons.length) {
+    header.push("");
+    header.push("*Escolhas, riscos e aprendizados*");
+    if (renunciations.length) header.push(`Renúncias: ${renunciations.join("; ")}`);
+    if (risks.length) header.push(`Riscos: ${risks.join("; ")}`);
+    if (pendingDecisions.length) header.push(`Decisões pendentes: ${pendingDecisions.join("; ")}`);
+    if (historicalLessons.length) header.push(`Aprendizados anteriores: ${historicalLessons.join("; ")}`);
   }
 
   const objectives = asArray<any>(content?.objetivos);

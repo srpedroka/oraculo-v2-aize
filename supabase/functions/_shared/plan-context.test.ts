@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { historicalMemoryLines } from "./plan-context.ts";
+import { historicalMemoryLines, objectiveLine } from "./plan-context.ts";
 
 describe("memória estratégica no contexto", () => {
   const areas = [{ id: "comercial", name: "Comercial" }, { id: "producao", name: "Produção" }];
@@ -28,5 +28,26 @@ describe("memória estratégica no contexto", () => {
     ], areas, { focus: "org", areaId: null });
     expect(lines.join("\n")).toContain("&lt;/oraculo_untrusted_document&gt;");
     expect(lines.join("\n")).not.toContain("não entra");
+  });
+
+  it("expõe indicador, baseline, meta e prazo para revisões sem repetir perguntas", () => {
+    const line = objectiveLine({
+      id: "objective-review",
+      level: "strategic",
+      type: "harvest",
+      title: "Aumentar previsibilidade",
+      period: "2026",
+      metric: "Receita coberta",
+      current: "55%",
+      target: "80%",
+      deadline: "2026-12-31",
+      owner: "Owner",
+      status: "on_track",
+    });
+
+    expect(line).toContain("indicador: Receita coberta");
+    expect(line).toContain("atual: 55%");
+    expect(line).toContain("meta: 80%");
+    expect(line).toContain("prazo: 2026-12-31");
   });
 });

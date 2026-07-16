@@ -34,7 +34,14 @@
     "requiresSwot": true,
     "requiresMetric": true,
     "requiresTarget": true,
+    "requiresBaseline": true,
+    "requiresDeadline": true,
+    "requiresStrategies": true,
     "requiresOwner": true,
-    "requiresRituals": true
+    "requiresRituals": true,
+    "requiresRisks": true,
+    "requiresRenunciations": true,
+    "requiresHistoricalLessons": true,
+    "requiresPendingDecisions": true
   }
 }

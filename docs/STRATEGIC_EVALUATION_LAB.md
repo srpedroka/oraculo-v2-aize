@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q1-r2`
 
-Status: implementado; Q0 R2 aprovada, gate tecnico Q1 aprovado e gate de qualidade Q1 bloqueado.
+Status: implementado; Q0 R2, gate automatizado Q1 e alinhamento adaptativo da Revisão Estratégica aprovados no staging e pelo owner; publicação em produção autorizada em 2026-07-16.
 
 ## Objetivo
 
@@ -106,4 +106,8 @@ Q1 somente e aprovada quando o caso anual minimo terminar com:
 - todas as rubricas aplicaveis com pelo menos 80 e media conjunta de pelo menos 85;
 - nenhuma falha critica confirmada e revisao humana do owner concluida.
 
-Resultado de 2026-07-16: técnica aprovada; qualidade bloqueada em 47,50 (Condução), 66,25 (Plano Anual) e média 56,88. O condutor repetiu confirmações, desafiou pouco o plano e a proposta perdeu baselines. O acumulado é US$ 0,115062 e o staging foi limpo. Corrigir e repetir Q1 antes de Q2.
+Resultado final de 2026-07-16: técnica aprovada; Condução 86,25; Plano Anual 92,50; média 89,38; zero candidato crítico. A rodada final custou US$ 0,081603 e o acumulado de todas as tentativas foi US$ 0,428801. O staging foi limpo após cada execução. A correção está somente na `oracle-session` de staging; o owner precisa revisar o plano e autorizar produção antes de Q2.
+
+Alinhamento pré-produção da Revisão Estratégica em 2026-07-16: o ritual continua sendo microajuste de objetivos existentes, mas passou a absorver vários ajustes completos, ignorar objetivos declarados como inalterados, perguntar apenas lacunas bloqueantes e pedir uma confirmação final. Um teste real no staging alterou `current` e `target` de dois objetivos sintéticos na mesma proposta, comprovou zero mutação antes da confirmação, documento antes/depois, linguagem natural em PT-BR e cleanup. A rodada final custou US$ 0,004486; as duas tentativas somaram US$ 0,008976; acumulado do plano US$ 0,437777. O judge formal de revisões permanece no Q2D.
+
+Aceite humano: o owner aprovou o resultado e autorizou a publicação em produção em 2026-07-16. Por decisão explícita, a chave temporária continuará privada e disponível para os próximos testes; revogação deixou de ser pré-condição deste deploy.

@@ -31,8 +31,15 @@ export interface StrategicEvaluationCase {
     requiresSwot: boolean;
     requiresMetric: boolean;
     requiresTarget: boolean;
+    requiresBaseline: boolean;
+    requiresDeadline: boolean;
+    requiresStrategies: boolean;
     requiresOwner: boolean;
     requiresRituals: boolean;
+    requiresRisks: boolean;
+    requiresRenunciations: boolean;
+    requiresHistoricalLessons: boolean;
+    requiresPendingDecisions: boolean;
   };
 }
 
@@ -166,8 +173,15 @@ export function validateStrategicEvaluationCase(value: unknown): StrategicEvalua
       requiresSwot: requiredBoolean(expected.requiresSwot, "expected.requiresSwot"),
       requiresMetric: requiredBoolean(expected.requiresMetric, "expected.requiresMetric"),
       requiresTarget: requiredBoolean(expected.requiresTarget, "expected.requiresTarget"),
+      requiresBaseline: requiredBoolean(expected.requiresBaseline, "expected.requiresBaseline"),
+      requiresDeadline: requiredBoolean(expected.requiresDeadline, "expected.requiresDeadline"),
+      requiresStrategies: requiredBoolean(expected.requiresStrategies, "expected.requiresStrategies"),
       requiresOwner: requiredBoolean(expected.requiresOwner, "expected.requiresOwner"),
       requiresRituals: requiredBoolean(expected.requiresRituals, "expected.requiresRituals"),
+      requiresRisks: requiredBoolean(expected.requiresRisks, "expected.requiresRisks"),
+      requiresRenunciations: requiredBoolean(expected.requiresRenunciations, "expected.requiresRenunciations"),
+      requiresHistoricalLessons: requiredBoolean(expected.requiresHistoricalLessons, "expected.requiresHistoricalLessons"),
+      requiresPendingDecisions: requiredBoolean(expected.requiresPendingDecisions, "expected.requiresPendingDecisions"),
     },
   };
   if (!/^[A-Z0-9][A-Z0-9-]+$/.test(parsed.caseId)) throw new Error("caseId deve usar somente A-Z, 0-9 e hifen");
@@ -216,6 +230,12 @@ export function sanitizeEvaluationValue(value: unknown): unknown {
       .filter(([key]) => !/api[_-]?key|secret|password|authorization|token$/i.test(key))
       .map(([key, nested]) => [key, sanitizeEvaluationValue(nested)]),
   );
+}
+
+export function hasOnlyGroundedYears(value: unknown, sourceValues: unknown[]): boolean {
+  const outputYears = String(typeof value === "string" ? value : JSON.stringify(value ?? "")).match(/\b20\d{2}\b/g) ?? [];
+  const source = sourceValues.map((item) => String(item ?? "")).join("\n");
+  return outputYears.every((year) => source.includes(year));
 }
 
 export function selectApplicableRubric(rubric: unknown, deliveryType: string): Record<string, unknown> {
