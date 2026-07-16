@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **planejado; execução ainda não iniciada**
+Status: **em execução; Q0 implementada e aguardando aceite do owner**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -211,6 +211,8 @@ Formaliza o que significa uma boa condução e um bom plano. Não altera o compo
 ### Gate Q0
 
 Owner compreende e aprova rubrica, faixas, falhas críticas e limite financeiro.
+
+Estado em 2026-07-16: rubrica estruturada, ficha humana, formato sanitizado, regra de custo e baseline de código/modelos foram implementados. Passaram seis testes específicos, 248 unitários, lint, build e secret scan; o gate continua pendente até a confirmação explícita do owner.
 
 ### Rollback
 
@@ -732,4 +734,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Executar **Q0 — Padrão, governança e linha de partida**. É uma fatia documental, sem mudança de funcionalidade, sem produção, sem deploy e sem consumo de API de IA do Oráculo.
+Obter o aceite explícito do owner para o gate da **Q0 — Padrão, governança e linha de partida**. Depois do aceite, apresentar o briefing da Q1; não iniciar o laboratório antes dessa confirmação.

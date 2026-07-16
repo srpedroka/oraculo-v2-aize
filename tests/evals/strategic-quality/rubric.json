@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "rubricVersion": "2026-07-16.q0",
+  "ratingScale": [
+    {
+      "rating": 0,
+      "label": "Ausente ou prejudicial",
+      "description": "O comportamento nao aparece ou piora a decisao do gestor."
+    },
+    {
+      "rating": 1,
+      "label": "Fraco",
+      "description": "Ha uma tentativa, mas ela e insuficiente ou exige correcao substancial."
+    },
+    {
+      "rating": 2,
+      "label": "Parcial",
+      "description": "Atende parte do criterio, com lacunas relevantes."
+    },
+    {
+      "rating": 3,
+      "label": "Solido",
+      "description": "Atende o criterio de forma util, com apenas ajustes menores."
+    },
+    {
+      "rating": 4,
+      "label": "Excelente",
+      "description": "Atende integralmente e melhora a clareza ou a qualidade da decisao."
+    }
+  ],
+  "thresholds": {
+    "minimumPerRubric": 80,
+    "minimumJointAverage": 85,
+    "ranges": [
+      { "id": "RANGE-REJECTED", "minimum": 0, "maximum": 69.99, "label": "Reprovado" },
+      { "id": "RANGE-REVIEW", "minimum": 70, "maximum": 79.99, "label": "Revisar antes de gravar" },
+      { "id": "RANGE-APPROVED", "minimum": 80, "maximum": 89.99, "label": "Aprovado" },
+      { "id": "RANGE-EXCELLENT", "minimum": 90, "maximum": 100, "label": "Excelente" }
+    ]
+  },
+  "rubrics": [
+    {
+      "id": "RUBRIC-CONDUCTION",
+      "name": "Conducao estrategica",
+      "criteria": [
+        {
+          "id": "COND-SCOPE-001",
+          "name": "Escopo correto",
+          "weight": 15,
+          "expectedEvidence": "Confirma empresa, area e periodo sem trocar o nivel do plano."
+        },
+        {
+          "id": "COND-DIAGNOSIS-001",
+          "name": "Diagnostico",
+          "weight": 15,
+          "expectedEvidence": "Entende problema, causa, impacto e situacao atual antes de propor."
+        },
+        {
+          "id": "COND-QUESTIONS-001",
+          "name": "Qualidade das perguntas",
+          "weight": 15,
+          "expectedEvidence": "Faz uma pergunta por vez, relevante, sem repeticao e sem induzir resposta."
+        },
+        {
+          "id": "COND-CHALLENGE-001",
+          "name": "Desafio estrategico",
+          "weight": 15,
+          "expectedEvidence": "Questiona meta fraca, atividade disfarçada, repeticao e excesso de prioridade."
+        },
+        {
+          "id": "COND-MEMORY-001",
+          "name": "Uso da memoria",
+          "weight": 15,
+          "expectedEvidence": "Recupera apenas historicos pertinentes e explica por que sao relevantes."
+        },
+        {
+          "id": "COND-NATURALNESS-001",
+          "name": "Naturalidade e eficiencia",
+          "weight": 10,
+          "expectedEvidence": "Conversa humana, curta e adaptada a maturidade do gestor."
+        },
+        {
+          "id": "COND-FIDELITY-001",
+          "name": "Fidelidade",
+          "weight": 10,
+          "expectedEvidence": "Nao inventa numeros, nomes, vinculos, documentos ou decisoes."
+        },
+        {
+          "id": "COND-CLOSURE-001",
+          "name": "Fechamento",
+          "weight": 5,
+          "expectedEvidence": "Resume fielmente e pede uma unica confirmacao final."
+        }
+      ]
+    },
+    {
+      "id": "RUBRIC-QUARTERLY-PLAN",
+      "name": "Plano trimestral gerado",
+      "criteria": [
+        {
+          "id": "PLAN-ALIGNMENT-001",
+          "name": "Alinhamento estrategico",
+          "weight": 20,
+          "expectedEvidence": "Mostra vinculo e contribuicao clara para um objetivo anual aplicavel."
+        },
+        {
+          "id": "PLAN-OUTCOME-001",
+          "name": "Objetivo de resultado",
+          "weight": 15,
+          "expectedEvidence": "Descreve a mudanca desejada, nao somente uma tarefa ou projeto."
+        },
+        {
+          "id": "PLAN-MEASURE-001",
+          "name": "Meta e evidencia",
+          "weight": 20,
+          "expectedEvidence": "Inclui baseline quando disponivel, indicador, alvo, prazo e fonte verificavel."
+        },
+        {
+          "id": "PLAN-EXECUTION-001",
+          "name": "Plano de execucao",
+          "weight": 20,
+          "expectedEvidence": "Define acoes-chave, responsaveis, datas e criterios de conclusao."
+        },
+        {
+          "id": "PLAN-FOCUS-001",
+          "name": "Foco e viabilidade",
+          "weight": 10,
+          "expectedEvidence": "Mantem poucas prioridades e capacidade plausivel no trimestre."
+        },
+        {
+          "id": "PLAN-RISK-001",
+          "name": "Riscos e aprendizados",
+          "weight": 5,
+          "expectedEvidence": "Registra dependencias, bloqueios, premissas e memoria anterior relevante."
+        },
+        {
+          "id": "PLAN-CADENCE-001",
+          "name": "Cadencia de gestao",
+          "weight": 10,
+          "expectedEvidence": "Define KPI ou placar, check-in, confianca e proximo compromisso."
+        }
+      ]
+    }
+  ],
+  "criticalFailures": [
+    {
+      "id": "CRIT-SCOPE-001",
+      "description": "Empresa, area, pessoa ou periodo incorreto.",
+      "checkType": "human",
+      "requiredEvidence": "Comparar a transcricao, o contexto do caso e o plano final."
+    },
+    {
+      "id": "CRIT-LEVEL-001",
+      "description": "Mudanca indevida entre plano anual, trimestral e mensal.",
+      "checkType": "human",
+      "requiredEvidence": "Revisar a sequencia da conversa e o tipo da proposta."
+    },
+    {
+      "id": "CRIT-MEMORY-001",
+      "description": "Documento historico de outra area apresentado como referencia principal.",
+      "checkType": "human",
+      "requiredEvidence": "Conferir area e periodo das referencias citadas."
+    },
+    {
+      "id": "CRIT-FABRICATION-001",
+      "description": "Numero, responsavel, KPI ou decisao inventada.",
+      "checkType": "human",
+      "requiredEvidence": "Rastrear cada afirmacao factual ate a entrada ou memoria autorizada."
+    },
+    {
+      "id": "CRIT-ALIGNMENT-001",
+      "description": "Objetivo sem ligacao estrategica quando existe objetivo anual aplicavel.",
+      "checkType": "human",
+      "requiredEvidence": "Comparar objetivo trimestral e objetivos anuais fornecidos ao caso."
+    },
+    {
+      "id": "CRIT-VERIFIABILITY-001",
+      "description": "Meta sem forma verificavel de conclusao.",
+      "checkType": "human",
+      "requiredEvidence": "Verificar indicador, alvo, prazo e fonte ou criterio de conclusao."
+    },
+    {
+      "id": "CRIT-PREMATURE-WRITE-001",
+      "description": "Gravacao antes da confirmacao.",
+      "checkType": "deterministic",
+      "requiredEvidence": "Comparar timestamps da proposta, confirmacao e primeira mutacao."
+    },
+    {
+      "id": "CRIT-MULTI-CONFIRM-001",
+      "description": "Mais de uma confirmacao final para a mesma proposta.",
+      "checkType": "deterministic",
+      "requiredEvidence": "Contar pedidos de confirmacao associados ao mesmo proposalId."
+    },
+    {
+      "id": "CRIT-DIVERGENCE-001",
+      "description": "Divergencia entre conversa, banco e documento canonico.",
+      "checkType": "deterministic",
+      "requiredEvidence": "Comparar a proposta confirmada com os registros e o documento gerado."
+    },
+    {
+      "id": "CRIT-JUDGE-MUTATION-001",
+      "description": "Mutacao feita pelo judge de qualidade.",
+      "checkType": "deterministic",
+      "requiredEvidence": "Confirmar zero escrita com a identidade ou o runId do judge."
+    }
+  ],
+  "costPolicy": {
+    "currency": "USD",
+    "authorizedLimitUsd": 20,
+    "warningAtUsd": 15,
+    "preventiveStopAtUsd": 19,
+    "includedComponents": ["generation", "judge"],
+    "caseFields": [
+      "generationCostUsd",
+      "judgeCostUsd",
+      "totalCaseCostUsd",
+      "cumulativePlanCostUsd"
+    ],
+    "rule": "Somar somente chamadas pagas iniciadas pelo laboratorio deste plano; compras, creditos e assinaturas nunca entram nesta autorizacao."
+  },
+  "sanitization": {
+    "fixtureAliases": ["ORG_FIXTURE_A", "AREA_FIXTURE_A", "PERSON_FIXTURE_A"],
+    "forbiddenContent": [
+      "nomes reais",
+      "emails",
+      "telefones",
+      "UUIDs de producao",
+      "chaves ou tokens",
+      "texto empresarial real"
+    ]
+  }
+}

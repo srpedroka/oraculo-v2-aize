@@ -590,6 +590,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
+- A Q0 do plano integrado de qualidade foi implementada em `docs/STRATEGIC_QUALITY_STANDARD.md` e `tests/evals/strategic-quality/`. Ela ainda aguarda o aceite explícito do owner; não iniciar a Q1 antes dessa confirmação. Não houve mudança de produção, deploy ou consumo de IA.
+
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
 - O produto esta pronto para operacao assistida, mas ainda precisa de teste operacional completo com dados reais controlados: criar plano mensal por sessao web, atualizar acoes pelo WhatsApp, pedir status, simular fechamento, exportar PDF e conferir custos.

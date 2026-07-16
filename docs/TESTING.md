@@ -70,6 +70,22 @@ O Teste Mestre comprova integridade técnica, mas não substitui a avaliação d
 - judge de IA é somente leitura e a aprovação final continua humana;
 - custos, versões de prompt/modelo e transcrições sanitizadas fazem parte da evidência.
 
+A Q0 está materializada em:
+
+- `docs/STRATEGIC_QUALITY_STANDARD.md`: regra humana, pontuação, custo, sanitização e gate;
+- `tests/evals/strategic-quality/rubric.json`: critérios, pesos, faixas e falhas críticas com IDs estáveis;
+- `tests/evals/strategic-quality/baseline.json`: modelos observados e hashes dos condutores/prompts;
+- `tests/evals/strategic-quality/human-review-template.md`: ficha de revisão independente do judge;
+- `src/test/strategic-quality-standard.test.ts`: pesos, duplicidade, mapeamento, custo, sanitização e drift do baseline.
+
+O teste roda dentro da suíte unitária:
+
+```bash
+pnpm exec vitest run src/test/strategic-quality-standard.test.ts
+```
+
+Uma alteração futura nos condutores ou prompts listados quebra o teste até que o baseline seja atualizado explicitamente e a mudança seja justificada. Isso é deliberado: impede que a comparação Q3/Q5 use versões diferentes sem registrar a troca.
+
 ## Matriz da Fatia 4A
 
 | Risco | Cobertura principal |
