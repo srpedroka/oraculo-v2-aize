@@ -1,186 +1,221 @@
-# Padrao de qualidade estrategica
+# Padrão de qualidade do Oráculo
 
-Versao: `2026-07-16.q0`
+Versão: `2026-07-16.q0-r2`
 
-Status: aprovado pelo owner em 2026-07-16.
+Status: **revisado; aguardando novo aceite do owner**.
+
+A versão `2026-07-16.q0` foi aprovada em 2026-07-16, mas avaliava principalmente condução e plano trimestral. Esta revisão amplia a cobertura e coloca o **Plano Estratégico Anual como primeira entrega de conteúdo avaliada**. Nenhum teste pago da Q1 deve rodar antes do novo aceite.
 
 ## Objetivo
 
-Este documento define como avaliar, de forma repetivel, duas coisas diferentes:
+O padrão separa três tipos de qualidade:
 
-1. se o Oraculo conduziu bem a conversa com o gestor;
-2. se o plano trimestral produzido ficou bom o suficiente para executar.
+1. **Conteúdo estratégico:** a conversa e a decisão empresarial são boas?
+2. **Saída derivada:** banco, documento, PDF, WhatsApp e Dashboard reproduzem corretamente o que foi aprovado?
+3. **Operação do software:** segurança, permissões, filas, backup, navegação e configurações funcionam com integridade?
 
-A rubrica completa e legivel por maquina fica em `tests/evals/strategic-quality/rubric.json`. Esta versao nao altera prompts, modelos, banco, WhatsApp ou interface.
+Nem toda tela precisa de judge de IA. Conteúdo estratégico usa rubrica e revisão humana; saídas derivadas priorizam comparação determinística; administração usa RLS, integração, E2E, segurança e QA visual. Isso cobre o produto sem criar custo ou burocracia artificial.
 
-## Regra de pontuacao
+A lista rastreável de entregas fica em `tests/evals/strategic-quality/deliverable-coverage.json`.
 
-Cada criterio recebe uma nota de `0` a `4`:
+## Ordem estratégica
 
-| Nota | Interpretacao |
+Depois da fundação Q0/Q1, a avaliação de conteúdo respeita esta sequência:
+
+```text
+Plano Estratégico Anual
+        |
+        v
+Plano Trimestral por Área
+        |
+        v
+Plano Mensal
+        |
+        v
+Revisões, Fechamentos e Execução
+        |
+        v
+Memória, Importações, Documentos, PDF, WhatsApp e Dashboard
+```
+
+O trimestral deve apontar para um objetivo anual aplicável. O mensal deve apontar para um objetivo trimestral. Uma prioridade emergente pode existir sem vínculo, mas precisa ser apresentada como exceção, justificada e confirmada; o sistema nunca deve forçar ou inventar um vínculo.
+
+## Regra de pontuação
+
+Cada critério recebe nota de `0` a `4`:
+
+| Nota | Interpretação |
 | ---: | --- |
 | 0 | Ausente ou prejudicial |
-| 1 | Fraco; exige correcao substancial |
+| 1 | Fraco; exige correção substancial |
 | 2 | Parcial; tem lacunas relevantes |
-| 3 | Solido; apenas ajustes menores |
-| 4 | Excelente; atende integralmente e melhora a decisao |
-
-Pontos do criterio:
+| 3 | Sólido; apenas ajustes menores |
+| 4 | Excelente; atende integralmente e melhora a decisão |
 
 ```text
 pontos = peso x nota / 4
 ```
 
-O resultado deve ser arredondado para uma casa decimal somente na apresentacao. O calculo do total usa o valor sem arredondamento intermediario.
+Cada rubrica soma 100 pontos. Um caso com conversa usa `RUBRIC-CONDUCTION` e a rubrica principal da entrega. Saídas derivadas podem usar somente `RUBRIC-DERIVED-OUTPUT`. Todas as rubricas aplicáveis precisam atingir 80 e a média precisa atingir 85. Uma falha crítica reprova o caso mesmo com nota alta.
 
-As duas rubricas somam 100 pontos separadamente. Cada uma precisa atingir 80, e a media entre elas precisa atingir 85 no gate final. Uma falha critica reprova o caso mesmo com nota alta.
+## Rubricas
 
-## Conducao estrategica
+### Condução estratégica
 
-| ID | Criterio | Peso |
+| ID | Critério | Peso |
 | --- | --- | ---: |
 | `COND-SCOPE-001` | Escopo correto | 15 |
-| `COND-DIAGNOSIS-001` | Diagnostico | 15 |
+| `COND-DIAGNOSIS-001` | Diagnóstico | 15 |
 | `COND-QUESTIONS-001` | Qualidade das perguntas | 15 |
-| `COND-CHALLENGE-001` | Desafio estrategico | 15 |
-| `COND-MEMORY-001` | Uso da memoria | 15 |
-| `COND-NATURALNESS-001` | Naturalidade e eficiencia | 10 |
+| `COND-CHALLENGE-001` | Desafio estratégico | 15 |
+| `COND-MEMORY-001` | Uso da memória | 15 |
+| `COND-NATURALNESS-001` | Naturalidade e eficiência | 10 |
 | `COND-FIDELITY-001` | Fidelidade | 10 |
 | `COND-CLOSURE-001` | Fechamento | 5 |
 
-## Plano trimestral
+### Plano Estratégico Anual
 
-| ID | Criterio | Peso |
+| ID | Critério | Peso |
 | --- | --- | ---: |
-| `PLAN-ALIGNMENT-001` | Alinhamento estrategico | 20 |
+| `ANNUAL-DIAGNOSIS-001` | Diagnóstico e direcionadores | 15 |
+| `ANNUAL-CHOICES-001` | Escolhas, foco e renúncias | 20 |
+| `ANNUAL-OBJECTIVES-001` | Objetivos de resultado | 20 |
+| `ANNUAL-MEASURES-001` | Metas e indicadores | 15 |
+| `ANNUAL-PORTFOLIO-001` | Projetos e responsabilidade | 10 |
+| `ANNUAL-RISK-001` | Riscos e memória | 10 |
+| `ANNUAL-GOVERNANCE-001` | Governança do ano | 10 |
+
+### Plano Trimestral
+
+| ID | Critério | Peso |
+| --- | --- | ---: |
+| `PLAN-ALIGNMENT-001` | Alinhamento com o anual | 20 |
 | `PLAN-OUTCOME-001` | Objetivo de resultado | 15 |
-| `PLAN-MEASURE-001` | Meta e evidencia | 20 |
-| `PLAN-EXECUTION-001` | Plano de execucao | 20 |
+| `PLAN-MEASURE-001` | Meta e evidência | 20 |
+| `PLAN-EXECUTION-001` | Plano de execução | 20 |
 | `PLAN-FOCUS-001` | Foco e viabilidade | 10 |
 | `PLAN-RISK-001` | Riscos e aprendizados | 5 |
-| `PLAN-CADENCE-001` | Cadencia de gestao | 10 |
+| `PLAN-CADENCE-001` | Cadência de gestão | 10 |
 
-## Falhas criticas
+### Plano Mensal
 
-### Revisao humana
+| ID | Critério | Peso |
+| --- | --- | ---: |
+| `MONTHLY-CASCADE-001` | Desdobramento trimestral | 20 |
+| `MONTHLY-OUTCOME-001` | Resultado do mês | 15 |
+| `MONTHLY-MEASURE-001` | Meta e evidência | 20 |
+| `MONTHLY-ACTIONS-001` | Ações executáveis | 20 |
+| `MONTHLY-FOCUS-001` | Foco e capacidade | 10 |
+| `MONTHLY-CONTINUITY-001` | Continuidade de pendências | 5 |
+| `MONTHLY-CADENCE-001` | Acompanhamento | 10 |
 
-- `CRIT-SCOPE-001`: empresa, area, pessoa ou periodo incorreto.
-- `CRIT-LEVEL-001`: troca indevida entre plano anual, trimestral e mensal.
-- `CRIT-MEMORY-001`: historico de outra area usado como referencia principal.
-- `CRIT-FABRICATION-001`: numero, responsavel, KPI ou decisao inventada.
-- `CRIT-ALIGNMENT-001`: ausencia de ligacao com objetivo anual aplicavel.
-- `CRIT-VERIFIABILITY-001`: meta sem forma verificavel de conclusao.
+### Revisões e Fechamentos
 
-### Checagem deterministica
+| ID | Critério | Peso |
+| --- | --- | ---: |
+| `REVIEW-SCOPE-001` | Ritual e período corretos | 15 |
+| `REVIEW-EVIDENCE-001` | Evidência concreta | 20 |
+| `REVIEW-VERDICT-001` | Veredito honesto | 15 |
+| `REVIEW-LEARNING-001` | Aprendizado | 15 |
+| `REVIEW-DECISION-001` | Decisão sobre pendências | 15 |
+| `REVIEW-FORWARD-001` | Ponte para o próximo ciclo | 10 |
+| `REVIEW-FIDELITY-001` | Fidelidade e rastreabilidade | 10 |
 
-- `CRIT-PREMATURE-WRITE-001`: gravacao antes da confirmacao.
-- `CRIT-MULTI-CONFIRM-001`: mais de uma confirmacao final para a proposta.
-- `CRIT-DIVERGENCE-001`: conversa, banco e documento canonico divergem.
-- `CRIT-JUDGE-MUTATION-001`: o avaliador altera algum dado.
+### Memória, Importações e Sugestões
 
-Na Q1, cada checagem deterministica deve produzir `pass`, `fail` ou `not_applicable` com evidencia tecnica sanitizada. `not_applicable` precisa de justificativa e nao pode esconder uma checagem que o caso realmente exercitou.
+| ID | Critério | Peso |
+| --- | --- | ---: |
+| `INFO-SOURCE-001` | Fonte correta | 20 |
+| `INFO-EXTRACTION-001` | Extração fiel | 20 |
+| `INFO-RELEVANCE-001` | Relevância | 20 |
+| `INFO-CONFLICT-001` | Tratamento de conflito | 15 |
+| `INFO-PROVENANCE-001` | Proveniência e reversão | 15 |
+| `INFO-PRIVACY-001` | Minimização | 10 |
 
-## Ficha humana
+### Documentos, PDF, WhatsApp e Dashboard
 
-A ficha oficial fica em `tests/evals/strategic-quality/human-review-template.md`. O revisor deve:
+| ID | Critério | Peso |
+| --- | --- | ---: |
+| `OUTPUT-FIDELITY-001` | Fidelidade entre saídas | 25 |
+| `OUTPUT-COMPLETENESS-001` | Completude | 20 |
+| `OUTPUT-HIERARCHY-001` | Hierarquia estratégica | 15 |
+| `OUTPUT-READABILITY-001` | Leitura e design | 15 |
+| `OUTPUT-NUMERICAL-001` | Precisão numérica | 15 |
+| `OUTPUT-TRACEABILITY-001` | Versão e trilha | 10 |
 
-1. ler o contexto sintetico, a transcricao sanitizada e o plano;
-2. marcar primeiro as falhas criticas;
-3. dar nota de 0 a 4 por criterio;
-4. citar evidencia curta da transcricao ou do plano;
-5. justificar notas 0, 1, 2 e qualquer divergencia do judge;
-6. registrar decisao humana independente da nota automatica.
+## Falhas críticas
 
-O judge de IA pode sugerir notas, mas nao aprova o gate, nao edita o caso e nao grava no Oraculo.
+### Estratégia e conversa
 
-## Custo por caso
+- `CRIT-SCOPE-001`: empresa, área, pessoa ou período incorreto.
+- `CRIT-LEVEL-001`: troca indevida entre anual, trimestral e mensal.
+- `CRIT-MEMORY-001`: memória de outra área ou período usada como referência principal.
+- `CRIT-FABRICATION-001`: número, responsável, KPI, vínculo ou decisão inventada.
+- `CRIT-ALIGNMENT-001`: entrega inferior sem ligação com o nível superior aplicável.
+- `CRIT-VERIFIABILITY-001`: meta ou conclusão sem forma verificável.
+- `CRIT-OBJECTIVE-ACTIVITY-001`: atividade aceita como objetivo final sem resultado esperado.
+- `CRIT-CHANNEL-DIVERGENCE-001`: app e WhatsApp divergem materialmente.
 
-O custo do laboratorio e medido em dolares com quatro campos:
+### Dados e sistema
 
-```text
-generationCostUsd
-judgeCostUsd
-totalCaseCostUsd = generationCostUsd + judgeCostUsd
-cumulativePlanCostUsd = soma dos casos executados no plano
-```
+- `CRIT-PREMATURE-WRITE-001`: gravação antes da confirmação.
+- `CRIT-MULTI-CONFIRM-001`: mais de uma confirmação final para a mesma proposta.
+- `CRIT-DIVERGENCE-001`: conversa, banco e saída canônica divergem.
+- `CRIT-JUDGE-MUTATION-001`: o judge altera dados.
+- `CRIT-REVIEW-OVERREACH-001`: revisão altera conteúdo fora do limite autorizado.
+- `CRIT-CONFLICT-OVERWRITE-001`: importação resolve conflito sem escolha do usuário.
+- `CRIT-NUMERICAL-DIVERGENCE-001`: KPI, período, unidade ou cálculo materialmente incorreto.
+- `CRIT-SENSITIVE-PERSISTENCE-001`: bruto, segredo ou URL temporária é persistido indevidamente.
 
-Entram na conta somente chamadas pagas iniciadas pelo laboratorio Q1-Q6. Testes sem modelo, custos anteriores do app e uso operacional normal ficam fora do custo do caso.
+Checagens determinísticas produzem `pass`, `fail` ou `not_applicable`. `not_applicable` exige justificativa e não pode esconder um fluxo realmente exercitado.
 
-Limites aprovados pelo owner:
+## Cobertura do produto
 
-- aviso ao atingir US$ 15;
-- parada preventiva antes de iniciar nova chamada ao atingir US$ 19;
-- teto absoluto de US$ 20 sem nova autorizacao;
-- compra de creditos, assinatura, upgrade ou recarga sempre exige autorizacao especifica e imediata.
+A matriz versionada cobre:
 
-O runner deve registrar provider, modelo, funcao, tokens de entrada/saida quando disponiveis e custo calculado. Nunca registra chave ou payload bruto.
+- os seis rituais do motor: anual, trimestral, mensal, fechamento mensal, fechamento trimestral e revisão estratégica;
+- planejamento, objetivos, ações, evidências, check-ins, pulso e lembretes;
+- importação de planos, históricos, imagens, planilhas e KPIs;
+- memória e recuperação de contexto;
+- documentos canônicos, impressão/PDF, WhatsApp e Dashboard;
+- edição, arquivo, auditoria e ciclo de vida;
+- autenticação, empresas, áreas, pessoas, papéis e convites;
+- IA, persona, custos, WhatsApp, backup, privacidade e conta pessoal;
+- navegação, responsividade, acessibilidade, desempenho e estados de erro.
 
-## Formato sanitizado
+O teste de cobertura compara a matriz com as rotas de `src/App.tsx` e os tipos de sessão de `_shared/session-engine.ts`. Uma rota ou ritual novo exige atualizar a matriz antes do CI ficar verde.
 
-Cada caso futuro deve usar aliases sinteticos como `ORG_FIXTURE_A`, `AREA_FIXTURE_A` e `PERSON_FIXTURE_A`.
+## Revisão humana
 
-Transcricao minima:
+A ficha em `tests/evals/strategic-quality/human-review-template.md` usa apenas as rubricas aplicáveis ao caso. O revisor marca primeiro falhas críticas, depois pontua condução e entrega. O judge sugere evidências, mas não aprova gate, não edita caso e não grava no Oráculo.
 
-```json
-{
-  "schemaVersion": 1,
-  "caseId": "CASE-001",
-  "channel": "web",
-  "scope": {
-    "organization": "ORG_FIXTURE_A",
-    "area": "AREA_FIXTURE_A",
-    "period": "T3-2026",
-    "planLevel": "quarterly"
-  },
-  "messages": [
-    {
-      "sequence": 1,
-      "role": "manager",
-      "content": "conteudo sintetico"
-    }
-  ]
-}
-```
+## Custo
 
-Plano avaliado minimo:
+O limite aprovado do plano continua:
 
-```json
-{
-  "schemaVersion": 1,
-  "caseId": "CASE-001",
-  "planLevel": "quarterly",
-  "period": "T3-2026",
-  "area": "AREA_FIXTURE_A",
-  "strategicAlignment": [],
-  "objectives": [],
-  "actions": [],
-  "risks": [],
-  "cadence": null
-}
-```
+- aviso em US$ 15;
+- parada preventiva em US$ 19;
+- teto de US$ 20;
+- compra, recarga, assinatura ou upgrade sempre exige autorização imediata separada.
 
-E proibido incluir nomes, emails, telefones, UUIDs de producao, chaves, tokens, texto empresarial real, IDs internos de pessoas ou URLs temporarias. Transcricoes geradas ficam em `.agents-private/`, com permissao `600` e fora do Git.
+Para preservar o teto, PDF, Dashboard, documentos, RLS e telas usam checks determinísticos sempre que possível. Judge pago fica concentrado em conteúdo estratégico, memória e naturalidade.
 
-## Linha de partida
+## Segurança e baseline
 
-`tests/evals/strategic-quality/baseline.json` registra:
+Casos usam aliases sintéticos e relatórios privados com permissão `600`. É proibido incluir nome, email, telefone, UUID de produção, chave, token, texto empresarial real, mídia bruta ou URL temporária.
 
-- commit anterior a Q0;
-- modelos observados no preflight para `planning`, `daily` e `background`;
-- hashes SHA-256 dos condutores, prompts, roteadores e aplicadores relevantes.
+`tests/evals/strategic-quality/baseline.json` mantém modelos e hashes dos condutores, roteadores, propostas e documentos. Mudança de prompt ou condutor precisa atualizar o baseline explicitamente.
 
-O teste unitario compara os hashes com o codigo. Assim, uma alteracao em condutor ou prompt nao passa silenciosamente: a mudanca precisa atualizar o baseline de forma explicita e explicar por que isso ocorreu.
+## Gate Q0 revisado
 
-## Gate Q0
+O novo gate Q0 exige que o owner confirme:
 
-Q0 somente e aprovada quando o owner confirmar que compreendeu e aceita:
+- Plano Estratégico Anual como primeira entrega avaliada;
+- desdobramento anual -> trimestral -> mensal;
+- sete rubricas de 100 pontos e faixas 80/85;
+- dezesseis falhas críticas;
+- matriz de cobertura completa;
+- separação entre judge, checks determinísticos e decisão humana;
+- limite financeiro já aprovado.
 
-- os pesos e as notas;
-- as faixas 80/85;
-- as dez falhas criticas;
-- a separacao entre judge e decisao humana;
-- o limite financeiro de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19.
-
-Aprovacao registrada: o owner confirmou explicitamente a rubrica Q0 e seus limites em 2026-07-16.
-
-A aprovacao libera apenas o briefing e a execucao autorizada da Q1. Nao libera producao nem contato com gestor real.
+Até esse aceite, a infraestrutura Q1 pode ser validada localmente, mas o caso real pago permanece bloqueado e Q2 não começa.

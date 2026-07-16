@@ -23,7 +23,7 @@
     "test:kpi-format": "node --experimental-strip-types scripts/verify-kpi-format.ts",
     "test:conversation-memory": "node --experimental-strip-types scripts/verify-conversation-memory.ts",
     "test:strategic-eval": "vitest run src/test/strategic-eval-runner.test.ts src/test/strategic-quality-standard.test.ts",
-    "eval:strategic:q1": "node --experimental-strip-types scripts/strategic-eval.ts run tests/evals/strategic-quality/cases/q1-minimal-quarterly.json",
+    "eval:strategic:q1": "node --experimental-strip-types scripts/strategic-eval.ts run tests/evals/strategic-quality/cases/q1-minimal-annual.json",
     "test:master:setup": "node --experimental-strip-types scripts/master-test.ts setup",
     "test:master:verify": "node --experimental-strip-types scripts/master-test.ts verify",
     "test:master:functional": "node --experimental-strip-types scripts/master-test-functional.ts",

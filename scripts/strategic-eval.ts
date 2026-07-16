@@ -311,67 +311,37 @@ async function configureDisposableAi(handle: EvaluationOrg, config: RuntimeConfi
   if (failure) throw failure;
 }
 
-async function seedStrategicContext(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
+async function seedPreviousAnnualContext(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
   const admin = serviceClient();
-  const year = Number(evaluationCase.period.match(/20\d{2}/)?.[0] ?? 2026);
+  const year = Number(evaluationCase.period.match(/20\d{2}/)?.[0] ?? 2026) - 1;
   const strategicPlan = await admin.from("strategic_plans").insert({
     org_id: handle.orgId,
     year,
     profile: { sector: "fixture", size: "fixture", region: "fixture" },
     drivers: { purpose: "Executar com clareza", vision: "Operacao sintetica previsivel", values: ["Clareza"] },
     swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
-    themes: ["Previsibilidade sintetica"],
+    themes: ["Aprendizado sintetico anterior"],
     rituals: ["Revisao mensal sintetica"],
-    executive_summary: "Contexto totalmente sintetico do laboratorio Q1.",
+    executive_summary: evaluationCase.seed.previousAnnualSignal,
   }).select("id").single();
-  if (strategicPlan.error || !strategicPlan.data) throw strategicPlan.error ?? new Error("plano estrategico sintetico nao criado");
+  if (strategicPlan.error || !strategicPlan.data) throw strategicPlan.error ?? new Error("plano anual anterior sintetico nao criado");
 
   const strategicObjective = await admin.from("objectives").insert({
     org_id: handle.orgId,
     area_id: null,
     level: "strategic",
     type: "harvest",
-    title: evaluationCase.seed.strategicObjective,
-    result: evaluationCase.seed.strategicObjective,
-    metric: "Previsibilidade sintetica",
-    target: "Aumentar no ano sintetico",
+    title: evaluationCase.seed.previousAnnualSignal,
+    result: evaluationCase.seed.previousAnnualSignal,
+    metric: "Sinal anual sintetico anterior",
+    target: "Aprendizado registrado no ano anterior",
     owner: evaluationCase.scope.personAlias,
     evidence_plan: "Placar sintetico",
     status: "on_track",
     progress: 10,
     period: String(year),
   }).select("id").single();
-  if (strategicObjective.error || !strategicObjective.data) throw strategicObjective.error ?? new Error("objetivo estrategico sintetico nao criado");
-
-  const annualObjective = await admin.from("objectives").insert({
-    org_id: handle.orgId,
-    area_id: handle.areaId,
-    level: "area_annual",
-    type: "harvest",
-    title: evaluationCase.seed.annualObjective,
-    result: evaluationCase.seed.annualObjective,
-    metric: "Oportunidades com etapa e proxima acao",
-    target: "80% ate o fim do ano sintetico",
-    owner: evaluationCase.scope.personAlias,
-    evidence_plan: "Placar sintetico semanal",
-    status: "on_track",
-    progress: 20,
-    parent_id: strategicObjective.data.id,
-    period: String(year),
-  }).select("id").single();
-  if (annualObjective.error || !annualObjective.data) throw annualObjective.error ?? new Error("objetivo anual sintetico nao criado");
-
-  const areaPlan = await admin.from("area_plans").insert({
-    org_id: handle.orgId,
-    area_id: handle.areaId,
-    year,
-    role: { mission: evaluationCase.seed.areaRole, contribution: [evaluationCase.seed.strategicObjective] },
-    linked_strategic_objective_ids: [strategicObjective.data.id],
-    diagnosis: { strengths: [], weaknesses: [] },
-    main_annual_objective_id: annualObjective.data.id,
-    learning_focus: [],
-  });
-  if (areaPlan.error) throw areaPlan.error;
+  if (strategicObjective.error || !strategicObjective.data) throw strategicObjective.error ?? new Error("objetivo anual anterior sintetico nao criado");
 }
 
 async function ownerToken(handle: EvaluationOrg) {
@@ -398,25 +368,31 @@ async function generationUsage(handle: EvaluationOrg, startedAt: string) {
 
 async function targetPlanState(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
   const admin = serviceClient();
-  const [objectives, documents] = await Promise.all([
+  const year = Number(evaluationCase.period.match(/20\d{2}/)?.[0] ?? 2026);
+  const [strategicPlans, objectives, documents] = await Promise.all([
+    admin.from("strategic_plans")
+      .select("id,year,drivers,swot,themes,rituals,executive_summary")
+      .eq("org_id", handle.orgId)
+      .eq("year", year),
     admin.from("objectives")
       .select("id,title,metric,target,owner,period,area_id,deliverables")
       .eq("org_id", handle.orgId)
-      .eq("area_id", handle.areaId)
-      .eq("level", "quarterly")
+      .is("area_id", null)
+      .eq("level", "strategic")
       .eq("period", evaluationCase.period)
       .is("archived_at", null),
     admin.from("plan_documents")
       .select("id,type,period,area_id,origin,content")
       .eq("org_id", handle.orgId)
-      .eq("area_id", handle.areaId)
-      .eq("type", "quarterly")
+      .is("area_id", null)
+      .eq("type", "strategic")
       .eq("period", evaluationCase.period)
       .is("archived_at", null),
   ]);
+  if (strategicPlans.error) throw strategicPlans.error;
   if (objectives.error) throw objectives.error;
   if (documents.error) throw documents.error;
-  return { objectives: objectives.data ?? [], documents: documents.data ?? [] };
+  return { strategicPlans: strategicPlans.data ?? [], objectives: objectives.data ?? [], documents: documents.data ?? [] };
 }
 
 async function domainSnapshotHash(handle: EvaluationOrg) {
@@ -432,35 +408,45 @@ async function domainSnapshotHash(handle: EvaluationOrg) {
   return createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
 
-function quarterlyObjectives(proposal: Record<string, any>) {
-  return Array.isArray(proposal.quarterlyObjectives) ? proposal.quarterlyObjectives as Array<Record<string, any>> : [];
+function annualObjectives(proposal: Record<string, any>) {
+  return Array.isArray(proposal.objectives) ? proposal.objectives as Array<Record<string, any>> : [];
 }
 
 function requiredProposalFieldsPresent(proposal: Record<string, any>, evaluationCase: StrategicEvaluationCase) {
-  const objectives = quarterlyObjectives(proposal);
-  if (objectives.length < evaluationCase.expected.minimumQuarterlyObjectives || objectives.length > evaluationCase.expected.maximumQuarterlyObjectives) return false;
+  const objectives = annualObjectives(proposal);
+  if (objectives.length < evaluationCase.expected.minimumObjectives || objectives.length > evaluationCase.expected.maximumObjectives) return false;
+  if (!Array.isArray(proposal.projects) || proposal.projects.length < evaluationCase.expected.minimumProjects) return false;
+  if (evaluationCase.expected.requiresDrivers) {
+    const drivers = proposal.drivers;
+    if (!drivers || !String(drivers.purpose ?? "").trim() || !String(drivers.vision ?? "").trim() || !Array.isArray(drivers.values) || !drivers.values.length) return false;
+  }
+  if (evaluationCase.expected.requiresSwot) {
+    const swot = proposal.swot;
+    if (!swot || ![swot.strengths, swot.weaknesses, swot.opportunities, swot.threats].every((items) => Array.isArray(items) && items.length)) return false;
+  }
+  if (evaluationCase.expected.requiresRituals && (!Array.isArray(proposal.rituals) || !proposal.rituals.length)) return false;
   return objectives.every((objective) => {
     if (!String(objective.title ?? "").trim()) return false;
     if (evaluationCase.expected.requiresMetric && !String(objective.metric ?? "").trim()) return false;
     if (evaluationCase.expected.requiresTarget && !String(objective.target ?? "").trim()) return false;
     if (evaluationCase.expected.requiresOwner && !String(objective.owner ?? "").trim()) return false;
-    if (evaluationCase.expected.requiresDeliverables && (!Array.isArray(objective.deliverables) || !objective.deliverables.length)) return false;
     return true;
   });
 }
 
-function proposalMatchesDatabase(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>, handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
-  const proposalTitles = quarterlyObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
+function proposalMatchesDatabase(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>, evaluationCase: StrategicEvaluationCase) {
+  const proposalTitles = annualObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
   const databaseTitles = state.objectives.map((item: any) => String(item.title ?? "").trim().toLowerCase());
-  return proposalTitles.length > 0
+  return state.strategicPlans.length === 1
+    && proposalTitles.length > 0
     && proposalTitles.every((title) => databaseTitles.includes(title))
-    && state.objectives.every((item: any) => item.area_id === handle.areaId && item.period === evaluationCase.period);
+    && state.objectives.every((item: any) => item.area_id === null && item.period === evaluationCase.period);
 }
 
 function proposalMatchesDocument(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>) {
   if (state.documents.length !== 1) return false;
   const documentSource = JSON.stringify(state.documents[0]?.content ?? {}).toLowerCase();
-  const titles = quarterlyObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
+  const titles = annualObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
   return titles.length > 0 && titles.every((title) => documentSource.includes(title));
 }
 
@@ -547,12 +533,11 @@ async function executeLiveCase(casePath: string) {
     });
     handle = await createEvaluationOrg("strategic-eval-q1");
     await configureDisposableAi(handle, config);
-    await seedStrategicContext(handle, evaluationCase);
+    await seedPreviousAnnualContext(handle, evaluationCase);
     const token = await ownerToken(handle);
     const start = await callFunction("oracle-session", token, {
       action: "start",
       orgId: handle.orgId,
-      areaId: handle.areaId,
       type: evaluationCase.planType,
       period: evaluationCase.period,
       channel: evaluationCase.channel,
@@ -560,7 +545,7 @@ async function executeLiveCase(casePath: string) {
     const sessionId = String(start.session?.id ?? "");
     if (!sessionId) throw new Error("oracle-session nao devolveu sessionId");
     sessionScopeMatches = start.session?.org_id === handle.orgId
-      && start.session?.area_id === handle.areaId
+      && !start.session?.area_id
       && start.session?.period === evaluationCase.period
       && start.session?.type === evaluationCase.planType;
     transcript.push({ sequence: 1, role: "oracle", content: String(start.reply ?? "") });
@@ -591,7 +576,7 @@ async function executeLiveCase(casePath: string) {
     if (!proposal) throw new Error("condutor nao gerou proposal dentro dos turnos do caso");
 
     const beforeConfirm = await targetPlanState(handle, evaluationCase);
-    preConfirmMutationCount = beforeConfirm.objectives.length + beforeConfirm.documents.length;
+    preConfirmMutationCount = beforeConfirm.strategicPlans.length + beforeConfirm.objectives.length + beforeConfirm.documents.length;
     const beforeJudgeHash = await domainSnapshotHash(handle);
     generation = await generationUsage(handle, startedAt);
     assertBudgetAllowsNextCall({
@@ -626,7 +611,7 @@ async function executeLiveCase(casePath: string) {
       channel: evaluationCase.channel,
     }, `strategic-eval-${id}-confirm`);
     const afterConfirm = await targetPlanState(handle, evaluationCase);
-    databaseMatchesProposal = proposalMatchesDatabase(proposal, afterConfirm, handle, evaluationCase);
+    databaseMatchesProposal = proposalMatchesDatabase(proposal, afterConfirm, evaluationCase);
     documentMatchesProposal = proposalMatchesDocument(proposal, afterConfirm);
     checks = buildDeterministicChecks({
       sessionScopeMatches,
@@ -676,7 +661,7 @@ async function executeLiveCase(casePath: string) {
 
   const report: Record<string, unknown> = {
     schemaVersion: 1,
-    reportVersion: "2026-07-16.q1",
+    reportVersion: "2026-07-16.q1-r2",
     caseId: evaluationCase.caseId,
     baselineVersion: String(baseline.baselineVersion ?? "unknown"),
     rubricVersion: String(rubric.rubricVersion ?? "unknown"),

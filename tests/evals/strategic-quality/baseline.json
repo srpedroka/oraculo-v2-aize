@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "baselineVersion": "2026-07-16.q0",
+  "baselineVersion": "2026-07-16.q0-r2",
   "capturedAt": "2026-07-16",
   "sourceCommit": "27ac833",
   "description": "Linha de partida anterior a qualquer correcao orientada pelas avaliacoes Q0-Q6.",

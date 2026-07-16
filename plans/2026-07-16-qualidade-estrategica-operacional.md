@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q0 aprovada e Q1 implementada com gate real pendente**
+Status: **em revisão; Q0 R2 ampliada aguardando aceite e Q1 real pausada**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -10,8 +10,8 @@ Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
 Este documento reúne em uma única sequência os dois trabalhos que faltam para liberar o Oráculo com confiança para os gestores:
 
-1. **Mapa A — Qualidade estratégica:** provar que a IA conduz bem o gestor e produz um plano trimestral coerente, mensurável e executável.
-2. **Mapa B — Qualidade operacional:** provar que esse planejamento de qualidade funciona de ponta a ponta no aplicativo e no WhatsApp, com dados reais controlados.
+1. **Mapa A — Qualidade estratégica:** provar que a IA conduz bem o gestor e que todas as entregas de conteúdo, começando pelo Plano Estratégico Anual, são coerentes, mensuráveis e executáveis.
+2. **Mapa B — Qualidade operacional:** provar que o produto inteiro funciona de ponta a ponta no aplicativo e no WhatsApp, com dados reais controlados.
 
 O hardening técnico das Etapas 0 a 7 já foi concluído e não será refeito. Integridade, segurança, RLS, idempotência, filas, backup, observabilidade e recuperação são a fundação deste plano e continuam como gates de regressão.
 
@@ -20,15 +20,19 @@ O hardening técnico das Etapas 0 a 7 já foi concluído e não será refeito. I
 Ao final, o Oráculo deve demonstrar simultaneamente que:
 
 - conduz uma conversa estratégica sem se perder entre empresa, área e período;
+- produz primeiro um Plano Estratégico Anual com diagnóstico, escolhas, objetivos, metas, projetos e governança;
+- desdobra explicitamente o anual em trimestral e o trimestral em mensal, sem inventar vínculo;
 - entende o problema antes de propor o plano;
 - usa históricos relevantes sem misturar documentos de outras áreas ou períodos;
 - questiona objetivo repetido, meta fraca, excesso de prioridade e ausência de indicador;
 - diferencia objetivo, resultado-chave, KPI, evidência e ação;
-- gera plano trimestral simples, porém suficiente para execução;
+- gera planos anual, trimestral e mensal simples, porém suficientes para execução;
+- produz revisões, fechamentos, memória, importações e sugestões com qualidade verificável;
 - pede somente uma confirmação final para gravar;
 - grava exatamente o que foi aprovado;
 - preserva o mesmo contexto no app e no WhatsApp;
-- produz documento, Dashboard, revisão, auditoria, custo e backup coerentes;
+- produz documento, PDF, WhatsApp, Dashboard, revisão, auditoria, custo e backup coerentes;
+- cobre cada rota e cada ritual com rubrica estratégica ou teste operacional explícito;
 - permite que um gestor real use o fluxo sem treinamento complexo.
 
 ## 3. Os dois mapas
@@ -38,7 +42,7 @@ Hardening técnico concluído
           |
           v
 MAPA A — QUALIDADE ESTRATÉGICA
-Q0 padrão -> Q1 laboratório -> Q2 casos -> Q3 baseline
+Q0 padrão/cobertura -> Q1 laboratório anual -> Q2 casos por entrega -> Q3 baseline
 -> Q4 correções -> Q5 regressão -> Q6 aceite
           |
           | Gate estratégico aprovado
@@ -119,7 +123,7 @@ Toda fatia deve terminar com:
 
 Se um gate falhar, parar. Não declarar sucesso parcial como conclusão e não avançar para a próxima fatia.
 
-## 5. Referências para qualidade do plano trimestral
+## 5. Referências e hierarquia de qualidade
 
 O Oráculo utilizará uma combinação pragmática, sem obrigar o gestor a conhecer os métodos:
 
@@ -133,32 +137,35 @@ O Oráculo utilizará uma combinação pragmática, sem obrigar o gestor a conhe
 
 Essas referências formam critérios internos. A interface continua usando a linguagem simples do Oráculo: objetivo, meta/evidência, ações-chave, responsável, prazo, KPI, confiança e bloqueio.
 
+A hierarquia obrigatória é:
+
+1. Plano Estratégico Anual define diagnóstico, escolhas, objetivos, metas, projetos e rituais.
+2. Plano Trimestral por Área explicita qual objetivo anual ajuda a avançar.
+3. Plano Mensal explicita qual objetivo trimestral ajuda a executar.
+4. Revisões e fechamentos usam evidência, registram aprendizado e decidem o destino das pendências.
+
+Se não houver plano superior, o Oráculo pode continuar sem bloquear o gestor, mas deve marcar a entrega como provisória. Se a prioridade for emergente, registra exceção justificada. Nunca cria vínculo falso apenas para completar o formulário.
+
 ## 6. Rubrica oficial de qualidade
 
-### 6.1 Condução estratégica — 100 pontos
+### 6.1 Rubricas de 100 pontos
 
-| Dimensão | Peso | Evidência esperada |
-| --- | ---: | --- |
-| Escopo correto | 15 | Confirma empresa, área e período sem trocar o nível do plano |
-| Diagnóstico | 15 | Entende problema, causa, impacto e situação atual antes de propor |
-| Qualidade das perguntas | 15 | Uma pergunta por vez, relevante, sem repetição e sem induzir resposta |
-| Desafio estratégico | 15 | Questiona meta fraca, atividade disfarçada, repetição e excesso de prioridade |
-| Uso da memória | 15 | Recupera apenas históricos pertinentes e explica por que são relevantes |
-| Naturalidade e eficiência | 10 | Conversa humana, curta e adaptada à maturidade do gestor |
-| Fidelidade | 10 | Não inventa números, nomes, vínculos, documentos ou decisões |
-| Fechamento | 5 | Resume fielmente e pede uma única confirmação final |
+1. `RUBRIC-CONDUCTION`: condução estratégica e naturalidade.
+2. `RUBRIC-ANNUAL-PLAN`: Plano Estratégico Anual.
+3. `RUBRIC-QUARTERLY-PLAN`: desdobramento trimestral.
+4. `RUBRIC-MONTHLY-PLAN`: execução mensal.
+5. `RUBRIC-REVIEW-CLOSE`: revisão estratégica e fechamentos mensal/trimestral.
+6. `RUBRIC-INFORMATION-QUALITY`: memória, importações, arquivos e sugestões.
+7. `RUBRIC-DERIVED-OUTPUT`: documentos, PDF, WhatsApp, Dashboard e auditoria visualizada.
 
-### 6.2 Plano trimestral gerado — 100 pontos
+Os pesos, evidências e IDs completos estão em `docs/STRATEGIC_QUALITY_STANDARD.md` e `tests/evals/strategic-quality/rubric.json`.
 
-| Dimensão | Peso | Evidência esperada |
-| --- | ---: | --- |
-| Alinhamento estratégico | 20 | Vínculo e contribuição clara para objetivo anual |
-| Objetivo de resultado | 15 | Descreve mudança desejada, não somente tarefa ou projeto |
-| Meta e evidência | 20 | Baseline quando disponível, indicador, alvo, prazo e fonte verificável |
-| Plano de execução | 20 | Ações-chave, responsáveis, datas e critérios de conclusão |
-| Foco e viabilidade | 10 | Poucas prioridades e capacidade plausível no trimestre |
-| Riscos e aprendizados | 5 | Dependências, bloqueios, premissas e memória anterior relevante |
-| Cadência de gestão | 10 | KPI/placar, check-in, confiança e próximo compromisso definidos |
+### 6.2 Aplicação
+
+- sessão com conversa: condução + rubrica principal da entrega;
+- documento, PDF, Dashboard ou outra saída derivada: rubrica de saída, com checks determinísticos prioritários;
+- autenticação, permissões, configurações, backup e administração: RLS, segurança, integração, E2E e QA visual, sem judge artificial;
+- todas as rubricas aplicáveis precisam passar; uma média boa não esconde falha em uma entrega.
 
 ### 6.3 Faixas
 
@@ -167,7 +174,7 @@ Essas referências formam critérios internos. A interface continua usando a lin
 - 70 a 79: revisar antes de gravar;
 - abaixo de 70: reprovado.
 
-O plano e a condução precisam atingir **80 pontos separadamente**. A média conjunta mínima para o gate final é **85 pontos**.
+Cada rubrica aplicável precisa atingir **80 pontos**. A média aplicável mínima para o gate final é **85 pontos**.
 
 ### 6.4 Falhas críticas
 
@@ -177,12 +184,22 @@ Qualquer item abaixo reprova o caso, independentemente da nota:
 - mudança indevida entre plano anual, trimestral e mensal;
 - documento histórico de outra área apresentado como referência principal;
 - número, responsável, KPI ou decisão inventada;
-- objetivo sem ligação estratégica quando existe objetivo anual aplicável;
+- entrega inferior sem ligação com o nível superior quando existe origem aplicável;
 - meta sem forma verificável de conclusão;
+- atividade aceita como objetivo sem resultado esperado;
 - gravação antes da confirmação;
 - mais de uma confirmação final para a mesma proposta;
-- divergência entre conversa, banco e documento canônico;
+- divergência entre conversa, banco e saída canônica;
 - mutação feita pelo judge de qualidade.
+- revisão ou fechamento alterando conteúdo fora do limite permitido;
+- conflito de importação sobrescrito sem escolha do usuário;
+- KPI, período, unidade ou cálculo materialmente incorreto;
+- app e WhatsApp divergindo materialmente;
+- persistência indevida de bruto, segredo ou URL temporária.
+
+### 6.5 Matriz de cobertura
+
+`tests/evals/strategic-quality/deliverable-coverage.json` classifica 21 entregas. Ela cobre todas as rotas de `src/App.tsx`, os seis tipos de sessão do motor e os fluxos administrativos relevantes. O CI compara código e matriz para impedir nova tela ou ritual sem método de qualidade, gate e fase definidos.
 
 ## 7. MAPA A — Qualidade estratégica
 
@@ -190,29 +207,31 @@ Qualquer item abaixo reprova o caso, independentemente da nota:
 
 ### Resumo funcional
 
-Formaliza o que significa uma boa condução e um bom plano. Não altera o comportamento do Oráculo e não chama IA paga.
+Formaliza o que significa boa condução e boa entrega em todo o produto. Não altera o comportamento do Oráculo e não chama IA paga.
 
 ### Trabalho
 
-1. Versionar esta rubrica em documento próprio ou módulo de avaliação.
-2. Definir IDs estáveis para critérios e falhas críticas.
-3. Criar ficha de revisão humana com nota e justificativa.
-4. Definir como medir custo por caso.
-5. Definir formato sanitizado de transcrição e plano avaliado.
-6. Registrar a versão atual dos prompts, modelos e condutores como baseline.
+1. Versionar sete rubricas para condução, anual, trimestral, mensal, revisões, informação e saídas derivadas.
+2. Colocar o Plano Estratégico Anual como primeira entrega avaliada.
+3. Definir IDs estáveis para critérios e falhas críticas.
+4. Criar ficha de revisão humana com rubricas aplicáveis por caso.
+5. Inventariar todas as entregas, rotas e rituais em matriz legível por máquina.
+6. Definir como medir custo por caso e priorizar checks determinísticos.
+7. Registrar a versão atual dos prompts, modelos e condutores como baseline.
 
 ### Testes
 
-- soma dos pesos igual a 100 em cada rubrica;
+- soma dos pesos igual a 100 em cada uma das sete rubricas;
 - critérios sem duplicidade;
 - cada falha crítica mapeada para checagem determinística ou revisão humana;
+- todas as rotas e todos os tipos de sessão cobertos pela matriz;
 - nenhum dado real ou segredo no material de avaliação.
 
 ### Gate Q0
 
-Owner compreende e aprova rubrica, faixas, falhas críticas e limite financeiro.
+Owner compreende e aprova rubricas, ordem anual -> trimestral -> mensal, matriz de cobertura, faixas, falhas críticas e limite financeiro.
 
-Estado em 2026-07-16: rubrica estruturada, ficha humana, formato sanitizado, regra de custo e baseline de código/modelos foram implementados. Passaram seis testes específicos, 248 unitários, lint, build e secret scan. O owner aprovou explicitamente a rubrica Q0 e seus limites; gate Q0 concluído.
+Estado em 2026-07-16: a Q0 original foi aprovada, mas cobria principalmente condução e plano trimestral. A revisão Q0 R2 foi criada após o owner exigir que o anual seja a primeira entrega e que todo o app tenha método de qualidade. O gate foi reaberto e aguarda novo aceite explícito; isso não desfaz a infraestrutura Q1, apenas impede sua execução paga antes da nova concordância.
 
 ### Rollback
 
@@ -248,65 +267,118 @@ Cria um ambiente repetível para conversar com o Oráculo, capturar resultado e 
 
 ### Gate Q1
 
-Um caso mínimo percorre condutor, proposta, checagem e relatório no staging, sem tocar produção.
+Um caso mínimo **anual** percorre condutor, proposta, checagem e relatório no staging, sem tocar produção.
 
-Estado em 2026-07-16: runner, schema, caso mínimo, sanitização, orçamento, judge somente leitura, cleanup e 17 testes específicos estão implementados. Passaram 259 unitários, lint, build/orçamento de 134,5 KB gzip e secret scan em 427 arquivos. O gate real ainda não foi executado porque os consoles de OpenAI e xAI estão bloqueados para automação pelas regras do navegador e nenhuma chave de produção pode ser copiada. Nenhum dado foi criado no staging e o custo permanece US$ 0. O owner precisa criar uma chave xAI temporária e colocá-la no arquivo privado indicado; não enviar a chave pela conversa.
+Estado em 2026-07-16: runner, schema, sanitização, orçamento, judge somente leitura e cleanup já estavam implementados. A revisão R2 trocou o caso trimestral pelo primeiro caso anual e adaptou as checagens de banco/documento para `save_strategic_plan`. O gate real aguarda primeiro o aceite Q0 R2 e depois uma chave xAI temporária criada manualmente. Nenhum dado foi criado no staging, nenhuma IA foi chamada e o custo permanece US$ 0.
 
 ### Rollback
 
 Remover organização, usuários e chave descartáveis; preservar relatório sanitizado.
 
-## Q2 — Casos de referência e respostas esperadas
+## Q2 — Casos de referência para todas as entregas
 
-Criar no mínimo oito casos independentes:
+Criar um catálogo por risco. Conteúdo estratégico recebe casos e revisão humana; saídas derivadas recebem fixtures e comparação determinística; administração fica ligada aos cenários do Mapa B. A primeira execução de conteúdo é sempre anual.
 
-### Caso 1 — Problema vago
+### Q2A — Plano Estratégico Anual primeiro
+
+Criar no mínimo cinco casos anuais:
+
+1. **Aspiração vaga:** “queremos crescer”; investigar situação atual, escolha estratégica, indicador e renúncia.
+2. **Lista sem prioridade:** dez frentes para o ano; ajudar a escolher quatro a seis objetivos e cinco a sete projetos no máximo.
+3. **Atividade como estratégia:** “implantar um sistema”; transformar em resultado empresarial, adoção, métrica e prazo.
+4. **Meta repetida:** histórico mostra o mesmo objetivo em anos anteriores; perguntar causa, avanço parcial e o que muda agora.
+5. **Owner experiente:** direcionadores, objetivos e números já estão claros; validar lacunas sem repetir entrevista completa.
+
+Cada caso anual precisa avaliar diagnóstico, propósito/visão/valores, SWOT, tema, escolhas/renúncias, objetivos, metas, projetos vinculados, riscos e rituais. Reprovar se abrir plano trimestral, inventar número, aceitar todas as prioridades ou produzir proposta sem uma única confirmação final.
+
+### Q2B — Desdobramento Trimestral
+
+Manter no mínimo oito casos trimestrais independentes, sempre com contexto anual explícito ou ausência proposital declarada:
+
+#### Caso 1 — Problema vago
 
 - Entrada: “precisamos melhorar o Comercial”.
 - Esperado: investigar situação atual, impacto e mudança desejada.
 - Reprovar se: transformar imediatamente em objetivo genérico.
 
-### Caso 2 — Atividade disfarçada de objetivo
+#### Caso 2 — Atividade disfarçada de objetivo
 
 - Entrada: “implantar um CRM”.
 - Esperado: perguntar qual resultado empresarial o CRM precisa produzir.
 - Reprovar se: aceitar instalação como sucesso final sem adoção ou resultado.
 
-### Caso 3 — Área equivalente
+#### Caso 3 — Área equivalente
 
 - Cadastro: Produção; histórico: Industrial.
 - Esperado: reconhecer equivalência quando o contexto for único e seguro.
 - Reprovar se: trocar de área, inventar nova área ou abandonar o contexto.
 
-### Caso 4 — Objetivo recorrente
+#### Caso 4 — Objetivo recorrente
 
 - Histórico: mesma meta repetida em ciclos anteriores sem conclusão.
 - Esperado: apontar repetição, perguntar causa e exigir mudança de abordagem.
 - Reprovar se: copiar a meta silenciosamente.
 
-### Caso 5 — Meta sem baseline
+#### Caso 5 — Meta sem baseline
 
 - Entrada: “aumentar produtividade em 20%”.
 - Esperado: perguntar produtividade atual, cálculo e fonte.
 - Reprovar se: inventar baseline ou aceitar número sem medição.
 
-### Caso 6 — Excesso de prioridades
+#### Caso 6 — Excesso de prioridades
 
 - Entrada: oito objetivos para o trimestre.
 - Esperado: ajudar a priorizar de um a três resultados decisivos.
 - Reprovar se: gerar uma lista extensa sem trade-off.
 
-### Caso 7 — KPI e efeito esperado
+#### Caso 7 — KPI e efeito esperado
 
 - Entrada: objetivo que pode afetar KPI existente.
 - Esperado: explicar a hipótese e pedir confirmação antes de vincular.
 - Reprovar se: gravar vínculo automaticamente ou sugerir KPI irrelevante.
 
-### Caso 8 — Gestor experiente
+#### Caso 8 — Gestor experiente
 
 - Entrada: objetivo, meta, responsável e ações já claros.
 - Esperado: validar lacunas e avançar sem interrogatório desnecessário.
 - Reprovar se: repetir roteiro completo e burocratizar.
+
+### Q2C — Execução Mensal
+
+Criar no mínimo quatro casos:
+
+1. mensal corretamente ligado a um objetivo trimestral;
+2. pendência herdada com decisão de rolar, renegociar ou cortar;
+3. lista de ações maior que a capacidade do mês;
+4. gestor experiente com resultado, meta, dono e prazo já informados.
+
+Reprovar se o plano mensal virar lista de tarefas sem resultado, perder a origem trimestral ou inventar prazo/evidência.
+
+### Q2D — Revisões, Fechamentos e Conversa Operacional
+
+Criar casos para:
+
+1. fechamento mensal com objetivo parcial, evidência e aprendizado;
+2. fechamento trimestral com decisão explícita sobre o que ficou aberto;
+3. revisão estratégica limitada a métrica, meta, valor atual, prazo ou status;
+4. atualização rápida ambígua que não pode gravar;
+5. pulso semanal natural, configurável e deduplicado.
+
+Reprovar se maquiar resultado, repetir perguntas já respondidas, abrir outro nível de plano ou alterar conteúdo fora do limite do ritual.
+
+### Q2E — Informação e Saídas Derivadas
+
+Usar fixtures controladas para cobrir:
+
+1. importação de plano/histórico com título, tipo, área e período extraídos do conteúdo;
+2. planilha e imagem de KPI com conflito entre fontes e escolha do usuário;
+3. memória relevante concorrendo com documento irrelevante de outra área;
+4. igualdade entre proposta, banco, documento, PDF e resumo WhatsApp;
+5. Dashboard com mês, cálculo, unidade, abreviação e casas decimais corretos;
+6. arquivo, auditoria, versão e origem rastreáveis;
+7. responsividade, acessibilidade e estado de erro nas rotas cobertas.
+
+Esses casos priorizam checks determinísticos, fixtures e QA visual. Judge pago só entra quando relevância, naturalidade ou julgamento estratégico não puderem ser medidos objetivamente.
 
 ### Artefatos por caso
 
@@ -320,7 +392,7 @@ Criar no mínimo oito casos independentes:
 
 ### Gate Q2
 
-Owner revisa os oito casos e confirma que representam situações reais da empresa.
+Owner revisa os blocos Q2A-Q2E e confirma que representam situações reais. A matriz precisa permanecer com todas as rotas e os seis rituais cobertos. Nenhum caso pode ser removido apenas para melhorar nota ou reduzir custo; para preservar o teto, checks determinísticos substituem IA onde forem suficientes.
 
 ## Q3 — Baseline da versão atual
 
@@ -331,12 +403,12 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 ### Trabalho
 
 1. Registrar custo inicial do ciclo.
-2. Executar cada caso pelo menos duas vezes para observar variação.
+2. Executar duas vezes os casos generativos de risco alto; casos determinísticos rodam uma vez por versão com fixtures estáveis.
 3. Usar os modelos atualmente configurados para suas funções equivalentes.
 4. Rodar checagens determinísticas.
 5. Rodar judge somente leitura.
 6. Fazer revisão humana cega de amostra representativa.
-7. Calcular nota de condução, plano, falhas críticas, latência e custo.
+7. Calcular notas das rubricas aplicáveis, falhas críticas, latência e custo.
 8. Classificar defeitos por causa: prompt, memória, roteamento, estado, validação ou renderização.
 9. Publicar relatório baseline sem esconder resultados ruins.
 
@@ -402,9 +474,9 @@ Reverter condutor/validador por versão; preservar baseline e relatórios para c
 ### Aprovação
 
 - zero falha crítica;
-- condução >= 80 em todos os casos;
-- plano >= 80 em todos os casos;
+- todas as rubricas aplicáveis >= 80 em todos os casos;
 - média conjunta >= 85;
+- nenhuma entrega da matriz sem resultado de qualidade;
 - nenhuma dimensão piora mais de 5 pontos;
 - mediana de turnos não aumenta mais de 25% sem justificativa humana;
 - custo acumulado abaixo de US$ 20.
@@ -577,7 +649,7 @@ KPI confirmado, valores corretos, revisão útil e nenhuma alteração silencios
 5. Criar/verificar backup pós-piloto.
 6. Comparar contagens e confirmar ausência de duplicação.
 7. Registrar problemas de UX, burocracia e naturalidade.
-8. Pontuar novamente condução e plano com a rubrica.
+8. Pontuar novamente todas as rubricas aplicáveis às entregas exercitadas.
 
 ### Gate O6
 
@@ -608,7 +680,7 @@ Owner aprova o piloto e autoriza explicitamente envolver um gestor real.
 
 - tarefa concluída sem intervenção estrutural;
 - nenhuma falha crítica;
-- condução e plano >= 80;
+- todas as rubricas aplicáveis >= 80;
 - nota do gestor >= 4/5 para utilidade e clareza;
 - tempo e número de turnos considerados aceitáveis;
 - owner aprova expansão.
@@ -620,7 +692,8 @@ Owner aprova o piloto e autoriza explicitamente envolver um gestor real.
 - relatório do owner;
 - relatório do gestor;
 - comparação app/WhatsApp;
-- qualidade do plano e da condução;
+- qualidade da condução e de cada entrega exercitada;
+- cobertura final da matriz, com resultado para as 21 entregas;
 - incidentes e correções;
 - custo total de IA;
 - estado de filas, auditoria e backups;
@@ -640,9 +713,9 @@ Cada expansão exige que o grupo anterior permaneça sem falha crítica.
 
 | Ordem | Fatia | Tipo | Produção | IA paga | Gate |
 | ---: | --- | --- | --- | --- | --- |
-| 1 | Q0 | Padrão | Não | Não | Rubrica aprovada |
-| 2 | Q1 | Infra de avaliação | Não | Mínima | Runner seguro |
-| 3 | Q2 | Casos de referência | Não | Não | Casos aprovados |
+| 1 | Q0 | Padrão e cobertura R2 | Não | Não | Rubricas e matriz aprovadas |
+| 2 | Q1 | Infra e caso anual mínimo | Não | Mínima | Runner anual seguro |
+| 3 | Q2 | Casos Q2A-Q2E | Não | Não | Catálogo completo aprovado |
 | 4 | Q3 | Baseline | Não | Sim | Relatório completo |
 | 5 | Q4 | Correções | Conforme defeito | Somente testes | Falhas reproduzidas e corrigidas |
 | 6 | Q5 | Regressão | Não | Sim | Notas e falhas críticas aprovadas |
@@ -684,6 +757,7 @@ Rollback técnico de Function deve publicar a versão anterior conhecida e repet
 
 Em todas as fatias aplicáveis:
 
+- cobertura explícita da entrega na matriz versionada;
 - isolamento entre empresas;
 - papel owner/admin/coordenador;
 - área e período corretos;
@@ -705,7 +779,8 @@ Este plano só termina quando:
 - Q0 a Q6 estiverem aprovados;
 - O0 a O8 estiverem aprovados;
 - não houver falha crítica aberta;
-- condução e plano atingirem as notas mínimas;
+- todas as rubricas aplicáveis atingirem as notas mínimas;
+- as 21 entregas da matriz tiverem método, evidência e resultado registrado;
 - um gestor real concluir o fluxo e aprovar utilidade;
 - app e WhatsApp demonstrarem o mesmo contexto e resultado;
 - custo total estiver registrado e dentro da autorização;
@@ -717,7 +792,7 @@ Este plano só termina quando:
 ```text
 Leia AGENTS.md e plans/2026-07-16-qualidade-estrategica-operacional.md.
 
-Execute somente a próxima fatia pendente, respeitando rigorosamente a ordem Q0 -> Q6 -> O0 -> O8.
+Execute somente a próxima fatia pendente, respeitando rigorosamente a ordem Q0 R2 -> Q6 -> O0 -> O8. A primeira entrega de conteúdo avaliada deve ser o Plano Estratégico Anual.
 
 Antes de alterar qualquer arquivo ou dado, apresente:
 - resumo funcional em linguagem de negócio;
@@ -736,4 +811,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Concluir o gate real da **Q1 — Laboratório e executor de avaliações** depois que o owner criar a chave xAI temporária de staging. Executar o caso mínimo, confirmar cleanup/custo/relatório e só então decidir se Q1 foi aprovada. Não iniciar Q2 antes desse gate.
+Obter o aceite explícito do owner para a **Q0 R2**: Plano Estratégico Anual primeiro, sete rubricas, dezesseis falhas críticas e matriz de 21 entregas. Depois do aceite, apresentar o briefing final da Q1 anual; somente então usar chave temporária e executar o caso pago. Não iniciar Q2 antes do gate Q1.

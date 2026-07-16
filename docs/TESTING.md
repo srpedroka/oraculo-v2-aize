@@ -74,6 +74,7 @@ A Q0 está materializada em:
 
 - `docs/STRATEGIC_QUALITY_STANDARD.md`: regra humana, pontuação, custo, sanitização e gate;
 - `tests/evals/strategic-quality/rubric.json`: critérios, pesos, faixas e falhas críticas com IDs estáveis;
+- `tests/evals/strategic-quality/deliverable-coverage.json`: todas as rotas, rituais, entregas, métodos e gates;
 - `tests/evals/strategic-quality/baseline.json`: modelos observados e hashes dos condutores/prompts;
 - `tests/evals/strategic-quality/human-review-template.md`: ficha de revisão independente do judge;
 - `src/test/strategic-quality-standard.test.ts`: pesos, duplicidade, mapeamento, custo, sanitização e drift do baseline.
@@ -92,7 +93,7 @@ A Q1 adiciona o laboratório isolado descrito em `docs/STRATEGIC_EVALUATION_LAB.
 pnpm run test:strategic-eval
 ```
 
-O gate real usa `pnpm run eval:strategic:q1`, exige credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
+O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 ## Matriz da Fatia 4A
 

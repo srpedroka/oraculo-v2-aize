@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "caseId": "Q1-SMOKE-ANNUAL-001",
+  "title": "Plano estrategico anual sintetico",
+  "channel": "web",
+  "planType": "strategic",
+  "period": "2026",
+  "scope": {
+    "organizationAlias": "ORG_FIXTURE_A",
+    "areaAlias": "AREA_FIXTURE_COMMERCIAL",
+    "personAlias": "PERSON_FIXTURE_OWNER"
+  },
+  "seed": {
+    "previousAnnualSignal": "A previsibilidade foi prioridade no ciclo sintetico anterior, mas faltaram dono, baseline e rotina de decisao."
+  },
+  "turns": [
+    "A principal dor da empresa sintetica em 2026 e crescer sem previsibilidade de receita, margem e capacidade de entrega. O plano e anual e nao deve abrir um plano trimestral.",
+    "Proposito: transformar trabalho complexo em resultado previsivel. Visao: operar com crescimento rentavel e confiavel. Valores: clareza, responsabilidade, aprendizado e foco no cliente.",
+    "SWOT: forcas sao equipe experiente, carteira ativa e produto validado; fraquezas sao previsao manual, margem instavel e dados dispersos; oportunidades sao demanda recorrente, automacao e novos canais; ameacas sao concentracao de clientes, custo de insumos e atraso de fornecedores. O maior risco e crescer sem margem e a maior oportunidade e usar dados para priorizar.",
+    "O tema do ano sera Crescer com previsibilidade e disciplina. As renuncias sao nao abrir muitos projetos paralelos e nao perseguir receita sem margem.",
+    "Objetivo 1 Resultado: aumentar a previsibilidade da receita. Metrica: receita coberta por previsao confiavel. Baseline 55%, alvo 80% ate dezembro. Responsavel PERSON_FIXTURE_OWNER. Estrategias: padronizar funil, revisar previsao e tratar desvios semanalmente.",
+    "Objetivo 2 Resultado: elevar a margem operacional sintetica. Metrica: margem operacional. Baseline 8%, alvo 12% ate dezembro. Responsavel PERSON_FIXTURE_OWNER. Estrategias: revisar mix, custos e descontos.",
+    "Objetivo 3 Resultado: elevar entregas no prazo. Metrica: pedidos entregues no prazo. Baseline 82%, alvo 95% ate dezembro. Responsavel PERSON_FIXTURE_OWNER. Estrategias: planejar capacidade, gerir gargalos e acompanhar fornecedores.",
+    "Objetivo 4 Evolucao: implantar uma rotina de gestao orientada por dados. Metrica: areas com placar e revisao mensal. Baseline 25%, alvo 100% ate outubro. Responsavel PERSON_FIXTURE_OWNER. Estrategias: definir indicadores, formar coordenadores e realizar revisoes mensais.",
+    "Projetos prioritarios: implantar previsao comercial ligado ao Objetivo 1 ate marco; programa de margem ligado ao Objetivo 2 ate junho; gestao de capacidade ligada ao Objetivo 3 ate maio; placar executivo ligado ao Objetivo 4 ate fevereiro. Todos com PERSON_FIXTURE_OWNER como responsavel sintetico.",
+    "Rituais: check-in mensal por area, fechamento trimestral, revisao estrategica quando o contexto mudar e reuniao anual. Pode sintetizar agora em uma unica proposta save_strategic_plan e pedir somente a confirmacao final para gravar."
+  ],
+  "expected": {
+    "proposalType": "save_strategic_plan",
+    "minimumObjectives": 4,
+    "maximumObjectives": 6,
+    "minimumProjects": 3,
+    "requiresDrivers": true,
+    "requiresSwot": true,
+    "requiresMetric": true,
+    "requiresTarget": true,
+    "requiresOwner": true,
+    "requiresRituals": true
+  }
+}

@@ -1,8 +1,8 @@
 # Laboratorio de avaliacao estrategica
 
-Versao: `2026-07-16.q1`
+Versao: `2026-07-16.q1-r2`
 
-Status: implementado localmente; gate Q1 pendente de chave temporaria de staging e execucao do caso minimo.
+Status: implementado localmente; gate Q1 pausado ate o aceite da rubrica Q0 R2 e, depois, pendente de chave temporaria de staging.
 
 ## Objetivo
 
@@ -12,7 +12,7 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 
 - `scripts/strategic-eval.ts`: runner real, fabrica minima, judge e cleanup.
 - `scripts/strategic-eval-lib.ts`: schema, sanitizacao, custo, checks e fingerprint comparavel.
-- `tests/evals/strategic-quality/cases/q1-minimal-quarterly.json`: caso sintetico minimo.
+- `tests/evals/strategic-quality/cases/q1-minimal-annual.json`: primeiro caso sintetico, obrigatoriamente anual.
 - `src/test/strategic-eval-runner.test.ts`: guardas e falhas seguras.
 - `.agents-private/strategic-eval-env`: chave temporaria local, nunca versionada.
 - `.agents-private/strategic-eval-ledger.json`: custo acumulado do plano.
@@ -71,17 +71,17 @@ O runner usa Grok 4.3 no condutor e Grok 4.5 no judge quando `ORACULO_EVAL_PROVI
 ## Checks deterministas
 
 - sessao na area, periodo e nivel corretos;
-- proposal `save_quarterly_plan`;
-- quantidade e campos obrigatorios dos objetivos;
-- zero objetivo/documento trimestral antes da confirmacao;
+- proposal `save_strategic_plan`;
+- direcionadores, SWOT, quatro a seis objetivos, projetos e rituais presentes;
+- zero plano/objetivo/documento do ano avaliado antes da confirmacao;
 - um pedido final e uma chamada de confirmacao;
-- banco com area, periodo e titulos da proposal;
+- banco com ano, objetivos e conteudo central da proposal;
 - documento canonico correspondente;
 - snapshot inalterado durante o judge.
 
 ## Gate Q1
 
-Q1 somente e aprovada quando o caso minimo terminar com:
+Depois do aceite da Q0 R2, Q1 somente e aprovada quando o caso anual minimo terminar com:
 
 - proposal criada pelo condutor;
 - judge concluido em modo somente leitura;

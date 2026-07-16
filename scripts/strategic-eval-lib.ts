@@ -11,7 +11,7 @@ export interface StrategicEvaluationCase {
   caseId: string;
   title: string;
   channel: EvaluationChannel;
-  planType: "quarterly";
+  planType: "strategic";
   period: string;
   scope: {
     organizationAlias: string;
@@ -19,19 +19,20 @@ export interface StrategicEvaluationCase {
     personAlias: string;
   };
   seed: {
-    strategicObjective: string;
-    areaRole: string;
-    annualObjective: string;
+    previousAnnualSignal: string;
   };
   turns: string[];
   expected: {
-    proposalType: "save_quarterly_plan";
-    minimumQuarterlyObjectives: number;
-    maximumQuarterlyObjectives: number;
+    proposalType: "save_strategic_plan";
+    minimumObjectives: number;
+    maximumObjectives: number;
+    minimumProjects: number;
+    requiresDrivers: boolean;
+    requiresSwot: boolean;
     requiresMetric: boolean;
     requiresTarget: boolean;
     requiresOwner: boolean;
-    requiresDeliverables: boolean;
+    requiresRituals: boolean;
   };
 }
 
@@ -129,15 +130,15 @@ export function validateStrategicEvaluationCase(value: unknown): StrategicEvalua
 
   const channel = requiredText(record.channel, "channel") as EvaluationChannel;
   if (!(["web", "whatsapp"] as string[]).includes(channel)) throw new Error("channel invalido");
-  if (record.planType !== "quarterly") throw new Error("Q1 aceita somente plano quarterly");
-  if (expected.proposalType !== "save_quarterly_plan") throw new Error("proposalType invalido para Q1");
+  if (record.planType !== "strategic") throw new Error("Q1 R2 aceita somente o primeiro fluxo de qualidade: plano anual");
+  if (expected.proposalType !== "save_strategic_plan") throw new Error("proposalType invalido para Q1 R2");
 
   const parsed: StrategicEvaluationCase = {
     schemaVersion: 1,
     caseId: requiredText(record.caseId, "caseId", 80),
     title: requiredText(record.title, "title", 160),
     channel,
-    planType: "quarterly",
+    planType: "strategic",
     period: requiredText(record.period, "period", 40),
     scope: {
       organizationAlias: requiredText(scope.organizationAlias, "scope.organizationAlias", 80),
@@ -145,25 +146,26 @@ export function validateStrategicEvaluationCase(value: unknown): StrategicEvalua
       personAlias: requiredText(scope.personAlias, "scope.personAlias", 80),
     },
     seed: {
-      strategicObjective: requiredText(seed.strategicObjective, "seed.strategicObjective", 300),
-      areaRole: requiredText(seed.areaRole, "seed.areaRole", 300),
-      annualObjective: requiredText(seed.annualObjective, "seed.annualObjective", 300),
+      previousAnnualSignal: requiredText(seed.previousAnnualSignal, "seed.previousAnnualSignal", 300),
     },
     turns,
     expected: {
-      proposalType: "save_quarterly_plan",
-      minimumQuarterlyObjectives: requiredInteger(expected.minimumQuarterlyObjectives, "expected.minimumQuarterlyObjectives"),
-      maximumQuarterlyObjectives: requiredInteger(expected.maximumQuarterlyObjectives, "expected.maximumQuarterlyObjectives"),
+      proposalType: "save_strategic_plan",
+      minimumObjectives: requiredInteger(expected.minimumObjectives, "expected.minimumObjectives"),
+      maximumObjectives: requiredInteger(expected.maximumObjectives, "expected.maximumObjectives"),
+      minimumProjects: requiredInteger(expected.minimumProjects, "expected.minimumProjects"),
+      requiresDrivers: requiredBoolean(expected.requiresDrivers, "expected.requiresDrivers"),
+      requiresSwot: requiredBoolean(expected.requiresSwot, "expected.requiresSwot"),
       requiresMetric: requiredBoolean(expected.requiresMetric, "expected.requiresMetric"),
       requiresTarget: requiredBoolean(expected.requiresTarget, "expected.requiresTarget"),
       requiresOwner: requiredBoolean(expected.requiresOwner, "expected.requiresOwner"),
-      requiresDeliverables: requiredBoolean(expected.requiresDeliverables, "expected.requiresDeliverables"),
+      requiresRituals: requiredBoolean(expected.requiresRituals, "expected.requiresRituals"),
     },
   };
   if (!/^[A-Z0-9][A-Z0-9-]+$/.test(parsed.caseId)) throw new Error("caseId deve usar somente A-Z, 0-9 e hifen");
-  if (parsed.expected.minimumQuarterlyObjectives < 1) throw new Error("caso precisa esperar ao menos um objetivo trimestral");
-  if (parsed.expected.maximumQuarterlyObjectives < parsed.expected.minimumQuarterlyObjectives) {
-    throw new Error("maximumQuarterlyObjectives menor que minimumQuarterlyObjectives");
+  if (parsed.expected.minimumObjectives < 1) throw new Error("caso precisa esperar ao menos um objetivo anual");
+  if (parsed.expected.maximumObjectives < parsed.expected.minimumObjectives) {
+    throw new Error("maximumObjectives menor que minimumObjectives");
   }
   assertSyntheticMaterial(parsed);
   return parsed;
@@ -233,7 +235,7 @@ export function assertBudgetAllowsNextCall(params: {
 
 export function buildSessionRequests(
   evaluationCase: StrategicEvaluationCase,
-  ids: { orgId: string; areaId: string; sessionId: string },
+  ids: { orgId: string; areaId?: string; sessionId: string },
 ) {
   return [
     {
@@ -241,7 +243,6 @@ export function buildSessionRequests(
       body: {
         action: "start",
         orgId: ids.orgId,
-        areaId: ids.areaId,
         type: evaluationCase.planType,
         period: evaluationCase.period,
         channel: evaluationCase.channel,

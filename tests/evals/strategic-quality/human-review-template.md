@@ -1,23 +1,36 @@
-# Ficha de revisao humana — qualidade estrategica
+# Ficha de revisão humana — qualidade do Oráculo
 
-Versao da rubrica: `2026-07-16.q0`
+Versão da rubrica: `2026-07-16.q0-r2`
 
-## Identificacao sanitizada
+## Identificação sanitizada
 
 - Caso:
-- Execucao:
+- Entrega avaliada:
+- Execução:
 - Data:
 - Revisor:
-- Canal: web / WhatsApp sintetico
-- Provider e modelo de geracao:
+- Canal: web / WhatsApp sintético / derivado
+- Provider e modelo de geração:
 - Provider e modelo do judge:
-- Versao do baseline:
+- Versão do baseline:
 
-## Falhas criticas
+## Rubricas aplicáveis
 
-Marque `sim` ou `nao` e cite a evidencia. Qualquer `sim` reprova o caso.
+Marque somente o que o caso realmente exercitou:
 
-| ID | Ocorreu? | Evidencia / justificativa |
+- [ ] `RUBRIC-CONDUCTION`
+- [ ] `RUBRIC-ANNUAL-PLAN`
+- [ ] `RUBRIC-QUARTERLY-PLAN`
+- [ ] `RUBRIC-MONTHLY-PLAN`
+- [ ] `RUBRIC-REVIEW-CLOSE`
+- [ ] `RUBRIC-INFORMATION-QUALITY`
+- [ ] `RUBRIC-DERIVED-OUTPUT`
+
+## Falhas críticas
+
+Marque `sim`, `não` ou `N/A` e cite evidência. Qualquer `sim` reprova o caso.
+
+| ID | Ocorreu? | Evidência / justificativa |
 | --- | --- | --- |
 | `CRIT-SCOPE-001` |  |  |
 | `CRIT-LEVEL-001` |  |  |
@@ -25,16 +38,20 @@ Marque `sim` ou `nao` e cite a evidencia. Qualquer `sim` reprova o caso.
 | `CRIT-FABRICATION-001` |  |  |
 | `CRIT-ALIGNMENT-001` |  |  |
 | `CRIT-VERIFIABILITY-001` |  |  |
+| `CRIT-OBJECTIVE-ACTIVITY-001` |  |  |
 | `CRIT-PREMATURE-WRITE-001` |  |  |
 | `CRIT-MULTI-CONFIRM-001` |  |  |
 | `CRIT-DIVERGENCE-001` |  |  |
 | `CRIT-JUDGE-MUTATION-001` |  |  |
+| `CRIT-REVIEW-OVERREACH-001` |  |  |
+| `CRIT-CONFLICT-OVERWRITE-001` |  |  |
+| `CRIT-NUMERICAL-DIVERGENCE-001` |  |  |
+| `CRIT-CHANNEL-DIVERGENCE-001` |  |  |
+| `CRIT-SENSITIVE-PERSISTENCE-001` |  |  |
 
-## Conducao estrategica
+## Condução estratégica
 
-Nota por criterio: `0` ausente/prejudicial, `1` fraco, `2` parcial, `3` solido, `4` excelente.
-
-| ID | Peso | Nota 0-4 | Pontos | Evidencia / justificativa |
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
 | --- | ---: | ---: | ---: | --- |
 | `COND-SCOPE-001` | 15 |  |  |  |
 | `COND-DIAGNOSIS-001` | 15 |  |  |  |
@@ -46,9 +63,22 @@ Nota por criterio: `0` ausente/prejudicial, `1` fraco, `2` parcial, `3` solido, 
 | `COND-CLOSURE-001` | 5 |  |  |  |
 | **Total** | **100** |  |  |  |
 
-## Plano trimestral
+## Plano Estratégico Anual
 
-| ID | Peso | Nota 0-4 | Pontos | Evidencia / justificativa |
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
+| --- | ---: | ---: | ---: | --- |
+| `ANNUAL-DIAGNOSIS-001` | 15 |  |  |  |
+| `ANNUAL-CHOICES-001` | 20 |  |  |  |
+| `ANNUAL-OBJECTIVES-001` | 20 |  |  |  |
+| `ANNUAL-MEASURES-001` | 15 |  |  |  |
+| `ANNUAL-PORTFOLIO-001` | 10 |  |  |  |
+| `ANNUAL-RISK-001` | 10 |  |  |  |
+| `ANNUAL-GOVERNANCE-001` | 10 |  |  |  |
+| **Total** | **100** |  |  |  |
+
+## Plano Trimestral
+
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
 | --- | ---: | ---: | ---: | --- |
 | `PLAN-ALIGNMENT-001` | 20 |  |  |  |
 | `PLAN-OUTCOME-001` | 15 |  |  |  |
@@ -59,21 +89,70 @@ Nota por criterio: `0` ausente/prejudicial, `1` fraco, `2` parcial, `3` solido, 
 | `PLAN-CADENCE-001` | 10 |  |  |  |
 | **Total** | **100** |  |  |  |
 
+## Plano Mensal
+
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
+| --- | ---: | ---: | ---: | --- |
+| `MONTHLY-CASCADE-001` | 20 |  |  |  |
+| `MONTHLY-OUTCOME-001` | 15 |  |  |  |
+| `MONTHLY-MEASURE-001` | 20 |  |  |  |
+| `MONTHLY-ACTIONS-001` | 20 |  |  |  |
+| `MONTHLY-FOCUS-001` | 10 |  |  |  |
+| `MONTHLY-CONTINUITY-001` | 5 |  |  |  |
+| `MONTHLY-CADENCE-001` | 10 |  |  |  |
+| **Total** | **100** |  |  |  |
+
+## Revisões e Fechamentos
+
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
+| --- | ---: | ---: | ---: | --- |
+| `REVIEW-SCOPE-001` | 15 |  |  |  |
+| `REVIEW-EVIDENCE-001` | 20 |  |  |  |
+| `REVIEW-VERDICT-001` | 15 |  |  |  |
+| `REVIEW-LEARNING-001` | 15 |  |  |  |
+| `REVIEW-DECISION-001` | 15 |  |  |  |
+| `REVIEW-FORWARD-001` | 10 |  |  |  |
+| `REVIEW-FIDELITY-001` | 10 |  |  |  |
+| **Total** | **100** |  |  |  |
+
+## Memória, Importações e Sugestões
+
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
+| --- | ---: | ---: | ---: | --- |
+| `INFO-SOURCE-001` | 20 |  |  |  |
+| `INFO-EXTRACTION-001` | 20 |  |  |  |
+| `INFO-RELEVANCE-001` | 20 |  |  |  |
+| `INFO-CONFLICT-001` | 15 |  |  |  |
+| `INFO-PROVENANCE-001` | 15 |  |  |  |
+| `INFO-PRIVACY-001` | 10 |  |  |  |
+| **Total** | **100** |  |  |  |
+
+## Saídas Derivadas
+
+| ID | Peso | Nota 0-4 | Pontos | Evidência / justificativa |
+| --- | ---: | ---: | ---: | --- |
+| `OUTPUT-FIDELITY-001` | 25 |  |  |  |
+| `OUTPUT-COMPLETENESS-001` | 20 |  |  |  |
+| `OUTPUT-HIERARCHY-001` | 15 |  |  |  |
+| `OUTPUT-READABILITY-001` | 15 |  |  |  |
+| `OUTPUT-NUMERICAL-001` | 15 |  |  |  |
+| `OUTPUT-TRACEABILITY-001` | 10 |  |  |  |
+| **Total** | **100** |  |  |  |
+
 ## Custo
 
 - `generationCostUsd`:
 - `judgeCostUsd`:
 - `totalCaseCostUsd`:
 - `cumulativePlanCostUsd`:
-- Alerta financeiro acionado? sim / nao
+- Alerta financeiro acionado? sim / não
 
-## Decisao humana
+## Decisão humana
 
-- Conducao >= 80? sim / nao
-- Plano >= 80? sim / nao
-- Media conjunta >= 85? sim / nao
-- Existe falha critica? sim / nao
+- Todas as rubricas aplicáveis >= 80? sim / não
+- Média aplicável >= 85? sim / não
+- Existe falha crítica? sim / não
 - Resultado: aprovado / revisar / reprovado
-- Divergencia em relacao ao judge:
-- Correcao recomendada:
-- Observacao de naturalidade para um gestor real:
+- Divergência em relação ao judge:
+- Correção recomendada:
+- Observação de naturalidade para um gestor real:

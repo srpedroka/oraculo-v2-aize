@@ -13,15 +13,16 @@ import {
   validateStrategicEvaluationCase,
 } from "../../scripts/strategic-eval-lib";
 
-const casePath = resolve(process.cwd(), "tests/evals/strategic-quality/cases/q1-minimal-quarterly.json");
+const casePath = resolve(process.cwd(), "tests/evals/strategic-quality/cases/q1-minimal-annual.json");
 const evaluationCase = validateStrategicEvaluationCase(JSON.parse(readFileSync(casePath, "utf8")));
 const policy = { authorizedLimitUsd: 20, warningAtUsd: 15, preventiveStopAtUsd: 19 };
 
 describe("strategic evaluation runner Q1", () => {
-  it("validates the synthetic minimal quarterly case", () => {
-    expect(evaluationCase.caseId).toBe("Q1-SMOKE-QUARTERLY-001");
-    expect(evaluationCase.turns).toHaveLength(7);
-    expect(evaluationCase.expected.proposalType).toBe("save_quarterly_plan");
+  it("validates the synthetic annual case as the first quality delivery", () => {
+    expect(evaluationCase.caseId).toBe("Q1-SMOKE-ANNUAL-001");
+    expect(evaluationCase.turns).toHaveLength(10);
+    expect(evaluationCase.planType).toBe("strategic");
+    expect(evaluationCase.expected.proposalType).toBe("save_strategic_plan");
   });
 
   it("hard-blocks production and requires an explicitly disposable key", () => {
@@ -50,6 +51,7 @@ describe("strategic evaluation runner Q1", () => {
     const whatsapp = buildSessionRequests({ ...evaluationCase, channel: "whatsapp" }, ids);
     expect(web.map((item) => item.action)).toEqual(whatsapp.map((item) => item.action));
     expect(web.filter((item) => item.action === "confirm")).toHaveLength(1);
+    expect(web[0].body).not.toHaveProperty("areaId");
     expect(whatsapp.every((item) => item.body.channel === "whatsapp")).toBe(true);
   });
 
@@ -128,11 +130,11 @@ describe("strategic evaluation runner Q1", () => {
   it("keeps comparison fingerprints stable when runtime and cost vary", () => {
     const base = {
       caseId: evaluationCase.caseId,
-      baselineVersion: "2026-07-16.q0",
-      rubricVersion: "2026-07-16.q0",
+      baselineVersion: "2026-07-16.q0-r2",
+      rubricVersion: "2026-07-16.q0-r2",
       channel: "web" as const,
       transcript: [{ role: "manager", content: "synthetic" }],
-      proposal: { type: "save_quarterly_plan" },
+      proposal: { type: "save_strategic_plan" },
       deterministicChecks: [{ id: "DET-1", status: "pass" as const, evidence: "ok" }],
       judge: { status: "completed", scores: [] },
     };

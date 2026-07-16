@@ -1,32 +1,12 @@
 {
-  "schemaVersion": 1,
-  "rubricVersion": "2026-07-16.q0",
+  "schemaVersion": 2,
+  "rubricVersion": "2026-07-16.q0-r2",
   "ratingScale": [
-    {
-      "rating": 0,
-      "label": "Ausente ou prejudicial",
-      "description": "O comportamento nao aparece ou piora a decisao do gestor."
-    },
-    {
-      "rating": 1,
-      "label": "Fraco",
-      "description": "Ha uma tentativa, mas ela e insuficiente ou exige correcao substancial."
-    },
-    {
-      "rating": 2,
-      "label": "Parcial",
-      "description": "Atende parte do criterio, com lacunas relevantes."
-    },
-    {
-      "rating": 3,
-      "label": "Solido",
-      "description": "Atende o criterio de forma util, com apenas ajustes menores."
-    },
-    {
-      "rating": 4,
-      "label": "Excelente",
-      "description": "Atende integralmente e melhora a clareza ou a qualidade da decisao."
-    }
+    { "rating": 0, "label": "Ausente ou prejudicial", "description": "O comportamento nao aparece ou piora a decisao do gestor." },
+    { "rating": 1, "label": "Fraco", "description": "Ha uma tentativa, mas ela e insuficiente ou exige correcao substancial." },
+    { "rating": 2, "label": "Parcial", "description": "Atende parte do criterio, com lacunas relevantes." },
+    { "rating": 3, "label": "Solido", "description": "Atende o criterio de forma util, com apenas ajustes menores." },
+    { "rating": 4, "label": "Excelente", "description": "Atende integralmente e melhora a clareza ou a qualidade da decisao." }
   ],
   "thresholds": {
     "minimumPerRubric": 80,
@@ -38,171 +18,123 @@
       { "id": "RANGE-EXCELLENT", "minimum": 90, "maximum": 100, "label": "Excelente" }
     ]
   },
+  "applicationRule": "Cada caso usa RUBRIC-CONDUCTION quando houver conversa e exatamente uma rubrica principal da entrega. Saidas derivadas podem usar RUBRIC-DERIVED-OUTPUT sem conversa. Todas as rubricas aplicaveis precisam atingir 80 e a media precisa atingir 85.",
   "rubrics": [
     {
       "id": "RUBRIC-CONDUCTION",
       "name": "Conducao estrategica",
+      "appliesTo": ["strategic", "quarterly", "monthly", "strategic_review", "month_close", "quarter_close", "operational_conversation"],
       "criteria": [
-        {
-          "id": "COND-SCOPE-001",
-          "name": "Escopo correto",
-          "weight": 15,
-          "expectedEvidence": "Confirma empresa, area e periodo sem trocar o nivel do plano."
-        },
-        {
-          "id": "COND-DIAGNOSIS-001",
-          "name": "Diagnostico",
-          "weight": 15,
-          "expectedEvidence": "Entende problema, causa, impacto e situacao atual antes de propor."
-        },
-        {
-          "id": "COND-QUESTIONS-001",
-          "name": "Qualidade das perguntas",
-          "weight": 15,
-          "expectedEvidence": "Faz uma pergunta por vez, relevante, sem repeticao e sem induzir resposta."
-        },
-        {
-          "id": "COND-CHALLENGE-001",
-          "name": "Desafio estrategico",
-          "weight": 15,
-          "expectedEvidence": "Questiona meta fraca, atividade disfarçada, repeticao e excesso de prioridade."
-        },
-        {
-          "id": "COND-MEMORY-001",
-          "name": "Uso da memoria",
-          "weight": 15,
-          "expectedEvidence": "Recupera apenas historicos pertinentes e explica por que sao relevantes."
-        },
-        {
-          "id": "COND-NATURALNESS-001",
-          "name": "Naturalidade e eficiencia",
-          "weight": 10,
-          "expectedEvidence": "Conversa humana, curta e adaptada a maturidade do gestor."
-        },
-        {
-          "id": "COND-FIDELITY-001",
-          "name": "Fidelidade",
-          "weight": 10,
-          "expectedEvidence": "Nao inventa numeros, nomes, vinculos, documentos ou decisoes."
-        },
-        {
-          "id": "COND-CLOSURE-001",
-          "name": "Fechamento",
-          "weight": 5,
-          "expectedEvidence": "Resume fielmente e pede uma unica confirmacao final."
-        }
+        { "id": "COND-SCOPE-001", "name": "Escopo correto", "weight": 15, "expectedEvidence": "Confirma empresa, area e periodo sem trocar o nivel do ritual." },
+        { "id": "COND-DIAGNOSIS-001", "name": "Diagnostico", "weight": 15, "expectedEvidence": "Entende problema, causa, impacto e situacao atual antes de propor." },
+        { "id": "COND-QUESTIONS-001", "name": "Qualidade das perguntas", "weight": 15, "expectedEvidence": "Faz uma pergunta por vez, relevante, sem repeticao e sem induzir resposta." },
+        { "id": "COND-CHALLENGE-001", "name": "Desafio estrategico", "weight": 15, "expectedEvidence": "Questiona meta fraca, atividade disfarçada, repeticao e excesso de prioridade." },
+        { "id": "COND-MEMORY-001", "name": "Uso da memoria", "weight": 15, "expectedEvidence": "Recupera apenas historicos pertinentes e explica por que sao relevantes." },
+        { "id": "COND-NATURALNESS-001", "name": "Naturalidade e eficiencia", "weight": 10, "expectedEvidence": "Conversa humana, curta e adaptada a maturidade do gestor." },
+        { "id": "COND-FIDELITY-001", "name": "Fidelidade", "weight": 10, "expectedEvidence": "Nao inventa numeros, nomes, vinculos, documentos ou decisoes." },
+        { "id": "COND-CLOSURE-001", "name": "Fechamento", "weight": 5, "expectedEvidence": "Resume fielmente e pede uma unica confirmacao final quando houver gravacao." }
+      ]
+    },
+    {
+      "id": "RUBRIC-ANNUAL-PLAN",
+      "name": "Plano estrategico anual",
+      "appliesTo": ["strategic"],
+      "criteria": [
+        { "id": "ANNUAL-DIAGNOSIS-001", "name": "Diagnostico e direcionadores", "weight": 15, "expectedEvidence": "Dor, proposito, visao, valores e SWOT formam um retrato coerente e rastreavel." },
+        { "id": "ANNUAL-CHOICES-001", "name": "Escolhas e foco", "weight": 20, "expectedEvidence": "Define tema, prioridades e renuncias; nao transforma toda demanda em prioridade anual." },
+        { "id": "ANNUAL-OBJECTIVES-001", "name": "Objetivos de resultado", "weight": 20, "expectedEvidence": "Objetivos descrevem mudancas empresariais e equilibram Resultado e Evolucao." },
+        { "id": "ANNUAL-MEASURES-001", "name": "Metas e indicadores", "weight": 15, "expectedEvidence": "Objetivos possuem baseline quando disponivel, indicador, alvo, prazo e fonte verificavel." },
+        { "id": "ANNUAL-PORTFOLIO-001", "name": "Projetos e responsabilidade", "weight": 10, "expectedEvidence": "Poucos projetos prioritarios possuem dono, prazo e vinculo explicito com objetivo anual." },
+        { "id": "ANNUAL-RISK-001", "name": "Riscos e memoria", "weight": 10, "expectedEvidence": "Explicita premissas, riscos e repeticoes historicas que exigem abordagem diferente." },
+        { "id": "ANNUAL-GOVERNANCE-001", "name": "Governanca do ano", "weight": 10, "expectedEvidence": "Define rituais, revisoes e cadencia suficiente para acompanhar a estrategia." }
       ]
     },
     {
       "id": "RUBRIC-QUARTERLY-PLAN",
       "name": "Plano trimestral gerado",
+      "appliesTo": ["quarterly"],
       "criteria": [
-        {
-          "id": "PLAN-ALIGNMENT-001",
-          "name": "Alinhamento estrategico",
-          "weight": 20,
-          "expectedEvidence": "Mostra vinculo e contribuicao clara para um objetivo anual aplicavel."
-        },
-        {
-          "id": "PLAN-OUTCOME-001",
-          "name": "Objetivo de resultado",
-          "weight": 15,
-          "expectedEvidence": "Descreve a mudanca desejada, nao somente uma tarefa ou projeto."
-        },
-        {
-          "id": "PLAN-MEASURE-001",
-          "name": "Meta e evidencia",
-          "weight": 20,
-          "expectedEvidence": "Inclui baseline quando disponivel, indicador, alvo, prazo e fonte verificavel."
-        },
-        {
-          "id": "PLAN-EXECUTION-001",
-          "name": "Plano de execucao",
-          "weight": 20,
-          "expectedEvidence": "Define acoes-chave, responsaveis, datas e criterios de conclusao."
-        },
-        {
-          "id": "PLAN-FOCUS-001",
-          "name": "Foco e viabilidade",
-          "weight": 10,
-          "expectedEvidence": "Mantem poucas prioridades e capacidade plausivel no trimestre."
-        },
-        {
-          "id": "PLAN-RISK-001",
-          "name": "Riscos e aprendizados",
-          "weight": 5,
-          "expectedEvidence": "Registra dependencias, bloqueios, premissas e memoria anterior relevante."
-        },
-        {
-          "id": "PLAN-CADENCE-001",
-          "name": "Cadencia de gestao",
-          "weight": 10,
-          "expectedEvidence": "Define KPI ou placar, check-in, confianca e proximo compromisso."
-        }
+        { "id": "PLAN-ALIGNMENT-001", "name": "Alinhamento estrategico", "weight": 20, "expectedEvidence": "Mostra vinculo e contribuicao clara para um objetivo anual aplicavel." },
+        { "id": "PLAN-OUTCOME-001", "name": "Objetivo de resultado", "weight": 15, "expectedEvidence": "Descreve a mudanca desejada, nao somente uma tarefa ou projeto." },
+        { "id": "PLAN-MEASURE-001", "name": "Meta e evidencia", "weight": 20, "expectedEvidence": "Inclui baseline quando disponivel, indicador, alvo, prazo e fonte verificavel." },
+        { "id": "PLAN-EXECUTION-001", "name": "Plano de execucao", "weight": 20, "expectedEvidence": "Define acoes-chave, responsaveis, datas e criterios de conclusao." },
+        { "id": "PLAN-FOCUS-001", "name": "Foco e viabilidade", "weight": 10, "expectedEvidence": "Mantem poucas prioridades e capacidade plausivel no trimestre." },
+        { "id": "PLAN-RISK-001", "name": "Riscos e aprendizados", "weight": 5, "expectedEvidence": "Registra dependencias, bloqueios, premissas e memoria anterior relevante." },
+        { "id": "PLAN-CADENCE-001", "name": "Cadencia de gestao", "weight": 10, "expectedEvidence": "Define KPI ou placar, check-in, confianca e proximo compromisso." }
+      ]
+    },
+    {
+      "id": "RUBRIC-MONTHLY-PLAN",
+      "name": "Plano mensal gerado",
+      "appliesTo": ["monthly"],
+      "criteria": [
+        { "id": "MONTHLY-CASCADE-001", "name": "Desdobramento trimestral", "weight": 20, "expectedEvidence": "Cada objetivo mensal contribui para um objetivo trimestral ou registra excecao justificada." },
+        { "id": "MONTHLY-OUTCOME-001", "name": "Resultado do mes", "weight": 15, "expectedEvidence": "Define mudanca observavel no mes, sem reduzir o plano a lista de tarefas." },
+        { "id": "MONTHLY-MEASURE-001", "name": "Meta e evidencia", "weight": 20, "expectedEvidence": "Possui indicador ou criterio de conclusao verificavel ate o fim do mes." },
+        { "id": "MONTHLY-ACTIONS-001", "name": "Acoes executaveis", "weight": 20, "expectedEvidence": "Acoes possuem dono, data e criterio de conclusao compativel com o mes." },
+        { "id": "MONTHLY-FOCUS-001", "name": "Foco e capacidade", "weight": 10, "expectedEvidence": "Prioriza o essencial e considera capacidade, dependencias e calendario real." },
+        { "id": "MONTHLY-CONTINUITY-001", "name": "Continuidade", "weight": 5, "expectedEvidence": "Pendencias herdadas mantem origem e decisao explicita de rolar, renegociar ou cortar." },
+        { "id": "MONTHLY-CADENCE-001", "name": "Acompanhamento", "weight": 10, "expectedEvidence": "Define como acompanhar progresso, confianca, bloqueio e compromisso seguinte." }
+      ]
+    },
+    {
+      "id": "RUBRIC-REVIEW-CLOSE",
+      "name": "Revisoes e fechamentos",
+      "appliesTo": ["strategic_review", "month_close", "quarter_close"],
+      "criteria": [
+        { "id": "REVIEW-SCOPE-001", "name": "Ritual e periodo corretos", "weight": 15, "expectedEvidence": "Mantem empresa, area, periodo, objetivo e limite funcional do ritual." },
+        { "id": "REVIEW-EVIDENCE-001", "name": "Evidencia concreta", "weight": 20, "expectedEvidence": "Veredito e ajuste se apoiam em fato, indicador ou evidencia informada." },
+        { "id": "REVIEW-VERDICT-001", "name": "Veredito honesto", "weight": 15, "expectedEvidence": "Distingue concluido, parcial, em risco e atrasado sem maquiar resultado." },
+        { "id": "REVIEW-LEARNING-001", "name": "Aprendizado", "weight": 15, "expectedEvidence": "Registra causa, aprendizado e o que deve mudar no proximo ciclo." },
+        { "id": "REVIEW-DECISION-001", "name": "Decisao sobre pendencias", "weight": 15, "expectedEvidence": "Rola, renegocia ou corta com motivo; revisao estrategica respeita campos permitidos." },
+        { "id": "REVIEW-FORWARD-001", "name": "Ponte para o proximo ciclo", "weight": 10, "expectedEvidence": "Registra confianca, bloqueio, decisao necessaria e compromisso seguinte quando aplicavel." },
+        { "id": "REVIEW-FIDELITY-001", "name": "Fidelidade e rastreabilidade", "weight": 10, "expectedEvidence": "Preserva IDs, antes/depois e justificativa sem criar ou apagar conteudo indevido." }
+      ]
+    },
+    {
+      "id": "RUBRIC-INFORMATION-QUALITY",
+      "name": "Memoria, importacoes e sugestoes",
+      "appliesTo": ["history_import", "plan_import", "kpi_import", "memory_retrieval", "kpi_suggestion", "file_reading"],
+      "criteria": [
+        { "id": "INFO-SOURCE-001", "name": "Fonte correta", "weight": 20, "expectedEvidence": "Identifica empresa, area, periodo e arquivo de origem sem contaminacao cruzada." },
+        { "id": "INFO-EXTRACTION-001", "name": "Extracao fiel", "weight": 20, "expectedEvidence": "Extrai titulo, tipo, area, periodo e dados centrais sem depender apenas do nome do arquivo." },
+        { "id": "INFO-RELEVANCE-001", "name": "Relevancia", "weight": 20, "expectedEvidence": "Recupera ou sugere somente informacao pertinente ao objetivo e ao momento atual." },
+        { "id": "INFO-CONFLICT-001", "name": "Tratamento de conflito", "weight": 15, "expectedEvidence": "Apresenta alternativas quando fontes divergem e pede qual usar antes de gravar." },
+        { "id": "INFO-PROVENANCE-001", "name": "Proveniencia e reversao", "weight": 15, "expectedEvidence": "Mantem metadados, backup recuperavel, versao e trilha suficientes para revisar a decisao." },
+        { "id": "INFO-PRIVACY-001", "name": "Minimizacao", "weight": 10, "expectedEvidence": "Nao persiste bruto, segredo, URL temporaria ou dado desnecessario." }
+      ]
+    },
+    {
+      "id": "RUBRIC-DERIVED-OUTPUT",
+      "name": "Documentos, PDF, WhatsApp e Dashboard",
+      "appliesTo": ["canonical_document", "pdf", "whatsapp_render", "dashboard", "audit_view"],
+      "criteria": [
+        { "id": "OUTPUT-FIDELITY-001", "name": "Fidelidade", "weight": 25, "expectedEvidence": "Conversa aprovada, banco, documento, PDF, WhatsApp e Dashboard nao divergem materialmente." },
+        { "id": "OUTPUT-COMPLETENESS-001", "name": "Completude", "weight": 20, "expectedEvidence": "Mostra campos essenciais da entrega sem omitir objetivo, meta, dono, periodo ou evidencia." },
+        { "id": "OUTPUT-HIERARCHY-001", "name": "Hierarquia estrategica", "weight": 15, "expectedEvidence": "Preserva relacao anual, trimestral e mensal e distingue objetivo, acao, KPI e evidencia." },
+        { "id": "OUTPUT-READABILITY-001", "name": "Leitura e design", "weight": 15, "expectedEvidence": "E legivel, escaneavel, responsivo e adequado ao canal sem perder informacao central." },
+        { "id": "OUTPUT-NUMERICAL-001", "name": "Precisao numerica", "weight": 15, "expectedEvidence": "Calculos, periodos, unidades, abreviacoes e casas decimais estao corretos." },
+        { "id": "OUTPUT-TRACEABILITY-001", "name": "Versao e trilha", "weight": 10, "expectedEvidence": "Origem, versao, revisao e auditoria permitem rastrear o que foi apresentado." }
       ]
     }
   ],
   "criticalFailures": [
-    {
-      "id": "CRIT-SCOPE-001",
-      "description": "Empresa, area, pessoa ou periodo incorreto.",
-      "checkType": "human",
-      "requiredEvidence": "Comparar a transcricao, o contexto do caso e o plano final."
-    },
-    {
-      "id": "CRIT-LEVEL-001",
-      "description": "Mudanca indevida entre plano anual, trimestral e mensal.",
-      "checkType": "human",
-      "requiredEvidence": "Revisar a sequencia da conversa e o tipo da proposta."
-    },
-    {
-      "id": "CRIT-MEMORY-001",
-      "description": "Documento historico de outra area apresentado como referencia principal.",
-      "checkType": "human",
-      "requiredEvidence": "Conferir area e periodo das referencias citadas."
-    },
-    {
-      "id": "CRIT-FABRICATION-001",
-      "description": "Numero, responsavel, KPI ou decisao inventada.",
-      "checkType": "human",
-      "requiredEvidence": "Rastrear cada afirmacao factual ate a entrada ou memoria autorizada."
-    },
-    {
-      "id": "CRIT-ALIGNMENT-001",
-      "description": "Objetivo sem ligacao estrategica quando existe objetivo anual aplicavel.",
-      "checkType": "human",
-      "requiredEvidence": "Comparar objetivo trimestral e objetivos anuais fornecidos ao caso."
-    },
-    {
-      "id": "CRIT-VERIFIABILITY-001",
-      "description": "Meta sem forma verificavel de conclusao.",
-      "checkType": "human",
-      "requiredEvidence": "Verificar indicador, alvo, prazo e fonte ou criterio de conclusao."
-    },
-    {
-      "id": "CRIT-PREMATURE-WRITE-001",
-      "description": "Gravacao antes da confirmacao.",
-      "checkType": "deterministic",
-      "requiredEvidence": "Comparar timestamps da proposta, confirmacao e primeira mutacao."
-    },
-    {
-      "id": "CRIT-MULTI-CONFIRM-001",
-      "description": "Mais de uma confirmacao final para a mesma proposta.",
-      "checkType": "deterministic",
-      "requiredEvidence": "Contar pedidos de confirmacao associados ao mesmo proposalId."
-    },
-    {
-      "id": "CRIT-DIVERGENCE-001",
-      "description": "Divergencia entre conversa, banco e documento canonico.",
-      "checkType": "deterministic",
-      "requiredEvidence": "Comparar a proposta confirmada com os registros e o documento gerado."
-    },
-    {
-      "id": "CRIT-JUDGE-MUTATION-001",
-      "description": "Mutacao feita pelo judge de qualidade.",
-      "checkType": "deterministic",
-      "requiredEvidence": "Confirmar zero escrita com a identidade ou o runId do judge."
-    }
+    { "id": "CRIT-SCOPE-001", "description": "Empresa, area, pessoa ou periodo incorreto.", "checkType": "human", "requiredEvidence": "Comparar transcricao, contexto e entrega final." },
+    { "id": "CRIT-LEVEL-001", "description": "Mudanca indevida entre plano anual, trimestral e mensal.", "checkType": "human", "requiredEvidence": "Revisar sequencia da conversa e tipo da proposta." },
+    { "id": "CRIT-MEMORY-001", "description": "Historico de outra area ou periodo usado como referencia principal.", "checkType": "human", "requiredEvidence": "Conferir area, periodo e origem das referencias citadas." },
+    { "id": "CRIT-FABRICATION-001", "description": "Numero, responsavel, KPI, vinculo ou decisao inventada.", "checkType": "human", "requiredEvidence": "Rastrear cada afirmacao ate entrada ou memoria autorizada." },
+    { "id": "CRIT-ALIGNMENT-001", "description": "Entrega inferior sem ligacao com o nivel superior quando existe origem aplicavel.", "checkType": "human", "requiredEvidence": "Comparar anual, trimestral e mensal fornecidos ao caso." },
+    { "id": "CRIT-VERIFIABILITY-001", "description": "Meta ou conclusao sem forma verificavel.", "checkType": "human", "requiredEvidence": "Verificar indicador, alvo, prazo, fonte ou criterio de conclusao." },
+    { "id": "CRIT-OBJECTIVE-ACTIVITY-001", "description": "Atividade aceita como objetivo final sem resultado, adocao ou efeito esperado.", "checkType": "human", "requiredEvidence": "Comparar formulacao do objetivo com a mudanca empresarial pretendida." },
+    { "id": "CRIT-PREMATURE-WRITE-001", "description": "Gravacao antes da confirmacao.", "checkType": "deterministic", "requiredEvidence": "Comparar timestamps de proposta, confirmacao e primeira mutacao." },
+    { "id": "CRIT-MULTI-CONFIRM-001", "description": "Mais de uma confirmacao final para a mesma proposta.", "checkType": "deterministic", "requiredEvidence": "Contar pedidos de confirmacao associados ao mesmo proposalId." },
+    { "id": "CRIT-DIVERGENCE-001", "description": "Divergencia entre conversa, banco e saida canonica.", "checkType": "deterministic", "requiredEvidence": "Comparar proposta confirmada com registros e saidas derivadas." },
+    { "id": "CRIT-JUDGE-MUTATION-001", "description": "Mutacao feita pelo judge de qualidade.", "checkType": "deterministic", "requiredEvidence": "Confirmar zero escrita com a identidade ou runId do judge." },
+    { "id": "CRIT-REVIEW-OVERREACH-001", "description": "Revisao ou fechamento cria, remove ou altera conteudo fora do limite autorizado.", "checkType": "deterministic", "requiredEvidence": "Comparar proposal e diff dos registros permitidos para o ritual." },
+    { "id": "CRIT-CONFLICT-OVERWRITE-001", "description": "Importacao sobrescreve fonte conflitante sem escolha explicita do usuario.", "checkType": "deterministic", "requiredEvidence": "Conferir proposta, escolha registrada, backup e escrita final." },
+    { "id": "CRIT-NUMERICAL-DIVERGENCE-001", "description": "KPI, periodo, unidade ou calculo materialmente incorreto.", "checkType": "deterministic", "requiredEvidence": "Recalcular a saida a partir dos valores confirmados." },
+    { "id": "CRIT-CHANNEL-DIVERGENCE-001", "description": "App e WhatsApp produzem contexto, decisao ou conteudo materialmente diferentes.", "checkType": "human", "requiredEvidence": "Comparar execucoes equivalentes por canal e versao." },
+    { "id": "CRIT-SENSITIVE-PERSISTENCE-001", "description": "Arquivo bruto, segredo, URL temporaria ou dado sensivel desnecessario foi persistido.", "checkType": "deterministic", "requiredEvidence": "Inspecionar colunas, Storage, logs e artefatos sanitizados do caso." }
   ],
   "costPolicy": {
     "currency": "USD",
@@ -210,23 +142,11 @@
     "warningAtUsd": 15,
     "preventiveStopAtUsd": 19,
     "includedComponents": ["generation", "judge"],
-    "caseFields": [
-      "generationCostUsd",
-      "judgeCostUsd",
-      "totalCaseCostUsd",
-      "cumulativePlanCostUsd"
-    ],
-    "rule": "Somar somente chamadas pagas iniciadas pelo laboratorio deste plano; compras, creditos e assinaturas nunca entram nesta autorizacao."
+    "caseFields": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostUsd"],
+    "rule": "Somar somente chamadas pagas iniciadas pelo laboratorio deste plano; compras, creditos e assinaturas nunca entram nesta autorizacao. Priorizar checks deterministas para saidas derivadas e operacionais para preservar o teto."
   },
   "sanitization": {
     "fixtureAliases": ["ORG_FIXTURE_A", "AREA_FIXTURE_A", "PERSON_FIXTURE_A"],
-    "forbiddenContent": [
-      "nomes reais",
-      "emails",
-      "telefones",
-      "UUIDs de producao",
-      "chaves ou tokens",
-      "texto empresarial real"
-    ]
+    "forbiddenContent": ["nomes reais", "emails", "telefones", "UUIDs de producao", "chaves ou tokens", "texto empresarial real"]
   }
 }
