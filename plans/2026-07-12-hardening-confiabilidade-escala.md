@@ -1247,6 +1247,8 @@ Este teste só ocorre depois das Etapas 0 a 6 concluídas.
 
 ## 7.4 Aceite final obrigatório
 
+> **STATUS: aprovado tecnicamente em 2026-07-15.** E2E desktop/mobile, revisão visual, smoke somente leitura, CI, lint, unitários, integração, segurança, build, audit, Functions/migrations e frontend passaram. Dois problemas visuais encontrados na inspeção foram corrigidos e publicados no Netlify `6a5840ed256e52e9b9a918d1`. Nenhum dado, migration, Function ou WhatsApp real foi alterado. Cleanup do baseline aguarda autorização separada do owner.
+
 O pacote só é aprovado se:
 
 - nenhuma gravação parcial for encontrada;
@@ -1264,6 +1266,8 @@ O pacote só é aprovado se:
 - produção passar smoke test sem alterar empresa real.
 
 ## 7.5 Relatório final
+
+> **STATUS: concluído em `docs/MASTER_TEST_REPORT.md`.** Evidências sensíveis continuam somente em `.agents-private/`, com permissão restrita e fora do Git.
 
 O agente deve entregar:
 

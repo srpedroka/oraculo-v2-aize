@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-A preparação 7A, o cenário funcional 7B e os cenários de falha 7C foram concluídos no staging isolado em 2026-07-15. Nenhum dado, configuração, Function ou frontend de produção foi alterado.
+A preparação 7A, o cenário funcional 7B, os cenários de falha 7C e o aceite 7D foram concluídos em 2026-07-15. Até a 7C, produção permaneceu intocada. Na 7D, somente o frontend recebeu a correção responsiva autorizada; nenhum dado, migration, Edge Function ou WhatsApp real foi alterado.
 
 O baseline persistente contém:
 
@@ -77,10 +77,19 @@ O staging não possui chave de provedor de IA. A geração textual pelo modelo n
 
 O executor concluiu 11 blocos técnicos, correspondentes aos dez cenários do plano, com 77 testes verdes e um skip opt-in esperado. A regressão ampliada passou com 241 unitários, 25 arquivos de integração, sete testes de segurança/RLS, fixtures, lint, build/orçamento, secret scan e `pnpm audit --prod` sem vulnerabilidades conhecidas. A evidência incremental está em `.agents-private/master-test-7c.json`, permissão `600`, ignorada pelo Git.
 
-### Próxima fase
+## Evidências do aceite 7D
 
-A 7D fará o aceite final: E2E desktop/mobile, revisão visual, smoke somente leitura em produção, consolidação do relatório e decisão explícita do owner antes de executar a limpeza do baseline MASTER.
+- staging: 11 E2E verdes em desktop/mobile e um skip mobile de clone esperado;
+- revisão de seis capturas sintéticas de Backups, Auditoria e Minha conta;
+- correção responsiva validada geometricamente: launcher dentro do cabeçalho mobile e abas completas no desktop;
+- 241 testes unitários, lint, build e bundle inicial de 134,5 KB gzip;
+- CI obrigatório `29466259742` totalmente verde;
+- frontend Netlify `6a5840ed256e52e9b9a918d1` publicado e verificado;
+- produção autenticada e pública conferida sem escrita: 31 Functions, 54 migrations, CSP, cache e asset `index-DYyWnaBl.js` corretos;
+- relatório consolidado em `docs/MASTER_TEST_REPORT.md` e evidência privada em `.agents-private/master-test-7d.json`.
+
+O pacote está tecnicamente aprovado. O único passo pendente é a decisão explícita do owner sobre a limpeza do baseline MASTER.
 
 ## Preservação
 
-As organizações MASTER A/B e o backup da prova permanecem no staging para inspeção. O clone do exercício já foi removido. Preserve também os relatórios privados 7A/7B/7C. Não rode `test:master:cleanup` antes do relatório final e do aceite do dono.
+As organizações MASTER A/B e o backup da prova permanecem no staging para inspeção. O clone do exercício já foi removido. Preserve também os relatórios privados 7A/7B/7C/7D e as capturas 7D. Não rode `test:master:cleanup` sem autorização explícita do dono.

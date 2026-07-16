@@ -58,7 +58,7 @@ pnpm run test:master:failures
 pnpm run test:master:cleanup
 ```
 
-O roteiro e o estado atual estão em `docs/MASTER_TEST.md`. As credenciais e IDs ficam apenas em `.agents-private/master-test-7a.json`; as evidências incrementais das fases funcional e de falhas ficam em `.agents-private/master-test-7b.json` e `.agents-private/master-test-7c.json`. Os três arquivos usam permissão `600` e não entram no Git.
+O roteiro e o estado atual estão em `docs/MASTER_TEST.md`, e o consolidado em `docs/MASTER_TEST_REPORT.md`. As credenciais e IDs ficam apenas em `.agents-private/master-test-7a.json`; as evidências incrementais ficam em `master-test-7b.json`, `master-test-7c.json` e `master-test-7d.json`. Os arquivos usam permissão `600` e não entram no Git. As seis capturas sintéticas da revisão final ficam em `.agents-private/master-test-7d-screenshots/`.
 
 ## Matriz da Fatia 4A
 
