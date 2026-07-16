@@ -1210,6 +1210,8 @@ Este teste só ocorre depois das Etapas 0 a 6 concluídas.
 
 ## 7.2 Cenário funcional completo
 
+> **STATUS: concluído no staging em 2026-07-15, sem alteração de produção.** Históricos, planos estratégico/trimestral/mensal, confirmação idempotente, revisão, KPI, vínculos, arquivo/restauração, auditoria, WhatsApp sintético e backup/clone foram exercitados. A geração textual por IA ficou explicitamente limitada porque o staging não tem chave descartável própria; nenhuma credencial de produção foi copiada.
+
 1. Login owner com MFA.
 2. Criar empresa e verificar quatro KPIs/defaults.
 3. Criar áreas e pessoas.
@@ -1229,6 +1231,8 @@ Este teste só ocorre depois das Etapas 0 a 6 concluídas.
 17. Conferir clone e exclusão de segredos.
 
 ## 7.3 Cenário de falhas
+
+> **STATUS: concluído no staging em 2026-07-15, sem alteração de produção.** Os dez cenários foram cobertos por 11 blocos técnicos: 77 testes verdes, um skip opt-in esperado, baseline posterior 12/12 e WhatsApp real inerte. Não houve escrita parcial, duplicação, acesso cruzado ou exposição de segredo. Evidência privada em `.agents-private/master-test-7c.json`. Próxima fase: aceite final 7D; não limpar o baseline antes da aprovação do owner.
 
 - Repetir evento WhatsApp.
 - Derrubar provedor de IA de teste.

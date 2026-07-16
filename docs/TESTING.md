@@ -53,11 +53,12 @@ Teste Mestre final no staging, com estado privado persistente entre as fases:
 pnpm run test:master:setup
 pnpm run test:master:verify
 pnpm run test:master:functional
+pnpm run test:master:failures
 # Somente após o aceite final:
 pnpm run test:master:cleanup
 ```
 
-O roteiro e o estado atual estão em `docs/MASTER_TEST.md`. As credenciais e IDs ficam apenas em `.agents-private/master-test-7a.json`; a evidência incremental da fase funcional fica em `.agents-private/master-test-7b.json`. Nenhum dos dois arquivos entra no Git.
+O roteiro e o estado atual estão em `docs/MASTER_TEST.md`. As credenciais e IDs ficam apenas em `.agents-private/master-test-7a.json`; as evidências incrementais das fases funcional e de falhas ficam em `.agents-private/master-test-7b.json` e `.agents-private/master-test-7c.json`. Os três arquivos usam permissão `600` e não entram no Git.
 
 ## Matriz da Fatia 4A
 

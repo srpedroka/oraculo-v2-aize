@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-A preparação 7A e o cenário funcional 7B foram concluídos no staging isolado em 2026-07-15. Nenhum dado, configuração, Function ou frontend de produção foi alterado.
+A preparação 7A, o cenário funcional 7B e os cenários de falha 7C foram concluídos no staging isolado em 2026-07-15. Nenhum dado, configuração, Function ou frontend de produção foi alterado.
 
 O baseline persistente contém:
 
@@ -24,6 +24,7 @@ Carregue `.agents-private/agent-env` sem exibir os valores e use:
 ```bash
 pnpm run test:master:verify
 pnpm run test:master:functional
+pnpm run test:master:failures
 ```
 
 Use `setup` somente quando não existir ciclo aberto:
@@ -38,7 +39,7 @@ Use `cleanup` apenas depois do relatório e aceite final da Etapa 7:
 pnpm run test:master:cleanup
 ```
 
-Os quatro comandos recusam a referência de produção. `setup` também recusa substituir um estado aberto, e uma falha parcial tenta limpar todos os recursos já criados. `functional` grava evidência incremental em `.agents-private/master-test-7b.json`; depois de concluído, não repete o ciclo nem sobrescreve o relatório.
+Os cinco comandos recusam a referência de produção. `setup` também recusa substituir um estado aberto, e uma falha parcial tenta limpar todos os recursos já criados. `functional` grava evidência incremental em `.agents-private/master-test-7b.json`; `failures` exige o mesmo ciclo 7A/7B, executa os cenários adversariais e grava `.agents-private/master-test-7c.json`. Depois de concluídos, os executores não repetem o ciclo nem sobrescrevem os relatórios.
 
 ## Evidências da preparação 7A
 
@@ -61,6 +62,25 @@ Os quatro comandos recusam a referência de produção. `setup` também recusa s
 
 O staging não possui chave de provedor de IA. A geração textual pelo modelo não foi executada e não recebeu credencial de produção. A proposta estruturada, a confirmação única, a autorização, a transação, a idempotência e a persistência foram exercitadas pelos endpoints reais. Para fechar a geração de ponta a ponta, configure uma chave própria e descartável no staging e execute uma rodada adicional sem sobrescrever este relatório.
 
+## Evidências dos cenários de falha 7C
+
+- evento do WhatsApp repetido dez vezes em concorrência gerou somente um job;
+- provedor de IA em `503` e timeout foram simulados sem rede real, com chave fictícia redigida;
+- Evolution em erro `500`, timeout e erro permanente percorreu retry, ordenação e dead-letter sanitizado;
+- falha no último trecho da proposta fez rollback completo, e duas confirmações simultâneas gravaram uma vez;
+- acesso cruzado A -> B foi negado, e owner/admin/coordenador respeitaram empresa e área;
+- rajadas concorrentes, orçamento e alertas de IA respeitaram os modos `monitor`/`block` sem duplicar eventos;
+- exceção do frontend apresentou recuperação e registrou somente telemetria sanitizada;
+- indisponibilidade da cópia externa de backup falhou fechado, sem criar clone parcial;
+- política `verify_jwt` das Functions administrativas permaneceu válida;
+- verificação posterior do baseline passou 12/12 e confirmou o WhatsApp real inerte.
+
+O executor concluiu 11 blocos técnicos, correspondentes aos dez cenários do plano, com 77 testes verdes e um skip opt-in esperado. A regressão ampliada passou com 241 unitários, 25 arquivos de integração, sete testes de segurança/RLS, fixtures, lint, build/orçamento, secret scan e `pnpm audit --prod` sem vulnerabilidades conhecidas. A evidência incremental está em `.agents-private/master-test-7c.json`, permissão `600`, ignorada pelo Git.
+
+### Próxima fase
+
+A 7D fará o aceite final: E2E desktop/mobile, revisão visual, smoke somente leitura em produção, consolidação do relatório e decisão explícita do owner antes de executar a limpeza do baseline MASTER.
+
 ## Preservação
 
-As organizações MASTER A/B e o backup da prova permanecem no staging para inspeção. O clone do exercício já foi removido. Não rode `test:master:cleanup` antes do relatório final e do aceite do dono.
+As organizações MASTER A/B e o backup da prova permanecem no staging para inspeção. O clone do exercício já foi removido. Preserve também os relatórios privados 7A/7B/7C. Não rode `test:master:cleanup` antes do relatório final e do aceite do dono.
