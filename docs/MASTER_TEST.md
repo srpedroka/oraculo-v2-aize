@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-A preparação 7A, o cenário funcional 7B, os cenários de falha 7C e o aceite 7D foram concluídos em 2026-07-15. Até a 7C, produção permaneceu intocada. Na 7D, somente o frontend recebeu a correção responsiva autorizada; nenhum dado, migration, Edge Function ou WhatsApp real foi alterado.
+A preparação 7A, o cenário funcional 7B, os cenários de falha 7C e o aceite 7D foram concluídos em 2026-07-15. A limpeza autorizada foi concluída no staging em 2026-07-16. Até a 7C, produção permaneceu intocada. Na 7D, somente o frontend recebeu a correção responsiva autorizada; nenhum dado, migration, Edge Function ou WhatsApp real foi alterado.
 
 O baseline persistente contém:
 
@@ -88,8 +88,8 @@ O executor concluiu 11 blocos técnicos, correspondentes aos dez cenários do pl
 - produção autenticada e pública conferida sem escrita: 31 Functions, 54 migrations, CSP, cache e asset `index-DYyWnaBl.js` corretos;
 - relatório consolidado em `docs/MASTER_TEST_REPORT.md` e evidência privada em `.agents-private/master-test-7d.json`.
 
-O pacote está tecnicamente aprovado. O único passo pendente é a decisão explícita do owner sobre a limpeza do baseline MASTER.
+O pacote está tecnicamente aprovado e encerrado. Após autorização explícita, a limpeza removeu as duas organizações, os cinco usuários, o backup interno e o arquivo 7A com credenciais descartáveis. A conferência independente retornou zero resíduos para organizações, usuários, registro de backup e objeto do Storage.
 
 ## Preservação
 
-As organizações MASTER A/B e o backup da prova permanecem no staging para inspeção. O clone do exercício já foi removido. Preserve também os relatórios privados 7A/7B/7C/7D e as capturas 7D. Não rode `test:master:cleanup` sem autorização explícita do dono.
+As organizações MASTER A/B, o backup da prova, o clone e os usuários descartáveis não existem mais. Preserve os relatórios privados sanitizados 7B/7C/7D e as capturas 7D. O arquivo 7A foi removido porque continha as credenciais e IDs necessários somente durante o ciclo aberto.

@@ -1,9 +1,9 @@
 # Relatório Final do Teste Mestre
 
-Data: 2026-07-15  
-Ciclo privado: `20260715205114-cd9402`  
-Status técnico: **aprovado**  
-Limpeza do baseline: **aguardando autorização explícita do owner**
+Data: 2026-07-16
+Ciclo privado: `20260715205114-cd9402`
+Status técnico: **aprovado**
+Limpeza do baseline: **concluída após autorização explícita do owner**
 
 ## Resumo executivo
 
@@ -49,7 +49,7 @@ O histórico completo de migrations, deploys intermediários, runs e IDs Netlify
 
 ## Métricas finais
 
-- suíte unitária: 53 arquivos, 241 testes verdes;
+- suíte unitária final: 53 arquivos, 242 testes verdes;
 - integração completa da 7C: 25 arquivos sequenciais, todos verdes;
 - segurança/RLS: sete testes verdes;
 - E2E staging da 7D: 11 verdes e um skip opt-in esperado;
@@ -64,7 +64,7 @@ O histórico completo de migrations, deploys intermediários, runs e IDs Netlify
 - O staging não possui chave descartável de provedor de IA. A geração textual real não integrou o Teste Mestre; propostas, autorização, confirmação, persistência e falhas simuladas do provedor foram exercitadas sem copiar segredo de produção.
 - O cenário de navegação no clone de desastre roda apenas no projeto desktop; a responsividade geral e os módulos críticos foram validados em mobile nas demais jornadas.
 - O GitHub Actions emite aviso de depreciação do Node 20 em actions de terceiros, embora o runner force Node 24 e todos os jobs passem. Atualizar as actions quando versões compatíveis estiverem disponíveis.
-- O baseline MASTER e o backup de prova continuam no staging para inspeção. A remoção é irreversível e depende de autorização separada do owner.
+- O staging continua sem chave descartável de IA. Uma rodada futura com geração textual real deve abrir um ciclo novo e isolado, sem reutilizar dados deste teste.
 
 ## Produção e rastreabilidade
 
@@ -72,8 +72,8 @@ O histórico completo de migrations, deploys intermediários, runs e IDs Netlify
 - CI da 7C: <https://github.com/srpedroka/oraculo-v2-aize/actions/runs/29462704287>
 - CI da correção 7D: <https://github.com/srpedroka/oraculo-v2-aize/actions/runs/29466259742>
 - Deploy Netlify final: <https://app.netlify.com/projects/oraculo-v2-aize/deploys/6a5840ed256e52e9b9a918d1>
-- Evidências privadas: `.agents-private/master-test-7a.json`, `master-test-7b.json`, `master-test-7c.json`, `master-test-7d.json` e `master-test-7d-screenshots/`.
+- Evidências privadas preservadas: `master-test-7b.json`, `master-test-7c.json`, `master-test-7d.json` e `master-test-7d-screenshots/`. O estado 7A, que continha credenciais descartáveis, foi removido pela limpeza.
 
-## Decisão pendente do dono
+## Encerramento
 
-Autorizar ou adiar `pnpm run test:master:cleanup`. Até essa decisão, as organizações MASTER A/B e o backup de prova permanecem no staging; produção não é afetada.
+O owner autorizou a limpeza em 2026-07-16. `test:master:cleanup` removeu as duas organizações MASTER, os cinco usuários descartáveis, o backup interno e o estado privado com credenciais. Uma consulta independente pelo ciclo e pelo backup retornou `0` organizações, `0` usuários, `0` registros de backup e `0` objetos no Storage. Produção não foi acessada pela limpeza.

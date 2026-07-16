@@ -170,14 +170,27 @@ end $$;`);
 
 async function cleanupResources(resources: CreatedResources) {
   const errors: string[] = [];
+  const admin = serviceClient();
   for (const orgId of [...resources.orgIds].reverse()) {
     try {
+      const backups = await admin
+        .from("organization_backups")
+        .select("object_path")
+        .eq("org_id", orgId);
+      if (backups.error) throw backups.error;
+      const objectPaths = (backups.data ?? [])
+        .map((backup) => backup.object_path)
+        .filter((path): path is string => Boolean(path));
+      if (objectPaths.length) {
+        const removal = await admin.storage.from("organization-backups").remove(objectPaths);
+        if (removal.error) throw removal.error;
+      }
       await purgeOrganization(orgId);
     } catch (error) {
       errors.push(`org ${orgId}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  const admin = serviceClient();
+  if (errors.length) throw new Error(`limpeza incompleta: ${errors.join(" | ")}`);
   for (const userId of [...resources.userIds].reverse()) {
     const result = await admin.auth.admin.deleteUser(userId);
     if (result.error) errors.push(`usuário ${userId}: ${result.error.message}`);

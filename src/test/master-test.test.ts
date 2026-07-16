@@ -32,6 +32,15 @@ describe("Teste Mestre final", () => {
     expect(packageJson).toContain('"test:master:cleanup"');
   });
 
+  it("remove backups internos antes de apagar usuários no cleanup", () => {
+    expect(script).toContain('.from("organization_backups")');
+    expect(script).toContain('.storage.from("organization-backups").remove(objectPaths)');
+    const organizationFailureGuard = script.indexOf('if (errors.length) throw new Error(`limpeza incompleta:');
+    const userDeletion = script.indexOf("admin.auth.admin.deleteUser(userId)");
+    expect(organizationFailureGuard).toBeGreaterThan(-1);
+    expect(userDeletion).toBeGreaterThan(organizationFailureGuard);
+  });
+
   it("prepara o baseline sem habilitar WhatsApp real nem bloquear a IA", () => {
     expect(script).toContain('mode: "monitor" as const');
     expect(script).toContain('mode: "synthetic_staging"');
