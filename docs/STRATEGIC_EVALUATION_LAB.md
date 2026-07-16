@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q1-r2`
 
-Status: implementado; Q0 R2, gate automatizado Q1 e alinhamento adaptativo da Revisão Estratégica aprovados no staging e pelo owner; publicação em produção autorizada em 2026-07-16.
+Status: implementado; Q0 R2, Q1 anual e alinhamento adaptativo da Revisão Estratégica aprovados e publicados em produção em 2026-07-16.
 
 ## Objetivo
 
@@ -110,4 +110,4 @@ Resultado final de 2026-07-16: técnica aprovada; Condução 86,25; Plano Anual 
 
 Alinhamento pré-produção da Revisão Estratégica em 2026-07-16: o ritual continua sendo microajuste de objetivos existentes, mas passou a absorver vários ajustes completos, ignorar objetivos declarados como inalterados, perguntar apenas lacunas bloqueantes e pedir uma confirmação final. Um teste real no staging alterou `current` e `target` de dois objetivos sintéticos na mesma proposta, comprovou zero mutação antes da confirmação, documento antes/depois, linguagem natural em PT-BR e cleanup. A rodada final custou US$ 0,004486; as duas tentativas somaram US$ 0,008976; acumulado do plano US$ 0,437777. O judge formal de revisões permanece no Q2D.
 
-Aceite humano: o owner aprovou o resultado e autorizou a publicação em produção em 2026-07-16. Por decisão explícita, a chave temporária continuará privada e disponível para os próximos testes; revogação deixou de ser pré-condição deste deploy.
+Aceite humano e produção: o owner aprovou o resultado e autorizou produção em 2026-07-16. A `oracle-session` foi publicada pelo release protegido `29525599601` e o frontend pelo deploy Netlify `6a5928c0f349e3bcc2a4728a`; verificações automáticas e smoke autenticado passaram. Por decisão explícita, a chave temporária continuará privada e disponível para os próximos testes; revogação deixou de ser pré-condição.

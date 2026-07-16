@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q0 R2 e Q1 aprovadas pelo owner, publicação em produção autorizada**
+Status: **em execução; Q0 R2 e Q1 concluídas em produção, próxima fatia Q2**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -271,7 +271,7 @@ Cria um ambiente repetível para conversar com o Oráculo, capturar resultado e 
 
 Um caso mínimo **anual** percorre condutor, proposta, checagem e relatório no staging, sem tocar produção.
 
-Estado em 2026-07-16: a primeira execução revelou confirmações repetidas, perda de baseline, memória superficial e inferências tratadas como fatos. O contrato anual foi corrigido no staging sem migration: uma confirmação final, avanço adaptativo, baseline/fonte/prazo/estratégias, renúncias, riscos confirmados, decisões pendentes e aprendizado histórico literal passam por proposal, banco e documento. A Q1 final aprovou todos os checks, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. Rodada final US$ 0,081603; acumulado naquele gate US$ 0,428801; cleanup verde. Antes de produção, a Revisão Estratégica também foi alinhada: vários microajustes completos em uma mensagem, apenas lacunas bloqueantes, rótulos naturais e uma confirmação final, sem sair dos cinco campos permitidos. Teste real em staging aprovou proposta/banco/documento/cleanup; duas rodadas custaram US$ 0,008976 e elevaram o acumulado para US$ 0,437777. O owner aprovou Q1 e autorizou produção em 2026-07-16; publicação e verificação estão em andamento. A chave temporária foi mantida para novos testes autorizados. Q2 só inicia depois do fechamento deste deploy.
+Estado em 2026-07-16: a primeira execução revelou confirmações repetidas, perda de baseline, memória superficial e inferências tratadas como fatos. O contrato anual foi corrigido no staging sem migration: uma confirmação final, avanço adaptativo, baseline/fonte/prazo/estratégias, renúncias, riscos confirmados, decisões pendentes e aprendizado histórico literal passam por proposal, banco e documento. A Q1 final aprovou todos os checks, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. Rodada final US$ 0,081603; acumulado naquele gate US$ 0,428801; cleanup verde. Antes de produção, a Revisão Estratégica também foi alinhada: vários microajustes completos em uma mensagem, apenas lacunas bloqueantes, rótulos naturais e uma confirmação final, sem sair dos cinco campos permitidos. Teste real em staging aprovou proposta/banco/documento/cleanup; duas rodadas custaram US$ 0,008976 e elevaram o acumulado para US$ 0,437777. O owner aprovou e a produção foi concluída em `43b5935`: release protegido `29525599601`, Netlify `6a5928c0f349e3bcc2a4728a`, verificação e smoke verdes. A chave temporária foi mantida para novos testes autorizados. Próxima fatia: Q2.
 
 ### Rollback
 
