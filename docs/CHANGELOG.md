@@ -1,5 +1,7 @@
 # Changelog
 
+- O owner aprovou explicitamente a rubrica Q0 e seus limites em 2026-07-16. O gate Q0 foi encerrado como aprovado; isso libera somente o briefing da Q1, sem autorizar produção, contato com gestor real ou nova execução paga. O teto do plano permanece US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19.
+
 - Implementada a fundação Q0 do plano de qualidade estratégica, sem alterar o app ou consumir IA. A rubrica `2026-07-16.q0` separa condução e plano trimestral em 100 pontos cada, define 15 critérios com IDs estáveis, dez falhas críticas, ficha humana, formato sanitizado e medição de custo por caso. Um manifesto registra os modelos observados e hashes dos condutores/prompts; seis testes bloqueiam pesos incorretos, duplicidade, falha sem responsável, material sensível, limites financeiros errados e drift silencioso. Validação: 248 unitários, lint, build/orçamento de 134,5 KB gzip e secret scan em 422 arquivos. O gate Q0 aguarda aceite explícito do owner; Q1 não foi iniciada e não houve deploy.
 
 - O owner ampliou o teto de consumo das APIs de IA do plano integrado de US$ 10 para US$ 20 acumulados. O acompanhamento deve avisar em US$ 15 e interromper novas execuções pagas em US$ 19 para preservar margem de segurança. A mudança não autoriza compra, upgrade, assinatura ou recarga automática.

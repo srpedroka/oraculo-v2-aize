@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q0`
 
-Status: implementado; gate Q0 aguardando aprovacao do owner.
+Status: aprovado pelo owner em 2026-07-16.
 
 ## Objetivo
 
@@ -181,4 +181,6 @@ Q0 somente e aprovada quando o owner confirmar que compreendeu e aceita:
 - a separacao entre judge e decisao humana;
 - o limite financeiro de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19.
 
-A aprovacao libera apenas a Q1. Nao libera producao nem contato com gestor real.
+Aprovacao registrada: o owner confirmou explicitamente a rubrica Q0 e seus limites em 2026-07-16.
+
+A aprovacao libera apenas o briefing e a execucao autorizada da Q1. Nao libera producao nem contato com gestor real.
