@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q1-r2`
 
-Status: implementado localmente; Q0 R2 aprovada e gate Q1 pendente somente de chave temporaria de staging.
+Status: implementado; Q0 R2 aprovada, gate tecnico Q1 aprovado e gate de qualidade Q1 bloqueado.
 
 ## Objetivo
 
@@ -26,6 +26,8 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - cria um owner, uma empresa e uma area totalmente sinteticos;
 - grava a chave apenas na empresa descartavel de staging;
 - o judge chama somente o provedor e nao recebe cliente, endpoint ou credencial Supabase;
+- o judge recebe apenas as rubricas aplicaveis e falhas criticas humanas; checks deterministas nao sao reenviados para avaliacao subjetiva;
+- timeout e retomada judge-only pertencem ao laboratorio e nao alteram o timeout do app em producao;
 - snapshots antes/depois comprovam que o judge nao alterou o dominio;
 - relatorio remove UUID, email, telefone, chave, token e referencia de producao;
 - cleanup remove linhas da empresa, chave de staging e usuario Auth mesmo quando o caso falha;
@@ -70,6 +72,16 @@ pnpm run eval:strategic:q1
 
 O runner usa Grok 4.3 no condutor e Grok 4.5 no judge quando `ORACULO_EVAL_PROVIDER=xai`. Ambos compartilham apenas a chave temporaria dessa fatia. A Q3 continua responsavel por medir o baseline oficial com a configuracao definida para a comparacao.
 
+Se somente o judge falhar depois de cleanup completo, retomar o relatorio sem regenerar o plano ou acessar o banco:
+
+```bash
+node --experimental-strip-types scripts/strategic-eval.ts judge-report \
+  .agents-private/strategic-eval-q1-<runId>.json \
+  tests/evals/strategic-quality/cases/q1-minimal-annual.json
+```
+
+`recompute-report` recalcula o gate localmente, sem provedor, para corrigir somente a leitura dos pesos versionados.
+
 ## Checks deterministas
 
 - sessao na area, periodo e nivel corretos;
@@ -91,5 +103,7 @@ Q1 somente e aprovada quando o caso anual minimo terminar com:
 - empresa, chave de staging e usuario removidos;
 - custo da execucao e acumulado reportados, com acumulado dentro do teto de US$ 20;
 - relatorio privado sanitizado e comparavel.
+- todas as rubricas aplicaveis com pelo menos 80 e media conjunta de pelo menos 85;
+- nenhuma falha critica confirmada e revisao humana do owner concluida.
 
-Sem chave temporaria, o estado correto e **pendente**, nunca aprovado por simulacao.
+Resultado de 2026-07-16: técnica aprovada; qualidade bloqueada em 47,50 (Condução), 66,25 (Plano Anual) e média 56,88. O condutor repetiu confirmações, desafiou pouco o plano e a proposta perdeu baselines. O acumulado é US$ 0,115062 e o staging foi limpo. Corrigir e repetir Q1 antes de Q2.

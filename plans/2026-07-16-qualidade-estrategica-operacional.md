@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q0 R2 aprovada e Q1 anual aguardando chave temporária**
+Status: **em execução; Q0 R2 aprovada, Q1 anual tecnicamente verde e bloqueada em qualidade**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -271,7 +271,7 @@ Cria um ambiente repetível para conversar com o Oráculo, capturar resultado e 
 
 Um caso mínimo **anual** percorre condutor, proposta, checagem e relatório no staging, sem tocar produção.
 
-Estado em 2026-07-16: runner, schema, sanitização, orçamento, judge somente leitura e cleanup já estavam implementados. A revisão R2 trocou o caso trimestral pelo primeiro caso anual e adaptou as checagens de banco/documento para `save_strategic_plan`. O gate real aguarda somente uma chave xAI temporária criada manualmente. Nenhum dado foi criado no staging, nenhuma IA foi chamada e o custo permanece US$ 0.
+Estado em 2026-07-16: a chave temporária foi criada e o caso anual foi executado no staging. Os oito checks determinísticos e o cleanup passaram, sem tocar produção. O judge ganhou retomada isolada, timeout de 180 s e somente as rubricas aplicáveis; o gate recalcula notas pelos pesos versionados. Resultado: gate técnico aprovado; qualidade bloqueada em Condução 47,50, Plano Anual 66,25 e média 56,88, com candidato crítico de verificabilidade por perda de baselines. Custo do caso final: geração US$ 0,051658, judge US$ 0,016152, total US$ 0,067810; acumulado do plano, incluindo a tentativa anterior bloqueada, US$ 0,115062. Próximo passo: corrigir confirmações repetidas, desafio estratégico e preservação de baseline/risco, repetir Q1 e submeter o plano ao owner. Q2 não está liberada.
 
 ### Rollback
 

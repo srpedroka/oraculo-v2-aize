@@ -80,6 +80,14 @@ export interface EvaluationReportLike {
   cleanup?: unknown;
 }
 
+export interface StrategicQualityGateResult {
+  status: "approved" | "blocked";
+  reasons: string[];
+  rubricScores: Array<{ rubricId: string; score: number; judgeReportedScore: number | null }>;
+  jointAverage: number | null;
+  criticalFailureCandidates: string[];
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("objeto esperado");
   return value as Record<string, unknown>;
@@ -208,6 +216,116 @@ export function sanitizeEvaluationValue(value: unknown): unknown {
       .filter(([key]) => !/api[_-]?key|secret|password|authorization|token$/i.test(key))
       .map(([key, nested]) => [key, sanitizeEvaluationValue(nested)]),
   );
+}
+
+export function selectApplicableRubric(rubric: unknown, deliveryType: string): Record<string, unknown> {
+  const source = asRecord(rubric);
+  const rubrics = Array.isArray(source.rubrics) ? source.rubrics : [];
+  const applicable = rubrics.filter((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const appliesTo = (item as Record<string, unknown>).appliesTo;
+    return Array.isArray(appliesTo) && appliesTo.includes(deliveryType);
+  });
+  if (applicable.length === 0) throw new Error(`rubrica sem criterios aplicaveis a ${deliveryType}`);
+  const criticalFailures = Array.isArray(source.criticalFailures)
+    ? source.criticalFailures.filter((item) => item && typeof item === "object" && !Array.isArray(item)
+      && (item as Record<string, unknown>).checkType === "human")
+    : [];
+  return {
+    schemaVersion: source.schemaVersion,
+    rubricVersion: source.rubricVersion,
+    ratingScale: source.ratingScale,
+    thresholds: source.thresholds,
+    applicationRule: source.applicationRule,
+    rubrics: applicable,
+    criticalFailures,
+  };
+}
+
+export function buildStrategicQualityGate(params: {
+  technicalGateStatus: "approved" | "blocked";
+  judgeStatus: "completed" | "error";
+  judgeResult: unknown;
+  applicableRubric: unknown;
+  minimumPerRubric: number;
+  minimumJointAverage: number;
+}): StrategicQualityGateResult {
+  const reasons: string[] = [];
+  const rubricScores: StrategicQualityGateResult["rubricScores"] = [];
+  const criticalFailureCandidates: string[] = [];
+  if (params.technicalGateStatus !== "approved") reasons.push("gate tecnico nao aprovado");
+  if (params.judgeStatus !== "completed") reasons.push("judge nao concluiu");
+
+  try {
+    const rubric = asRecord(params.applicableRubric);
+    const judge = asRecord(params.judgeResult);
+    const expectedRubrics = Array.isArray(rubric.rubrics) ? rubric.rubrics.map(asRecord) : [];
+    const judgedRubrics = Array.isArray(judge.rubricScores) ? judge.rubricScores.map(asRecord) : [];
+    const judgedById = new Map(judgedRubrics.map((item) => [String(item.rubricId ?? ""), item]));
+
+    for (const expected of expectedRubrics) {
+      const rubricId = String(expected.id ?? "");
+      const judged = judgedById.get(rubricId);
+      if (!judged) {
+        reasons.push(`judge omitiu ${rubricId}`);
+        continue;
+      }
+      const expectedCriteria = Array.isArray(expected.criteria) ? expected.criteria.map(asRecord) : [];
+      const judgedCriteria = Array.isArray(judged.criteria) ? judged.criteria.map(asRecord) : [];
+      const criteriaById = new Map(judgedCriteria.map((item) => [String(item.id ?? ""), item]));
+      let weightedScore = 0;
+      let valid = true;
+      for (const criterion of expectedCriteria) {
+        const criterionId = String(criterion.id ?? "");
+        const judgedCriterion = criteriaById.get(criterionId);
+        const rating = Number(judgedCriterion?.rating);
+        const weight = Number(criterion.weight);
+        if (!judgedCriterion || !Number.isInteger(rating) || rating < 0 || rating > 4 || !Number.isFinite(weight)) {
+          reasons.push(`judge devolveu criterio invalido ou ausente: ${criterionId}`);
+          valid = false;
+          continue;
+        }
+        weightedScore += (rating / 4) * weight;
+      }
+      if (!valid) continue;
+      const score = Number(weightedScore.toFixed(2));
+      const judgeReportedScore = Number.isFinite(Number(judged.score)) ? Number(judged.score) : null;
+      rubricScores.push({ rubricId, score, judgeReportedScore });
+      if (score < params.minimumPerRubric) reasons.push(`${rubricId} abaixo de ${params.minimumPerRubric}: ${score}`);
+    }
+
+    const expectedCritical = Array.isArray(rubric.criticalFailures) ? rubric.criticalFailures.map(asRecord) : [];
+    const judgedCritical = Array.isArray(judge.humanCriticalFailureCandidates)
+      ? judge.humanCriticalFailureCandidates.map(asRecord)
+      : [];
+    const criticalById = new Map(judgedCritical.map((item) => [String(item.id ?? ""), item]));
+    for (const expected of expectedCritical) {
+      const id = String(expected.id ?? "");
+      const candidate = criticalById.get(id);
+      if (!candidate || typeof candidate.occurred !== "boolean") {
+        reasons.push(`judge omitiu falha critica humana: ${id}`);
+      } else if (candidate.occurred) {
+        criticalFailureCandidates.push(id);
+        reasons.push(`candidato a falha critica requer revisao humana: ${id}`);
+      }
+    }
+  } catch {
+    if (params.judgeStatus === "completed") reasons.push("resposta do judge invalida para o gate de qualidade");
+  }
+
+  const jointAverage = rubricScores.length > 0
+    ? Number((rubricScores.reduce((sum, item) => sum + item.score, 0) / rubricScores.length).toFixed(2))
+    : null;
+  if (jointAverage !== null && jointAverage < params.minimumJointAverage) {
+    reasons.push(`media conjunta abaixo de ${params.minimumJointAverage}: ${jointAverage}`);
+  }
+  return {
+    status: reasons.length === 0 ? "approved" : "blocked",
+    reasons: [...new Set(reasons)],
+    rubricScores,
+    jointAverage,
+    criticalFailureCandidates,
+  };
 }
 
 export function usageCostUsd(

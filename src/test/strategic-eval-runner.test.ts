@@ -4,11 +4,13 @@ import { describe, expect, it } from "vitest";
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
+  buildStrategicQualityGate,
   buildDeterministicChecks,
   buildSessionRequests,
   comparisonFingerprint,
   q1Gate,
   sanitizeEvaluationValue,
+  selectApplicableRubric,
   usageCostUsd,
   validateStrategicEvaluationCase,
 } from "../../scripts/strategic-eval-lib";
@@ -110,6 +112,45 @@ describe("strategic evaluation runner Q1", () => {
     expect(resolveKnownPricing("xai", "grok-4.5")).not.toBeNull();
   });
 
+  it("sends only the annual and conduction rubrics to the Q1 judge", () => {
+    const rubric = JSON.parse(readFileSync(resolve(process.cwd(), "tests/evals/strategic-quality/rubric.json"), "utf8"));
+    const applicable = selectApplicableRubric(rubric, evaluationCase.planType);
+    expect((applicable.rubrics as Array<{ id: string }>).map((item) => item.id)).toEqual([
+      "RUBRIC-CONDUCTION",
+      "RUBRIC-ANNUAL-PLAN",
+    ]);
+    expect(applicable.criticalFailures as Array<{ checkType: string }>).toHaveLength(8);
+    expect((applicable.criticalFailures as Array<{ checkType: string }>).every((item) => item.checkType === "human")).toBe(true);
+    expect(applicable).not.toHaveProperty("costPolicy");
+  });
+
+  it("recalculates weighted quality scores and blocks critical candidates", () => {
+    const rubric = JSON.parse(readFileSync(resolve(process.cwd(), "tests/evals/strategic-quality/rubric.json"), "utf8"));
+    const applicable = selectApplicableRubric(rubric, evaluationCase.planType);
+    const rubricScores = (applicable.rubrics as Array<any>).map((item, rubricIndex) => ({
+      rubricId: item.id,
+      score: 100,
+      criteria: item.criteria.map((criterion: any) => ({ id: criterion.id, rating: rubricIndex === 0 ? 2 : 3 })),
+    }));
+    const humanCriticalFailureCandidates = (applicable.criticalFailures as Array<any>).map((item, index) => ({
+      id: item.id,
+      occurred: index === 0,
+    }));
+    const gate = buildStrategicQualityGate({
+      technicalGateStatus: "approved",
+      judgeStatus: "completed",
+      judgeResult: { rubricScores, humanCriticalFailureCandidates },
+      applicableRubric: applicable,
+      minimumPerRubric: 80,
+      minimumJointAverage: 85,
+    });
+    expect(gate.status).toBe("blocked");
+    expect(gate.rubricScores.map((item) => item.score)).toEqual([50, 75]);
+    expect(gate.jointAverage).toBe(62.5);
+    expect(gate.criticalFailureCandidates).toEqual(["CRIT-SCOPE-001"]);
+    expect(gate.reasons).toContain("RUBRIC-CONDUCTION abaixo de 80: 50");
+  });
+
   it("redacts identifiers and secret-shaped values from reports", () => {
     const sanitized = sanitizeEvaluationValue({
       orgId: "123e4567-e89b-42d3-a456-426614174000",
@@ -156,7 +197,30 @@ describe("strategic evaluation runner Q1", () => {
     const judgeSource = source.slice(judgeStart, judgeEnd);
     expect(judgeStart).toBeGreaterThan(0);
     expect(judgeEnd).toBeGreaterThan(judgeStart);
-    expect(judgeSource).toContain("callModel(");
+    expect(judgeSource).toContain("await fetch(");
+    expect(source).toContain("const JUDGE_TIMEOUT_MS = 180_000");
     expect(judgeSource).not.toMatch(/serviceClient|anonClient|callFunction|\.from\(|\.rpc\(/);
+  });
+
+  it("can retry only the judge without regenerating or touching staging data", () => {
+    const source = readFileSync(resolve(process.cwd(), "scripts/strategic-eval.ts"), "utf8");
+    const retryStart = source.indexOf("async function retryJudge");
+    const retryEnd = source.indexOf("const [command, primaryPath", retryStart);
+    const retrySource = source.slice(retryStart, retryEnd);
+    expect(retryStart).toBeGreaterThan(0);
+    expect(retrySource).toContain("cleanup anterior incompleto");
+    expect(retrySource).toContain("runJudge({");
+    expect(retrySource).toContain("writePrivateJson(LEDGER_PATH");
+    expect(retrySource).not.toMatch(/createEvaluationOrg|configureDisposableAi|callFunction|serviceClient|anonClient/);
+  });
+
+  it("recomputes a saved report gate without another provider call", () => {
+    const source = readFileSync(resolve(process.cwd(), "scripts/strategic-eval.ts"), "utf8");
+    const start = source.indexOf("async function recomputeReportGate");
+    const end = source.indexOf("const [command, primaryPath", start);
+    const recomputeSource = source.slice(start, end);
+    expect(start).toBeGreaterThan(0);
+    expect(recomputeSource).toContain("buildStrategicQualityGate({");
+    expect(recomputeSource).not.toMatch(/runJudge|await fetch|callFunction|serviceClient|anonClient/);
   });
 });

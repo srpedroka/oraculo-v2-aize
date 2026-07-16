@@ -1,18 +1,20 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { callModel, type ModelUsage, type Provider } from "../supabase/functions/_shared/model.ts";
+import type { ModelUsage, Provider } from "../supabase/functions/_shared/model.ts";
 import { resolveKnownPricing } from "../supabase/functions/_shared/pricing.ts";
 import { anonClient, assertStaging, serviceClient } from "../tests/helpers/staging.ts";
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
+  buildStrategicQualityGate,
   buildDeterministicChecks,
   comparisonFingerprint,
   parseJsonObject,
   q1Gate,
   sanitizeEvaluationText,
   sanitizeEvaluationValue,
+  selectApplicableRubric,
   usageCostUsd,
   validateStrategicEvaluationCase,
   type EvaluationCheck,
@@ -25,6 +27,7 @@ const RUBRIC_PATH = resolve("tests/evals/strategic-quality/rubric.json");
 const BASELINE_PATH = resolve("tests/evals/strategic-quality/baseline.json");
 const PLANNING_CALL_RESERVE_USD = 0.15;
 const JUDGE_CALL_RESERVE_USD = 0.1;
+const JUDGE_TIMEOUT_MS = 180_000;
 
 interface TranscriptMessage {
   sequence: number;
@@ -465,6 +468,7 @@ async function runJudge(params: {
     "Responda somente JSON valido, sem markdown.",
     "Formato: {\"summary\":\"\",\"rubricScores\":[{\"rubricId\":\"\",\"criteria\":[{\"id\":\"\",\"rating\":0,\"justification\":\"\"}],\"score\":0}],\"humanCriticalFailureCandidates\":[{\"id\":\"\",\"occurred\":false,\"justification\":\"\"}]}.",
     "Rating deve ser inteiro de 0 a 4. Nao aprove o gate; apenas forneca evidencia para revisao humana.",
+    "Avalie todos os criterios e todas as falhas criticas humanas recebidas. Use justificativas objetivas de no maximo 20 palavras.",
   ].join("\n");
   const input = sanitizeEvaluationValue({
     evaluationCase: params.evaluationCase,
@@ -472,14 +476,50 @@ async function runJudge(params: {
     proposal: params.proposal,
     rubric: params.rubric,
   });
-  const result = await callModel(
-    params.provider,
-    params.model,
-    params.apiKey,
-    systemPrompt,
-    [{ role: "user", content: JSON.stringify(input) }],
-    { maxTokens: 2_000 },
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("Tempo limite do judge atingido"), JUDGE_TIMEOUT_MS);
+  const baseUrl = params.provider === "xai" ? "https://api.x.ai/v1" : "https://api.openai.com/v1";
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/${params.provider === "openai" ? "responses" : "chat/completions"}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${params.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(params.provider === "openai" ? {
+        model: params.model,
+        instructions: systemPrompt,
+        input: [{ role: "user", content: JSON.stringify(input) }],
+        max_output_tokens: 2_000,
+        store: false,
+      } : {
+        model: params.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify(input) },
+        ],
+        max_tokens: 2_000,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) throw new Error(`judge nao respondeu corretamente (${response.status}): ${await response.text()}`);
+  const data = await response.json() as Record<string, any>;
+  const text = params.provider === "openai"
+    ? String(data.output_text ?? (Array.isArray(data.output)
+      ? data.output.flatMap((item: any) => item?.content ?? []).map((item: any) => item?.text ?? "").join("\n")
+      : ""))
+    : String(data.choices?.[0]?.message?.content ?? "");
+  const promptTokens = Number(data.usage?.prompt_tokens ?? data.usage?.input_tokens ?? 0);
+  const completionTokens = Number(data.usage?.completion_tokens ?? data.usage?.output_tokens ?? 0);
+  const result = {
+    text,
+    usage: {
+      promptTokens,
+      completionTokens,
+      totalTokens: Number(data.usage?.total_tokens ?? promptTokens + completionTokens),
+    },
+  };
   const parsed = parseJsonObject(result.text);
   if (!Array.isArray(parsed.rubricScores)) throw new Error("judge nao devolveu rubricScores");
   return { result: sanitizeEvaluationValue(parsed), usage: result.usage };
@@ -498,6 +538,7 @@ async function executeLiveCase(casePath: string) {
   assertStaging();
   const evaluationCase = validateStrategicEvaluationCase(await readJson(resolve(casePath)));
   const rubric = await readJson(RUBRIC_PATH) as Record<string, any>;
+  const applicableRubric = selectApplicableRubric(rubric, evaluationCase.planType);
   const baseline = await readJson(BASELINE_PATH) as Record<string, any>;
   const config = runtimeConfiguration();
   const ledger = await readLedger();
@@ -590,7 +631,7 @@ async function executeLiveCase(casePath: string) {
         evaluationCase,
         transcript,
         proposal: proposal as Record<string, unknown>,
-        rubric,
+        rubric: applicableRubric,
       });
       judge = { status: "completed", result: judged.result, usage: judged.usage };
       judgeCostUsd = usageCostUsd(judged.usage, config.judgePricing);
@@ -654,6 +695,14 @@ async function executeLiveCase(casePath: string) {
   });
   if (executionError) technicalGate.reasons.unshift(sanitizeEvaluationText(executionError.message));
   if (executionError) technicalGate.status = "blocked";
+  const qualityGate = buildStrategicQualityGate({
+    technicalGateStatus: technicalGate.status,
+    judgeStatus: judge.status,
+    judgeResult: judge.result,
+    applicableRubric,
+    minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
+    minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+  });
 
   const report: Record<string, unknown> = {
     schemaVersion: 1,
@@ -668,7 +717,12 @@ async function executeLiveCase(casePath: string) {
       completedAt: new Date().toISOString(),
       environment: "staging",
       generator: { provider: config.provider, model: config.planningModel },
-      judge: { provider: config.provider, model: config.judgeModel, access: "provider-only-no-database" },
+      judge: {
+        provider: config.provider,
+        model: config.judgeModel,
+        access: "provider-only-no-database",
+        applicableRubricIds: (applicableRubric.rubrics as Array<Record<string, unknown>>).map((item) => item.id),
+      },
     },
     scope: evaluationCase.scope,
     transcript: sanitizeEvaluationValue(transcript),
@@ -693,6 +747,7 @@ async function executeLiveCase(casePath: string) {
     },
     cleanup: { disposableOrganizationRemoved: cleanupSucceeded, providerKeyRemovedWithOrganization: cleanupSucceeded },
     technicalGate,
+    qualityGate,
   };
   report.comparisonFingerprint = comparisonFingerprint(report as any);
   const sanitizedReport = sanitizeEvaluationValue(report);
@@ -706,27 +761,199 @@ async function executeLiveCase(casePath: string) {
       caseId: evaluationCase.caseId,
       totalCostUsd: totalCaseCostUsd,
       completedAt: new Date().toISOString(),
-      status: technicalGate.status,
+      status: qualityGate.status,
     }],
   };
   await writePrivateJson(LEDGER_PATH, nextLedger);
 
   console.log(`Relatorio Q1: ${reportPath}`);
-  console.log(`Gate Q1: ${technicalGate.status}`);
+  console.log(`Gate tecnico Q1: ${technicalGate.status}`);
+  console.log(`Gate de qualidade Q1: ${qualityGate.status}`);
   console.log(`Custo de geracao do plano: US$ ${generation.totalCostUsd.toFixed(6)}`);
   console.log(`Custo do judge: US$ ${judgeCostUsd.toFixed(6)}`);
   console.log(`Custo total da execucao: US$ ${totalCaseCostUsd.toFixed(6)}`);
   console.log(`Acumulado do plano: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)} -> US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}`);
   console.log(`Cleanup staging: ${cleanupSucceeded ? "OK" : "FALHOU"}`);
-  if (technicalGate.status !== "approved") {
-    throw new Error(`Q1 bloqueada: ${technicalGate.reasons.join(" | ") || "gate nao aprovado"}`);
+  if (qualityGate.status !== "approved") {
+    throw new Error(`Q1 bloqueada: ${qualityGate.reasons.join(" | ") || "gate de qualidade nao aprovado"}`);
   }
 }
 
-const [command, casePath] = process.argv.slice(2);
-if (command !== "run" || !casePath) {
-  console.error("Uso: pnpm run eval:strategic:q1");
-  process.exit(2);
+async function retryJudge(reportPathValue: string, casePath: string) {
+  assertEvaluationEnvironment(process.env);
+  assertStaging();
+  const reportPath = resolve(reportPathValue);
+  if (!reportPath.startsWith(`${PRIVATE_DIR}/strategic-eval-q1-`) || !reportPath.endsWith(".json")) {
+    throw new Error("retry do judge aceita somente relatorio Q1 privado");
+  }
+  const report = await readJson(reportPath) as Record<string, any>;
+  const evaluationCase = validateStrategicEvaluationCase(await readJson(resolve(casePath)));
+  if (report.caseId !== evaluationCase.caseId) throw new Error("relatorio e caso de avaliacao nao correspondem");
+  if (report.judge?.status === "completed") throw new Error("judge deste relatorio ja foi concluido");
+  if (!Array.isArray(report.transcript) || !report.proposal || typeof report.proposal !== "object") {
+    throw new Error("relatorio sem transcricao ou proposta reutilizavel");
+  }
+  if (!report.cleanup?.disposableOrganizationRemoved) throw new Error("retry recusado: cleanup anterior incompleto");
+
+  const rubric = await readJson(RUBRIC_PATH) as Record<string, any>;
+  const applicableRubric = selectApplicableRubric(rubric, evaluationCase.planType);
+  const policy = rubric.costPolicy;
+  const config = runtimeConfiguration();
+  const generatorModel = String(report.runtime?.generator?.model ?? "");
+  if (generatorModel === config.judgeModel) throw new Error("judge deve usar modelo diferente do gerador registrado");
+  const ledger = await readLedger();
+  const reportRunId = String(report.runtime?.runId ?? "");
+  const runIndex = ledger.runs.findIndex((item) => item.runId === reportRunId);
+  if (runIndex < 0) throw new Error("execucao do relatorio nao encontrada no livro de custos");
+  assertBudgetAllowsNextCall({
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
+    currentCaseCostUsd: 0,
+    reserveUsd: JUDGE_CALL_RESERVE_USD,
+    policy,
+  });
+
+  let judge: { status: "completed" | "error"; result?: unknown; error?: string; usage?: ModelUsage };
+  let newJudgeCostUsd = 0;
+  try {
+    const judged = await runJudge({
+      apiKey: config.apiKey,
+      provider: config.provider,
+      model: config.judgeModel,
+      evaluationCase,
+      transcript: report.transcript as TranscriptMessage[],
+      proposal: report.proposal as Record<string, unknown>,
+      rubric: applicableRubric,
+    });
+    judge = { status: "completed", result: judged.result, usage: judged.usage };
+    newJudgeCostUsd = usageCostUsd(judged.usage, config.judgePricing);
+  } catch (error) {
+    judge = { status: "error", error: sanitizeEvaluationText(error instanceof Error ? error.message : String(error)) };
+  }
+
+  const checks = Array.isArray(report.deterministicChecks) ? report.deterministicChecks as EvaluationCheck[] : [];
+  const previousCost = report.cost && typeof report.cost === "object" ? report.cost as Record<string, any> : {};
+  const generationCostUsd = Number(previousCost.generationCostUsd ?? 0);
+  const previousJudgeCostUsd = Number(previousCost.judgeCostUsd ?? 0);
+  const judgeCostUsd = previousJudgeCostUsd + newJudgeCostUsd;
+  const totalCaseCostUsd = generationCostUsd + judgeCostUsd;
+  const cumulativePlanCostAfterUsd = ledger.cumulativePlanCostUsd + newJudgeCostUsd;
+  const technicalGate = q1Gate({
+    proposalCreated: true,
+    judgeStatus: judge.status,
+    checks,
+    cleanupSucceeded: true,
+    cumulativePlanCostUsd: cumulativePlanCostAfterUsd,
+    authorizedLimitUsd: policy.authorizedLimitUsd,
+  });
+  const qualityGate = buildStrategicQualityGate({
+    technicalGateStatus: technicalGate.status,
+    judgeStatus: judge.status,
+    judgeResult: judge.result,
+    applicableRubric,
+    minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
+    minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+  });
+  const completedAt = new Date().toISOString();
+  report.runtime = {
+    ...report.runtime,
+    judge: {
+      provider: config.provider,
+      model: config.judgeModel,
+      access: "provider-only-no-database",
+      timeoutMs: JUDGE_TIMEOUT_MS,
+      applicableRubricIds: (applicableRubric.rubrics as Array<Record<string, unknown>>).map((item) => item.id),
+      lastAttemptAt: completedAt,
+    },
+  };
+  report.judge = judge;
+  report.cost = {
+    ...previousCost,
+    generationCostUsd,
+    judgeCostUsd,
+    totalCaseCostUsd,
+    cumulativePlanCostAfterUsd,
+    judgeUsage: judge.usage ?? null,
+    lastJudgeExecution: {
+      judgeCostUsd: newJudgeCostUsd,
+      cumulativePlanCostBeforeUsd: ledger.cumulativePlanCostUsd,
+      cumulativePlanCostAfterUsd,
+    },
+  };
+  report.technicalGate = technicalGate;
+  report.qualityGate = qualityGate;
+  report.comparisonFingerprint = comparisonFingerprint(report as any);
+
+  const nextLedger: CostLedger = {
+    schemaVersion: 1,
+    cumulativePlanCostUsd: cumulativePlanCostAfterUsd,
+    runs: ledger.runs.map((item, index) => index === runIndex ? {
+      ...item,
+      totalCostUsd: item.totalCostUsd + newJudgeCostUsd,
+      completedAt,
+      status: qualityGate.status,
+    } : item),
+  };
+  await writePrivateJson(reportPath, sanitizeEvaluationValue(report));
+  await writePrivateJson(LEDGER_PATH, nextLedger);
+
+  console.log(`Relatorio Q1 retomado: ${reportPath}`);
+  console.log(`Gate tecnico Q1: ${technicalGate.status}`);
+  console.log(`Gate de qualidade Q1: ${qualityGate.status}`);
+  console.log(`Custo de geracao do plano: US$ ${generationCostUsd.toFixed(6)}`);
+  console.log(`Custo desta execucao do judge: US$ ${newJudgeCostUsd.toFixed(6)}`);
+  console.log(`Custo total do caso: US$ ${totalCaseCostUsd.toFixed(6)}`);
+  console.log(`Acumulado do plano: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)} -> US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}`);
+  console.log("Cleanup staging anterior: OK; nenhum acesso ao banco neste retry");
+  if (qualityGate.status !== "approved") {
+    throw new Error(`Q1 bloqueada: ${qualityGate.reasons.join(" | ") || "gate de qualidade nao aprovado"}`);
+  }
 }
 
-await executeLiveCase(casePath);
+async function recomputeReportGate(reportPathValue: string) {
+  const reportPath = resolve(reportPathValue);
+  if (!reportPath.startsWith(`${PRIVATE_DIR}/strategic-eval-q1-`) || !reportPath.endsWith(".json")) {
+    throw new Error("recalculo aceita somente relatorio Q1 privado");
+  }
+  const report = await readJson(reportPath) as Record<string, any>;
+  const rubric = await readJson(RUBRIC_PATH) as Record<string, any>;
+  const applicableRubric = selectApplicableRubric(rubric, "strategic");
+  const technicalGateStatus = report.technicalGate?.status === "approved" ? "approved" : "blocked";
+  const qualityGate = buildStrategicQualityGate({
+    technicalGateStatus,
+    judgeStatus: report.judge?.status === "completed" ? "completed" : "error",
+    judgeResult: report.judge?.result,
+    applicableRubric,
+    minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
+    minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+  });
+  report.qualityGate = qualityGate;
+  report.comparisonFingerprint = comparisonFingerprint(report as any);
+
+  const ledger = await readLedger();
+  const reportRunId = String(report.runtime?.runId ?? "");
+  const runIndex = ledger.runs.findIndex((item) => item.runId === reportRunId);
+  if (runIndex < 0) throw new Error("execucao do relatorio nao encontrada no livro de custos");
+  const nextLedger: CostLedger = {
+    ...ledger,
+    runs: ledger.runs.map((item, index) => index === runIndex ? { ...item, status: qualityGate.status } : item),
+  };
+  await writePrivateJson(reportPath, sanitizeEvaluationValue(report));
+  await writePrivateJson(LEDGER_PATH, nextLedger);
+  console.log(`Relatorio Q1 recalculado: ${reportPath}`);
+  console.log(`Gate tecnico Q1: ${technicalGateStatus}`);
+  console.log(`Gate de qualidade Q1: ${qualityGate.status}`);
+  console.log(`Media conjunta recalculada: ${qualityGate.jointAverage ?? "indisponivel"}`);
+  console.log(`Acumulado do plano inalterado: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}`);
+}
+
+const [command, primaryPath, casePath] = process.argv.slice(2);
+if (command === "run" && primaryPath) {
+  await executeLiveCase(primaryPath);
+} else if (command === "judge-report" && primaryPath && casePath) {
+  await retryJudge(primaryPath, casePath);
+} else if (command === "recompute-report" && primaryPath) {
+  await recomputeReportGate(primaryPath);
+} else {
+  console.error("Uso: strategic-eval.ts run <caso> | judge-report <relatorio> <caso> | recompute-report <relatorio>");
+  process.exit(2);
+}
