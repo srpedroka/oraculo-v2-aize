@@ -70,11 +70,11 @@ Mudança funcional deve ser explicada em linguagem de negócio, com exemplo ante
 
 ### 4.2 Regra financeira
 
-- O owner autorizou até **US$ 10 acumulados** em APIs de IA do Oráculo para este plano.
+- O owner autorizou até **US$ 20 acumulados** em APIs de IA do Oráculo para este plano.
 - Registrar custo inicial e final por fatia usando `ai_usage_logs`.
-- Avisar ao atingir US$ 7.
-- Parar novas execuções pagas ao atingir US$ 9, preservando margem para uma chamada já iniciada.
-- Nunca ultrapassar US$ 10 sem nova autorização explícita.
+- Avisar ao atingir US$ 15.
+- Parar novas execuções pagas ao atingir US$ 19, preservando margem para uma chamada já iniciada.
+- Nunca ultrapassar US$ 20 sem nova autorização explícita.
 - Essa autorização não cobre compra de créditos, assinatura, upgrade, recarga automática ou contratação de serviço.
 - Toda compra ou nova cobrança exige autorização explícita imediatamente antes da confirmação.
 
@@ -403,7 +403,7 @@ Reverter condutor/validador por versão; preservar baseline e relatórios para c
 - média conjunta >= 85;
 - nenhuma dimensão piora mais de 5 pontos;
 - mediana de turnos não aumenta mais de 25% sem justificativa humana;
-- custo acumulado abaixo de US$ 10.
+- custo acumulado abaixo de US$ 20.
 
 Se falhar, voltar ao Q4 somente para os defeitos comprovados e repetir Q5.
 

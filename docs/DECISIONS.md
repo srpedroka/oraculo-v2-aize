@@ -801,6 +801,6 @@ Consequências: o plano unificado está em `plans/2026-07-16-qualidade-estrategi
 
 Decisão: qualquer compra, upgrade, assinatura, recarga ou nova cobrança exige autorização explícita do owner imediatamente antes da confirmação. Consumo autorizado de API não vale como autorização de compra. Deploy Netlify ocorre apenas quando o runtime web mudou; alterações documentais, testes, scripts e Edge Functions não justificam deploy do frontend.
 
-Motivo: 67 deploys de produção consumiram 1.005 créditos do ciclo Netlify, pausando o site por limite. O owner autorizou uma compra única de 500 créditos por US$ 5, o app foi restaurado e a recarga automática permaneceu desligada. Para o plano integrado, o owner autorizou até US$ 10 acumulados em APIs de IA do Oráculo, com aviso em US$ 7 e parada preventiva em US$ 9.
+Motivo: 67 deploys de produção consumiram 1.005 créditos do ciclo Netlify, pausando o site por limite. O owner autorizou uma compra única de 500 créditos por US$ 5, o app foi restaurado e a recarga automática permaneceu desligada. Para o plano integrado, o owner ampliou a autorização para até US$ 20 acumulados em APIs de IA do Oráculo, com aviso em US$ 15 e parada preventiva em US$ 19.
 
 Consequências: agentes devem informar custo antes da ação, nunca inferir autorização financeira e agrupar publicações. O saldo de serviços deve entrar no preflight operacional.

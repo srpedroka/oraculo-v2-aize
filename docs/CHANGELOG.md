@@ -1,5 +1,7 @@
 # Changelog
 
+- O owner ampliou o teto de consumo das APIs de IA do plano integrado de US$ 10 para US$ 20 acumulados. O acompanhamento deve avisar em US$ 15 e interromper novas execuções pagas em US$ 19 para preservar margem de segurança. A mudança não autoriza compra, upgrade, assinatura ou recarga automática.
+
 - Criado o plano integrado pós-hardening `plans/2026-07-16-qualidade-estrategica-operacional.md`. O Mapa A mede condução e plano trimestral com rubricas separadas, oito casos de referência, baseline, correções, regressão e aceite humano. Somente depois começa o Mapa B: preflight, piloto web com owner, consistência de dados/documento, WhatsApp, mídia, KPI/revisão, fechamento e piloto com gestor real. O hardening técnico permanece fechado como baseline. Também foi registrada a regra de custo: até US$ 10 de APIs para este plano, com parada preventiva; compras e upgrades sempre exigem autorização explícita.
 - O app respondeu `503 usage_exceeded` após 67 deploys consumirem 1.005 créditos Netlify. Com autorização explícita do owner, foi comprado um único pacote de 500 créditos por US$ 5; recarga automática permaneceu desligada. O app voltou a HTTP 200 e `production:verify` confirmou 31 Functions, 54 migrations, headers, cache e segredos corretos. Deploy de frontend agora é proibido para mudança apenas documental, de testes, scripts ou Edge Functions.
 
