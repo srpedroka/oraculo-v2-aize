@@ -591,7 +591,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 ### Em andamento / atencao
 
 - A Q0 R2 foi aprovada em 2026-07-16 após o owner exigir Plano Estratégico Anual primeiro e cobertura de todas as entregas. O padrão possui sete rubricas, dezesseis falhas críticas e matriz de 21 entregas em `tests/evals/strategic-quality/deliverable-coverage.json`. Regra financeira: sem teto isolado por caso, orçamento acumulado US$ 20, aviso US$ 15 e parada preventiva US$ 19; sempre reportar geração, judge, total e acumulado.
-- A Q1 anual automatizada foi aprovada no staging em 2026-07-16: técnica verde, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. Antes de produção, a Revisão Estratégica foi alinhada ao modo adaptativo sem deixar de ser microajuste; teste real aprovou dois ajustes em lote, uma confirmação, banco/documento e cleanup. Acumulado do plano: US$ 0,437777. As correções estão somente na `oracle-session` do staging `bijbdsvejdzhpgyiykpi`; produção continua anterior. Consulte `docs/STRATEGIC_EVALUATION_LAB.md`. Revogue a chave temporária após o aceite humano; não iniciar Q2 nem publicar produção sem autorização explícita do owner.
+- A Q1 anual automatizada foi aprovada no staging em 2026-07-16: técnica verde, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. Antes de produção, a Revisão Estratégica foi alinhada ao modo adaptativo sem deixar de ser microajuste; teste real aprovou dois ajustes em lote, uma confirmação, banco/documento e cleanup. Acumulado do plano: US$ 0,437777. O owner aprovou Q1 e autorizou produção em 2026-07-16; publicação/verificação estão em andamento. A chave temporária deve permanecer privada para novos testes autorizados, sem revogação por enquanto. Consulte `docs/STRATEGIC_EVALUATION_LAB.md`. Não iniciar Q2 antes de fechar o deploy.
 
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
@@ -613,7 +613,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Pendencias conhecidas / proximos passos
 
-- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`: primeiro Mapa A de qualidade estratégica, depois Mapa B de qualidade operacional. Próxima ação: apresentar o plano anual aprovado pelo gate automatizado ao owner; após aceite e autorização separada, publicar a correção em produção e só então abrir Q2.
+- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`: primeiro Mapa A de qualidade estratégica, depois Mapa B de qualidade operacional. Próxima ação: concluir publicação e verificação da Q1 autorizada; depois abrir Q2.
 - Para uma futura prova com geração textual real, abrir um novo ciclo MASTER com chave própria e descartável apenas no staging; nunca reutilizar credencial de produção.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
 - Antes de transformar o aviso operacional em política contratual definitiva, o responsável deve validar papéis de controlador/operador, razão social, contato institucional, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.
