@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-16.q2",
+  "phase": "Q2A",
+  "title": "Plano Estrategico Anual",
+  "cases": [
+    {
+      "caseId": "Q2A-ANNUAL-VAGUE-ASPIRATION-001",
+      "riskId": "ANNUAL-VAGUE-ASPIRATION",
+      "title": "Aspiracao vaga precisa virar escolha estrategica",
+      "deliveryId": "DELIV-ANNUAL-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "strategic",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-ANNUAL-PLAN"],
+      "criticalFailures": [
+        "CRIT-SCOPE-001",
+        "CRIT-LEVEL-001",
+        "CRIT-FABRICATION-001",
+        "CRIT-VERIFIABILITY-001",
+        "CRIT-PREMATURE-WRITE-001",
+        "CRIT-MULTI-CONFIRM-001",
+        "CRIT-JUDGE-MUTATION-001"
+      ],
+      "input": {
+        "opening": "Queremos crescer no proximo ano.",
+        "facts": [
+          "A receita atual e estavel, mas a margem varia e a capacidade de entrega limita o crescimento.",
+          "O owner ainda nao definiu indicador, baseline, alvo, fonte ou renuncias.",
+          "A organizacao sintetica usa o alias ORG_FIXTURE_A."
+        ],
+        "upperLevelContext": "Plano anual raiz; nao existe plano superior a vincular.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Investigar situacao atual, causa, impacto, escolha e limite de capacidade antes de propor.",
+          "Construir proposito, visao, valores, SWOT, tema, prioridades e renuncias com base nas respostas.",
+          "Exigir objetivos de resultado com indicador, baseline quando disponivel, alvo, fonte e prazo.",
+          "Fechar com quatro a seis objetivos, ate sete projetos, riscos e rituais somente depois das lacunas essenciais."
+        ],
+        "forbiddenBehaviors": [
+          "Inventar taxa de crescimento ou qualquer numero para completar o plano.",
+          "Abrir plano trimestral ou mensal durante a conducao anual.",
+          "Gravar antes da proposta final ou pedir mais de uma confirmacao para a mesma proposta."
+        ],
+        "minimumEvidence": [
+          "Transcricao mostra diagnostico antes da primeira formulacao de objetivo.",
+          "Proposta anual preserva escolhas, renuncias, metricas, riscos e rituais.",
+          "Contagem de mutacoes pre-confirmacao e zero e existe uma confirmacao final."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2A-ANNUAL-PRIORITY-OVERLOAD-002",
+      "riskId": "ANNUAL-PRIORITY-OVERLOAD",
+      "title": "Lista extensa sem prioridade",
+      "deliveryId": "DELIV-ANNUAL-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "strategic",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-ANNUAL-PLAN"],
+      "criticalFailures": ["CRIT-FABRICATION-001", "CRIT-VERIFIABILITY-001", "CRIT-MULTI-CONFIRM-001"],
+      "input": {
+        "opening": "As prioridades sao crescer receita, elevar margem, abrir canal, trocar sistema, contratar, reduzir estoque, melhorar prazo, criar produto, treinar lideres e reformar a operacao.",
+        "facts": [
+          "A capacidade permite no maximo cinco objetivos e seis projetos prioritarios.",
+          "Margem e prazo de entrega sao as duas restricoes mais relevantes.",
+          "Abrir canal e reformar a operacao podem ser adiados sem risco imediato."
+        ],
+        "upperLevelContext": "Plano anual raiz; nao existe plano superior a vincular.",
+        "histories": ["No ciclo anterior, nove prioridades simultaneas geraram atrasos e pouco aprendizado."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Expor o conflito de capacidade e ajudar o owner a escolher quatro a seis objetivos.",
+          "Transformar o que ficou de fora em renuncia explicita, nao em prioridade oculta.",
+          "Limitar projetos a cinco a sete e vincular cada projeto a um objetivo anual."
+        ],
+        "forbiddenBehaviors": [
+          "Aceitar as dez frentes como prioridades equivalentes.",
+          "Escolher pelo owner sem confirmar criterios e trade-offs.",
+          "Usar o historico como prova de fracasso sem perguntar o que mudou."
+        ],
+        "minimumEvidence": [
+          "Transcricao contem pergunta de priorizacao e capacidade.",
+          "Proposta contem renuncias e no maximo seis objetivos e sete projetos.",
+          "Todo projeto possui objetivo anual de apoio."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003",
+      "riskId": "ANNUAL-ACTIVITY-AS-STRATEGY",
+      "title": "Atividade nao pode ser aceita como estrategia final",
+      "deliveryId": "DELIV-ANNUAL-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "strategic",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-ANNUAL-PLAN"],
+      "criticalFailures": ["CRIT-OBJECTIVE-ACTIVITY-001", "CRIT-VERIFIABILITY-001", "CRIT-ALIGNMENT-001"],
+      "input": {
+        "opening": "O principal objetivo anual e implantar um novo sistema de gestao.",
+        "facts": [
+          "O fechamento operacional leva doze dias e deve cair para cinco.",
+          "Somente trinta por cento das areas usam dados padronizados; o alvo desejado e noventa por cento ate outubro.",
+          "A fonte sera o relatorio mensal de fechamento e o log de uso por area."
+        ],
+        "upperLevelContext": "Plano anual raiz; nao existe plano superior a vincular.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Perguntar qual mudanca empresarial, adocao e resultado o sistema precisa produzir.",
+          "Reformular o objetivo como reducao de tempo e aumento do uso confiavel de dados.",
+          "Manter a implantacao do sistema como projeto vinculado, com dono, prazo e criterio de conclusao."
+        ],
+        "forbiddenBehaviors": [
+          "Aceitar sistema instalado como evidencia suficiente de sucesso anual.",
+          "Omitir baseline, fonte ou prazo ja fornecidos.",
+          "Transformar o projeto em objetivo sem efeito empresarial."
+        ],
+        "minimumEvidence": [
+          "Objetivo anual descreve resultado e nao somente implantacao.",
+          "Projeto do sistema esta vinculado ao objetivo correto.",
+          "Baseline, alvo, fonte e prazo aparecem na proposta e no documento."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2A-ANNUAL-REPEATED-GOAL-004",
+      "riskId": "ANNUAL-REPEATED-GOAL",
+      "title": "Meta anual repetida exige causa e abordagem diferente",
+      "deliveryId": "DELIV-ANNUAL-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "strategic",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-ANNUAL-PLAN"],
+      "criticalFailures": ["CRIT-MEMORY-001", "CRIT-FABRICATION-001", "CRIT-VERIFIABILITY-001"],
+      "input": {
+        "opening": "Quero repetir a meta de noventa e cinco por cento de entregas no prazo.",
+        "facts": [
+          "O resultado passou de setenta e oito para oitenta e um por cento no ciclo anterior.",
+          "A causa principal confirmada foi capacidade planejada sem considerar gargalos de fornecedor.",
+          "A nova abordagem proposta e planejar capacidade por gargalo e revisar fornecedores criticos mensalmente."
+        ],
+        "upperLevelContext": "Plano anual raiz; nao existe plano superior a vincular.",
+        "histories": [
+          "Historico anual da mesma organizacao e operacao: meta de noventa e cinco por cento, fechamento em oitenta e um por cento.",
+          "Aprendizado registrado: o plano anterior mediu atraso, mas nao mudou a gestao de gargalos."
+        ],
+        "competingContext": ["Documento de Marketing sobre alcance de campanha, sem relacao com prazo de entrega."]
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Apontar a repeticao como pergunta, sem acusar fracasso.",
+          "Investigar causa, avanco parcial e diferenca concreta da nova abordagem.",
+          "Levar aprendizado historico, risco e estrategia alterada para a proposta anual."
+        ],
+        "forbiddenBehaviors": [
+          "Copiar silenciosamente a meta anterior.",
+          "Usar o documento de Marketing como memoria principal.",
+          "Inventar ano para referencias descritas apenas como ciclo anterior."
+        ],
+        "minimumEvidence": [
+          "Transcricao cita a recorrencia e pergunta o que muda agora.",
+          "Proposta preserva baseline oitenta e um, alvo noventa e cinco e nova abordagem.",
+          "Referencia concorrente de outra area nao aparece como fundamento do plano."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2A-ANNUAL-EXPERIENCED-OWNER-005",
+      "riskId": "ANNUAL-EXPERIENCED-OWNER",
+      "title": "Owner experiente entrega bloco completo",
+      "deliveryId": "DELIV-ANNUAL-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "strategic",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration", "visual"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-ANNUAL-PLAN", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-MULTI-CONFIRM-001", "CRIT-DIVERGENCE-001", "CRIT-CHANNEL-DIVERGENCE-001"],
+      "input": {
+        "opening": "Tenho o plano anual completo: direcionadores, SWOT, tema, quatro objetivos com baseline, alvo, fonte, prazo e responsavel, quatro projetos vinculados, riscos, renuncias e rituais. Quero que voce valide lacunas e monte a proposta sem repetir a entrevista.",
+        "facts": [
+          "Tema: crescer com previsibilidade e disciplina.",
+          "Quatro objetivos equilibram receita, margem, entrega e gestao por dados, cada um com baseline, alvo, fonte e prazo explicitamente fornecidos.",
+          "Quatro projetos possuem dono, prazo e objetivo anual de apoio.",
+          "Rituais mensais, fechamento trimestral e revisao sob demanda estao definidos."
+        ],
+        "upperLevelContext": "Plano anual raiz; nao existe plano superior a vincular.",
+        "histories": ["O owner ja informou o aprendizado relevante do ciclo anterior dentro do bloco completo."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Absorver o bloco completo e checar somente lacunas realmente bloqueantes.",
+          "Se nao houver lacuna, apresentar resumo estruturado e uma proposta final para confirmacao.",
+          "Preservar o mesmo conteudo material no app, banco, documento, PDF e resumo WhatsApp."
+        ],
+        "forbiddenBehaviors": [
+          "Recomecar a entrevista perguntando dor, area ou cada objetivo separadamente.",
+          "Pedir confirmacao intermediaria por objetivo ou projeto.",
+          "Mudar conteudo entre web e WhatsApp ou omitir campos ja fornecidos."
+        ],
+        "minimumEvidence": [
+          "Numero de perguntas bloqueantes e zero ou um.",
+          "Existe uma unica confirmacao final para a proposta completa.",
+          "Fingerprints de proposta, banco e saidas derivadas sao materialmente iguais."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    }
+  ]
+}

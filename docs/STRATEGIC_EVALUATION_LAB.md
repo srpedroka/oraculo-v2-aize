@@ -1,8 +1,8 @@
 # Laboratorio de avaliacao estrategica
 
-Versao: `2026-07-16.q1-r2`
+Versao: `2026-07-16.q2`
 
-Status: implementado; Q0 R2, Q1 anual e alinhamento adaptativo da Revisão Estratégica aprovados e publicados em produção em 2026-07-16.
+Status: Q0 R2 e Q1 aprovadas e publicadas; catalogo Q2 implementado e aguardando revisao do owner antes do baseline Q3.
 
 ## Objetivo
 
@@ -14,6 +14,11 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - `scripts/strategic-eval-lib.ts`: schema, sanitizacao, custo, checks e fingerprint comparavel.
 - `tests/evals/strategic-quality/cases/q1-minimal-annual.json`: primeiro caso sintetico, obrigatoriamente anual.
 - `src/test/strategic-eval-runner.test.ts`: guardas e falhas seguras.
+- `tests/evals/strategic-quality/cases/q2-catalog.json`: manifesto dos 29 casos Q2A-Q2E.
+- `scripts/strategic-reference-cases.ts`: contrato e validacao reutilizavel do catalogo Q2.
+- `scripts/verify-strategic-reference-cases.ts`: verificacao local, sem rede ou provider.
+- `src/test/strategic-reference-cases.test.ts`: contagem, cobertura, politicas e falhas seguras do catalogo.
+- `docs/STRATEGIC_QUALITY_CASES.md`: versao humana para o gate do owner.
 - `.agents-private/strategic-eval-env`: chave temporaria local, nunca versionada.
 - `.agents-private/strategic-eval-ledger.json`: custo acumulado do plano.
 - `.agents-private/strategic-eval-q1-*.json`: relatorio sanitizado com permissao `600`.
@@ -54,7 +59,7 @@ O runner nao aceita chave de producao. Para concluir o gate:
 2. colar a chave somente em `.agents-private/strategic-eval-env`, depois de `ORACULO_EVAL_API_KEY=`;
 3. manter o arquivo com permissao `600`;
 4. avisar ao agente apenas que a chave esta pronta, sem enviar o valor na conversa;
-5. depois do teste e cleanup, revogar a chave temporaria no console xAI.
+5. depois que o owner encerrar os testes autorizados, revogar a chave temporaria no console xAI.
 
 Os consoles de provedor estao bloqueados para automacao pelas regras atuais do navegador. O agente nao deve contornar esse bloqueio.
 
@@ -106,8 +111,14 @@ Q1 somente e aprovada quando o caso anual minimo terminar com:
 - todas as rubricas aplicaveis com pelo menos 80 e media conjunta de pelo menos 85;
 - nenhuma falha critica confirmada e revisao humana do owner concluida.
 
-Resultado final de 2026-07-16: técnica aprovada; Condução 86,25; Plano Anual 92,50; média 89,38; zero candidato crítico. A rodada final custou US$ 0,081603 e o acumulado de todas as tentativas foi US$ 0,428801. O staging foi limpo após cada execução. A correção está somente na `oracle-session` de staging; o owner precisa revisar o plano e autorizar produção antes de Q2.
+Resultado final de 2026-07-16: técnica aprovada; Condução 86,25; Plano Anual 92,50; média 89,38; zero candidato crítico. A rodada final custou US$ 0,081603 e o acumulado de todas as tentativas foi US$ 0,428801. O staging foi limpo após cada execução. O owner aprovou e a correção foi publicada em produção no release protegido `29525599601`.
 
 Alinhamento pré-produção da Revisão Estratégica em 2026-07-16: o ritual continua sendo microajuste de objetivos existentes, mas passou a absorver vários ajustes completos, ignorar objetivos declarados como inalterados, perguntar apenas lacunas bloqueantes e pedir uma confirmação final. Um teste real no staging alterou `current` e `target` de dois objetivos sintéticos na mesma proposta, comprovou zero mutação antes da confirmação, documento antes/depois, linguagem natural em PT-BR e cleanup. A rodada final custou US$ 0,004486; as duas tentativas somaram US$ 0,008976; acumulado do plano US$ 0,437777. O judge formal de revisões permanece no Q2D.
 
 Aceite humano e produção: o owner aprovou o resultado e autorizou produção em 2026-07-16. A `oracle-session` foi publicada pelo release protegido `29525599601` e o frontend pelo deploy Netlify `6a5928c0f349e3bcc2a4728a`; verificações automáticas e smoke autenticado passaram. Por decisão explícita, a chave temporária continuará privada e disponível para os próximos testes; revogação deixou de ser pré-condição.
+
+## Gate Q2
+
+O catalogo `2026-07-16.q2` materializa 29 casos: Q2A=5, Q2B=8, Q2C=4, Q2D=5 e Q2E=7. Eles cobrem 15 entregas distintas e todas as 16 falhas criticas da rubrica. Cada caso declara contexto superior ou ausencia proposital, fatos sinteticos, memoria pertinente e concorrente, comportamento obrigatorio, comportamento proibido, evidencia minima, politica de confirmacao, mutacao e judge.
+
+A montagem da Q2 nao acessa staging ou producao, nao chama IA e custa US$ 0. Saidas derivadas usam fixtures e checks deterministas; judge fica opcional somente para relevancia de memoria. O manifesto permanece `candidate-for-owner-review`. A Q3 nao pode iniciar antes do aceite humano registrado em `docs/STRATEGIC_QUALITY_CASES.md`.

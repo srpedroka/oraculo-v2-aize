@@ -93,6 +93,14 @@ A Q1 adiciona o laboratório isolado descrito em `docs/STRATEGIC_EVALUATION_LAB.
 pnpm run test:strategic-eval
 ```
 
+A Q2 adiciona 29 casos de referencia em cinco blocos. O verificador confere schema, contagem, entregas, rubricas, metodos, canais, confirmacoes, 16 falhas criticas e ausencia de identificadores/credenciais. Ele nao acessa staging, producao ou provider:
+
+```bash
+pnpm run test:strategic-cases
+```
+
+O gate humano e legivel em `docs/STRATEGIC_QUALITY_CASES.md`. O manifesto permanece `candidate-for-owner-review` ate o owner confirmar os blocos Q2A-Q2E; somente depois a Q3 pode executar baseline pago.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-16.q2",
+  "rubricVersion": "2026-07-16.q0-r2",
+  "gateStatus": "candidate-for-owner-review",
+  "executionPolicy": {
+    "referenceCasesOnly": true,
+    "productionAccess": false,
+    "runtimeMutation": false,
+    "providerCalls": false,
+    "expectedCostUsd": 0
+  },
+  "blocks": [
+    {
+      "phase": "Q2A",
+      "file": "tests/evals/strategic-quality/cases/q2a-annual.json",
+      "minimumCases": 5,
+      "requiredDeliverables": ["DELIV-ANNUAL-PLAN"],
+      "requiredRiskIds": [
+        "ANNUAL-VAGUE-ASPIRATION",
+        "ANNUAL-PRIORITY-OVERLOAD",
+        "ANNUAL-ACTIVITY-AS-STRATEGY",
+        "ANNUAL-REPEATED-GOAL",
+        "ANNUAL-EXPERIENCED-OWNER"
+      ]
+    },
+    {
+      "phase": "Q2B",
+      "file": "tests/evals/strategic-quality/cases/q2b-quarterly.json",
+      "minimumCases": 8,
+      "requiredDeliverables": ["DELIV-QUARTERLY-PLAN"],
+      "requiredRiskIds": [
+        "QUARTERLY-VAGUE-PROBLEM",
+        "QUARTERLY-ACTIVITY-AS-OBJECTIVE",
+        "QUARTERLY-EQUIVALENT-AREA",
+        "QUARTERLY-REPEATED-GOAL",
+        "QUARTERLY-MISSING-BASELINE",
+        "QUARTERLY-PRIORITY-OVERLOAD",
+        "QUARTERLY-KPI-HYPOTHESIS",
+        "QUARTERLY-EXPERIENCED-MANAGER"
+      ]
+    },
+    {
+      "phase": "Q2C",
+      "file": "tests/evals/strategic-quality/cases/q2c-monthly.json",
+      "minimumCases": 4,
+      "requiredDeliverables": ["DELIV-MONTHLY-PLAN"],
+      "requiredRiskIds": [
+        "MONTHLY-CORRECT-CASCADE",
+        "MONTHLY-INHERITED-PENDING",
+        "MONTHLY-CAPACITY-OVERLOAD",
+        "MONTHLY-EXPERIENCED-MANAGER"
+      ]
+    },
+    {
+      "phase": "Q2D",
+      "file": "tests/evals/strategic-quality/cases/q2d-reviews.json",
+      "minimumCases": 5,
+      "requiredDeliverables": [
+        "DELIV-MONTH-CLOSE",
+        "DELIV-QUARTER-CLOSE",
+        "DELIV-STRATEGIC-REVIEW",
+        "DELIV-QUICK-EXECUTION",
+        "DELIV-PULSES-NUDGES"
+      ],
+      "requiredRiskIds": [
+        "MONTH-CLOSE-PARTIAL-EVIDENCE",
+        "QUARTER-CLOSE-OPEN-DECISION",
+        "STRATEGIC-REVIEW-BOUNDARY",
+        "QUICK-UPDATE-AMBIGUOUS",
+        "WEEKLY-PULSE-NATURAL-DEDUP"
+      ]
+    },
+    {
+      "phase": "Q2E",
+      "file": "tests/evals/strategic-quality/cases/q2e-information-outputs.json",
+      "minimumCases": 7,
+      "requiredDeliverables": [
+        "DELIV-PLAN-HISTORY-IMPORT",
+        "DELIV-KPI-IMPORT-SUGGESTION",
+        "DELIV-MEMORY-CONTEXT",
+        "DELIV-CANONICAL-OUTPUTS",
+        "DELIV-DASHBOARD-KPI",
+        "DELIV-ARCHIVE-AUDIT",
+        "DELIV-UX-CROSS-CUTTING"
+      ],
+      "requiredRiskIds": [
+        "HISTORY-IMPORT-CONTENT-METADATA",
+        "KPI-IMPORT-CONFLICTING-SOURCES",
+        "MEMORY-RELEVANT-VS-COMPETING",
+        "CANONICAL-OUTPUT-EQUALITY",
+        "DASHBOARD-MONTH-UNIT-PRECISION",
+        "ARCHIVE-AUDIT-TRACEABILITY",
+        "UX-RESPONSIVE-ACCESSIBLE-ERROR"
+      ]
+    }
+  ]
+}

@@ -212,12 +212,12 @@
       "id": "DELIV-ARCHIVE-AUDIT",
       "name": "Arquivo, Historico e Auditoria",
       "classification": "operational",
-      "phase": "O2-O8",
+      "phase": "Q2E-O2-O8",
       "routes": ["/arquivo", "/configuracoes"],
       "sessionTypes": [],
       "channels": ["web"],
       "rubrics": ["RUBRIC-DERIVED-OUTPUT"],
-      "methods": ["rls", "integration", "e2e", "audit", "visual"],
+      "methods": ["deterministic", "rls", "integration", "e2e", "audit", "visual"],
       "gate": "Historico e auditoria mostram mudancas reais, sem segredo ou conteudo privado indevido, e permitem reversao suportada."
     },
     {
