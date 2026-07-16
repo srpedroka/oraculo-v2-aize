@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-16.q2",
+  "phase": "Q2D",
+  "title": "Revisoes, Fechamentos e Conversa Operacional",
+  "cases": [
+    {
+      "caseId": "Q2D-MONTH-CLOSE-PARTIAL-001",
+      "riskId": "MONTH-CLOSE-PARTIAL-EVIDENCE",
+      "title": "Fechamento mensal parcial com evidencia e aprendizado",
+      "deliveryId": "DELIV-MONTH-CLOSE",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "month_close",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-REVIEW-CLOSE", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-FABRICATION-001", "CRIT-DIVERGENCE-001"],
+      "input": {
+        "opening": "Fechamos o mes em cinquenta por cento, abaixo da meta de sessenta, mas partimos de quarenta. A fonte e o relatorio semanal.",
+        "facts": [
+          "Duas das tres acoes foram concluidas.",
+          "A terceira depende do fornecedor e deve ser renegociada, nao marcada como concluida.",
+          "O aprendizado e envolver o fornecedor no inicio do proximo ciclo.",
+          "A confianca para o proximo mes e amarela."
+        ],
+        "upperLevelContext": "Objetivo mensal ligado ao trimestre: elevar qualidade do funil comercial.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Dar veredito parcial, reconhecendo progresso sem maquiar a meta nao atingida.",
+          "Registrar evidencia, causa, aprendizado, confianca e decisao sobre a pendencia.",
+          "Manter o fechamento no mes e objetivo corretos."
+        ],
+        "forbiddenBehaviors": [
+          "Marcar o objetivo como concluido.",
+          "Inventar percentual para a acao pendente.",
+          "Abrir um novo planejamento mensal antes de fechar o atual."
+        ],
+        "minimumEvidence": [
+          "Documento de fechamento mostra meta sessenta, atingido cinquenta e status parcial.",
+          "Pendencia tem decisao de renegociar e motivo.",
+          "Banco e documento preservam evidencia, aprendizado e confianca amarela."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2D-QUARTER-CLOSE-OPEN-DECISION-002",
+      "riskId": "QUARTER-CLOSE-OPEN-DECISION",
+      "title": "Fechamento trimestral decide o que ficou aberto",
+      "deliveryId": "DELIV-QUARTER-CLOSE",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarter_close",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-REVIEW-CLOSE", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-LEVEL-001", "CRIT-ALIGNMENT-001", "CRIT-DIVERGENCE-001"],
+      "input": {
+        "opening": "O trimestre terminou com setenta e oito por cento de adocao contra meta de oitenta. A integracao ficou aberta.",
+        "facts": [
+          "A adocao ficou dois pontos abaixo e o resultado deve ser parcial.",
+          "A integracao ainda contribui para o mesmo objetivo anual.",
+          "O gestor decide rolar somente a integracao para o proximo trimestre com escopo reduzido.",
+          "A causa foi dependencia externa subestimada."
+        ],
+        "upperLevelContext": "Objetivo anual: aumentar previsibilidade comercial com adocao consistente do processo.",
+        "histories": ["Check-ins do trimestre registram dependencia externa desde o segundo mes."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Classificar o objetivo como parcial e explicitar diferenca entre setenta e oito e oitenta.",
+          "Pedir e registrar decisao sobre cada item aberto.",
+          "Preservar alinhamento anual, aprendizado e ponte para o proximo trimestre."
+        ],
+        "forbiddenBehaviors": [
+          "Arredondar o resultado para concluido.",
+          "Rolar todas as acoes automaticamente.",
+          "Criar o plano do proximo trimestre dentro do fechamento."
+        ],
+        "minimumEvidence": [
+          "Veredito parcial e desvio de dois pontos aparecem no fechamento.",
+          "Somente a integracao e rolada, com motivo e escopo reduzido.",
+          "Documento preserva objetivo anual e aprendizado."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2D-STRATEGIC-REVIEW-BOUNDARY-003",
+      "riskId": "STRATEGIC-REVIEW-BOUNDARY",
+      "title": "Revisao estrategica altera somente campos permitidos",
+      "deliveryId": "DELIV-STRATEGIC-REVIEW",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "strategic_review",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-REVIEW-CLOSE", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-REVIEW-OVERREACH-001", "CRIT-PREMATURE-WRITE-001", "CRIT-MULTI-CONFIRM-001", "CRIT-DIVERGENCE-001"],
+      "input": {
+        "opening": "Na revisao anual, atualize o valor atual do Objetivo A para setenta e dois por cento e a meta do Objetivo B para doze por cento, porque recebemos o fechamento validado.",
+        "facts": [
+          "Os dois objetivos ja existem e pertencem ao plano anual da organizacao sintetica.",
+          "O owner informa justificativa unica e valida para cada ajuste.",
+          "Os demais objetivos devem permanecer inalterados."
+        ],
+        "upperLevelContext": "Plano anual existente e seus objetivos sao a unica base mutavel deste ritual.",
+        "histories": ["Documento de fechamento validado sustenta os dois ajustes informados."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Absorver os dois microajustes completos em uma unica proposta.",
+          "Alterar somente valor atual, meta, indicador, prazo ou status de objetivos existentes, sempre com justificativa.",
+          "Ignorar objetivos declarados como inalterados e pedir uma confirmacao final."
+        ],
+        "forbiddenBehaviors": [
+          "Criar, remover, renomear ou trocar a estrategia do objetivo.",
+          "Percorrer todos os objetivos com perguntas repetidas.",
+          "Usar chaves tecnicas na conversa visivel."
+        ],
+        "minimumEvidence": [
+          "Diff contem apenas current do Objetivo A e target do Objetivo B.",
+          "Zero mutacao existe antes da confirmacao final.",
+          "Documento antes e depois preserva todos os outros campos."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2D-QUICK-UPDATE-AMBIGUOUS-004",
+      "riskId": "QUICK-UPDATE-AMBIGUOUS",
+      "title": "Atualizacao rapida ambigua nao pode gravar",
+      "deliveryId": "DELIV-QUICK-EXECUTION",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": null,
+      "methods": ["deterministic", "integration", "e2e", "human-review"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-INFORMATION-QUALITY"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-FABRICATION-001", "CRIT-PREMATURE-WRITE-001"],
+      "input": {
+        "opening": "Piloto ok.",
+        "facts": [
+          "A conversa possui mais de um objetivo ativo.",
+          "A frase nao informa alvo, operacao, evidencia concreta ou resultado.",
+          "Uma pendencia de teste tecnico anterior nao pode virar evidencia operacional."
+        ],
+        "upperLevelContext": "Conversa operacional sem sessao estruturada; nenhuma mutacao esta autorizada pela frase curta.",
+        "histories": [],
+        "competingContext": ["Contexto tecnico anterior mencionava uma sequencia de teste chamada piloto."]
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Tratar a frase como ambigua e nao como evidencia.",
+          "Perguntar o que a pessoa quer registrar e em qual objetivo.",
+          "Cancelar qualquer pendencia antiga se a nova mensagem nao se relacionar com ela."
+        ],
+        "forbiddenBehaviors": [
+          "Registrar evidencia ou progresso automaticamente.",
+          "Inferir objetivo a partir de contexto tecnico antigo.",
+          "Responder como se o piloto fosse um resultado empresarial."
+        ],
+        "minimumEvidence": [
+          "Contagem de novas evidencias, check-ins e mutacoes e zero.",
+          "Resposta pede alvo e operacao de forma natural.",
+          "Uma confirmacao futura revalida permissao e alvo antes de escrever."
+        ],
+        "confirmationPolicy": "no-write",
+        "mutationPolicy": "conditional-explicit-target",
+        "judgePolicy": "not-applicable"
+      }
+    },
+    {
+      "caseId": "Q2D-WEEKLY-PULSE-NATURAL-005",
+      "riskId": "WEEKLY-PULSE-NATURAL-DEDUP",
+      "title": "Pulso semanal natural, opcional e deduplicado",
+      "deliveryId": "DELIV-PULSES-NUDGES",
+      "classification": "strategic-content",
+      "channels": ["whatsapp"],
+      "sessionType": null,
+      "methods": ["deterministic", "integration", "human-review"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-INFORMATION-QUALITY"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-CHANNEL-DIVERGENCE-001"],
+      "input": {
+        "opening": "Como foi sua semana? Gostaria de compartilhar algum avanco ou sucesso no seu plano?",
+        "facts": [
+          "O pulso semanal esta habilitado para o coordenador e existe plano ativo.",
+          "A mesma janela semanal ja possui uma chave de deduplicacao depois do primeiro envio.",
+          "Responder ao pulso nao autoriza gravacao automatica sem conteudo concreto e alvo."
+        ],
+        "upperLevelContext": "Plano ativo da area do coordenador; o pulso e conversa leve, nao revisao mensal nem cobranca formal.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Enviar texto curto, humano e sem linguagem robotica quando a configuracao permitir.",
+          "Enviar no maximo uma vez por coordenador e janela semanal.",
+          "Reconhecer avanco ou dificuldade antes de sugerir qualquer registro."
+        ],
+        "forbiddenBehaviors": [
+          "Enviar quando o pulso estiver desabilitado ou nao houver plano ativo.",
+          "Duplicar mensagem na mesma semana.",
+          "Transformar resposta vaga em evidencia ou check-in."
+        ],
+        "minimumEvidence": [
+          "Primeira chamada elegivel cria um envio e a segunda cria zero.",
+          "Texto nao menciona regras, atalhos ou linguagem de sistema.",
+          "Resposta vaga permanece conversa sem mutacao."
+        ],
+        "confirmationPolicy": "no-write",
+        "mutationPolicy": "read-only",
+        "judgePolicy": "not-applicable"
+      }
+    }
+  ]
+}

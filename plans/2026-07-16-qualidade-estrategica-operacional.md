@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q0 R2 e Q1 concluídas em produção, próxima fatia Q2**
+Status: **em execução; Q0 R2 e Q1 concluídas em produção; Q2 aprovada; próxima fatia Q3**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -395,6 +395,8 @@ Esses casos priorizam checks determinísticos, fixtures e QA visual. Judge pago 
 ### Gate Q2
 
 Owner revisa os blocos Q2A-Q2E e confirma que representam situações reais. A matriz precisa permanecer com todas as rotas e os seis rituais cobertos. Nenhum caso pode ser removido apenas para melhorar nota ou reduzir custo; para preservar o teto, checks determinísticos substituem IA onde forem suficientes.
+
+Estado em 2026-07-16: catalogo `2026-07-16.q2` implementado com 29 casos (Q2A=5, Q2B=8, Q2C=4, Q2D=5, Q2E=7), 15 entregas e todas as 16 falhas criticas cobertas. Manifesto, cinco blocos JSON, verificador e oito testes especificos passaram sem rede, dados ou IA; custo US$ 0. O owner aprovou o catalogo e o manifesto passou a `owner-approved`. Proxima etapa: apresentar o briefing Q3 e obter autorizacao explicita antes do baseline pago.
 
 ## Q3 — Baseline da versão atual
 

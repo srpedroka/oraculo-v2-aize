@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-16.q2",
+  "phase": "Q2C",
+  "title": "Execucao Mensal",
+  "cases": [
+    {
+      "caseId": "Q2C-MONTHLY-CASCADE-001",
+      "riskId": "MONTHLY-CORRECT-CASCADE",
+      "title": "Plano mensal ligado ao objetivo trimestral",
+      "deliveryId": "DELIV-MONTHLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "monthly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-MONTHLY-PLAN"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-LEVEL-001", "CRIT-ALIGNMENT-001", "CRIT-VERIFIABILITY-001"],
+      "input": {
+        "opening": "Neste mes quero executar a primeira parte do objetivo trimestral de elevar oportunidades com proxima acao registrada.",
+        "facts": [
+          "O objetivo trimestral vai de quarenta para oitenta e cinco por cento ate setembro.",
+          "O resultado deste mes e padronizar o funil e elevar o indicador para cinquenta e cinco por cento.",
+          "As fontes sao o relatorio semanal e a auditoria de vinte oportunidades."
+        ],
+        "upperLevelContext": "Objetivo trimestral explicito: elevar oportunidades com proxima acao de quarenta para oitenta e cinco por cento ate setembro.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Explicitar como o resultado mensal contribui para o objetivo trimestral.",
+          "Definir indicador, alvo do mes, fonte, dono, datas e criterios das acoes.",
+          "Manter escopo mensal e considerar o calendario real."
+        ],
+        "forbiddenBehaviors": [
+          "Criar um novo objetivo trimestral ou anual.",
+          "Reduzir o plano a tarefas sem resultado do mes.",
+          "Omitir a origem trimestral."
+        ],
+        "minimumEvidence": [
+          "ID ou referencia do objetivo trimestral aparece na proposta mensal.",
+          "Meta mensal cinquenta e cinco por cento possui fonte verificavel.",
+          "Acoes possuem dono, data e criterio de conclusao."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2C-MONTHLY-INHERITED-PENDING-002",
+      "riskId": "MONTHLY-INHERITED-PENDING",
+      "title": "Pendencia herdada exige decisao explicita",
+      "deliveryId": "DELIV-MONTHLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "monthly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-MONTHLY-PLAN"],
+      "criticalFailures": ["CRIT-FABRICATION-001", "CRIT-ALIGNMENT-001", "CRIT-DIVERGENCE-001"],
+      "input": {
+        "opening": "A integracao do CRM ficou aberta no mes passado e quero leva-la para este mes.",
+        "facts": [
+          "A pendencia atrasou por dependencia do fornecedor.",
+          "O novo prazo possivel e dia vinte, confirmado pelo fornecedor.",
+          "O gestor deve escolher entre rolar com novo prazo, renegociar escopo ou cortar."
+        ],
+        "upperLevelContext": "Objetivo trimestral: elevar adocao e qualidade do funil comercial.",
+        "histories": ["Fechamento mensal anterior registra integracao parcial e dependencia do fornecedor."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Recuperar origem, motivo e estado da pendencia.",
+          "Pedir decisao explicita entre rolar, renegociar ou cortar.",
+          "Se rolar, preservar origem e registrar novo prazo e motivo."
+        ],
+        "forbiddenBehaviors": [
+          "Copiar a pendencia silenciosamente como nova acao.",
+          "Marcar a acao anterior como concluida.",
+          "Inventar novo prazo ou decisao."
+        ],
+        "minimumEvidence": [
+          "Decisao escolhida e motivo aparecem na proposta.",
+          "Origem do mes anterior permanece rastreavel.",
+          "Novo prazo so aparece depois da confirmacao do gestor."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2C-MONTHLY-CAPACITY-OVERLOAD-003",
+      "riskId": "MONTHLY-CAPACITY-OVERLOAD",
+      "title": "Lista de acoes maior que a capacidade mensal",
+      "deliveryId": "DELIV-MONTHLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "monthly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-MONTHLY-PLAN"],
+      "criticalFailures": ["CRIT-ALIGNMENT-001", "CRIT-VERIFIABILITY-001", "CRIT-OBJECTIVE-ACTIVITY-001"],
+      "input": {
+        "opening": "Tenho doze acoes para concluir neste mes e todas parecem urgentes.",
+        "facts": [
+          "A equipe tem capacidade estimada para cinco acoes relevantes.",
+          "Tres acoes contribuem diretamente para o objetivo trimestral; duas reduzem risco operacional.",
+          "As demais podem ser adiadas sem comprometer a meta do trimestre."
+        ],
+        "upperLevelContext": "Objetivo trimestral: reduzir retrabalho por padronizacao da aprovacao.",
+        "histories": ["Mes anterior terminou com sete acoes abertas por excesso de compromisso."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Comparar demanda com capacidade e priorizar ate cinco acoes.",
+          "Distinguir acoes ligadas ao resultado, mitigacao de risco e backlog.",
+          "Registrar explicitamente o que sera adiado."
+        ],
+        "forbiddenBehaviors": [
+          "Aceitar doze acoes sem discutir capacidade.",
+          "Esconder sobrecarga em subtarefas de uma unica acao.",
+          "Perder o objetivo trimestral ao priorizar."
+        ],
+        "minimumEvidence": [
+          "Plano possui no maximo cinco acoes comprometidas.",
+          "Backlog e renuncias do mes estao visiveis.",
+          "Cada acao comprometida possui criterio de conclusao."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2C-MONTHLY-EXPERIENCED-MANAGER-004",
+      "riskId": "MONTHLY-EXPERIENCED-MANAGER",
+      "title": "Gestor experiente informa resultado e acoes completas",
+      "deliveryId": "DELIV-MONTHLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "monthly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-MONTHLY-PLAN", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-MULTI-CONFIRM-001", "CRIT-DIVERGENCE-001", "CRIT-CHANNEL-DIVERGENCE-001"],
+      "input": {
+        "opening": "Para este mes, ligado ao objetivo trimestral de qualidade do funil, quero elevar oportunidades com proxima acao de quarenta para cinquenta e cinco por cento. Fonte relatorio semanal. PERSON_FIXTURE_MANAGER e responsavel. Tenho tres acoes com datas e criterios completos.",
+        "facts": [
+          "Acao um: publicar padrao do funil ate dia cinco.",
+          "Acao dois: revisar carteira ativa ate dia quinze.",
+          "Acao tres: auditar vinte oportunidades ate dia vinte e cinco.",
+          "O acompanhamento sera semanal, com confianca e bloqueio."
+        ],
+        "upperLevelContext": "Objetivo trimestral aplicavel foi explicitamente indicado pelo gestor.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Absorver o bloco completo sem reiniciar a entrevista.",
+          "Validar somente lacunas bloqueantes e preparar a proposta mensal.",
+          "Pedir uma unica confirmacao final."
+        ],
+        "forbiddenBehaviors": [
+          "Perguntar novamente objetivo, meta, fonte, dono e cada acao.",
+          "Abrir planejamento trimestral.",
+          "Pedir confirmacao intermediaria por acao."
+        ],
+        "minimumEvidence": [
+          "Numero de perguntas bloqueantes e zero ou um.",
+          "Proposta preserva meta, fonte, dono, tres acoes e origem trimestral.",
+          "Documento mensal e resumo WhatsApp sao materialmente iguais."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    }
+  ]
+}

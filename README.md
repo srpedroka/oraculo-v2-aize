@@ -57,6 +57,12 @@ pnpm run build
 
 `pnpm run lint` roda `tsc --noEmit`. `pnpm run test:unit` roda a suíte local; `pnpm run test:integration` e `pnpm run test:security` usam somente o Supabase de staging configurado em `.agents-private/agent-env`; `pnpm run test:e2e:staging` abre o frontend local contra esse staging e usa dados descartáveis. `pnpm run build` também executa `test:bundle`, que limita o JavaScript inicial a 200 KB gzip e impede PDF, XLSX, DOCX e ZIP de entrarem antes do uso. `pnpm run check` combina lint, testes e build. A matriz completa está em `docs/TESTING.md`.
 
+O catalogo Q2 de qualidade estrategica e validado sem rede, dados ou custo de IA:
+
+```bash
+pnpm run test:strategic-cases
+```
+
 ## Deploy
 
 Frontend em producao:

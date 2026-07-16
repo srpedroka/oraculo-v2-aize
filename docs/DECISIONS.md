@@ -797,6 +797,14 @@ Motivo: integridade técnica comprova que o sistema grava e recupera corretament
 
 Consequências: o plano unificado está em `plans/2026-07-16-qualidade-estrategica-operacional.md`. O piloto real com o owner e depois um gestor será refeito desde o início após o aceite estratégico. O hardening concluído permanece fechado e funciona como regressão técnica.
 
+## 2026-07-16 - Catalogo Q2 por risco antes do baseline pago
+
+Decisao: materializar Q2A-Q2E como 29 casos sinteticos versionados e legiveis por maquina, ligados as entregas, rubricas, metodos e falhas criticas da Q0 R2. Q2 apenas define referencias; nao executa o Oraculo, nao acessa staging/producao e nao chama provider. O manifesto fica `candidate-for-owner-review` ate aceite humano explicito.
+
+Motivo: executar um baseline sem casos fechados permitiria escolher exemplos favoraveis depois da resposta, perder riscos entre anual/trimestral/mensal e gastar IA em verificacoes que podem ser deterministicas. O catalogo separado deixa claro o que e obrigatorio, o que reprova e qual evidencia sera cobrada.
+
+Consequencias: `tests/evals/strategic-quality/cases/q2-catalog.json` aponta cinco blocos com 29 casos, cobrindo 15 entregas e as 16 falhas criticas. Q2E prioriza fixtures, snapshots, calculo e QA visual; judge e opcional apenas para relevancia de memoria. `pnpm run test:strategic-cases` valida o contrato sem rede e custo. Q3 so inicia depois do owner revisar `docs/STRATEGIC_QUALITY_CASES.md` e aprovar o catalogo.
+
 ## 2026-07-16 - Autorização financeira explícita e orçamento de deploy
 
 Decisão: qualquer compra, upgrade, assinatura, recarga ou nova cobrança exige autorização explícita do owner imediatamente antes da confirmação. Consumo autorizado de API não vale como autorização de compra. Deploy Netlify ocorre apenas quando o runtime web mudou; alterações documentais, testes, scripts e Edge Functions não justificam deploy do frontend.

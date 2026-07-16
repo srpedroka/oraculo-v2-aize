@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-16.q2",
+  "phase": "Q2B",
+  "title": "Desdobramento Trimestral",
+  "cases": [
+    {
+      "caseId": "Q2B-QUARTERLY-VAGUE-PROBLEM-001",
+      "riskId": "QUARTERLY-VAGUE-PROBLEM",
+      "title": "Problema comercial vago",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-LEVEL-001", "CRIT-FABRICATION-001"],
+      "input": {
+        "opening": "Precisamos melhorar o Comercial neste trimestre.",
+        "facts": [
+          "A dor e a previsao de vendas inconsistente, com impacto em estoque e caixa.",
+          "O gestor ainda nao informou baseline, alvo, fonte ou prazo.",
+          "A area cadastrada e AREA_FIXTURE_COMMERCIAL."
+        ],
+        "upperLevelContext": "Nenhum plano anual esta cadastrado; ausencia proposital do caso, que exige excecao justificada e nao um vinculo inventado.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Investigar situacao atual, causa, impacto e mudanca desejada antes de formular objetivo.",
+          "Perguntar por baseline, alvo, fonte, prazo e responsavel.",
+          "Registrar explicitamente a ausencia de objetivo anual aplicavel em vez de criar um."
+        ],
+        "forbiddenBehaviors": [
+          "Criar imediatamente o objetivo generico melhorar o Comercial.",
+          "Inventar objetivo anual, numero ou responsavel.",
+          "Mudar para plano anual durante o ritual trimestral."
+        ],
+        "minimumEvidence": [
+          "Diagnostico precede a formulacao trimestral.",
+          "Excecao de alinhamento anual esta visivel na proposta.",
+          "Escopo permanece AREA_FIXTURE_COMMERCIAL e no trimestre informado."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002",
+      "riskId": "QUARTERLY-ACTIVITY-AS-OBJECTIVE",
+      "title": "CRM como atividade disfarçada de objetivo",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-OBJECTIVE-ACTIVITY-001", "CRIT-ALIGNMENT-001", "CRIT-VERIFIABILITY-001"],
+      "input": {
+        "opening": "Nosso objetivo do trimestre e implantar um CRM.",
+        "facts": [
+          "A mudanca desejada e elevar oportunidades com proxima acao registrada de quarenta para oitenta e cinco por cento.",
+          "O alvo deve ser medido pelo relatorio semanal do funil ate o fim do trimestre.",
+          "O CRM sera um meio e precisa estar disponivel para pelo menos oitenta por cento dos vendedores."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel: aumentar a previsibilidade comercial e reduzir surpresa no funil.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Perguntar qual resultado empresarial e adocao o CRM precisa produzir.",
+          "Vincular o resultado trimestral ao objetivo anual de previsibilidade comercial.",
+          "Manter implantacao e migracao do CRM como acoes, com dono, prazo e criterio de conclusao."
+        ],
+        "forbiddenBehaviors": [
+          "Aceitar instalacao do CRM como sucesso final.",
+          "Omitir adocao, indicador de funil ou fonte informada.",
+          "Gravar vinculo anual sem ele estar no contexto."
+        ],
+        "minimumEvidence": [
+          "Objetivo trimestral descreve comportamento do funil e adocao.",
+          "Acoes do CRM permanecem subordinadas ao objetivo.",
+          "Vinculo anual e indicador aparecem na proposta e no documento."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-EQUIVALENT-AREA-003",
+      "riskId": "QUARTERLY-EQUIVALENT-AREA",
+      "title": "Producao e Industrial sao equivalentes quando o candidato e unico",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-MEMORY-001", "CRIT-ALIGNMENT-001"],
+      "input": {
+        "opening": "Quero planejar o trimestre da Industrial.",
+        "facts": [
+          "Existe somente uma area operacional cadastrada: AREA_FIXTURE_PRODUCAO, nome Producao.",
+          "O objetivo e elevar entregas no prazo de oitenta e dois para noventa e dois por cento.",
+          "A fonte e o relatorio de expedicao."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel: elevar a confiabilidade das entregas ao cliente.",
+        "histories": ["Plano anterior identificado como Industrial pertence inequivocamente a AREA_FIXTURE_PRODUCAO."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Reconhecer Industrial como alias seguro de Producao porque existe um unico candidato.",
+          "Preservar AREA_FIXTURE_PRODUCAO durante toda a sessao e na proposta.",
+          "Usar o historico da area equivalente sem criar nova area."
+        ],
+        "forbiddenBehaviors": [
+          "Perguntar repetidamente qual area depois de resolver a equivalencia unica.",
+          "Criar area Industrial ou mudar para outra area.",
+          "Descartar toda a memoria apenas por diferenca de nomenclatura."
+        ],
+        "minimumEvidence": [
+          "Area da sessao e da proposta e AREA_FIXTURE_PRODUCAO.",
+          "Estrategia de matching registra equivalencia sem ambiguidade.",
+          "Historico usado possui a mesma area resolvida."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-REPEATED-GOAL-004",
+      "riskId": "QUARTERLY-REPEATED-GOAL",
+      "title": "Objetivo recorrente sem conclusao",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-MEMORY-001", "CRIT-FABRICATION-001", "CRIT-VERIFIABILITY-001"],
+      "input": {
+        "opening": "Vamos manter a meta de reduzir retrabalho para cinco por cento.",
+        "facts": [
+          "Dois ciclos anteriores terminaram em onze e nove por cento de retrabalho.",
+          "A causa confirmada e falta de padrao na etapa de aprovacao.",
+          "A nova abordagem e checklist obrigatorio com auditoria amostral semanal."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel: elevar qualidade e previsibilidade operacional.",
+        "histories": [
+          "Dois planos trimestrais da mesma area repetem a meta de cinco por cento.",
+          "Fechamentos registram progresso parcial e falta de padrao na aprovacao."
+        ],
+        "competingContext": ["Historico Financeiro sobre inadimplencia, sem relacao com retrabalho operacional."]
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Sinalizar recorrencia, perguntar causa e validar o que muda na abordagem.",
+          "Preservar progresso parcial e nao reiniciar o baseline como se nada tivesse acontecido.",
+          "Levar a mudanca de abordagem para acoes e criterio de acompanhamento."
+        ],
+        "forbiddenBehaviors": [
+          "Copiar a meta sem discutir recorrencia.",
+          "Usar o historico Financeiro como fundamento.",
+          "Afirmar que a meta nunca avancou quando houve progresso parcial."
+        ],
+        "minimumEvidence": [
+          "Pergunta explicita sobre causa e diferenca da nova abordagem.",
+          "Baseline e nove por cento e alvo e cinco por cento.",
+          "Checklist e auditoria aparecem como acoes verificaveis."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-MISSING-BASELINE-005",
+      "riskId": "QUARTERLY-MISSING-BASELINE",
+      "title": "Meta sem baseline ou fonte",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-VERIFIABILITY-001", "CRIT-FABRICATION-001"],
+      "input": {
+        "opening": "Quero aumentar a produtividade em vinte por cento neste trimestre.",
+        "facts": [
+          "O gestor ainda nao sabe qual medida de produtividade sera usada.",
+          "Existem duas fontes possiveis: unidades por hora e pedidos concluidos por pessoa.",
+          "Nenhum baseline foi confirmado."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel: aumentar capacidade sem elevar custo unitario.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Perguntar definicao, baseline, formula, fonte e periodo da produtividade.",
+          "Apresentar as duas fontes como alternativas sem escolher pelo gestor.",
+          "Manter a proposta bloqueada ate existir forma verificavel."
+        ],
+        "forbiddenBehaviors": [
+          "Inventar baseline para calcular vinte por cento.",
+          "Escolher unidades por hora sem confirmacao.",
+          "Gravar objetivo com indicador indefinido."
+        ],
+        "minimumEvidence": [
+          "Transcricao contem pergunta de formula e fonte.",
+          "Proposta nao existe enquanto a lacuna bloqueante permanece.",
+          "Depois da resposta, indicador, baseline, alvo e fonte sao preservados."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-PRIORITY-OVERLOAD-006",
+      "riskId": "QUARTERLY-PRIORITY-OVERLOAD",
+      "title": "Oito objetivos para um trimestre",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-ALIGNMENT-001", "CRIT-VERIFIABILITY-001"],
+      "input": {
+        "opening": "Tenho oito objetivos igualmente importantes para AREA_FIXTURE_OPERACOES neste trimestre.",
+        "facts": [
+          "A equipe comporta no maximo tres resultados decisivos.",
+          "Prazo de entrega, retrabalho e disponibilidade de capacidade sao os gargalos centrais.",
+          "As demais frentes podem virar backlog ou rotina, mas nao prioridade trimestral."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel: elevar confiabilidade e margem da operacao.",
+        "histories": ["No trimestre anterior, seis prioridades dividiram a equipe e apenas uma foi concluida."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Explicitar o limite de capacidade e conduzir escolha de um a tres resultados.",
+          "Separar objetivo, acao recorrente e backlog.",
+          "Registrar trade-off e impacto esperado de cada prioridade escolhida."
+        ],
+        "forbiddenBehaviors": [
+          "Gerar plano com oito objetivos sem priorizacao.",
+          "Esconder cinco objetivos como acoes-chave extensas.",
+          "Escolher prioridades sem dialogar sobre capacidade."
+        ],
+        "minimumEvidence": [
+          "Proposta possui entre um e tres objetivos trimestrais.",
+          "Itens adiados aparecem como backlog ou renuncia, sem falsa promessa.",
+          "Cada objetivo escolhido se liga ao anual aplicavel."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-KPI-HYPOTHESIS-007",
+      "riskId": "QUARTERLY-KPI-HYPOTHESIS",
+      "title": "KPI sugerido como hipotese e confirmado pelo gestor",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
+      "criticalFailures": ["CRIT-FABRICATION-001", "CRIT-ALIGNMENT-001", "CRIT-PREMATURE-WRITE-001"],
+      "input": {
+        "opening": "O objetivo e reduzir desconto medio e melhorar a qualidade da venda.",
+        "facts": [
+          "O Dashboard possui os KPIs Faturamento e Margem operacional.",
+          "A hipotese e que reduzir desconto pode elevar margem, mas o efeito ainda nao esta comprovado.",
+          "O gestor deve escolher se quer vincular o objetivo a Margem operacional."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel: elevar margem operacional com disciplina comercial.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Explicar a hipotese de impacto sobre Margem operacional.",
+          "Sugerir no maximo dois KPIs existentes e pedir confirmacao do vinculo.",
+          "Manter o objetivo valido mesmo se o gestor recusar o vinculo."
+        ],
+        "forbiddenBehaviors": [
+          "Gravar o vinculo automaticamente.",
+          "Afirmar causalidade comprovada entre desconto e margem.",
+          "Criar KPI que nao existe no Dashboard."
+        ],
+        "minimumEvidence": [
+          "Sugestao cita a hipotese e o KPI existente.",
+          "Zero linha de vinculo antes da escolha explicita.",
+          "Proposta final reflete exatamente os KPIs confirmados."
+        ],
+        "confirmationPolicy": "explicit-choice-before-write",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    },
+    {
+      "caseId": "Q2B-QUARTERLY-EXPERIENCED-MANAGER-008",
+      "riskId": "QUARTERLY-EXPERIENCED-MANAGER",
+      "title": "Gestor experiente informa o plano trimestral completo",
+      "deliveryId": "DELIV-QUARTERLY-PLAN",
+      "classification": "strategic-content",
+      "channels": ["web", "whatsapp"],
+      "sessionType": "quarterly",
+      "methods": ["human-review", "ai-judge-read-only", "deterministic", "integration", "visual"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-MULTI-CONFIRM-001", "CRIT-DIVERGENCE-001", "CRIT-CHANNEL-DIVERGENCE-001"],
+      "input": {
+        "opening": "Para T3, AREA_FIXTURE_COMERCIAL tera um objetivo: elevar oportunidades com proxima acao de quarenta para oitenta e cinco por cento ate setembro, fonte relatorio semanal, responsavel PERSON_FIXTURE_MANAGER. As duas acoes, donos, prazos, criterios e riscos ja estao informados. Vincule ao objetivo anual de previsibilidade comercial.",
+        "facts": [
+          "A primeira acao e padronizar etapas do funil ate julho, com criterio de aceite documentado.",
+          "A segunda acao e revisar oportunidades sem proxima acao semanalmente ate setembro.",
+          "O risco confirmado e baixa adesao dos vendedores e o acompanhamento sera semanal."
+        ],
+        "upperLevelContext": "Objetivo anual aplicavel e explicitamente citado: aumentar previsibilidade comercial.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Absorver os dados completos e perguntar apenas uma lacuna bloqueante, se existir.",
+          "Montar a proposta trimestral com o vinculo anual informado.",
+          "Pedir uma unica confirmacao final e preservar o conteudo entre canais."
+        ],
+        "forbiddenBehaviors": [
+          "Repetir perguntas de area, periodo, objetivo, meta, dono e prazo ja respondidas.",
+          "Abrir planejamento anual.",
+          "Pedir confirmacoes intermediarias por objetivo ou acao."
+        ],
+        "minimumEvidence": [
+          "Numero de perguntas bloqueantes e zero ou um.",
+          "Existe uma confirmacao final para toda a proposta.",
+          "Banco, documento e resumo WhatsApp preservam objetivo, meta, acoes e vinculo anual."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "required"
+      }
+    }
+  ]
+}

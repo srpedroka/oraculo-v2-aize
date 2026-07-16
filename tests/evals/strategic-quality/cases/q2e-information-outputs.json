@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-16.q2",
+  "phase": "Q2E",
+  "title": "Informacao e Saidas Derivadas",
+  "cases": [
+    {
+      "caseId": "Q2E-HISTORY-IMPORT-METADATA-001",
+      "riskId": "HISTORY-IMPORT-CONTENT-METADATA",
+      "title": "Historico extrai titulo, tipo, area e periodo do conteudo",
+      "deliveryId": "DELIV-PLAN-HISTORY-IMPORT",
+      "classification": "information-quality",
+      "channels": ["web", "whatsapp"],
+      "sessionType": null,
+      "methods": ["fixture", "deterministic", "integration", "human-review"],
+      "rubrics": ["RUBRIC-INFORMATION-QUALITY", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-SCOPE-001", "CRIT-MEMORY-001", "CRIT-CONFLICT-OVERWRITE-001", "CRIT-SENSITIVE-PERSISTENCE-001"],
+      "input": {
+        "opening": "Arquivo chamado documento-final.pdf cujo conteudo inicia com PLANO MENSAL DE MARKETING, ABRIL 2027, AREA MARKETING, RESPONSAVEL PERSON_FIXTURE_MANAGER.",
+        "facts": [
+          "O cabecalho explicito informa tipo mensal, area Marketing, periodo Abr 2027 e titulo Plano mensal de campanhas.",
+          "O nome do arquivo e generico e nao deve prevalecer sobre o conteudo.",
+          "O texto possui objetivos e acoes antigas, mas nao deve criar plano ativo automaticamente."
+        ],
+        "upperLevelContext": "Importacao de historico; nenhum plano ativo deve ser criado por este fluxo.",
+        "histories": [],
+        "competingContext": ["Nome do arquivo sem metadados uteis: documento-final.pdf."]
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Extrair titulo, tipo, area e periodo do cabecalho antes da IA.",
+          "Apresentar os campos estruturados para confirmacao do usuario.",
+          "Gravar texto, metadados confirmados e backup recuperavel sem armazenar o arquivo bruto."
+        ],
+        "forbiddenBehaviors": [
+          "Jogar todo o cabecalho dentro do corpo sem preencher campos principais.",
+          "Confiar apenas no nome generico do arquivo.",
+          "Criar objetivos ou plano ativo durante a importacao historica."
+        ],
+        "minimumEvidence": [
+          "Sugestao contem tipo monthly, area Marketing, periodo Abr 2027 e titulo separado.",
+          "Zero escrita ocorre antes da confirmacao.",
+          "Banco nao contem bytes, URL temporaria ou descritor criptografico da midia."
+        ],
+        "confirmationPolicy": "single-final",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "not-applicable"
+      }
+    },
+    {
+      "caseId": "Q2E-KPI-IMPORT-CONFLICT-002",
+      "riskId": "KPI-IMPORT-CONFLICTING-SOURCES",
+      "title": "Conflito entre planilha e imagem exige escolha",
+      "deliveryId": "DELIV-KPI-IMPORT-SUGGESTION",
+      "classification": "information-quality",
+      "channels": ["web"],
+      "sessionType": null,
+      "methods": ["fixture", "deterministic", "integration", "human-review"],
+      "rubrics": ["RUBRIC-INFORMATION-QUALITY", "RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-CONFLICT-OVERWRITE-001", "CRIT-NUMERICAL-DIVERGENCE-001", "CRIT-SENSITIVE-PERSISTENCE-001"],
+      "input": {
+        "opening": "A planilha informa meta de Faturamento de 1,20 mi em Jun 2027 e a imagem anexada informa 1,30 mi para o mesmo KPI e periodo.",
+        "facts": [
+          "As duas fontes sao legiveis e nenhuma tem precedencia configurada.",
+          "O usuario escolhe usar a planilha e manter a imagem apenas no backup estruturado da decisao.",
+          "Somente os quatro KPIs executivos cadastrados podem ser propostos."
+        ],
+        "upperLevelContext": "Importacao de KPI no Dashboard; a escrita final exige owner ou admin e confirmacao explicita.",
+        "histories": [],
+        "competingContext": ["Fonte A planilha: 1,20 mi; Fonte B imagem: 1,30 mi."]
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Exibir o conflito por KPI, mes, ano e campo antes de gravar.",
+          "Pedir qual fonte usar e preservar a escolha em backup estruturado.",
+          "Aplicar somente os valores confirmados e criar documento historico de KPIs."
+        ],
+        "forbiddenBehaviors": [
+          "Sobrescrever silenciosamente uma fonte pela outra.",
+          "Somar, promediar ou escolher o maior valor sem autorizacao.",
+          "Guardar planilha ou imagem bruta no banco."
+        ],
+        "minimumEvidence": [
+          "Proposta marca conflito entre 1,20 mi e 1,30 mi.",
+          "Valor gravado para Jun 2027 e 1,20 mi depois da escolha.",
+          "Documento historico registra origem e escolha sem midia bruta."
+        ],
+        "confirmationPolicy": "explicit-choice-before-write",
+        "mutationPolicy": "proposal-confirmation",
+        "judgePolicy": "not-applicable"
+      }
+    },
+    {
+      "caseId": "Q2E-MEMORY-RELEVANCE-003",
+      "riskId": "MEMORY-RELEVANT-VS-COMPETING",
+      "title": "Memoria relevante vence documento recente de outra area",
+      "deliveryId": "DELIV-MEMORY-CONTEXT",
+      "classification": "information-quality",
+      "channels": ["web", "whatsapp"],
+      "sessionType": null,
+      "methods": ["fixture", "human-review", "ai-judge-read-only", "integration"],
+      "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-INFORMATION-QUALITY"],
+      "criticalFailures": ["CRIT-MEMORY-001", "CRIT-SCOPE-001", "CRIT-FABRICATION-001", "CRIT-CHANNEL-DIVERGENCE-001"],
+      "input": {
+        "opening": "Vamos planejar Marketing e revisar por que a meta de leads qualificados se repete.",
+        "facts": [
+          "Existe historico de Marketing do periodo anterior com a mesma meta e causa registrada.",
+          "Existe documento mais recente de Financeiro sobre fechamento contabil, sem relacao com Marketing.",
+          "O historico deve orientar uma pergunta e nao ser tratado como verdade atual sem confirmacao."
+        ],
+        "upperLevelContext": "Planejamento de AREA_FIXTURE_MARKETING com objetivo superior de gerar demanda qualificada.",
+        "histories": ["Marketing: meta repetida de leads qualificados; causa anterior foi baixa conversao da pagina."],
+        "competingContext": ["Financeiro: relatorio recente de fechamento contabil e margem."]
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Selecionar o historico de Marketing por area, tema e periodo aplicavel.",
+          "Perguntar se a causa anterior ainda vale e o que muda agora.",
+          "Manter a mesma selecao relevante no app e WhatsApp."
+        ],
+        "forbiddenBehaviors": [
+          "Citar o relatorio Financeiro como base do plano de Marketing.",
+          "Afirmar que a causa anterior continua valida sem confirmacao.",
+          "Colar documento inteiro no prompt ou resposta."
+        ],
+        "minimumEvidence": [
+          "Contexto enviado contem referencia resumida de Marketing e exclui Financeiro.",
+          "Resposta formula pergunta construtiva sobre recorrencia.",
+          "Nenhum texto bruto completo e persistido ou exposto."
+        ],
+        "confirmationPolicy": "no-write",
+        "mutationPolicy": "read-only",
+        "judgePolicy": "optional"
+      }
+    },
+    {
+      "caseId": "Q2E-CANONICAL-OUTPUT-EQUALITY-004",
+      "riskId": "CANONICAL-OUTPUT-EQUALITY",
+      "title": "Proposta, banco, documento, PDF e WhatsApp sao equivalentes",
+      "deliveryId": "DELIV-CANONICAL-OUTPUTS",
+      "classification": "derived-output",
+      "channels": ["web", "whatsapp", "derived"],
+      "sessionType": null,
+      "methods": ["deterministic", "snapshot", "visual", "integration"],
+      "rubrics": ["RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-DIVERGENCE-001", "CRIT-NUMERICAL-DIVERGENCE-001", "CRIT-CHANNEL-DIVERGENCE-001"],
+      "input": {
+        "opening": "Fixture confirmada de plano trimestral com um objetivo, meta, baseline, fonte, prazo, responsavel, duas acoes e vinculo anual.",
+        "facts": [
+          "O objetivo usa baseline quarenta, alvo oitenta e cinco por cento e prazo fim do trimestre.",
+          "As duas acoes possuem dono, data e criterio de conclusao.",
+          "A versao canonica e gerada deterministicamente depois da confirmacao."
+        ],
+        "upperLevelContext": "Objetivo anual sintetico vinculado e presente na proposta confirmada.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Gerar documento canonico a partir da proposta confirmada e dos registros gravados.",
+          "Renderizar a mesma hierarquia e os mesmos valores na tela, PDF e WhatsApp.",
+          "Preservar origem, versao, periodo e vinculo anual."
+        ],
+        "forbiddenBehaviors": [
+          "Chamar IA novamente para reescrever o documento.",
+          "Omitir baseline, fonte, prazo ou responsavel em um dos canais.",
+          "Alterar numero, unidade ou hierarquia entre saidas."
+        ],
+        "minimumEvidence": [
+          "Fingerprint semantico de proposta, banco e documento e igual.",
+          "Snapshot de PDF e resumo WhatsApp contem todos os campos essenciais.",
+          "Nenhuma segunda proposta ou mutacao ocorre durante a renderizacao."
+        ],
+        "confirmationPolicy": "not-applicable",
+        "mutationPolicy": "deterministic-only",
+        "judgePolicy": "not-applicable"
+      }
+    },
+    {
+      "caseId": "Q2E-DASHBOARD-NUMERICAL-005",
+      "riskId": "DASHBOARD-MONTH-UNIT-PRECISION",
+      "title": "Dashboard usa mes fechado, unidade e precisao corretos",
+      "deliveryId": "DELIV-DASHBOARD-KPI",
+      "classification": "derived-output",
+      "channels": ["web", "derived"],
+      "sessionType": null,
+      "methods": ["deterministic", "fixture", "visual", "e2e"],
+      "rubrics": ["RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-NUMERICAL-DIVERGENCE-001", "CRIT-DIVERGENCE-001"],
+      "input": {
+        "opening": "Na data sintetica de 16 Jul 2027, Faturamento de Jun 2027 tem meta 1.300.000 e atingido 1.254.320,456.",
+        "facts": [
+          "Jun e o ultimo mes calendario fechado; Jul esta em andamento.",
+          "Cards usam ate duas casas na unidade compacta e o tooltip do grafico usa ate quatro.",
+          "O eixo horizontal usa meses abreviados em PT-BR."
+        ],
+        "upperLevelContext": "Dashboard executivo de KPIs; nao e uma sessao de planejamento.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Destacar Jun 2027 como ultimo mes fechado e sinalizar Jul como em andamento.",
+          "Exibir o atingido no card como R$ 1,25 mi e no hover da coluna como R$ 1,2543 mi.",
+          "Exibir Jan a Dez abreviados e manter Meta e Atingido no mes correto."
+        ],
+        "forbiddenBehaviors": [
+          "Destacar Jul como realizado fechado.",
+          "Trocar unidade, arredondar para mes errado ou omitir o mes no eixo.",
+          "Mostrar casas decimais que alterem materialmente o valor."
+        ],
+        "minimumEvidence": [
+          "Funcao de periodo fechado retorna Jun 2027.",
+          "Formatadores retornam R$ 1,25 mi no card e R$ 1,2543 mi no tooltip.",
+          "Teste visual confirma rotulos sem sobreposicao em desktop e mobile."
+        ],
+        "confirmationPolicy": "not-applicable",
+        "mutationPolicy": "deterministic-only",
+        "judgePolicy": "not-applicable"
+      }
+    },
+    {
+      "caseId": "Q2E-ARCHIVE-AUDIT-TRACEABILITY-006",
+      "riskId": "ARCHIVE-AUDIT-TRACEABILITY",
+      "title": "Arquivo, versao, origem e auditoria permanecem rastreaveis",
+      "deliveryId": "DELIV-ARCHIVE-AUDIT",
+      "classification": "operational",
+      "channels": ["web", "derived"],
+      "sessionType": null,
+      "methods": ["deterministic", "rls", "integration", "e2e", "audit", "visual"],
+      "rubrics": ["RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-DIVERGENCE-001", "CRIT-SENSITIVE-PERSISTENCE-001"],
+      "input": {
+        "opening": "Fixture com documento historico importado, nova versao reaberta, objetivo arquivado e restaurado e evento administrativo sanitizado.",
+        "facts": [
+          "A versao anterior continua imutavel e a reabertura cria nova versao.",
+          "Arquivamento e restauracao preservam snapshot antes e depois.",
+          "Auditoria nao pode conter chave, contato, prompt ou conteudo de negocio."
+        ],
+        "upperLevelContext": "Consulta de rastreabilidade no Arquivo e na Auditoria, sem nova mutacao durante a avaliacao.",
+        "histories": ["Versao um e versao dois do mesmo historico sintetico."],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Mostrar origem, versao, horario e relacao entre versoes.",
+          "Exibir arquivamento e restauracao com antes e depois coerentes.",
+          "Aplicar RLS e sanitizacao da auditoria."
+        ],
+        "forbiddenBehaviors": [
+          "Sobrescrever a versao anterior.",
+          "Excluir trilha ao restaurar.",
+          "Expor segredo, contato, prompt ou conteudo privado na auditoria."
+        ],
+        "minimumEvidence": [
+          "Duas versoes possuem IDs sinteticos distintos e origem comum.",
+          "Snapshot antes e depois corresponde ao estado arquivado e restaurado.",
+          "Leitura por membro sem papel owner e bloqueada quando a politica exigir."
+        ],
+        "confirmationPolicy": "no-write",
+        "mutationPolicy": "read-only",
+        "judgePolicy": "not-applicable"
+      }
+    },
+    {
+      "caseId": "Q2E-UX-CROSS-CUTTING-007",
+      "riskId": "UX-RESPONSIVE-ACCESSIBLE-ERROR",
+      "title": "Responsividade, acessibilidade e estado de erro",
+      "deliveryId": "DELIV-UX-CROSS-CUTTING",
+      "classification": "operational",
+      "channels": ["web", "derived"],
+      "sessionType": null,
+      "methods": ["visual", "e2e", "accessibility", "performance", "error-state"],
+      "rubrics": ["RUBRIC-DERIVED-OUTPUT"],
+      "criticalFailures": ["CRIT-DIVERGENCE-001", "CRIT-SENSITIVE-PERSISTENCE-001"],
+      "input": {
+        "opening": "Percorrer as rotas cobertas em desktop e mobile, abrir dialogos, carregar documento longo e simular falha de rede sanitizada.",
+        "facts": [
+          "Nenhum texto pode sobrepor controles ou sair da viewport.",
+          "Dialogos devem ficar centralizados no viewport e listas longas devem rolar dentro do painel correto.",
+          "Erros devem orientar nova tentativa sem expor stack, segredo ou dado privado."
+        ],
+        "upperLevelContext": "Qualidade transversal da interface; nenhuma mutacao de negocio e necessaria para o caso.",
+        "histories": [],
+        "competingContext": []
+      },
+      "expected": {
+        "requiredBehaviors": [
+          "Manter navegacao, foco, rotulos e contraste utilizaveis por teclado e leitor de tela.",
+          "Conter rolagem de documentos e centralizar modais em desktop e mobile.",
+          "Exibir estado vazio, carregamento e erro com recuperacao clara."
+        ],
+        "forbiddenBehaviors": [
+          "Criar barra infinita na pagina por documento longo.",
+          "Abrir modal fora do campo de visao por herdar transform da pagina.",
+          "Exibir erro tecnico, segredo ou conteudo privado ao usuario."
+        ],
+        "minimumEvidence": [
+          "Capturas desktop e mobile nao mostram sobreposicao ou overflow incoerente.",
+          "Auditoria de acessibilidade nao encontra bloqueio critico de foco ou nome acessivel.",
+          "Falha simulada apresenta mensagem sanitizada e acao de tentar novamente."
+        ],
+        "confirmationPolicy": "not-applicable",
+        "mutationPolicy": "deterministic-only",
+        "judgePolicy": "not-applicable"
+      }
+    }
+  ]
+}
