@@ -47,6 +47,15 @@ import {
   readyQuarterlyPlanSystemPrompt,
 } from "./session-ready-plans.ts";
 import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMergeState } from "./session-runtime.ts";
+import {
+  ADAPTIVE_SESSION_RULES,
+  adaptiveFallbackReply,
+  buildAdaptiveRepairDirective,
+  ensureAdaptiveStatePatch,
+  latestOracleReply,
+  safeAdaptiveNextPhase,
+  validateAdaptiveEnvelope,
+} from "./session-adaptive.ts";
 
 export {
   prepareReadyMonthlyPlanProposal,
@@ -288,6 +297,7 @@ export async function processPlanningMessage(
   const systemPrompt = [
     PERSONA_ORACULO,
     REGRAS_DE_SESSAO,
+    ADAPTIVE_SESSION_RULES,
     UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
@@ -298,32 +308,99 @@ export async function processPlanningMessage(
     context,
   ].filter(Boolean).join("\n\n");
 
-  const result = await callModelForFunction(
-    client,
-    session.org_id,
-    "planning",
-    aiRoute,
-    systemPrompt,
-    conversationMessagesForModel(history),
-    aiRoute.limits,
-    { userId: params.userId },
-  );
+  const modelMessages = conversationMessagesForModel(history);
+  const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
+    const output = await callModelForFunction(
+      client,
+      session.org_id,
+      "planning",
+      aiRoute,
+      prompt,
+      modelMessages,
+      aiRoute.limits,
+      { userId: params.userId },
+    );
+    await recordAiUsage({
+      client,
+      orgId: session.org_id,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
+      channel: params.channel ?? "web",
+      usage: output.usage,
+      settings: aiRoute.legacySettings,
+      metadata: {
+        aiFunction: "planning",
+        sessionId: session.id,
+        sessionType: session.type,
+        phase: session.phase,
+        conversationId: conversation?.id ?? ensured.session.conversation_id,
+        adaptiveAttempt: attempt,
+        adaptiveRepairReasons: repairReasons,
+      },
+    });
+    return output;
+  };
 
-  await recordAiUsage({
-    client,
-    orgId: session.org_id,
-    provider: aiRoute.provider,
-    model: aiRoute.model,
-    channel: params.channel ?? "web",
-    usage: result.usage,
-    settings: aiRoute.legacySettings,
-    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: session.type, phase: session.phase, conversationId: conversation?.id ?? ensured.session.conversation_id },
-  });
+  const parseEnvelope = (value: string) => {
+    const envelope = parseJsonObject(value) as any;
+    assertSafeStructuredValue(envelope);
+    return envelope;
+  };
 
-  const parsed = parseJsonObject(result.text) as any;
-  assertSafeStructuredValue(parsed);
+  const previousOracleReply = latestOracleReply(history.messages);
+  let result = await callPlanningModel(systemPrompt, 1);
+  let parsed: any = null;
+  let repairReasons: string[] = [];
+  try {
+    parsed = parseEnvelope(result.text);
+    repairReasons = validateAdaptiveEnvelope({
+      envelope: parsed,
+      currentPhase: session.phase,
+      phases: CONDUCTORS[session.type].phases,
+      sessionState: session.state,
+      previousOracleReply,
+      userMessage: params.message,
+    });
+  } catch {
+    repairReasons = ["invalid_json_envelope"];
+  }
+
+  if (repairReasons.length) {
+    const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
+    result = await callPlanningModel(repairPrompt, 2, repairReasons);
+    try {
+      parsed = parseEnvelope(result.text);
+    } catch {
+      throw new Error("A IA não conseguiu estruturar a condução com segurança. Nenhum plano foi alterado; tente novamente.");
+    }
+    const remainingReasons = validateAdaptiveEnvelope({
+      envelope: parsed,
+      currentPhase: session.phase,
+      phases: CONDUCTORS[session.type].phases,
+      sessionState: session.state,
+      previousOracleReply,
+      userMessage: params.message,
+    });
+    if (remainingReasons.length) {
+      const proposalIsPremature = remainingReasons.includes("proposal_before_ready") || remainingReasons.includes("ready_with_blocking_gap");
+      if (proposalIsPremature) parsed.proposal = null;
+      const hasProposal = Boolean(parsed?.proposal);
+      const paused = parsed?.state_patch?.pausa_solicitada === true;
+      parsed.reply = adaptiveFallbackReply(hasProposal, paused);
+      parsed.state_patch = ensureAdaptiveStatePatch(parsed?.state_patch, params.message, hasProposal, true, session.state);
+      parsed.next_phase = safeAdaptiveNextPhase(
+        session.phase,
+        parsed?.next_phase,
+        CONDUCTORS[session.type].phases,
+        remainingReasons,
+      );
+    }
+  }
+
   const reply = typeof parsed?.reply === "string" ? parsed.reply : result.text;
-  const statePatch = parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {};
+  const statePatch = parsed?.state_patch && typeof parsed.state_patch === "object"
+    ? ensureAdaptiveStatePatch(parsed.state_patch, params.message, Boolean(parsed?.proposal), false, session.state)
+    : ensureAdaptiveStatePatch({}, params.message, Boolean(parsed?.proposal), false, session.state);
   const nextPhase = validNextPhase(session.type, parsed?.next_phase) ?? session.phase;
   const expectedProposalTypes: Partial<Record<PlanningSessionType, "save_strategic_plan" | "save_quarterly_plan" | "save_monthly_plan">> = {
     strategic: "save_strategic_plan",

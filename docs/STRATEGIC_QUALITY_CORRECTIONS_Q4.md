@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **candidato para aprovacao do owner; nenhuma correcao funcional executada**
+Status: **briefing aprovado; Q4A concluida e validada no staging; Q4B aguarda briefing**
 
 ## O que vai mudar para o gestor
 
@@ -48,6 +48,8 @@ Cinco das seis rodadas com proposta tiveram media 82,50. O polimento e localizad
 - Classificar a resposta como vaga, parcial ou completa para escolher pergunta guiada, pergunta direta ou sintese.
 - Bloquear repeticao semantica da ultima pergunta e manter uma unica confirmacao final.
 - Adicionar testes que reproduzem os loops da Q3 antes da correcao.
+
+Estado em 2026-07-16: concluida no staging. O novo `_shared/session-adaptive.ts` exige classificacao `vague|partial|ready`, valida os fatos declarados contra o estado real da sessao, impede avancar sem evidencia, bloqueia regressao e repeticao semantica e recusa proposta prematura. Uma resposta invalida recebe uma unica tentativa de reparo; se continuar invalida, o servidor usa resposta curta e deterministica sem mutar plano. O smoke `pnpm run eval:strategic:q4a` aprovou 15/15 checks com bloco completo, resposta vaga e anti-loop, sem gravacao prematura e com cleanup. Custo incremental da Q4A, incluindo as rodadas diagnosticas: US$ 0,093434; acumulado do plano: US$ 2,044079. Somente `oracle-session` foi publicada no staging; producao, frontend e WhatsApp real nao mudaram.
 
 ### Q4B - Conducao e plano trimestral
 

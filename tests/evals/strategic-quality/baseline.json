@@ -14,6 +14,11 @@
       "date": "2026-07-16",
       "gate": "Q1-review-alignment",
       "reason": "Revisao estrategica adaptativa em lote, uma confirmacao final e contexto completo de indicador, baseline, meta e prazo."
+    },
+    {
+      "date": "2026-07-16",
+      "gate": "Q4A",
+      "reason": "Motor adaptativo server-side, classificacao vaga/parcial/pronta, fatos canonicos verificados, bloqueio de repeticao semantica e autocorrecao controlada antes de qualquer mutacao."
     }
   ],
   "runtimeAssignments": [
@@ -47,7 +52,8 @@
     { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "31f948fff81143be95d0eb5bf21a67ab88fdacde9fabd687548be0187dc41a7e" },
     { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "5835c554fef96c327887fca0bb008117e7395feaefcb04abaec45e237f70bb3e" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
-    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "d17edea1edf68e0545ae0e342144c7b93d6c7e53c77925593cf903ecef036b85" },
+    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "07b2a2258d44e8fe97e04285bea501fcae943e379c50b773434122e5e306f99e" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "03a811a581bd370d95dd81da614ade58c5087212d77834bc970603b11715b079" },
     { "path": "supabase/functions/_shared/session-runtime.ts", "sha256": "12995aaf4d99eb1db2713d2378ee852e422e4bd895b19a237b49144a6ce2d010" },
     { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "3011e41405148bdc510ad80ffd89b4252dc86e57721d00774bc15c71f4002c47" },
     { "path": "supabase/functions/_shared/session-imports.ts", "sha256": "d9ed3d6f0c0f8db62b8a9d029fdee77604b827d7aa348b5e69f2ff2322697820" },

@@ -286,7 +286,8 @@ Compartilhados criticos:
 - `_shared/ai-router.ts`: resolve provider/modelo/chave por funcao (`planning`, `daily`, `background`).
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.
 - `_shared/conductors/tone.ts`: carrega o ajuste de tom da empresa e monta a diretiva segura para os prompts.
-- `_shared/session-engine.ts`: estado e ciclo de sessoes.
+- `_shared/session-engine.ts`: estado e ciclo de sessoes, com validacao adaptativa antes de persistir respostas da IA.
+- `_shared/session-adaptive.ts`: contrato `vague|partial|ready`, fatos canonicos, anti-loop, reparo unico e fallback deterministico.
 - `_shared/session-runtime.ts`, `_shared/session-imports.ts` e `_shared/session-ready-plans.ts`: runtime comum, importações prontas e normalizadores/prompts puros do motor de sessões.
 - `_shared/proposals.ts`: aplica propostas confirmadas com validacao server-side.
 - `_shared/plan-context.ts`: contexto textual do plano e ate 5 historicos relevantes para IA.
@@ -593,7 +594,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - A Q0 R2 foi aprovada em 2026-07-16 após o owner exigir Plano Estratégico Anual primeiro e cobertura de todas as entregas. O padrão possui sete rubricas, dezesseis falhas críticas e matriz de 21 entregas em `tests/evals/strategic-quality/deliverable-coverage.json`. Regra financeira: sem teto isolado por caso, orçamento acumulado US$ 20, aviso US$ 15 e parada preventiva US$ 19; sempre reportar geração, judge, total e acumulado.
 - A Q1 anual automatizada foi aprovada no staging em 2026-07-16: técnica verde, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. A Revisão Estratégica foi alinhada ao modo adaptativo sem deixar de ser microajuste; teste real aprovou dois ajustes em lote, uma confirmação, banco/documento e cleanup. Acumulado do plano: US$ 0,437777. Produção concluída no merge `43b5935`, release protegido `29525599601` e Netlify `6a5928c0f349e3bcc2a4728a`; verificação e smoke autenticado verdes. A chave temporária deve permanecer privada para novos testes autorizados, sem revogação por enquanto. Consulte `docs/STRATEGIC_EVALUATION_LAB.md`.
 - A Q2 foi implementada e aprovada pelo owner em 2026-07-16: 29 casos sinteticos em Q2A-Q2E cobrem 15 entregas e as 16 falhas criticas. `pnpm run test:strategic-cases` valida manifesto, casos, metodos, rubricas, canais, confirmacoes e sanitizacao. O gate esta `owner-approved`.
-- A Q3 foi medida no staging em 2026-07-16: 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual 96,25; Conducao 44,97; Trimestral 31,56; Mensal 7,19; Revisao/Fechamento 75,63; Saidas 51,15; conjunta 51,13. Gate automatico reprovado. A revisao humana qualitativa confirmou conducao adaptativa, perguntas orientadas a acao, tom casual/objetivo e prioridade para trimestral/mensal; nao foram inferidas notas humanas numericas. Custo incremental Q3 US$ 1,512869; acumulado do plano US$ 1,950646. Leia `docs/STRATEGIC_QUALITY_BASELINE_Q3.md` e o briefing `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md`; nao alterar runtime antes do aceite explicito da Q4.
+- A Q3 foi medida no staging em 2026-07-16: 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual 96,25; Conducao 44,97; Trimestral 31,56; Mensal 7,19; Revisao/Fechamento 75,63; Saidas 51,15; conjunta 51,13. A Q4A foi aprovada e concluida no staging: 15 testes unitarios e smoke real 15/15 para bloco completo, resposta vaga, anti-loop, confirmacao unica, estado canonico e zero mutacao prematura. Custo Q4A US$ 0,093434; acumulado do plano US$ 2,044079. Producao permanece anterior; leia `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md`.
 
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
@@ -615,7 +616,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Pendencias conhecidas / proximos passos
 
-- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`: primeiro Mapa A de qualidade estratégica, depois Mapa B de qualidade operacional. Próxima ação: owner aprovar o briefing Q4; só então corrigir motor adaptativo, trimestral, mensal, naturalidade/fechamentos, saídas e integração. Q5 e Mapa B continuam bloqueados.
+- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`: primeiro Mapa A de qualidade estratégica, depois Mapa B de qualidade operacional. A Q4A esta concluida no staging; proxima acao e apresentar o briefing Q4B do plano trimestral antes de editar seus condutores. Q5 e Mapa B continuam bloqueados.
 - Para uma futura prova com geração textual real, abrir um novo ciclo MASTER com chave própria e descartável apenas no staging; nunca reutilizar credencial de produção.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
 - Antes de transformar o aviso operacional em política contratual definitiva, o responsável deve validar papéis de controlador/operador, razão social, contato institucional, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.

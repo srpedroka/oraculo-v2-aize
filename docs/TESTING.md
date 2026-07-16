@@ -116,6 +116,14 @@ pnpm run eval:strategic:q3 -- human-packet
 
 Transcricoes, propostas, ledger e pacote humano ficam em `.agents-private/` com permissao `600`. O relatorio sanitizado e versionado fica em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`. Nao use `archive-calibration`, `archive-errors`, `cleanup-stale` ou `repair-execution-checks` fora de um incidente documentado do laboratorio.
 
+A Q4A possui 15 testes unitarios em `_shared/session-adaptive.test.ts` e um smoke pago, opt-in e restrito ao staging:
+
+```bash
+pnpm run eval:strategic:q4a
+```
+
+O smoke cria uma empresa e usuario descartaveis, copia apenas a chave temporaria do laboratorio, testa bloco completo, resposta vaga e anti-loop, recusa mutacao pre-confirmacao, registra custo no ledger privado e remove org/usuario/chave. A rodada aprovada em 2026-07-16 passou 15/15; somente `oracle-session` de staging foi publicada. O comando nunca pertence ao CI comum e exige a mesma autorizacao financeira do plano.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.
