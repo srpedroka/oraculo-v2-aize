@@ -369,6 +369,13 @@ publish: dist
 NODE_VERSION: 22
 ```
 
+Regra de custo e deploy:
+
+- Deploy de frontend somente quando o runtime web mudou. Alteração apenas em docs, testes, scripts ou Edge Functions não recebe deploy Netlify.
+- Agrupe correções relacionadas para não consumir um deploy por ajuste documental.
+- Compra de créditos, upgrade, assinatura, recarga automática ou qualquer nova cobrança exige autorização explícita do owner imediatamente antes da confirmação.
+- Uma autorização de consumo de API não autoriza compra ou contratação de serviço.
+
 ### GitHub
 
 Repositorio:
@@ -603,6 +610,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Pendencias conhecidas / proximos passos
 
+- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`: primeiro Mapa A de qualidade estratégica, depois Mapa B de qualidade operacional. Próxima fatia: Q0, documental e sem IA paga.
 - Para uma futura prova com geração textual real, abrir um novo ciclo MASTER com chave própria e descartável apenas no staging; nunca reutilizar credencial de produção.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
 - Antes de transformar o aviso operacional em política contratual definitiva, o responsável deve validar papéis de controlador/operador, razão social, contato institucional, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.

@@ -1,6 +1,6 @@
 # Plano mestre: integridade, segurança, confiabilidade e escala do Oráculo
 
-> **STATUS: ✅ ETAPAS 0, 1 e 2 concluídas e EM PRODUÇÃO em 2026-07-12. Etapa 3 completa e EM PRODUÇÃO em 2026-07-13: Fatias 3A–3E publicadas, piloto real aprovado para texto, áudio, documento, deduplicação, ordem e envio. Texto não possui mais fallback síncrono, o webhook ficou como entrada mínima e a outbox é obrigatória para respostas normais. Etapas 4–8 não iniciadas.**
+> **STATUS: CONCLUÍDO.** Etapas 0 a 7, incluindo a Etapa S, foram implementadas, publicadas quando aplicável e aprovadas pelo Teste Mestre encerrado em 2026-07-16. O trabalho pós-hardening segue no plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`.
 > **STATUS original: pronto para execução, ainda não iniciado.**
 > Este plano foi escrito para ser executado por Codex, Claude Code, Grok CLI ou outra ferramenta de vibe coding. As etapas são sequenciais. Não começar uma etapa sem concluir e validar a anterior.
 
@@ -1281,6 +1281,10 @@ O agente deve entregar:
 - riscos residuais;
 - decisões que ainda dependem do dono;
 - link de produção.
+
+## 7.6 Continuação pós-hardening
+
+Qualidade da condução, qualidade dos planos e piloto operacional completo passam a ser executados pelo plano único `plans/2026-07-16-qualidade-estrategica-operacional.md`. O plano técnico atual permanece fechado e serve como baseline de regressão; não reabrir suas etapas para misturar critérios estratégicos com hardening.
 
 ---
 

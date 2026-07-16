@@ -1246,6 +1246,27 @@ Depois do deploy, valide:
 - dashboard;
 - uma rota interna direta.
 
+### Limite de créditos e `usage_exceeded`
+
+No plano Netlify baseado em créditos, cada deploy de produção consome cota mesmo quando o conteúdo do build é igual. Portanto:
+
+- não publique frontend para alteração apenas em documentação, testes, scripts ou Edge Functions;
+- agrupe correções de runtime relacionadas em um único deploy;
+- confira `Usage & billing > Credit usage breakdown` antes de uma sequência de publicações;
+- compra de crédito, upgrade, assinatura e recarga automática exigem autorização explícita do owner imediatamente antes da confirmação.
+
+Se o frontend responder `HTTP 503` com corpo público `usage_exceeded`:
+
+1. pause piloto e novas publicações;
+2. confirme que Supabase/Functions continuam íntegros com a parte administrativa do preflight;
+3. abra o painel Netlify e confira saldo, consumo por deploy e data do próximo ciclo;
+4. apresente ao owner preço, quantidade e forma de restauração, sem expor dados de pagamento;
+5. não compre nada sem autorização explícita;
+6. depois da restauração, confirme `HTTP 200` e rode `pnpm run production:verify`;
+7. registre o incidente e ajuste a disciplina de deploy.
+
+Em 2026-07-16, 67 deploys consumiram 1.005 créditos e pausaram o site. Uma compra única autorizada de 500 créditos por US$ 5 restaurou o acesso; a recarga automática permaneceu desligada. Esse histórico não autoriza compras futuras.
+
 ## Deploy Supabase
 
 Migrations rotineiras sao aplicadas somente pelo workflow `Production release`. O comando abaixo fica reservado ao staging/local e a recuperacao de emergencia documentada:

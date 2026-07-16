@@ -60,6 +60,16 @@ pnpm run test:master:cleanup
 
 O roteiro e o estado atual estão em `docs/MASTER_TEST.md`, e o consolidado em `docs/MASTER_TEST_REPORT.md`. Durante um ciclo aberto, credenciais e IDs ficam apenas em `.agents-private/master-test-7a.json`; o cleanup autorizado apaga esse estado sensível. As evidências sanitizadas ficam em `master-test-7b.json`, `master-test-7c.json` e `master-test-7d.json`, com permissão `600` e fora do Git. As seis capturas sintéticas da revisão final ficam em `.agents-private/master-test-7d-screenshots/`.
 
+## Qualidade estratégica e operacional
+
+O Teste Mestre comprova integridade técnica, mas não substitui a avaliação da condução da IA e do plano produzido. A sequência pós-hardening está em `plans/2026-07-16-qualidade-estrategica-operacional.md`:
+
+- Q0–Q6: rubrica, laboratório, casos de referência, baseline, correções, regressão e aceite estratégico no staging;
+- O0–O8: preflight e piloto operacional progressivo com owner, WhatsApp e depois um gestor real;
+- o Mapa B não começa antes do gate Q6;
+- judge de IA é somente leitura e a aprovação final continua humana;
+- custos, versões de prompt/modelo e transcrições sanitizadas fazem parte da evidência.
+
 ## Matriz da Fatia 4A
 
 | Risco | Cobertura principal |

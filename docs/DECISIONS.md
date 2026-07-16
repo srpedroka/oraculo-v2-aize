@@ -789,3 +789,18 @@ Motivos:
 - confirmações em cada gravação diária tornariam estratégia e WhatsApp burocráticos sem melhorar a capacidade de restaurar.
 
 Consequências: a operação comum continua sem clique novo. Owners veem RPO de 30 minutos, RTO de 4 horas, pendência e duração do pacote; abrem/resolvem incidentes por seletores estruturados. O runbook define owner operacional, canal fora do app, ordem Supabase/Netlify/Evolution/IA e rotação de credenciais. Objetos R2 são gravados como gzip sem `Content-Encoding`, e a leitura mantém compatibilidade com réplicas legadas que o transporte já tenha descompactado, sempre exigindo checksum. A comunicação externa e o responsável jurídico continuam dependendo de validação formal, não de decisão automática do software.
+## 2026-07-16 - Qualidade estratégica antes do piloto operacional completo
+
+Decisão: depois do hardening técnico e do Teste Mestre, o Oráculo passa por um Mapa A de qualidade estratégica antes de retomar o Mapa B operacional. O Mapa A mede separadamente a condução do gestor e o plano produzido, usando rubrica, casos de referência, baseline, correções e regressão. O Mapa B só começa após zero falha crítica e aprovação humana.
+
+Motivo: integridade técnica comprova que o sistema grava e recupera corretamente, mas não comprova que a IA faz boas perguntas ou produz um plano útil. Gravar dados reais antes desse gate poderia validar o software e ainda assim preservar planejamento fraco.
+
+Consequências: o plano unificado está em `plans/2026-07-16-qualidade-estrategica-operacional.md`. O piloto real com o owner e depois um gestor será refeito desde o início após o aceite estratégico. O hardening concluído permanece fechado e funciona como regressão técnica.
+
+## 2026-07-16 - Autorização financeira explícita e orçamento de deploy
+
+Decisão: qualquer compra, upgrade, assinatura, recarga ou nova cobrança exige autorização explícita do owner imediatamente antes da confirmação. Consumo autorizado de API não vale como autorização de compra. Deploy Netlify ocorre apenas quando o runtime web mudou; alterações documentais, testes, scripts e Edge Functions não justificam deploy do frontend.
+
+Motivo: 67 deploys de produção consumiram 1.005 créditos do ciclo Netlify, pausando o site por limite. O owner autorizou uma compra única de 500 créditos por US$ 5, o app foi restaurado e a recarga automática permaneceu desligada. Para o plano integrado, o owner autorizou até US$ 10 acumulados em APIs de IA do Oráculo, com aviso em US$ 7 e parada preventiva em US$ 9.
+
+Consequências: agentes devem informar custo antes da ação, nunca inferir autorização financeira e agrupar publicações. O saldo de serviços deve entrar no preflight operacional.
