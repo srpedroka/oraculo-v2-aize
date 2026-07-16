@@ -167,6 +167,19 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await expect(page.getByText("Até 4h")).toBeVisible();
     await expect(page.getByRole("button", { name: "Testar recuperação" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const settingsSections = page.getByTestId("settings-sections");
+    if (testInfo.project.name === "desktop") {
+      expect(await settingsSections.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    }
+    if (testInfo.project.name === "mobile") {
+      const launcher = page.getByRole("button", { name: "Abrir Oráculo" });
+      const launcherBox = await launcher.boundingBox();
+      const menuBox = await page.getByRole("button", { name: "Abrir menu" }).boundingBox();
+      expect(launcherBox).not.toBeNull();
+      expect(menuBox).not.toBeNull();
+      expect(launcherBox!.y + launcherBox!.height).toBeLessThanOrEqual(56);
+      expect(launcherBox!.x + launcherBox!.width).toBeLessThanOrEqual(menuBox!.x);
+    }
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`recuperacao-${testInfo.project.name}.png`), fullPage: true });
     }

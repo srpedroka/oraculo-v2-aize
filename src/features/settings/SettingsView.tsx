@@ -71,7 +71,12 @@ export function SettingsView({ scope }: { scope: SettingsController }) {
         </Button>
       </div>
 
-      <nav className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" role="tablist" aria-label="Seções das configurações">
+      <nav
+        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-x-visible"
+        role="tablist"
+        aria-label="Seções das configurações"
+        data-testid="settings-sections"
+      >
         {visibleSections.map((section) => (
           <button
             key={section.id}

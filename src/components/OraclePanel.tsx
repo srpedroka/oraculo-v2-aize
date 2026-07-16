@@ -550,7 +550,7 @@ export function OraclePanel() {
       <button
         type="button"
         onClick={() => setMode("normal")}
-        className="fixed right-0 top-1/2 z-40 flex h-16 w-11 -translate-y-1/2 items-center justify-center rounded-l-2xl border border-r-0 border-[#0B6B5C] bg-[#075E54] text-white shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition hover:w-12"
+        className="fixed right-[4.25rem] top-1.5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[#0B6B5C] bg-[#075E54] text-white shadow-card transition sm:right-0 sm:top-1/2 sm:h-16 sm:w-11 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:hover:w-12"
         aria-label="Abrir Oráculo"
       >
         <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/15">

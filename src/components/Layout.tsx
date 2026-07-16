@@ -23,14 +23,14 @@ export function Layout() {
     <div className="min-h-screen bg-bg text-text sm:flex">
       <Sidebar />
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 sm:hidden">
-        <div>
-          <p className="text-sm font-bold text-text">ORÁCULO</p>
-          <p className="text-xs text-text-tertiary">
+        <div className="min-w-0 flex-1 pr-14">
+          <p className="truncate text-sm font-bold text-text">ORÁCULO</p>
+          <p className="truncate text-xs text-text-tertiary">
             {state.organization?.name}
             {state.organization?.subtitle ? ` · ${state.organization.subtitle}` : ""}
           </p>
         </div>
-        <Button variant="quiet" size="icon" icon={Menu} onClick={() => dispatch({ type: "toggle_mobile_nav" })} aria-label="Abrir menu" />
+        <Button className="shrink-0" variant="quiet" size="icon" icon={Menu} onClick={() => dispatch({ type: "toggle_mobile_nav" })} aria-label="Abrir menu" />
       </header>
 
       <main className="min-w-0 flex-1">
