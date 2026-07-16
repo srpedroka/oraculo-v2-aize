@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0 R2 e Q1 aprovadas e publicadas; catalogo Q2 implementado e aguardando revisao do owner antes do baseline Q3.
+Status: Q0 R2 e Q1 aprovadas e publicadas; catalogo Q2 aprovado pelo owner; proximo gate e o briefing/autorizacao da Q3.
 
 ## Objetivo
 
@@ -121,4 +121,4 @@ Aceite humano e produção: o owner aprovou o resultado e autorizou produção e
 
 O catalogo `2026-07-16.q2` materializa 29 casos: Q2A=5, Q2B=8, Q2C=4, Q2D=5 e Q2E=7. Eles cobrem 15 entregas distintas e todas as 16 falhas criticas da rubrica. Cada caso declara contexto superior ou ausencia proposital, fatos sinteticos, memoria pertinente e concorrente, comportamento obrigatorio, comportamento proibido, evidencia minima, politica de confirmacao, mutacao e judge.
 
-A montagem da Q2 nao acessa staging ou producao, nao chama IA e custa US$ 0. Saidas derivadas usam fixtures e checks deterministas; judge fica opcional somente para relevancia de memoria. O manifesto permanece `candidate-for-owner-review`. A Q3 nao pode iniciar antes do aceite humano registrado em `docs/STRATEGIC_QUALITY_CASES.md`.
+A montagem da Q2 nao acessou staging ou producao, nao chamou IA e custou US$ 0. Saidas derivadas usam fixtures e checks deterministas; judge fica opcional somente para relevancia de memoria. O owner aprovou o catalogo em 2026-07-16 e o manifesto passou a `owner-approved`. A Q3 continua dependendo de briefing com custo estimado e autorizacao explicita para executar o baseline pago.

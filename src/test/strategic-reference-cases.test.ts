@@ -38,7 +38,7 @@ describe("strategic quality reference cases Q2", () => {
   });
 
   it("keeps Q2 as a zero-cost reference catalog without production or runtime mutation", () => {
-    expect(manifest.gateStatus).toBe("candidate-for-owner-review");
+    expect(manifest.gateStatus).toBe("owner-approved");
     expect(manifest.executionPolicy).toEqual({
       referenceCasesOnly: true,
       productionAccess: false,

@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: **candidato para revisao do owner**
+Status: **aprovado pelo owner em 2026-07-16**
 
 ## O que esta etapa faz
 
@@ -110,4 +110,4 @@ Antes da Q3, o owner precisa confirmar:
 4. Nao falta um risco estrategico relevante em Q2A-Q2E.
 5. A ordem anual -> trimestral -> mensal -> revisoes -> informacao/saidas esta correta.
 
-Frase de aceite sugerida: `Aprovo o catalogo Q2A-Q2E para iniciar o baseline Q3.`
+Aceite registrado em 2026-07-16: o owner aprovou o catalogo Q2A-Q2E e autorizou seguir para o briefing da Q3. O aceite congela os 29 riscos como referencia oficial; adicionar casos continua permitido, mas remover ou substituir um risco exige nova justificativa e novo gate humano.
