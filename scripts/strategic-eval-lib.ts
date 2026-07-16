@@ -223,12 +223,9 @@ export function assertBudgetAllowsNextCall(params: {
   cumulativePlanCostUsd: number;
   currentCaseCostUsd: number;
   reserveUsd: number;
-  caseLimitUsd: number;
   policy: EvaluationCostPolicy;
 }): void {
   const projectedPlan = params.cumulativePlanCostUsd + params.currentCaseCostUsd + params.reserveUsd;
-  const projectedCase = params.currentCaseCostUsd + params.reserveUsd;
-  if (projectedCase > params.caseLimitUsd) throw new Error("RECUSADO: proxima chamada pode ultrapassar o limite da fatia");
   if (projectedPlan >= params.policy.preventiveStopAtUsd) throw new Error("RECUSADO: parada preventiva de custo atingida");
   if (projectedPlan > params.policy.authorizedLimitUsd) throw new Error("RECUSADO: teto financeiro do plano atingido");
 }
@@ -306,14 +303,14 @@ export function q1Gate(params: {
   judgeStatus: "completed" | "error";
   checks: EvaluationCheck[];
   cleanupSucceeded: boolean;
-  totalCaseCostUsd: number;
-  caseLimitUsd: number;
+  cumulativePlanCostUsd: number;
+  authorizedLimitUsd: number;
 }) {
   const reasons: string[] = [];
   if (!params.proposalCreated) reasons.push("proposta nao foi criada");
   if (params.judgeStatus !== "completed") reasons.push("judge nao concluiu");
   for (const check of params.checks.filter((item) => item.status === "fail")) reasons.push(`checagem falhou: ${check.id}`);
   if (!params.cleanupSucceeded) reasons.push("limpeza descartavel nao concluiu");
-  if (params.totalCaseCostUsd > params.caseLimitUsd) reasons.push("custo da fatia excedido");
+  if (params.cumulativePlanCostUsd > params.authorizedLimitUsd) reasons.push("custo acumulado do plano excedido");
   return { status: reasons.length ? "blocked" as const : "approved" as const, reasons };
 }

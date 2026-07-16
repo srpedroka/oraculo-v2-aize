@@ -23,6 +23,8 @@ interface RubricFile {
     authorizedLimitUsd: number;
     warningAtUsd: number;
     preventiveStopAtUsd: number;
+    perCaseLimitUsd: null;
+    reportAfterEveryExecution: string[];
     includedComponents: string[];
     caseFields: string[];
   };
@@ -157,13 +159,22 @@ describe("strategic quality standard Q0 R2", () => {
     expect(rubric.costPolicy.warningAtUsd).toBe(15);
     expect(rubric.costPolicy.preventiveStopAtUsd).toBe(19);
     expect(rubric.costPolicy.authorizedLimitUsd).toBe(20);
+    expect(rubric.costPolicy.perCaseLimitUsd).toBeNull();
     expect(rubric.costPolicy.warningAtUsd).toBeLessThan(rubric.costPolicy.preventiveStopAtUsd);
     expect(rubric.costPolicy.preventiveStopAtUsd).toBeLessThan(rubric.costPolicy.authorizedLimitUsd);
     expect(rubric.costPolicy.caseFields).toEqual([
       "generationCostUsd",
       "judgeCostUsd",
       "totalCaseCostUsd",
-      "cumulativePlanCostUsd",
+      "cumulativePlanCostBeforeUsd",
+      "cumulativePlanCostAfterUsd",
+    ]);
+    expect(rubric.costPolicy.reportAfterEveryExecution).toEqual([
+      "generationCostUsd",
+      "judgeCostUsd",
+      "totalCaseCostUsd",
+      "cumulativePlanCostBeforeUsd",
+      "cumulativePlanCostAfterUsd",
     ]);
   });
 

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em revisão; Q0 R2 ampliada aguardando aceite e Q1 real pausada**
+Status: **em execução; Q0 R2 aprovada e Q1 anual aguardando chave temporária**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -79,6 +79,8 @@ Mudança funcional deve ser explicada em linguagem de negócio, com exemplo ante
 - Avisar ao atingir US$ 15.
 - Parar novas execuções pagas ao atingir US$ 19, preservando margem para uma chamada já iniciada.
 - Nunca ultrapassar US$ 20 sem nova autorização explícita.
+- Não existe teto isolado por caso ou fatia; cada chamada é autorizada pelo consumo acumulado do plano.
+- Depois de cada execução, informar custo de geração, judge, total da execução e acumulado antes/depois.
 - Essa autorização não cobre compra de créditos, assinatura, upgrade, recarga automática ou contratação de serviço.
 - Toda compra ou nova cobrança exige autorização explícita imediatamente antes da confirmação.
 
@@ -231,7 +233,7 @@ Formaliza o que significa boa condução e boa entrega em todo o produto. Não a
 
 Owner compreende e aprova rubricas, ordem anual -> trimestral -> mensal, matriz de cobertura, faixas, falhas críticas e limite financeiro.
 
-Estado em 2026-07-16: a Q0 original foi aprovada, mas cobria principalmente condução e plano trimestral. A revisão Q0 R2 foi criada após o owner exigir que o anual seja a primeira entrega e que todo o app tenha método de qualidade. O gate foi reaberto e aguarda novo aceite explícito; isso não desfaz a infraestrutura Q1, apenas impede sua execução paga antes da nova concordância.
+Estado em 2026-07-16: a Q0 original foi aprovada, mas cobria principalmente condução e plano trimestral. A revisão Q0 R2 foi criada após o owner exigir que o anual seja a primeira entrega e que todo o app tenha método de qualidade. O owner aprovou seguir com a R2 e removeu o teto isolado de US$ 1 da Q1, mantendo orçamento acumulado de US$ 20, aviso em US$ 15 e parada preventiva em US$ 19. Gate Q0 R2 aprovado.
 
 ### Rollback
 
@@ -269,7 +271,7 @@ Cria um ambiente repetível para conversar com o Oráculo, capturar resultado e 
 
 Um caso mínimo **anual** percorre condutor, proposta, checagem e relatório no staging, sem tocar produção.
 
-Estado em 2026-07-16: runner, schema, sanitização, orçamento, judge somente leitura e cleanup já estavam implementados. A revisão R2 trocou o caso trimestral pelo primeiro caso anual e adaptou as checagens de banco/documento para `save_strategic_plan`. O gate real aguarda primeiro o aceite Q0 R2 e depois uma chave xAI temporária criada manualmente. Nenhum dado foi criado no staging, nenhuma IA foi chamada e o custo permanece US$ 0.
+Estado em 2026-07-16: runner, schema, sanitização, orçamento, judge somente leitura e cleanup já estavam implementados. A revisão R2 trocou o caso trimestral pelo primeiro caso anual e adaptou as checagens de banco/documento para `save_strategic_plan`. O gate real aguarda somente uma chave xAI temporária criada manualmente. Nenhum dado foi criado no staging, nenhuma IA foi chamada e o custo permanece US$ 0.
 
 ### Rollback
 
@@ -811,4 +813,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Obter o aceite explícito do owner para a **Q0 R2**: Plano Estratégico Anual primeiro, sete rubricas, dezesseis falhas críticas e matriz de 21 entregas. Depois do aceite, apresentar o briefing final da Q1 anual; somente então usar chave temporária e executar o caso pago. Não iniciar Q2 antes do gate Q1.
+Criar manualmente a chave xAI temporária `oraculo-q1-staging-temporary`, guardá-la apenas no arquivo privado e executar a **Q1 anual** no staging. Ao final, informar custo de geração, judge, total e acumulado; apresentar plano real, notas, falhas, cleanup e decisão do gate. Não iniciar Q2 antes do aceite do relatório Q1.

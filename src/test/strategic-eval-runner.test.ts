@@ -76,28 +76,25 @@ describe("strategic evaluation runner Q1", () => {
     ]));
   });
 
-  it("stops before the case or plan cost ceiling", () => {
+  it("has no per-case ceiling and stops only near the accumulated plan budget", () => {
     expect(() => assertBudgetAllowsNextCall({
       cumulativePlanCostUsd: 0,
-      currentCaseCostUsd: 0.2,
-      reserveUsd: 0.1,
-      caseLimitUsd: 1,
+      currentCaseCostUsd: 5,
+      reserveUsd: 1,
       policy,
     })).not.toThrow();
     expect(() => assertBudgetAllowsNextCall({
       cumulativePlanCostUsd: 18.95,
       currentCaseCostUsd: 0,
       reserveUsd: 0.05,
-      caseLimitUsd: 1,
       policy,
     })).toThrow(/parada preventiva/);
     expect(() => assertBudgetAllowsNextCall({
-      cumulativePlanCostUsd: 0,
-      currentCaseCostUsd: 0.95,
-      reserveUsd: 0.1,
-      caseLimitUsd: 1,
+      cumulativePlanCostUsd: 19,
+      currentCaseCostUsd: 0.9,
+      reserveUsd: 0.2,
       policy,
-    })).toThrow(/limite da fatia/);
+    })).toThrow(/parada preventiva|teto financeiro/);
   });
 
   it("calculates provider cost without rounding intermediate values", () => {
@@ -144,9 +141,11 @@ describe("strategic evaluation runner Q1", () => {
 
   it("never approves when the judge fails or cleanup is incomplete", () => {
     const checks = [{ id: "DET-1", status: "pass" as const, evidence: "ok" }];
-    expect(q1Gate({ proposalCreated: true, judgeStatus: "error", checks, cleanupSucceeded: true, totalCaseCostUsd: 0.2, caseLimitUsd: 1 }).status)
+    expect(q1Gate({ proposalCreated: true, judgeStatus: "error", checks, cleanupSucceeded: true, cumulativePlanCostUsd: 0.2, authorizedLimitUsd: 20 }).status)
       .toBe("blocked");
-    expect(q1Gate({ proposalCreated: true, judgeStatus: "completed", checks, cleanupSucceeded: false, totalCaseCostUsd: 0.2, caseLimitUsd: 1 }).status)
+    expect(q1Gate({ proposalCreated: true, judgeStatus: "completed", checks, cleanupSucceeded: false, cumulativePlanCostUsd: 0.2, authorizedLimitUsd: 20 }).status)
+      .toBe("blocked");
+    expect(q1Gate({ proposalCreated: true, judgeStatus: "completed", checks, cleanupSucceeded: true, cumulativePlanCostUsd: 20.01, authorizedLimitUsd: 20 }).status)
       .toBe("blocked");
   });
 

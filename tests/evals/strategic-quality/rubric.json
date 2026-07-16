@@ -141,9 +141,11 @@
     "authorizedLimitUsd": 20,
     "warningAtUsd": 15,
     "preventiveStopAtUsd": 19,
+    "perCaseLimitUsd": null,
+    "reportAfterEveryExecution": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostBeforeUsd", "cumulativePlanCostAfterUsd"],
     "includedComponents": ["generation", "judge"],
-    "caseFields": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostUsd"],
-    "rule": "Somar somente chamadas pagas iniciadas pelo laboratorio deste plano; compras, creditos e assinaturas nunca entram nesta autorizacao. Priorizar checks deterministas para saidas derivadas e operacionais para preservar o teto."
+    "caseFields": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostBeforeUsd", "cumulativePlanCostAfterUsd"],
+    "rule": "Nao existe teto isolado por caso. Somar chamadas pagas iniciadas pelo laboratorio e interromper pelo orcamento acumulado do plano; compras, creditos e assinaturas nunca entram nesta autorizacao. Priorizar checks deterministas para saidas derivadas e operacionais."
   },
   "sanitization": {
     "fixtureAliases": ["ORG_FIXTURE_A", "AREA_FIXTURE_A", "PERSON_FIXTURE_A"],

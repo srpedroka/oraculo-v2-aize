@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q1-r2`
 
-Status: implementado localmente; gate Q1 pausado ate o aceite da rubrica Q0 R2 e, depois, pendente de chave temporaria de staging.
+Status: implementado localmente; Q0 R2 aprovada e gate Q1 pendente somente de chave temporaria de staging.
 
 ## Objetivo
 
@@ -33,7 +33,7 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 
 ## Custo
 
-- limite desta fatia: US$ 1;
+- sem limite isolado por caso ou fatia;
 - reserva antes de cada chamada do condutor: US$ 0,15;
 - reserva antes do judge: US$ 0,10;
 - aviso do plano: US$ 15;
@@ -41,6 +41,8 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - teto absoluto: US$ 20.
 
 O custo real do condutor vem de `ai_usage_logs`. O judge usa tokens retornados pelo provedor e pricing versionado. A soma entra no ledger privado mesmo se o caso falhar depois de consumir IA.
+
+Depois de cada execucao, o owner recebe: custo de geracao do plano, custo do judge, custo total da execucao e acumulado do plano antes/depois. O runner decide novas chamadas somente pelo acumulado: avisa em US$ 15, para preventivamente em US$ 19 e nunca ultrapassa US$ 20 sem nova autorizacao.
 
 ## Chave temporaria
 
@@ -81,13 +83,13 @@ O runner usa Grok 4.3 no condutor e Grok 4.5 no judge quando `ORACULO_EVAL_PROVI
 
 ## Gate Q1
 
-Depois do aceite da Q0 R2, Q1 somente e aprovada quando o caso anual minimo terminar com:
+Q1 somente e aprovada quando o caso anual minimo terminar com:
 
 - proposal criada pelo condutor;
 - judge concluido em modo somente leitura;
 - todos os checks deterministas verdes;
 - empresa, chave de staging e usuario removidos;
-- custo total menor ou igual a US$ 1;
+- custo da execucao e acumulado reportados, com acumulado dentro do teto de US$ 20;
 - relatorio privado sanitizado e comparavel.
 
 Sem chave temporaria, o estado correto e **pendente**, nunca aprovado por simulacao.

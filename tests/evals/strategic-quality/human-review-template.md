@@ -144,7 +144,8 @@ Marque `sim`, `não` ou `N/A` e cite evidência. Qualquer `sim` reprova o caso.
 - `generationCostUsd`:
 - `judgeCostUsd`:
 - `totalCaseCostUsd`:
-- `cumulativePlanCostUsd`:
+- `cumulativePlanCostBeforeUsd`:
+- `cumulativePlanCostAfterUsd`:
 - Alerta financeiro acionado? sim / não
 
 ## Decisão humana

@@ -23,7 +23,6 @@ const PRIVATE_DIR = resolve(".agents-private");
 const LEDGER_PATH = resolve(PRIVATE_DIR, "strategic-eval-ledger.json");
 const RUBRIC_PATH = resolve("tests/evals/strategic-quality/rubric.json");
 const BASELINE_PATH = resolve("tests/evals/strategic-quality/baseline.json");
-const CASE_LIMIT_USD = 1;
 const PLANNING_CALL_RESERVE_USD = 0.15;
 const JUDGE_CALL_RESERVE_USD = 0.1;
 
@@ -528,7 +527,6 @@ async function executeLiveCase(casePath: string) {
       cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
       currentCaseCostUsd: 0,
       reserveUsd: PLANNING_CALL_RESERVE_USD,
-      caseLimitUsd: CASE_LIMIT_USD,
       policy,
     });
     handle = await createEvaluationOrg("strategic-eval-q1");
@@ -556,7 +554,6 @@ async function executeLiveCase(casePath: string) {
         cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
         currentCaseCostUsd: generation.totalCostUsd,
         reserveUsd: PLANNING_CALL_RESERVE_USD,
-        caseLimitUsd: CASE_LIMIT_USD,
         policy,
       });
       transcript.push({ sequence: transcript.length + 1, role: "manager", content: turn });
@@ -583,7 +580,6 @@ async function executeLiveCase(casePath: string) {
       cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
       currentCaseCostUsd: generation.totalCostUsd,
       reserveUsd: JUDGE_CALL_RESERVE_USD,
-      caseLimitUsd: CASE_LIMIT_USD,
       policy,
     });
     try {
@@ -653,8 +649,8 @@ async function executeLiveCase(casePath: string) {
     judgeStatus: judge.status,
     checks,
     cleanupSucceeded,
-    totalCaseCostUsd,
-    caseLimitUsd: CASE_LIMIT_USD,
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+    authorizedLimitUsd: policy.authorizedLimitUsd,
   });
   if (executionError) technicalGate.reasons.unshift(sanitizeEvaluationText(executionError.message));
   if (executionError) technicalGate.status = "blocked";
@@ -683,8 +679,8 @@ async function executeLiveCase(casePath: string) {
       generationCostUsd: generation.totalCostUsd,
       judgeCostUsd,
       totalCaseCostUsd,
-      cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
-      caseLimitUsd: CASE_LIMIT_USD,
+      cumulativePlanCostBeforeUsd: ledger.cumulativePlanCostUsd,
+      cumulativePlanCostAfterUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
       warningAtUsd: policy.warningAtUsd,
       preventiveStopAtUsd: policy.preventiveStopAtUsd,
       authorizedLimitUsd: policy.authorizedLimitUsd,
@@ -717,7 +713,10 @@ async function executeLiveCase(casePath: string) {
 
   console.log(`Relatorio Q1: ${reportPath}`);
   console.log(`Gate Q1: ${technicalGate.status}`);
-  console.log(`Custo Q1: US$ ${totalCaseCostUsd.toFixed(6)} | acumulado do plano: US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}`);
+  console.log(`Custo de geracao do plano: US$ ${generation.totalCostUsd.toFixed(6)}`);
+  console.log(`Custo do judge: US$ ${judgeCostUsd.toFixed(6)}`);
+  console.log(`Custo total da execucao: US$ ${totalCaseCostUsd.toFixed(6)}`);
+  console.log(`Acumulado do plano: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)} -> US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}`);
   console.log(`Cleanup staging: ${cleanupSucceeded ? "OK" : "FALHOU"}`);
   if (technicalGate.status !== "approved") {
     throw new Error(`Q1 bloqueada: ${technicalGate.reasons.join(" | ") || "gate nao aprovado"}`);

@@ -2,9 +2,9 @@
 
 Versão: `2026-07-16.q0-r2`
 
-Status: **revisado; aguardando novo aceite do owner**.
+Status: **aprovado pelo owner em 2026-07-16**.
 
-A versão `2026-07-16.q0` foi aprovada em 2026-07-16, mas avaliava principalmente condução e plano trimestral. Esta revisão amplia a cobertura e coloca o **Plano Estratégico Anual como primeira entrega de conteúdo avaliada**. Nenhum teste pago da Q1 deve rodar antes do novo aceite.
+A versão `2026-07-16.q0` foi aprovada em 2026-07-16, mas avaliava principalmente condução e plano trimestral. Esta revisão amplia a cobertura e coloca o **Plano Estratégico Anual como primeira entrega de conteúdo avaliada**. A R2 foi aprovada com controle financeiro acumulado, sem teto isolado por caso.
 
 ## Objetivo
 
@@ -196,6 +196,8 @@ O limite aprovado do plano continua:
 - aviso em US$ 15;
 - parada preventiva em US$ 19;
 - teto de US$ 20;
+- nenhum teto isolado por caso; o controle considera o consumo acumulado do plano;
+- após cada execução, informar geração, judge, total da execução e acumulado antes/depois;
 - compra, recarga, assinatura ou upgrade sempre exige autorização imediata separada.
 
 Para preservar o teto, PDF, Dashboard, documentos, RLS e telas usam checks determinísticos sempre que possível. Judge pago fica concentrado em conteúdo estratégico, memória e naturalidade.
@@ -218,4 +220,4 @@ O novo gate Q0 exige que o owner confirme:
 - separação entre judge, checks determinísticos e decisão humana;
 - limite financeiro já aprovado.
 
-Até esse aceite, a infraestrutura Q1 pode ser validada localmente, mas o caso real pago permanece bloqueado e Q2 não começa.
+Aprovação registrada em 2026-07-16: o owner autorizou seguir com a Q0 R2 e ajustou a regra financeira para remover o teto isolado por caso, mantendo o orçamento acumulado de US$ 20, aviso em US$ 15 e parada preventiva em US$ 19. O gate Q0 R2 está aprovado. Isso libera somente a Q1 anual no staging com chave temporária; Q2 continua bloqueada até o relatório Q1.
