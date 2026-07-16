@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { ModelUsage, Provider } from "../supabase/functions/_shared/model.ts";
 import { resolveKnownPricing } from "../supabase/functions/_shared/pricing.ts";
 import { anonClient, assertStaging, serviceClient } from "../tests/helpers/staging.ts";
@@ -30,13 +31,13 @@ const PLANNING_CALL_RESERVE_USD = 0.15;
 const JUDGE_CALL_RESERVE_USD = 0.1;
 const JUDGE_TIMEOUT_MS = 180_000;
 
-interface TranscriptMessage {
+export interface TranscriptMessage {
   sequence: number;
   role: "manager" | "oracle";
   content: string;
 }
 
-interface CostLedger {
+export interface CostLedger {
   schemaVersion: 1;
   cumulativePlanCostUsd: number;
   runs: Array<{
@@ -48,7 +49,7 @@ interface CostLedger {
   }>;
 }
 
-interface RuntimeConfiguration {
+export interface RuntimeConfiguration {
   provider: Provider;
   planningModel: string;
   judgeModel: string;
@@ -65,7 +66,7 @@ interface RuntimeConfiguration {
   };
 }
 
-interface EvaluationOrg {
+export interface EvaluationOrg {
   orgId: string;
   label: string;
   owner: {
@@ -79,15 +80,15 @@ interface EvaluationOrg {
 
 const EVAL_PASSWORD = "Oraculo-Eval-Q1-123!";
 
-function runId() {
+export function runId() {
   return `${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${randomBytes(4).toString("hex")}`;
 }
 
-async function readJson(path: string): Promise<unknown> {
+export async function readJson(path: string): Promise<unknown> {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
-async function readLedger(): Promise<CostLedger> {
+export async function readLedger(): Promise<CostLedger> {
   try {
     const parsed = await readJson(LEDGER_PATH) as CostLedger;
     if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.runs)) throw new Error("ledger invalido");
@@ -99,13 +100,13 @@ async function readLedger(): Promise<CostLedger> {
   }
 }
 
-async function writePrivateJson(path: string, value: unknown) {
+export async function writePrivateJson(path: string, value: unknown) {
   await mkdir(PRIVATE_DIR, { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   await chmod(path, 0o600);
 }
 
-function runtimeConfiguration(): RuntimeConfiguration {
+export function runtimeConfiguration(): RuntimeConfiguration {
   const provider = String(process.env.ORACULO_EVAL_PROVIDER ?? "openai") as Provider;
   if (!(provider === "openai" || provider === "xai")) throw new Error("Q1 aceita somente OpenAI ou xAI no laboratorio atual");
   const planningModel = String(process.env.ORACULO_EVAL_PLANNING_MODEL ?? (provider === "xai" ? "grok-4.3" : "gpt-5.4")).trim();
@@ -124,7 +125,7 @@ function runtimeConfiguration(): RuntimeConfiguration {
   };
 }
 
-async function callFunction(
+export async function callFunction(
   slug: string,
   token: string,
   body: Record<string, unknown>,
@@ -168,7 +169,7 @@ async function retryTransport<T extends { error: { message?: string } | null }>(
   throw new Error("retry de transporte do laboratorio terminou sem resultado");
 }
 
-async function runStagingSql(query: string) {
+export async function runStagingSql(query: string) {
   const projectRef = String(process.env.SUPABASE_STAGING_PROJECT_REF ?? "");
   const accessToken = String(process.env.SUPABASE_STAGING_ACCESS_TOKEN ?? "");
   if (!projectRef || !accessToken) throw new Error("credenciais da Management API de staging ausentes");
@@ -192,7 +193,7 @@ async function runStagingSql(query: string) {
   }
 }
 
-async function purgeEvaluationOrg(orgId: string) {
+export async function purgeEvaluationOrg(orgId: string) {
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orgId)) throw new Error("orgId descartavel invalido para cleanup");
   const sql = `do $$
 declare t text;
@@ -212,7 +213,7 @@ end $$;`;
   await runStagingSql(sql);
 }
 
-async function createEvaluationOrg(tag: string): Promise<EvaluationOrg> {
+export async function createEvaluationOrg(tag: string): Promise<EvaluationOrg> {
   const admin = serviceClient();
   const stamp = `${Date.now()}-${randomBytes(3).toString("hex")}`;
   const label = `EVAL Oraculo ${stamp}`;
@@ -257,7 +258,7 @@ async function createEvaluationOrg(tag: string): Promise<EvaluationOrg> {
   }
 }
 
-async function destroyEvaluationOrg(handle: EvaluationOrg) {
+export async function destroyEvaluationOrg(handle: EvaluationOrg) {
   const admin = serviceClient();
   await purgeEvaluationOrg(handle.orgId);
   const deleted = await retryTransport(() => admin.auth.admin.deleteUser(handle.owner.id));
@@ -270,7 +271,7 @@ async function destroyEvaluationOrg(handle: EvaluationOrg) {
   if (user.data.user) throw new Error("usuario de avaliacao ainda existe apos cleanup");
 }
 
-async function configureDisposableAi(handle: EvaluationOrg, config: RuntimeConfiguration) {
+export async function configureDisposableAi(handle: EvaluationOrg, config: RuntimeConfiguration) {
   const admin = serviceClient();
   const keyPreview = `****${config.apiKey.slice(-4)}`;
   const now = new Date().toISOString();
@@ -347,14 +348,14 @@ async function seedPreviousAnnualContext(handle: EvaluationOrg, evaluationCase: 
   if (strategicObjective.error || !strategicObjective.data) throw strategicObjective.error ?? new Error("objetivo anual anterior sintetico nao criado");
 }
 
-async function ownerToken(handle: EvaluationOrg) {
+export async function ownerToken(handle: EvaluationOrg) {
   const client = anonClient();
   const signed = await client.auth.signInWithPassword({ email: handle.owner.email, password: handle.owner.password });
   if (signed.error || !signed.data.session) throw signed.error ?? new Error("login sintetico ausente");
   return signed.data.session.access_token;
 }
 
-async function generationUsage(handle: EvaluationOrg, startedAt: string) {
+export async function generationUsage(handle: EvaluationOrg, startedAt: string) {
   const result = await serviceClient()
     .from("ai_usage_logs")
     .select("prompt_tokens,completion_tokens,total_tokens,total_cost_usd")
@@ -398,7 +399,7 @@ async function targetPlanState(handle: EvaluationOrg, evaluationCase: StrategicE
   return { strategicPlans: strategicPlans.data ?? [], objectives: objectives.data ?? [], documents: documents.data ?? [] };
 }
 
-async function domainSnapshotHash(handle: EvaluationOrg) {
+export async function domainSnapshotHash(handle: EvaluationOrg) {
   const admin = serviceClient();
   const tables = ["strategic_plans", "area_plans", "objectives", "key_actions", "plan_documents", "planning_sessions", "chat_messages"];
   const data: Record<string, unknown[]> = {};
@@ -481,11 +482,11 @@ function proposalMatchesDocument(proposal: Record<string, any>, state: Awaited<R
   return objectives.length > 0 && requiredValues.every((value) => documentSource.includes(value));
 }
 
-async function runJudge(params: {
+export async function runJudge(params: {
   apiKey: string;
   provider: Provider;
   model: string;
-  evaluationCase: StrategicEvaluationCase;
+  evaluationCase: unknown;
   transcript: TranscriptMessage[];
   proposal: Record<string, unknown>;
   rubric: unknown;
@@ -562,7 +563,7 @@ function confirmationPromptCount(transcript: TranscriptMessage[], proposalSequen
   ).length;
 }
 
-async function executeLiveCase(casePath: string) {
+export async function executeLiveCase(casePath: string) {
   assertEvaluationEnvironment(process.env);
   assertStaging();
   const evaluationCase = validateStrategicEvaluationCase(await readJson(resolve(casePath)));
@@ -808,7 +809,7 @@ async function executeLiveCase(casePath: string) {
   }
 }
 
-async function retryJudge(reportPathValue: string, casePath: string) {
+export async function retryJudge(reportPathValue: string, casePath: string) {
   assertEvaluationEnvironment(process.env);
   assertStaging();
   const reportPath = resolve(reportPathValue);
@@ -938,7 +939,7 @@ async function retryJudge(reportPathValue: string, casePath: string) {
   }
 }
 
-async function recomputeReportGate(reportPathValue: string) {
+export async function recomputeReportGate(reportPathValue: string) {
   const reportPath = resolve(reportPathValue);
   if (!reportPath.startsWith(`${PRIVATE_DIR}/strategic-eval-q1-`) || !reportPath.endsWith(".json")) {
     throw new Error("recalculo aceita somente relatorio Q1 privado");
@@ -975,14 +976,20 @@ async function recomputeReportGate(reportPathValue: string) {
   console.log(`Acumulado do plano inalterado: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}`);
 }
 
-const [command, primaryPath, casePath] = process.argv.slice(2);
-if (command === "run" && primaryPath) {
-  await executeLiveCase(primaryPath);
-} else if (command === "judge-report" && primaryPath && casePath) {
-  await retryJudge(primaryPath, casePath);
-} else if (command === "recompute-report" && primaryPath) {
-  await recomputeReportGate(primaryPath);
-} else {
-  console.error("Uso: strategic-eval.ts run <caso> | judge-report <relatorio> <caso> | recompute-report <relatorio>");
-  process.exit(2);
+export async function main(args = process.argv.slice(2)) {
+  const [command, primaryPath, casePath] = args;
+  if (command === "run" && primaryPath) {
+    await executeLiveCase(primaryPath);
+  } else if (command === "judge-report" && primaryPath && casePath) {
+    await retryJudge(primaryPath, casePath);
+  } else if (command === "recompute-report" && primaryPath) {
+    await recomputeReportGate(primaryPath);
+  } else {
+    console.error("Uso: strategic-eval.ts run <caso> | judge-report <relatorio> <caso> | recompute-report <relatorio>");
+    process.exitCode = 2;
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
 }

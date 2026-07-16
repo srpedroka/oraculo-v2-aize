@@ -63,6 +63,14 @@ O catalogo Q2 de qualidade estrategica e validado sem rede, dados ou custo de IA
 pnpm run test:strategic-cases
 ```
 
+O executor Q3 e deliberadamente manual, pago e restrito ao staging. Depois de carregar as credenciais privadas e obter autorizacao financeira explicita, ele oferece `preflight`, fases `Q3A`-`Q3D`, bateria `deterministic`, `summary` e pacote `human-packet`:
+
+```bash
+pnpm run eval:strategic:q3 -- preflight
+```
+
+O baseline atual esta em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`. Nunca execute as fases pagas no CI.
+
 ## Deploy
 
 Frontend em producao:
