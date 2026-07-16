@@ -590,7 +590,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
-- A Q0 do plano integrado de qualidade foi aprovada pelo owner em 2026-07-16. O padrão está em `docs/STRATEGIC_QUALITY_STANDARD.md` e `tests/evals/strategic-quality/`. A próxima ação é apresentar o briefing da Q1; não iniciar sua implementação sem autorização específica. Não houve mudança de produção, deploy ou consumo de IA.
+- A Q0 do plano integrado de qualidade foi aprovada pelo owner em 2026-07-16. O padrão está em `docs/STRATEGIC_QUALITY_STANDARD.md` e `tests/evals/strategic-quality/`. Não houve mudança de produção, deploy ou consumo de IA nessa fatia.
+- A Q1 foi implementada localmente em `scripts/strategic-eval*.ts`, mas o gate real continua pendente de uma chave xAI temporária criada manualmente pelo owner. Consulte `docs/STRATEGIC_EVALUATION_LAB.md`. Não copiar chave de produção, não enviar chave pela conversa e não iniciar Q2 antes do relatório Q1 aprovado. Até o bloqueio: zero dados de staging e US$ 0.
 
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 

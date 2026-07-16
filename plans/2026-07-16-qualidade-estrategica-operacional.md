@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q0 aprovada e Q1 aguardando briefing/autorização**
+Status: **em execução; Q0 aprovada e Q1 implementada com gate real pendente**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -249,6 +249,8 @@ Cria um ambiente repetível para conversar com o Oráculo, capturar resultado e 
 ### Gate Q1
 
 Um caso mínimo percorre condutor, proposta, checagem e relatório no staging, sem tocar produção.
+
+Estado em 2026-07-16: runner, schema, caso mínimo, sanitização, orçamento, judge somente leitura, cleanup e 17 testes específicos estão implementados. Passaram 259 unitários, lint, build/orçamento de 134,5 KB gzip e secret scan em 427 arquivos. O gate real ainda não foi executado porque os consoles de OpenAI e xAI estão bloqueados para automação pelas regras do navegador e nenhuma chave de produção pode ser copiada. Nenhum dado foi criado no staging e o custo permanece US$ 0. O owner precisa criar uma chave xAI temporária e colocá-la no arquivo privado indicado; não enviar a chave pela conversa.
 
 ### Rollback
 
@@ -734,4 +736,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **Q1 — Laboratório e executor de avaliações**. Não iniciar a implementação antes da autorização específica do owner.
+Concluir o gate real da **Q1 — Laboratório e executor de avaliações** depois que o owner criar a chave xAI temporária de staging. Executar o caso mínimo, confirmar cleanup/custo/relatório e só então decidir se Q1 foi aprovada. Não iniciar Q2 antes desse gate.

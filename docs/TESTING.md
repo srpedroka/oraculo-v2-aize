@@ -86,6 +86,14 @@ pnpm exec vitest run src/test/strategic-quality-standard.test.ts
 
 Uma alteração futura nos condutores ou prompts listados quebra o teste até que o baseline seja atualizado explicitamente e a mudança seja justificada. Isso é deliberado: impede que a comparação Q3/Q5 use versões diferentes sem registrar a troca.
 
+A Q1 adiciona o laboratório isolado descrito em `docs/STRATEGIC_EVALUATION_LAB.md`. Sua validação local roda sem rede:
+
+```bash
+pnpm run test:strategic-eval
+```
+
+O gate real usa `pnpm run eval:strategic:q1`, exige credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
+
 ## Matriz da Fatia 4A
 
 | Risco | Cobertura principal |

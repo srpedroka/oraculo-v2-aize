@@ -1,0 +1,748 @@
+import { randomBytes } from "node:crypto";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { callModel, type ModelUsage, type Provider } from "../supabase/functions/_shared/model.ts";
+import { resolveKnownPricing } from "../supabase/functions/_shared/pricing.ts";
+import { anonClient, assertStaging, serviceClient } from "../tests/helpers/staging.ts";
+import {
+  assertBudgetAllowsNextCall,
+  assertEvaluationEnvironment,
+  buildDeterministicChecks,
+  comparisonFingerprint,
+  parseJsonObject,
+  q1Gate,
+  sanitizeEvaluationText,
+  sanitizeEvaluationValue,
+  usageCostUsd,
+  validateStrategicEvaluationCase,
+  type EvaluationCheck,
+  type StrategicEvaluationCase,
+} from "./strategic-eval-lib.ts";
+
+const PRIVATE_DIR = resolve(".agents-private");
+const LEDGER_PATH = resolve(PRIVATE_DIR, "strategic-eval-ledger.json");
+const RUBRIC_PATH = resolve("tests/evals/strategic-quality/rubric.json");
+const BASELINE_PATH = resolve("tests/evals/strategic-quality/baseline.json");
+const CASE_LIMIT_USD = 1;
+const PLANNING_CALL_RESERVE_USD = 0.15;
+const JUDGE_CALL_RESERVE_USD = 0.1;
+
+interface TranscriptMessage {
+  sequence: number;
+  role: "manager" | "oracle";
+  content: string;
+}
+
+interface CostLedger {
+  schemaVersion: 1;
+  cumulativePlanCostUsd: number;
+  runs: Array<{
+    runId: string;
+    caseId: string;
+    totalCostUsd: number;
+    completedAt: string;
+    status: "approved" | "blocked";
+  }>;
+}
+
+interface RuntimeConfiguration {
+  provider: Provider;
+  planningModel: string;
+  judgeModel: string;
+  apiKey: string;
+  planningPricing: {
+    inputTokenPriceUsdPerMillion: number;
+    outputTokenPriceUsdPerMillion: number;
+    source: string;
+  };
+  judgePricing: {
+    inputTokenPriceUsdPerMillion: number;
+    outputTokenPriceUsdPerMillion: number;
+    source: string;
+  };
+}
+
+interface EvaluationOrg {
+  orgId: string;
+  label: string;
+  owner: {
+    id: string;
+    email: string;
+    password: string;
+    membershipId: string;
+  };
+  areaId: string;
+}
+
+const EVAL_PASSWORD = "Oraculo-Eval-Q1-123!";
+
+function runId() {
+  return `${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${randomBytes(4).toString("hex")}`;
+}
+
+async function readJson(path: string): Promise<unknown> {
+  return JSON.parse(await readFile(path, "utf8"));
+}
+
+async function readLedger(): Promise<CostLedger> {
+  try {
+    const parsed = await readJson(LEDGER_PATH) as CostLedger;
+    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.runs)) throw new Error("ledger invalido");
+    return parsed;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT") throw error;
+    return { schemaVersion: 1, cumulativePlanCostUsd: 0, runs: [] };
+  }
+}
+
+async function writePrivateJson(path: string, value: unknown) {
+  await mkdir(PRIVATE_DIR, { recursive: true });
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  await chmod(path, 0o600);
+}
+
+function runtimeConfiguration(): RuntimeConfiguration {
+  const provider = String(process.env.ORACULO_EVAL_PROVIDER ?? "openai") as Provider;
+  if (!(provider === "openai" || provider === "xai")) throw new Error("Q1 aceita somente OpenAI ou xAI no laboratorio atual");
+  const planningModel = String(process.env.ORACULO_EVAL_PLANNING_MODEL ?? (provider === "xai" ? "grok-4.3" : "gpt-5.4")).trim();
+  const judgeModel = String(process.env.ORACULO_EVAL_JUDGE_MODEL ?? (provider === "xai" ? "grok-4.5" : "gpt-5.4-mini")).trim();
+  if (planningModel === judgeModel) throw new Error("judge deve usar modelo diferente do condutor");
+  const planningPricing = resolveKnownPricing(provider, planningModel);
+  const judgePricing = resolveKnownPricing(provider, judgeModel);
+  if (!planningPricing || !judgePricing) throw new Error("modelo sem pricing versionado no catalogo");
+  return {
+    provider,
+    planningModel,
+    judgeModel,
+    apiKey: String(process.env.ORACULO_EVAL_API_KEY ?? "").trim(),
+    planningPricing,
+    judgePricing,
+  };
+}
+
+async function callFunction(
+  slug: string,
+  token: string,
+  body: Record<string, unknown>,
+  requestId: string,
+) {
+  const url = String(process.env.SUPABASE_STAGING_URL);
+  const anonKey = String(process.env.SUPABASE_STAGING_ANON_KEY);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const response = await fetch(`${url}/functions/v1/${slug}`, {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-request-id": requestId,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const payload = await response.json() as Record<string, any>;
+    if (!response.ok) throw new Error(`${slug} falhou (${response.status}): ${String(payload.error ?? "erro desconhecido")}`);
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function retryTransport<T extends { error: { message?: string } | null }>(operation: () => PromiseLike<T>): Promise<T> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const result = await operation();
+      if (!/fetch failed|network error|connection reset|timed out/i.test(result.error?.message ?? "") || attempt === 2) return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/fetch failed|network error|connection reset|timed out/i.test(message) || attempt === 2) throw error;
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, (attempt + 1) * 300));
+  }
+  throw new Error("retry de transporte do laboratorio terminou sem resultado");
+}
+
+async function runStagingSql(query: string) {
+  const projectRef = String(process.env.SUPABASE_STAGING_PROJECT_REF ?? "");
+  const accessToken = String(process.env.SUPABASE_STAGING_ACCESS_TOKEN ?? "");
+  if (!projectRef || !accessToken) throw new Error("credenciais da Management API de staging ausentes");
+  const delays = [1_000, 2_000, 5_000];
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      if (response.ok) return;
+      const responseBody = await response.text();
+      if ((response.status < 500 && response.status !== 429) || attempt === delays.length) {
+        throw new Error(`SQL de staging falhou (${response.status}): ${responseBody.slice(0, 300)}`);
+      }
+    } catch (error) {
+      if (attempt === delays.length) throw error;
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, delays[attempt]));
+  }
+}
+
+async function purgeEvaluationOrg(orgId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orgId)) throw new Error("orgId descartavel invalido para cleanup");
+  const sql = `do $$
+declare t text;
+begin
+  set local session_replication_role = replica;
+  delete from public.organization_restore_runs where source_org_id = '${orgId}' or target_org_id = '${orgId}';
+  for t in
+    select c.table_name
+    from information_schema.columns c
+    join information_schema.tables i on i.table_schema = c.table_schema and i.table_name = c.table_name
+    where c.table_schema = 'public' and c.column_name = 'org_id' and i.table_type = 'BASE TABLE'
+  loop
+    execute format('delete from public.%I where org_id = %L', t, '${orgId}');
+  end loop;
+  delete from public.organizations where id = '${orgId}';
+end $$;`;
+  await runStagingSql(sql);
+}
+
+async function createEvaluationOrg(tag: string): Promise<EvaluationOrg> {
+  const admin = serviceClient();
+  const stamp = `${Date.now()}-${randomBytes(3).toString("hex")}`;
+  const label = `EVAL Oraculo ${stamp}`;
+  const email = `eval-owner-${stamp}-${tag}@oraculo-eval.invalid`;
+  let userId = "";
+  let orgId = "";
+  try {
+    const created = await retryTransport(() => admin.auth.admin.createUser({ email, password: EVAL_PASSWORD, email_confirm: true }));
+    if (created.error || !created.data.user) throw created.error ?? new Error("usuario de avaliacao nao criado");
+    userId = created.data.user.id;
+    const profile = await retryTransport(() => admin.from("profiles").upsert({ id: userId, full_name: "PERSON_FIXTURE_OWNER", email }));
+    if (profile.error) throw profile.error;
+    const org = await retryTransport(() => admin.from("organizations").insert({
+      name: label,
+      subtitle: "avaliacao sintetica descartavel",
+      created_by: userId,
+    }).select("id").single());
+    if (org.error || !org.data) throw org.error ?? new Error("empresa de avaliacao nao criada");
+    orgId = String(org.data.id);
+    const membership = await retryTransport(() => admin.from("memberships").insert({
+      org_id: orgId,
+      user_id: userId,
+      role: "owner",
+    }).select("id").single());
+    if (membership.error || !membership.data) throw membership.error ?? new Error("membership de avaliacao nao criada");
+    const area = await retryTransport(() => admin.from("areas").insert({
+      org_id: orgId,
+      name: "Comercial Sintetico",
+      coordinator_id: membership.data.id,
+    }).select("id").single());
+    if (area.error || !area.data) throw area.error ?? new Error("area de avaliacao nao criada");
+    return {
+      orgId,
+      label,
+      owner: { id: userId, email, password: EVAL_PASSWORD, membershipId: String(membership.data.id) },
+      areaId: String(area.data.id),
+    };
+  } catch (error) {
+    if (orgId) await purgeEvaluationOrg(orgId).catch(() => undefined);
+    if (userId) await admin.auth.admin.deleteUser(userId).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function destroyEvaluationOrg(handle: EvaluationOrg) {
+  const admin = serviceClient();
+  await purgeEvaluationOrg(handle.orgId);
+  const deleted = await retryTransport(() => admin.auth.admin.deleteUser(handle.owner.id));
+  if (deleted.error) throw deleted.error;
+  const [org, user] = await Promise.all([
+    retryTransport(() => admin.from("organizations").select("id").eq("id", handle.orgId).maybeSingle()),
+    retryTransport(() => admin.auth.admin.getUserById(handle.owner.id)),
+  ]);
+  if (org.data) throw new Error("empresa de avaliacao ainda existe apos cleanup");
+  if (user.data.user) throw new Error("usuario de avaliacao ainda existe apos cleanup");
+}
+
+async function configureDisposableAi(handle: EvaluationOrg, config: RuntimeConfiguration) {
+  const admin = serviceClient();
+  const keyPreview = `****${config.apiKey.slice(-4)}`;
+  const now = new Date().toISOString();
+  const operations = [
+    admin.from("ai_model_keys").upsert({
+      org_id: handle.orgId,
+      provider: config.provider,
+      api_key: config.apiKey,
+      updated_at: now,
+    }, { onConflict: "org_id,provider" }),
+    admin.from("ai_provider_key_status").upsert({
+      org_id: handle.orgId,
+      provider: config.provider,
+      has_key: true,
+      key_preview: keyPreview,
+      last_status: "untested",
+      last_status_detail: "Chave descartavel configurada pelo laboratorio Q1.",
+      updated_at: now,
+    }, { onConflict: "org_id,provider" }),
+    admin.from("ai_settings").upsert({
+      org_id: handle.orgId,
+      provider: config.provider,
+      model: config.planningModel,
+      has_key: true,
+      key_preview: keyPreview,
+      input_token_price_usd_per_million: config.planningPricing.inputTokenPriceUsdPerMillion,
+      output_token_price_usd_per_million: config.planningPricing.outputTokenPriceUsdPerMillion,
+      pricing_source: config.planningPricing.source,
+      updated_at: now,
+    }, { onConflict: "org_id" }),
+    admin.from("ai_function_settings").upsert({
+      org_id: handle.orgId,
+      function: "planning",
+      provider: config.provider,
+      model: config.planningModel,
+      updated_at: now,
+    }, { onConflict: "org_id,function" }),
+  ];
+  const results = await Promise.all(operations);
+  const failure = results.find((result) => result.error)?.error;
+  if (failure) throw failure;
+}
+
+async function seedStrategicContext(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
+  const admin = serviceClient();
+  const year = Number(evaluationCase.period.match(/20\d{2}/)?.[0] ?? 2026);
+  const strategicPlan = await admin.from("strategic_plans").insert({
+    org_id: handle.orgId,
+    year,
+    profile: { sector: "fixture", size: "fixture", region: "fixture" },
+    drivers: { purpose: "Executar com clareza", vision: "Operacao sintetica previsivel", values: ["Clareza"] },
+    swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
+    themes: ["Previsibilidade sintetica"],
+    rituals: ["Revisao mensal sintetica"],
+    executive_summary: "Contexto totalmente sintetico do laboratorio Q1.",
+  }).select("id").single();
+  if (strategicPlan.error || !strategicPlan.data) throw strategicPlan.error ?? new Error("plano estrategico sintetico nao criado");
+
+  const strategicObjective = await admin.from("objectives").insert({
+    org_id: handle.orgId,
+    area_id: null,
+    level: "strategic",
+    type: "harvest",
+    title: evaluationCase.seed.strategicObjective,
+    result: evaluationCase.seed.strategicObjective,
+    metric: "Previsibilidade sintetica",
+    target: "Aumentar no ano sintetico",
+    owner: evaluationCase.scope.personAlias,
+    evidence_plan: "Placar sintetico",
+    status: "on_track",
+    progress: 10,
+    period: String(year),
+  }).select("id").single();
+  if (strategicObjective.error || !strategicObjective.data) throw strategicObjective.error ?? new Error("objetivo estrategico sintetico nao criado");
+
+  const annualObjective = await admin.from("objectives").insert({
+    org_id: handle.orgId,
+    area_id: handle.areaId,
+    level: "area_annual",
+    type: "harvest",
+    title: evaluationCase.seed.annualObjective,
+    result: evaluationCase.seed.annualObjective,
+    metric: "Oportunidades com etapa e proxima acao",
+    target: "80% ate o fim do ano sintetico",
+    owner: evaluationCase.scope.personAlias,
+    evidence_plan: "Placar sintetico semanal",
+    status: "on_track",
+    progress: 20,
+    parent_id: strategicObjective.data.id,
+    period: String(year),
+  }).select("id").single();
+  if (annualObjective.error || !annualObjective.data) throw annualObjective.error ?? new Error("objetivo anual sintetico nao criado");
+
+  const areaPlan = await admin.from("area_plans").insert({
+    org_id: handle.orgId,
+    area_id: handle.areaId,
+    year,
+    role: { mission: evaluationCase.seed.areaRole, contribution: [evaluationCase.seed.strategicObjective] },
+    linked_strategic_objective_ids: [strategicObjective.data.id],
+    diagnosis: { strengths: [], weaknesses: [] },
+    main_annual_objective_id: annualObjective.data.id,
+    learning_focus: [],
+  });
+  if (areaPlan.error) throw areaPlan.error;
+}
+
+async function ownerToken(handle: EvaluationOrg) {
+  const client = anonClient();
+  const signed = await client.auth.signInWithPassword({ email: handle.owner.email, password: handle.owner.password });
+  if (signed.error || !signed.data.session) throw signed.error ?? new Error("login sintetico ausente");
+  return signed.data.session.access_token;
+}
+
+async function generationUsage(handle: EvaluationOrg, startedAt: string) {
+  const result = await serviceClient()
+    .from("ai_usage_logs")
+    .select("prompt_tokens,completion_tokens,total_tokens,total_cost_usd")
+    .eq("org_id", handle.orgId)
+    .gte("created_at", startedAt);
+  if (result.error) throw result.error;
+  return (result.data ?? []).reduce((total, item) => ({
+    promptTokens: total.promptTokens + Number(item.prompt_tokens ?? 0),
+    completionTokens: total.completionTokens + Number(item.completion_tokens ?? 0),
+    totalTokens: total.totalTokens + Number(item.total_tokens ?? 0),
+    totalCostUsd: total.totalCostUsd + Number(item.total_cost_usd ?? 0),
+  }), { promptTokens: 0, completionTokens: 0, totalTokens: 0, totalCostUsd: 0 });
+}
+
+async function targetPlanState(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
+  const admin = serviceClient();
+  const [objectives, documents] = await Promise.all([
+    admin.from("objectives")
+      .select("id,title,metric,target,owner,period,area_id,deliverables")
+      .eq("org_id", handle.orgId)
+      .eq("area_id", handle.areaId)
+      .eq("level", "quarterly")
+      .eq("period", evaluationCase.period)
+      .is("archived_at", null),
+    admin.from("plan_documents")
+      .select("id,type,period,area_id,origin,content")
+      .eq("org_id", handle.orgId)
+      .eq("area_id", handle.areaId)
+      .eq("type", "quarterly")
+      .eq("period", evaluationCase.period)
+      .is("archived_at", null),
+  ]);
+  if (objectives.error) throw objectives.error;
+  if (documents.error) throw documents.error;
+  return { objectives: objectives.data ?? [], documents: documents.data ?? [] };
+}
+
+async function domainSnapshotHash(handle: EvaluationOrg) {
+  const admin = serviceClient();
+  const tables = ["strategic_plans", "area_plans", "objectives", "key_actions", "plan_documents", "planning_sessions", "chat_messages"];
+  const data: Record<string, unknown[]> = {};
+  for (const table of tables) {
+    const result = await admin.from(table).select("*").eq("org_id", handle.orgId);
+    if (result.error) throw result.error;
+    data[table] = [...(result.data ?? [])].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  }
+  const { createHash } = await import("node:crypto");
+  return createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
+
+function quarterlyObjectives(proposal: Record<string, any>) {
+  return Array.isArray(proposal.quarterlyObjectives) ? proposal.quarterlyObjectives as Array<Record<string, any>> : [];
+}
+
+function requiredProposalFieldsPresent(proposal: Record<string, any>, evaluationCase: StrategicEvaluationCase) {
+  const objectives = quarterlyObjectives(proposal);
+  if (objectives.length < evaluationCase.expected.minimumQuarterlyObjectives || objectives.length > evaluationCase.expected.maximumQuarterlyObjectives) return false;
+  return objectives.every((objective) => {
+    if (!String(objective.title ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresMetric && !String(objective.metric ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresTarget && !String(objective.target ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresOwner && !String(objective.owner ?? "").trim()) return false;
+    if (evaluationCase.expected.requiresDeliverables && (!Array.isArray(objective.deliverables) || !objective.deliverables.length)) return false;
+    return true;
+  });
+}
+
+function proposalMatchesDatabase(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>, handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
+  const proposalTitles = quarterlyObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
+  const databaseTitles = state.objectives.map((item: any) => String(item.title ?? "").trim().toLowerCase());
+  return proposalTitles.length > 0
+    && proposalTitles.every((title) => databaseTitles.includes(title))
+    && state.objectives.every((item: any) => item.area_id === handle.areaId && item.period === evaluationCase.period);
+}
+
+function proposalMatchesDocument(proposal: Record<string, any>, state: Awaited<ReturnType<typeof targetPlanState>>) {
+  if (state.documents.length !== 1) return false;
+  const documentSource = JSON.stringify(state.documents[0]?.content ?? {}).toLowerCase();
+  const titles = quarterlyObjectives(proposal).map((item) => String(item.title ?? "").trim().toLowerCase()).filter(Boolean);
+  return titles.length > 0 && titles.every((title) => documentSource.includes(title));
+}
+
+async function runJudge(params: {
+  apiKey: string;
+  provider: Provider;
+  model: string;
+  evaluationCase: StrategicEvaluationCase;
+  transcript: TranscriptMessage[];
+  proposal: Record<string, unknown>;
+  rubric: unknown;
+}) {
+  const systemPrompt = [
+    "Voce e um avaliador independente e somente leitura.",
+    "Nao proponha mutacoes, nao chame ferramentas e nao tente corrigir o plano.",
+    "Avalie a conducao e o plano usando apenas os IDs da rubrica recebida.",
+    "Responda somente JSON valido, sem markdown.",
+    "Formato: {\"summary\":\"\",\"rubricScores\":[{\"rubricId\":\"\",\"criteria\":[{\"id\":\"\",\"rating\":0,\"justification\":\"\"}],\"score\":0}],\"humanCriticalFailureCandidates\":[{\"id\":\"\",\"occurred\":false,\"justification\":\"\"}]}.",
+    "Rating deve ser inteiro de 0 a 4. Nao aprove o gate; apenas forneca evidencia para revisao humana.",
+  ].join("\n");
+  const input = sanitizeEvaluationValue({
+    evaluationCase: params.evaluationCase,
+    transcript: params.transcript,
+    proposal: params.proposal,
+    rubric: params.rubric,
+  });
+  const result = await callModel(
+    params.provider,
+    params.model,
+    params.apiKey,
+    systemPrompt,
+    [{ role: "user", content: JSON.stringify(input) }],
+    { maxTokens: 2_000 },
+  );
+  const parsed = parseJsonObject(result.text);
+  if (!Array.isArray(parsed.rubricScores)) throw new Error("judge nao devolveu rubricScores");
+  return { result: sanitizeEvaluationValue(parsed), usage: result.usage };
+}
+
+function confirmationPromptCount(transcript: TranscriptMessage[], proposalSequence: number) {
+  return transcript.filter((message) =>
+    message.role === "oracle"
+      && message.sequence >= proposalSequence
+      && /(confirm|gravar|salvar)/i.test(message.content)
+  ).length;
+}
+
+async function executeLiveCase(casePath: string) {
+  assertEvaluationEnvironment(process.env);
+  assertStaging();
+  const evaluationCase = validateStrategicEvaluationCase(await readJson(resolve(casePath)));
+  const rubric = await readJson(RUBRIC_PATH) as Record<string, any>;
+  const baseline = await readJson(BASELINE_PATH) as Record<string, any>;
+  const config = runtimeConfiguration();
+  const ledger = await readLedger();
+  const policy = rubric.costPolicy;
+  const id = runId();
+  const reportPath = resolve(PRIVATE_DIR, `strategic-eval-q1-${id}.json`);
+  const startedAt = new Date().toISOString();
+  let handle: EvaluationOrg | null = null;
+  let transcript: TranscriptMessage[] = [];
+  let proposal: Record<string, any> | null = null;
+  let checks: EvaluationCheck[] = [];
+  let judge: { status: "completed" | "error"; result?: unknown; error?: string; usage?: ModelUsage } = { status: "error", error: "judge nao executado" };
+  let generation = { promptTokens: 0, completionTokens: 0, totalTokens: 0, totalCostUsd: 0 };
+  let judgeCostUsd = 0;
+  let cleanupSucceeded = false;
+  let executionError: Error | null = null;
+  let sessionScopeMatches = false;
+  let preConfirmMutationCount = -1;
+  let confirmCalls = 0;
+  let proposalSequence = Number.MAX_SAFE_INTEGER;
+  let judgeSnapshotUnchanged = false;
+  let databaseMatchesProposal = false;
+  let documentMatchesProposal = false;
+
+  try {
+    assertBudgetAllowsNextCall({
+      cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
+      currentCaseCostUsd: 0,
+      reserveUsd: PLANNING_CALL_RESERVE_USD,
+      caseLimitUsd: CASE_LIMIT_USD,
+      policy,
+    });
+    handle = await createEvaluationOrg("strategic-eval-q1");
+    await configureDisposableAi(handle, config);
+    await seedStrategicContext(handle, evaluationCase);
+    const token = await ownerToken(handle);
+    const start = await callFunction("oracle-session", token, {
+      action: "start",
+      orgId: handle.orgId,
+      areaId: handle.areaId,
+      type: evaluationCase.planType,
+      period: evaluationCase.period,
+      channel: evaluationCase.channel,
+    }, `strategic-eval-${id}-start`);
+    const sessionId = String(start.session?.id ?? "");
+    if (!sessionId) throw new Error("oracle-session nao devolveu sessionId");
+    sessionScopeMatches = start.session?.org_id === handle.orgId
+      && start.session?.area_id === handle.areaId
+      && start.session?.period === evaluationCase.period
+      && start.session?.type === evaluationCase.planType;
+    transcript.push({ sequence: 1, role: "oracle", content: String(start.reply ?? "") });
+
+    for (const turn of evaluationCase.turns) {
+      generation = await generationUsage(handle, startedAt);
+      assertBudgetAllowsNextCall({
+        cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
+        currentCaseCostUsd: generation.totalCostUsd,
+        reserveUsd: PLANNING_CALL_RESERVE_USD,
+        caseLimitUsd: CASE_LIMIT_USD,
+        policy,
+      });
+      transcript.push({ sequence: transcript.length + 1, role: "manager", content: turn });
+      const response = await callFunction("oracle-session", token, {
+        action: "message",
+        sessionId,
+        message: turn,
+        channel: evaluationCase.channel,
+      }, `strategic-eval-${id}-message-${transcript.length}`);
+      transcript.push({ sequence: transcript.length + 1, role: "oracle", content: String(response.reply ?? "") });
+      if (response.pendingProposal && typeof response.pendingProposal === "object") {
+        proposal = response.pendingProposal as Record<string, any>;
+        proposalSequence = transcript.length;
+        break;
+      }
+    }
+    if (!proposal) throw new Error("condutor nao gerou proposal dentro dos turnos do caso");
+
+    const beforeConfirm = await targetPlanState(handle, evaluationCase);
+    preConfirmMutationCount = beforeConfirm.objectives.length + beforeConfirm.documents.length;
+    const beforeJudgeHash = await domainSnapshotHash(handle);
+    generation = await generationUsage(handle, startedAt);
+    assertBudgetAllowsNextCall({
+      cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
+      currentCaseCostUsd: generation.totalCostUsd,
+      reserveUsd: JUDGE_CALL_RESERVE_USD,
+      caseLimitUsd: CASE_LIMIT_USD,
+      policy,
+    });
+    try {
+      const judged = await runJudge({
+        apiKey: config.apiKey,
+        provider: config.provider,
+        model: config.judgeModel,
+        evaluationCase,
+        transcript,
+        proposal: proposal as Record<string, unknown>,
+        rubric,
+      });
+      judge = { status: "completed", result: judged.result, usage: judged.usage };
+      judgeCostUsd = usageCostUsd(judged.usage, config.judgePricing);
+    } catch (error) {
+      judge = { status: "error", error: sanitizeEvaluationText(error instanceof Error ? error.message : String(error)) };
+    }
+    const afterJudgeHash = await domainSnapshotHash(handle);
+    judgeSnapshotUnchanged = beforeJudgeHash === afterJudgeHash;
+
+    confirmCalls += 1;
+    await callFunction("oracle-session", token, {
+      action: "confirm",
+      sessionId,
+      channel: evaluationCase.channel,
+    }, `strategic-eval-${id}-confirm`);
+    const afterConfirm = await targetPlanState(handle, evaluationCase);
+    databaseMatchesProposal = proposalMatchesDatabase(proposal, afterConfirm, handle, evaluationCase);
+    documentMatchesProposal = proposalMatchesDocument(proposal, afterConfirm);
+    checks = buildDeterministicChecks({
+      sessionScopeMatches,
+      proposalTypeMatches: proposal.type === evaluationCase.expected.proposalType,
+      requiredFieldsPresent: requiredProposalFieldsPresent(proposal, evaluationCase),
+      preConfirmMutationCount,
+      confirmationPromptCount: confirmationPromptCount(transcript, proposalSequence),
+      confirmationCallCount: confirmCalls,
+      databaseMatchesProposal,
+      documentMatchesProposal,
+      judgeSnapshotUnchanged,
+    });
+    generation = await generationUsage(handle, startedAt);
+  } catch (error) {
+    executionError = error instanceof Error ? error : new Error(String(error));
+    if (handle) {
+      try {
+        generation = await generationUsage(handle, startedAt);
+      } catch {
+        // Preserve the original failure; missing usage is explicit in the report.
+      }
+    }
+  } finally {
+    if (handle) {
+      try {
+        await destroyEvaluationOrg(handle);
+        cleanupSucceeded = true;
+      } catch (error) {
+        cleanupSucceeded = false;
+        const cleanupError = error instanceof Error ? error : new Error(String(error));
+        executionError = executionError ?? cleanupError;
+      }
+    }
+  }
+
+  const totalCaseCostUsd = generation.totalCostUsd + judgeCostUsd;
+  const technicalGate = q1Gate({
+    proposalCreated: Boolean(proposal),
+    judgeStatus: judge.status,
+    checks,
+    cleanupSucceeded,
+    totalCaseCostUsd,
+    caseLimitUsd: CASE_LIMIT_USD,
+  });
+  if (executionError) technicalGate.reasons.unshift(sanitizeEvaluationText(executionError.message));
+  if (executionError) technicalGate.status = "blocked";
+
+  const report: Record<string, unknown> = {
+    schemaVersion: 1,
+    reportVersion: "2026-07-16.q1",
+    caseId: evaluationCase.caseId,
+    baselineVersion: String(baseline.baselineVersion ?? "unknown"),
+    rubricVersion: String(rubric.rubricVersion ?? "unknown"),
+    channel: evaluationCase.channel,
+    runtime: {
+      runId: id,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      environment: "staging",
+      generator: { provider: config.provider, model: config.planningModel },
+      judge: { provider: config.provider, model: config.judgeModel, access: "provider-only-no-database" },
+    },
+    scope: evaluationCase.scope,
+    transcript: sanitizeEvaluationValue(transcript),
+    proposal: sanitizeEvaluationValue(proposal),
+    deterministicChecks: checks,
+    judge: sanitizeEvaluationValue(judge),
+    cost: {
+      generationCostUsd: generation.totalCostUsd,
+      judgeCostUsd,
+      totalCaseCostUsd,
+      cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+      caseLimitUsd: CASE_LIMIT_USD,
+      warningAtUsd: policy.warningAtUsd,
+      preventiveStopAtUsd: policy.preventiveStopAtUsd,
+      authorizedLimitUsd: policy.authorizedLimitUsd,
+      generationUsage: {
+        promptTokens: generation.promptTokens,
+        completionTokens: generation.completionTokens,
+        totalTokens: generation.totalTokens,
+      },
+      judgeUsage: judge.usage ?? null,
+    },
+    cleanup: { disposableOrganizationRemoved: cleanupSucceeded, providerKeyRemovedWithOrganization: cleanupSucceeded },
+    technicalGate,
+  };
+  report.comparisonFingerprint = comparisonFingerprint(report as any);
+  const sanitizedReport = sanitizeEvaluationValue(report);
+  await writePrivateJson(reportPath, sanitizedReport);
+
+  const nextLedger: CostLedger = {
+    schemaVersion: 1,
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+    runs: [...ledger.runs, {
+      runId: id,
+      caseId: evaluationCase.caseId,
+      totalCostUsd: totalCaseCostUsd,
+      completedAt: new Date().toISOString(),
+      status: technicalGate.status,
+    }],
+  };
+  await writePrivateJson(LEDGER_PATH, nextLedger);
+
+  console.log(`Relatorio Q1: ${reportPath}`);
+  console.log(`Gate Q1: ${technicalGate.status}`);
+  console.log(`Custo Q1: US$ ${totalCaseCostUsd.toFixed(6)} | acumulado do plano: US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}`);
+  console.log(`Cleanup staging: ${cleanupSucceeded ? "OK" : "FALHOU"}`);
+  if (technicalGate.status !== "approved") {
+    throw new Error(`Q1 bloqueada: ${technicalGate.reasons.join(" | ") || "gate nao aprovado"}`);
+  }
+}
+
+const [command, casePath] = process.argv.slice(2);
+if (command !== "run" || !casePath) {
+  console.error("Uso: pnpm run eval:strategic:q1");
+  process.exit(2);
+}
+
+await executeLiveCase(casePath);
