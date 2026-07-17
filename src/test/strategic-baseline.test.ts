@@ -180,7 +180,7 @@ describe("Q3 strategic baseline", () => {
 
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J"]');
+    expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K"]');
     expect(source).toContain("correctionReference: normalizedReference");
     expect(source).toContain("...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt }))");
     expect(source).toContain("progress.restarts = [");
@@ -188,11 +188,12 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain("progress.deterministic = []");
     expect(source).toContain('"2026-07-17.q5-regression-r3"');
     expect(source).toContain("progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd");
-    expect(source).toContain('normalizedReference === "Q4I"');
+    expect(source).toContain('["Q4I", "Q4J", "Q4K"].includes(normalizedReference)');
     expect(source).toContain('normalizedReference === "Q4J"');
     expect(source).toContain('progress.runs.filter((run) => run.phase !== "Q2B")');
     expect(source).toContain("Q5A e matriz deterministica mantidas");
     expect(source).toContain('"2026-07-17.q5-regression-r5"');
+    expect(source).toContain('"2026-07-17.q5-regression-r6"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

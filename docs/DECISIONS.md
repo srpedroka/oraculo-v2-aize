@@ -876,3 +876,11 @@ Decisao: a gravacao trimestral nao depende de a IA repetir em `annualObjectives`
 Motivo: duas rodadas semanticamente equivalentes do caso CRM divergiram apenas porque uma repetiu o objetivo anual e outra nao. O banco ja possuia a hierarquia correta; transformar redundancia de envelope em requisito de integridade criou uma falha estocastica depois de uma conversa e um plano validos.
 
 Consequencias: nao ha nova pergunta, confirmacao ou objetivo criado; referencia cruzada continua falhando fechada. A integracao Q4J passou 7/7 e o smoke confirmou a gravacao, mas o gate Q4J continua bloqueado por uma falha independente de conducao da atividade CRM. Q5B nao foi reiniciada.
+
+## 2026-07-17 - Atividade trimestral deve ser reenquadrada pelo resultado
+
+Decisao: quando uma abertura trimestral curta apresenta implantacao, instalacao, contratacao, configuracao ou adocao como objetivo, o contrato server-side exige uma pergunta sobre resultado empresarial, adocao, efeito ou mudanca mensuravel. Um menu generico de campos e invalido; a atividade permanece como acao. O fallback faz uma unica pergunta contextual.
+
+Motivo: o prompt trimestral ja continha essa orientacao, mas o caso CRM variou entre rodadas e recebeu Conducao 65 quando o modelo caiu no menu generico. Uma regra importante de qualidade nao pode depender apenas da aderencia probabilistica ao prompt.
+
+Consequencias: a conversa ganha direcao sem etapa adicional; respostas contextuais boas passam intactas. O smoke Q4K passou com Conducao 81,25, Plano Trimestral 93,75 e media 87,50. A Q5B r4 foi arquivada como calibracao e a fase r6 ficou pronta, sem publicar producao.

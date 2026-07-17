@@ -569,6 +569,27 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(fallback)).toHaveLength(1);
   });
 
+  it("turns a quarterly CRM activity into a measurable business result", () => {
+    const userMessage = "Nosso objetivo do trimestre e implantar um CRM.";
+    const blocked = reasons({
+      reply: "O que destrava o avanço agora: fechar o resultado, o prazo, o responsável ou a primeira ação?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "quarterly",
+      userMessage,
+    });
+    const accepted = reasons({
+      reply: "Implantar o CRM é o meio. Qual resultado ele precisa produzir: previsibilidade do funil, velocidade do acompanhamento ou adoção pela equipe?",
+    }, { sessionType: "quarterly", userMessage });
+
+    expect(blocked).toContain("quarterly_activity_unchallenged");
+    expect(fallback).toMatch(/meio/i);
+    expect(fallback).toMatch(/previsibilidade|ado[cç][aã]o/i);
+    expect(fallback).not.toContain("prazo");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+    expect(accepted).not.toContain("quarterly_activity_unchallenged");
+  });
+
   it("investigates the cause before jumping from impact to annual alignment", () => {
     const userMessage = "A dor é a previsão inconsistente, com impacto em estoque e caixa.";
     const blocked = reasons({

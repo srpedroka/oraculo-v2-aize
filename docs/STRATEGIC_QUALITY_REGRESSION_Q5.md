@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4J tecnica aprovada; smoke Q4J bloqueado por conducao; Q5B r4 pausada**
+Status: **Q5A preservada; Q4K aprovada; Q5B r6 pronta para nova execucao autorizada**
 
 ## Objetivo
 
@@ -264,3 +264,26 @@ Nao houve candidato de falha critica nem check deterministico reprovado. O defei
 | Limite autorizado | US$ 20,00 |
 
 O cleanup e o preflight final confirmaram zero organizacao descartavel. O progresso Q5B r4 nao foi reiniciado e nenhuma segunda chamada paga foi feita. A proxima correcao deve tornar deterministico o desafio de uma atividade trimestral: pedir qual resultado empresarial, adocao ou mudanca mensuravel ela precisa produzir, mantendo a atividade como acao. Somente depois de novo smoke aprovado a Q5B pode ser arquivada e reiniciada como `r5`.
+
+## Correcao Q4K
+
+A Q4K adicionou ao contrato adaptativo a regra que antes existia apenas no prompt: quando a abertura trimestral traz uma atividade curta como `implantar CRM`, a resposta deve reenquadra-la como meio e perguntar por resultado empresarial, adocao, efeito ou mudanca mensuravel. O menu generico de campos e bloqueado; uma resposta contextual boa continua sendo aceita sem reescrita. O fallback possui uma unica pergunta e nao acrescenta etapa ao ritual.
+
+Validacao local: 383 testes unitarios, lint, build/bundle e secret scan. Depois do deploy somente de `oracle-session` no staging, o smoke repetiu `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002`:
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 81,25 |
+| Plano Trimestral | 93,75 |
+| Media conjunta | 87,50 |
+
+A primeira pergunta apos `implantar um CRM` tratou CRM como acao e pediu o resultado mensuravel para reduzir surpresa no funil. Confirmacao, banco, documento e os checks deterministas passaram; nao houve candidato de falha critica ou residuo.
+
+| Item | Valor |
+|---|---:|
+| Smoke Q4K | US$ 0,049289 |
+| Acumulado antes | US$ 4,802465 |
+| Acumulado depois | US$ 4,851754 |
+| Limite autorizado | US$ 20,00 |
+
+Com o preflight limpo, `restart-after-correction Q4K` arquivou as quatro medicoes Q5B r4 como calibracao e abriu `2026-07-17.q5-regression-r6`. Permanecem oficiais as dez medicoes Q5A e os nove resultados deterministas; Q5B voltou a zero. Nenhuma medicao r6 foi iniciada. Producao, frontend, banco real e WhatsApp real permaneceram inalterados.

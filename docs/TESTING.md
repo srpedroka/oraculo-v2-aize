@@ -207,6 +207,14 @@ pnpm run eval:strategic:q4j
 
 Antes do smoke pago, `tests/integration/proposal-atomicity.test.ts` precisa provar no endpoint real que o pai anual canonico e reutilizado e que outra area/empresa continua recusada. Em 2026-07-17, os sete testes passaram e o smoke confirmou a correcao tecnica, mas bloqueou por Conducao 65; portanto `restart-after-correction Q4J` nao foi executado. O comando de reinicio existe apenas para depois de um gate Q4J aprovado e preserva Q5A/matriz, arquivando somente Q5B.
 
+A Q4K repete o mesmo caso CRM depois de tornar deterministico o desafio da atividade:
+
+```bash
+pnpm run eval:strategic:q4k
+```
+
+O gate exige notas minimas 80, media 85, zero candidato critico, checks deterministas e cleanup. A rodada aprovada obteve Conducao 81,25, Plano Trimestral 93,75 e media 87,50; custou US$ 0,049289. `restart-after-correction Q4K` foi executado somente depois desse aceite e abriu Q5B `r6`, preservando Q5A, matriz, custo e relatorios anteriores.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

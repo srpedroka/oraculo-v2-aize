@@ -73,7 +73,7 @@
     { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "93dac956ea9d6c2bc25f8627a7fd0d3d56dbfc5723481679b5334761443b4e3b" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
     { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "b1795603fed0f5b767d9220210813f919e2a5e10255fe4506040e907249dba72" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "468a4ac793d15f5d81db3d5c78feea8f445ad9a8bbd310952a2290364901d4ad" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "a5916b2b10169a405e0d751a1c27520953b66204fb8685199db1edbc8acf1416" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "a13879b1dedeb0ff78e65150fe07d359152e46995e0ecd5016181df09e5aee5b" },
     { "path": "supabase/functions/_shared/session-runtime.ts", "sha256": "12995aaf4d99eb1db2713d2378ee852e422e4bd895b19a237b49144a6ce2d010" },
     { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "2e4b59d192cb8de6889aa1361f267f0d064a7f9b1a07b65514972a133a1b0e67" },

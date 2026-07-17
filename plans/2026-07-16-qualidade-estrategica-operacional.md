@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4J tecnica aprovada, smoke bloqueado por conducao e Q5B r4 pausada**
+Status: **em execucao; Q4K aprovada e Q5B r6 pronta para nova execucao autorizada**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -505,6 +505,8 @@ Bloqueio tecnico Q5B r4 em 2026-07-17: tres medicoes passaram e a quarta foi int
 
 Estado Q4J em 2026-07-17: o fallback canonico passou 382 unitarios e 7/7 integracoes no endpoint real, incluindo recusa entre areas/empresas. O smoke provou que a gravacao agora funciona e deu Plano Trimestral 95, mas bloqueou por Conducao 65 e media 80: a abertura `implantar um CRM` recebeu menu generico em vez de desafio pelo resultado empresarial. Sem falha critica ou check reprovado; custo US$ 0,035877; acumulado US$ 4,802465; cleanup limpo. Nao houve segunda chamada nem reinicio Q5B. A proxima correcao deve atuar apenas na conducao deterministica de atividade trimestral.
 
+Estado apos Q4K em 2026-07-17: atividades trimestrais curtas agora sao reenquadradas deterministicamente pelo resultado empresarial, adocao ou mudanca mensuravel, sem etapa adicional. O smoke CRM passou com Conducao 81,25, Plano Trimestral 93,75, media 87,50, zero falha critica/check/residuo. Custo US$ 0,049289; acumulado US$ 4,851754. As quatro medicoes Q5B r4 foram arquivadas e a fase abriu como `2026-07-17.q5-regression-r6`, preservando 10 Q5A e 9 deterministas; Q5B oficial esta zerada. Somente staging mudou.
+
 ## Q6 — Aceite da qualidade estratégica
 
 ### Entregáveis
@@ -833,4 +835,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **correcao de conducao trimestral seguinte**: quando a abertura trouxer atividade como `implantar CRM`, bloquear o menu generico e perguntar qual resultado empresarial, adocao ou mudanca mensuravel ela precisa produzir. A atividade deve permanecer como acao. Nao alterar a gravacao Q4J, nao acrescentar etapa e nao repetir o smoke/Q5B sem nova autorizacao. Depois de gate isolado aprovado, arquivar Q5B r4 como calibracao e reiniciar a fase como `r5`.
+Apresentar o briefing da **nova execucao Q5B r6**. Manter Q5A e a matriz deterministica preservadas, executar as 16 medicoes trimestrais com fail-fast por erro tecnico ou qualidade e informar custo estimado/saldo antes da primeira chamada paga. Nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao automaticamente.

@@ -53,6 +53,8 @@ const STRATEGIC_PORTFOLIO_LIMIT_PATTERN = /\b(?:quatro|4)\s+objetivos\b|\bobjeti
 const STRATEGIC_RENUNCIATION_CONTEXT_PATTERN = /\bren[uú]ncias?\b/i;
 const STRATEGIC_FINAL_TENSION_PATTERN = /\bcapacidade\b[\s\S]{0,260}\b(?:limite|ren[uú]ncia|prioridade|excesso|sobrecarga|pressionar)\b|\b(?:limite|ren[uú]ncia|prioridade|excesso|sobrecarga|pressionar)\b[\s\S]{0,260}\bcapacidade\b/i;
 const QUARTERLY_VAGUE_IMPROVEMENT_PATTERN = /\b(?:precisamos|queremos|quero|vamos)?\s*melhorar\b[\s\S]{0,100}\b(?:neste|nesse|no)\s+trimestre\b/i;
+const QUARTERLY_ACTIVITY_PATTERN = /\b((?:implantar|implementar|instalar|criar|contratar|configurar|adotar|lan[cç]ar)\s+(?:(?:um|uma|o|a)\s+)?[^,.!?\n]{2,80})/i;
+const QUARTERLY_ACTIVITY_CHALLENGE_PATTERN = /\b(?:meio|atividade)\b|\b(?:qual|que)\s+(?:resultado|mudan[cç]a|efeito|impacto)\b|\b(?:precisa|deve|vai)\s+(?:produzir|gerar|mudar|melhorar)\b|\bado[cç][aã]o\b|\bresultados?\b[\s\S]{0,180}\b(?:qual desses|qual deles|visibilidade|redu[cç][aã]o|hist[oó]rico)\b/i;
 const QUARTERLY_DIAGNOSIS_REPLY_PATTERN = /\b(?:problema|dor|gargalo|causa|impacto|afeta|prejudica|convers[aã]o|previsibilidade|demanda)\b/i;
 const QUARTERLY_PROBLEM_IMPACT_PATTERN = /\b(?:dor|problema)\b[\s\S]{0,220}\bimpacto\b|\bimpacto\b[\s\S]{0,220}\b(?:dor|problema)\b/i;
 const QUARTERLY_CAUSE_PATTERN = /\b(?:causa|porque|por causa|devido|origem|gargalo)\b/i;
@@ -102,6 +104,7 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_exception_with_annual_link: "a proposta declarou excecao anual e vinculo anual ao mesmo tempo",
   quarterly_unverifiable_objective: "um objetivo trimestral nao preservou indicador, baseline, alvo, fonte, prazo, dono e resultado",
   quarterly_activity_as_objective: "uma atividade foi tratada como resultado final do trimestre",
+  quarterly_activity_unchallenged: "uma atividade trimestral recebeu campos genericos em vez de ser reenquadrada pelo resultado empresarial",
   quarterly_incomplete_actions: "faltou ao menos uma acao com dono, prazo e criterio de conclusao",
   quarterly_vague_diagnosis_missing: "uma abertura trimestral vaga recebeu campos genericos em vez de investigar o problema de negocio",
   quarterly_cause_bypassed: "a conducao pulou da dor e do impacto para o alinhamento anual sem investigar a causa",
@@ -374,6 +377,13 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
     }
   }
   if (input.sessionType === "quarterly") {
+    const quarterlyActivity = input.userMessage.length <= 180 && QUARTERLY_ACTIVITY_PATTERN.test(input.userMessage);
+    if (quarterlyActivity && (
+      STRATEGIC_GENERIC_DECISION_PATTERN.test(reply)
+      || !QUARTERLY_ACTIVITY_CHALLENGE_PATTERN.test(reply)
+    )) {
+      reasons.push("quarterly_activity_unchallenged");
+    }
     if (QUARTERLY_VAGUE_IMPROVEMENT_PATTERN.test(input.userMessage)
       && !QUARTERLY_DIAGNOSIS_REPLY_PATTERN.test(reply)) {
       reasons.push("quarterly_vague_diagnosis_missing");
@@ -639,6 +649,15 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
     if (STRATEGIC_GROWTH_ASPIRATION_PATTERN.test(userMessage)) {
       return "Crescer ainda deixa três caminhos bem diferentes. Qual precisa liderar o ano: ampliar receita na carteira, proteger margem ou destravar capacidade de entrega?";
     }
+  }
+  const quarterlyActivity = sessionType === "quarterly" && userMessage.length <= 180
+    ? userMessage.match(QUARTERLY_ACTIVITY_PATTERN)?.[1]?.trim() ?? ""
+    : "";
+  if (quarterlyActivity) {
+    const options = /\bCRM\b/i.test(quarterlyActivity)
+      ? "previsibilidade do funil, velocidade do acompanhamento, adoção pela equipe ou outro resultado concreto"
+      : "resultado empresarial, adoção, eficiência ou outra mudança mensurável";
+    return `“${quarterlyActivity}” descreve o meio. O que precisa mudar de verdade neste trimestre: ${options}?`;
   }
   if (sessionType === "quarterly" && /\bprioridades?\b/i.test(userMessage) && /\b(?:capacidade|comporta|cabem|cabe)\b/i.test(userMessage)) {
     return "Há mais prioridades do que capacidade, então manter todas esconderia a escolha. Quais entregas têm maior impacto no objetivo anual dentro da capacidade real?";
