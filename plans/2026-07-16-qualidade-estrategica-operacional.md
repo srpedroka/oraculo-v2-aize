@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4A-Q4E concluidas no staging; Q4F e a proxima fatia**
+Status: **em execução; Q4 concluida no staging; Q5 e a proxima fatia**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada. Q4A-Q4E foram concluidas no staging. A Q4D corrigiu naturalidade e os fechamentos; a Q4E passou a preservar origem/versao/rastreabilidade e comprovou igualdade material entre proposta, banco, documento, tela, PDF e WhatsApp. O smoke Q4E comparou 18 fatos materiais, sem mutacao de renderizacao, chamada de IA ou residuo. Q4E custou US$ 0; acumulado permanece US$ 2,890842. Producao, Netlify e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4F antes da integracao completa.
+Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada e Q4A-Q4F concluidas no staging. O gate integrado passou 350 unitarios, 122 integracoes, 7 testes de seguranca, 11 E2E desktop/mobile, fixtures, catalogo, igualdade das saidas, lint/build/bundle e secret scan. Auditoria final confirmou zero residuo; custo Q4F US$ 0 e acumulado US$ 2,890842. Producao, Netlify e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q5 antes da regressao comparativa paga.
 
 ## Q4 — Correções orientadas pela evidência
 
@@ -462,7 +462,7 @@ Corrige apenas falhas demonstradas no baseline. Antes desta fatia, apresentar ex
 
 Todas as correções têm teste reproduzindo a falha original e briefing funcional aprovado.
 
-Estado parcial: Q4A (motor adaptativo), Q4B (trimestral), Q4C (mensal), Q4D (naturalidade/fechamentos) e Q4E (saidas/rastreabilidade) estao aprovadas no staging. Q4F ainda nao foi iniciada; Q5 continua bloqueada ate o gate completo da Q4.
+Estado final: Q4A-Q4F aprovadas no staging. O aceite tecnico esta em `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`; Q5 continua bloqueada ate briefing de custo e autorizacao explicita.
 
 ### Rollback
 
@@ -819,4 +819,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **Q4F — integração e aceite técnico**. Explicar a regressão completa, ambientes, dados descartáveis, custo estimado e rollback; obter autorização explícita antes de executar. Não iniciar Q5, Mapa B ou produção automaticamente.
+Apresentar o briefing da **Q5 — regressão estratégica comparativa**. Explicar repetição exata da Q3, modelos/judge, custo estimado, regra de parada, revisão humana e rollback; obter autorização explícita antes de qualquer chamada paga. Não iniciar Q6, Mapa B ou produção automaticamente.

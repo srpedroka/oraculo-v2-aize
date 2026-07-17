@@ -157,6 +157,8 @@ pnpm run eval:strategic:q4e
 
 O teste cria empresa e usuario descartaveis, confirma uma proposta trimestral pela `oracle-session`, compara os objetos semanticos da proposta, banco e documento canonico e procura os mesmos 18 fatos materiais na tela, PDF e WhatsApp. Tambem verifica fingerprint igual, zero mutacao durante a renderizacao, zero `ai_usage_logs` e cleanup. O relatorio opcional fica privado em `.agents-private/strategic-q4e-output-equality-*.json`. Em 2026-07-17, a prova final passou 18/18 sem chamar IA; custo Q4E US$ 0 e acumulado US$ 2,890842.
 
+A Q4F reutiliza os gates existentes em vez de criar uma segunda orquestracao. O aceite executa, nesta ordem, unitarios/fixtures/catalogo, integracao completa no staging, RLS/seguranca, E2E staging desktop/mobile, lint, build/bundle, secret scan e auditoria independente de residuos. Resultado de 2026-07-17: 350 unitarios, 122 integracoes, 7 testes de seguranca e 11 E2E aprovados; zero organizacao/usuario descartavel remanescente. Skips opt-in e justificativas ficam registrados no relatorio `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`. Custo Q4F US$ 0.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.
