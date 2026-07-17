@@ -13,6 +13,7 @@ import {
   maybeSummarize,
 } from "./conversations.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
+import { validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
 import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
@@ -348,19 +349,23 @@ export async function processPlanningMessage(
   };
 
   const previousOracleReply = latestOracleReply(history.messages);
-  let result = await callPlanningModel(systemPrompt, 1);
-  let parsed: any = null;
-  let repairReasons: string[] = [];
-  try {
-    parsed = parseEnvelope(result.text);
-    repairReasons = validateAdaptiveEnvelope({
-      envelope: parsed,
+  const validateEnvelope = (envelope: any) => [
+    ...validateAdaptiveEnvelope({
+      envelope,
       currentPhase: session.phase,
       phases: CONDUCTORS[session.type].phases,
       sessionState: session.state,
       previousOracleReply,
       userMessage: params.message,
-    });
+    }),
+    ...(session.type === "quarterly" ? validateQuarterlyGuidanceEnvelope({ envelope }) : []),
+  ].filter((reason, index, values) => values.indexOf(reason) === index);
+  let result = await callPlanningModel(systemPrompt, 1);
+  let parsed: any = null;
+  let repairReasons: string[] = [];
+  try {
+    parsed = parseEnvelope(result.text);
+    repairReasons = validateEnvelope(parsed);
   } catch {
     repairReasons = ["invalid_json_envelope"];
   }
@@ -373,16 +378,11 @@ export async function processPlanningMessage(
     } catch {
       throw new Error("A IA não conseguiu estruturar a condução com segurança. Nenhum plano foi alterado; tente novamente.");
     }
-    const remainingReasons = validateAdaptiveEnvelope({
-      envelope: parsed,
-      currentPhase: session.phase,
-      phases: CONDUCTORS[session.type].phases,
-      sessionState: session.state,
-      previousOracleReply,
-      userMessage: params.message,
-    });
+    const remainingReasons = validateEnvelope(parsed);
     if (remainingReasons.length) {
-      const proposalIsPremature = remainingReasons.includes("proposal_before_ready") || remainingReasons.includes("ready_with_blocking_gap");
+      const proposalIsPremature = remainingReasons.includes("proposal_before_ready")
+        || remainingReasons.includes("ready_with_blocking_gap")
+        || remainingReasons.some((reason) => reason.startsWith("quarterly_"));
       if (proposalIsPremature) parsed.proposal = null;
       const hasProposal = Boolean(parsed?.proposal);
       const paused = parsed?.state_patch?.pausa_solicitada === true;

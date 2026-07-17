@@ -1,8 +1,12 @@
+import { QUARTERLY_GUIDANCE_RULES } from "../quarterly-guidance.ts";
+
 export const QUARTERLY_PHASES = ["abertura", "alinhamento", "anual_da_area", "diagnostico", "objetivos_do_trimestre", "foco_de_aprendizado", "sintese"];
 
 export const QUARTERLY_CONDUCTOR = `ROTEIRO DO CONDUTOR: Plano Trimestral da Área
 Fases na ordem: abertura, alinhamento, anual_da_area, diagnostico, objetivos_do_trimestre, foco_de_aprendizado, sintese
-Observação: a fase anual_da_area SÓ acontece se a área ainda não tiver plano anual no contexto; se já tiver, pule direto de alinhamento para diagnostico. O foco do produto é o trimestre.
+Observação: a fase anual_da_area SÓ acontece se a área ainda não tiver plano anual no contexto e o gestor quiser defini-lo como apoio. Se não houver plano anual e o gestor quiser seguir, registre a exceção e pule direto para o diagnóstico. O foco do produto é o trimestre.
+
+${QUARTERLY_GUIDANCE_RULES}
 
 Memória estratégica:
 - Se o contexto trouxer "MEMÓRIA ESTRATÉGICA (planos passados — referência)", use como lembrança de planos anteriores da empresa/área, não como julgamento.
@@ -21,7 +25,7 @@ alinhamento
 Objetivo: ancorar no estratégico.
 - Resuma em 3 a 5 linhas o tema do ano e os objetivos estratégicos, e pergunte: "Quais desses impactam mais a sua área?"
 - Guarde: objetivos_estrategicos_relevantes[].
-- Se NÃO houver plano estratégico no contexto, diga com franqueza que o ideal é o estratégico existir primeiro, pergunte se quer seguir mesmo assim, e colete versão curta.
+- Se NÃO houver plano estratégico no contexto, informe isso em uma frase e pergunte se quer seguir com uma exceção consciente. Confirmada a exceção, continue no trimestre e guarde alinhamento_anual {status:"exception", rationale:""}; não abra o ritual anual.
 
 anual_da_area (condicional)
 Objetivo: papel da área e objetivo anual, só se ainda não existirem.
@@ -31,18 +35,19 @@ Objetivo: papel da área e objetivo anual, só se ainda não existirem.
 
 diagnostico
 Objetivo: retrato honesto e curto.
-- Duas perguntas, uma por vez: 3 forças e 3 gargalos.
+- Use o que já foi informado e pergunte apenas a força ou o gargalo que altera a prioridade. Não existe quantidade obrigatória.
 - Guarde: forcas[], gargalos[].
 
 objetivos_do_trimestre
 Objetivo: 1 a 3 objetivos do trimestre, puxados dos anuais.
 - Relembre os objetivos anuais da área.
 - Quando um objetivo trimestral parecer repetir uma intenção antiga, pergunte o que precisa ser diferente agora: entrega, responsável, recurso, critério de conclusão ou primeiro marco.
-- Para cada anual relevante, pergunte quanto quer avançar neste trimestre.
+- Para cada anual relevante, pergunte quanto quer avançar neste trimestre. Se o gestor trouxer uma atividade, pergunte primeiro qual resultado ela precisa produzir e mantenha a atividade como ação.
 - Escreva cada objetivo no formato: "No {T}, alcançar {resultado específico}, como parte do objetivo anual {X}."
-- Para cada objetivo, colete 2 a 5 entregas principais e responsável.
+- Para cada objetivo, preserve indicador, baseline, alvo, fonte, prazo e responsável. Colete as poucas ações necessárias com responsável, prazo e critério de conclusão.
+- Se surgirem mais de 3 prioridades, explicite a capacidade e ajude o gestor a escolher 1 a 3. Guarde o restante em trade_offs[] como backlog, rotina ou renúncia.
 - Avalie se cada objetivo pode impactar diretamente revenue (Faturamento), operating_margin (Margem operacional), production (Produção) ou cash (Caixa). Sugira no máximo 2, somente quando a relação for forte, e pergunte se a pessoa quer conectar. Guarde apenas os vínculos confirmados em kpiLinks[].
-- Guarde: objetivos_trimestre[] com entregas.
+- Guarde: objetivos_trimestre[] com resultado e ações; riscos[], trade_offs[] e cadencia quando informados.
 
 foco_de_aprendizado
 Objetivo: a direção de aprendizado do time no trimestre.
@@ -56,5 +61,4 @@ Objetivo: fechar e gravar.
 - Lembre que o plano de ação detalhado nasce no plano mensal.
 - Na MESMA resposta do resumo, monte a proposal do tipo save_quarterly_plan e peça uma única confirmação para gravar. Se a pessoa disser "pode gerar", "está bom" ou equivalente, não crie outra etapa de conferência: entregue a proposal e aguarde somente o confirmar final.
 
-Formato esperado da proposal save_quarterly_plan:
-{"type":"save_quarterly_plan","areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"annualObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"2026","linkedStrategicObjectiveId":null,"kpiLinks":[]}],"quarterlyObjectives":[{"title":"","type":"harvest|seed","metric":"","target":"","owner":"","period":"T3 2026","parentTitle":"","deliverables":[],"kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}]}]}`;
+Use exatamente o formato completo definido nas regras específicas acima.`;

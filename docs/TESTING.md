@@ -124,6 +124,14 @@ pnpm run eval:strategic:q4a
 
 O smoke cria uma empresa e usuario descartaveis, copia apenas a chave temporaria do laboratorio, testa bloco completo, resposta vaga e anti-loop, recusa mutacao pre-confirmacao, registra custo no ledger privado e remove org/usuario/chave. A rodada aprovada em 2026-07-16 passou 15/15; somente `oracle-session` de staging foi publicada. O comando nunca pertence ao CI comum e exige a mesma autorizacao financeira do plano.
 
+A Q4B acrescenta dez testes puros em `_shared/quarterly-guidance.test.ts` e um smoke pago, opt-in e restrito ao staging:
+
+```bash
+pnpm run eval:strategic:q4b
+```
+
+O runner usa duas empresas descartaveis para cobrir plano anual presente e ausente. Ele testa gestor completo, resposta vaga, excesso de prioridades, atividade como falso objetivo e excecao anual; confirma somente o caso completo e compara proposta, objetivo, acoes e documento canonico. Em 2026-07-16, passou 21/21 antes e depois do reforco final. A rodada final custou US$ 0,066221; as duas validacoes Q4B somaram US$ 0,124095 e removeram empresas, usuarios e chaves. Producao e WhatsApp real nao participam.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.
