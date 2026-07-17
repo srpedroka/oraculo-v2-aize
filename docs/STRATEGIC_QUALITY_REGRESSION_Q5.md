@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4L aprovada; Q5B r7 limpa para nova execucao autorizada**
+Status: **Q5A preservada; Q5B r7 pausada na sexta medicao; correcao Q4M pendente**
 
 ## Objetivo
 
@@ -360,3 +360,36 @@ A conversa reconheceu que a meta estava voltando, recuperou literalmente os dois
 | Limite autorizado | US$ 20,00 |
 
 `restart-after-correction Q4L` preservou as oito medicoes Q5B r6 como calibracao e abriu `2026-07-17.q5-regression-r7`. Permanecem oficiais dez resultados Q5A e nove deterministas; Q5B esta zerada. Producao, frontend, banco real e WhatsApp real permaneceram inalterados.
+
+## Execucao Q5B r7
+
+A Q5B r7 foi autorizada para 16 medicoes e interrompida automaticamente na sexta, antes da setima chamada. As duas rodadas do problema trimestral vago e de CRM como atividade passaram. A equivalencia entre a area solicitada `Industrial` e a unica area cadastrada `Producao` tambem passou na primeira rodada, mas bloqueou na segunda:
+
+| Caso | Rodada | Conducao | Plano Trimestral | Resultado | Custo |
+|---|---:|---:|---:|---|---:|
+| Problema trimestral vago | 1 | 96,25 | 97,50 | aprovada | US$ 0,042462 |
+| Problema trimestral vago | 2 | 95,00 | 97,50 | aprovada | US$ 0,034899 |
+| CRM como atividade | 1 | 91,25 | 96,25 | aprovada | US$ 0,037766 |
+| CRM como atividade | 2 | 96,25 | 97,50 | aprovada | US$ 0,037168 |
+| Area equivalente | 1 | 81,25 | 96,25 | aprovada | US$ 0,036735 |
+| Area equivalente | 2 | 70,00 | 97,50 | bloqueada | US$ 0,037602 |
+
+O comportamento funcional principal ficou correto: nao criou uma area `Industrial`, permaneceu na area `Producao`, manteve empresa, T3 2027 e objetivo anual aplicavel, gravou somente depois de uma confirmacao e gerou banco/documento coerentes. Os dez checks deterministas passaram, sem falha critica, erro tecnico, gravacao prematura, confirmacao duplicada, divergencia ou residuo.
+
+O defeito ficou isolado na qualidade da conducao. Depois de o gestor sintetico fornecer um bloco quase completo, o Oraculo absorveu os fatos e fechou um plano forte, mas nao fez nenhum desafio curto sobre meta, capacidade, risco ou consistencia das acoes. Tambem nao recuperou historico pertinente. O judge atribuiu **70** a Conducao, **97,50** ao Plano Trimestral e **83,75** de media conjunta.
+
+| Item | Valor |
+|---|---:|
+| Medicoes Q5B r7 executadas | 6 de 16 |
+| Aprovadas | 5 |
+| Bloqueadas | 1 |
+| Geracao Q5B r7 | US$ 0,158098 |
+| Judges Q5B r7 | US$ 0,068534 |
+| Total Q5B r7 | US$ 0,226632 |
+| Acumulado antes | US$ 5,242231 |
+| Acumulado depois | US$ 5,468862 |
+| Limite autorizado | US$ 20,00 |
+
+O fail-fast impediu a setima chamada. O preflight final confirmou staging acessivel, zero organizacao sintetica pendente e os modelos `xai/grok-4.3` no condutor e `xai/grok-4.5` no judge. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
+
+Antes de reiniciar a Q5B, a Q4M deve tornar verificavel um desafio estrategico curto quando um bloco pronto ainda nao demonstra que meta e abordagem foram testadas. A pergunta deve aproveitar o fato mais relevante e escolher somente uma dimensao util, como capacidade, risco, evidencia intermediaria ou consistencia da acao. Nao deve reentrevistar campos completos, criar etapa extra quando o bloco ja foi criticamente validado, inventar memoria nem tornar a equivalencia de area uma duvida para o gestor. Depois da correcao local, repetir apenas `Q2B-QUARTERLY-EQUIVALENT-AREA-003` em smoke pago e limpo; somente um smoke aprovado permite arquivar as seis medicoes r7 e abrir uma nova baseline Q5B.
