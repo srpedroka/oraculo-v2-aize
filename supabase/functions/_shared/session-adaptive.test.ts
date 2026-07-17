@@ -5,6 +5,7 @@ import {
   buildAdaptiveRepairDirective,
   ensureAdaptiveStatePatch,
   latestOracleReply,
+  normalizeProposalConfirmationEnvelope,
   normalizeReadyProposalEnvelope,
   repeatsPreviousQuestion,
   safeAdaptiveNextPhase,
@@ -604,6 +605,78 @@ describe("adaptive planning session guard Q4A", () => {
     expect(fallback).toContain("causa");
     expect(fallback).toMatch(/processo|dados|rotina/i);
     expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("uses history before offering hypotheses for a recurring quarterly goal", () => {
+    const userMessage = "Vamos manter a meta de reduzir retrabalho para cinco por cento.";
+    const blocked = reasons({
+      reply: "Manter reduzir retrabalho para 5% como meta principal. Qual caminho priorizamos: padronizar aprovação, revisar qualidade ou treinar a equipe?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "quarterly",
+      userMessage,
+    });
+    const accepted = reasons({
+      reply: "Essa meta está voltando. O que precisa ser diferente agora com base no ciclo anterior?",
+    }, { sessionType: "quarterly", userMessage });
+
+    expect(blocked).toContain("quarterly_repeated_goal_unchallenged");
+    expect(fallback).toContain("meta está voltando");
+    expect(fallback).toMatch(/causa|abordagem|evid[eê]ncia/i);
+    expect(fallback).not.toMatch(/padronizar|treinar/i);
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+    expect(accepted).not.toContain("quarterly_repeated_goal_unchallenged");
+  });
+
+  it("does not reinterview indicator or baseline after recurring-goal facts are confirmed", () => {
+    const userMessage = [
+      "Dois ciclos anteriores terminaram em onze e nove por cento de retrabalho.",
+      "A causa confirmada e falta de padrao na etapa de aprovacao.",
+      "A nova abordagem e checklist obrigatorio com auditoria amostral semanal.",
+    ].join("\n");
+    const blocked = reasons({
+      reply: "Causa e nova abordagem confirmadas. Qual o indicador exato e a baseline atual?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "quarterly",
+      userMessage,
+    });
+
+    expect(blocked).toContain("quarterly_repeated_goal_reinterview");
+    expect(blocked).toContain("quarterly_repeated_goal_memory_omitted");
+    expect(fallback).toContain("Dois ciclos anteriores terminaram em onze e nove por cento");
+    expect(fallback).toContain("causa e a nova abordagem");
+    expect(fallback).toContain("evidência intermediária");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("builds a useful single-confirmation summary for a quarterly proposal", () => {
+    const normalized = normalizeProposalConfirmationEnvelope({
+      reply: "O plano ficou pronto. Posso gravar?",
+      proposal: {
+        type: "save_quarterly_plan",
+        learningFocus: ["validar se o novo padrão reduz retrabalho"],
+        cadence: "auditoria amostral semanal",
+        quarterlyObjectives: [{
+          result: "Reduzir retrabalho",
+          current: "9%",
+          target: "5%",
+          source: "auditoria semanal da qualidade",
+          deadline: "2027-09-30",
+          owner: "Diego",
+          actions: [{ description: "publicar padrão" }, { description: "auditar exceções" }],
+        }],
+      },
+    }, "quarterly");
+    const reply = String(normalized.reply);
+
+    expect(reply).toContain("Reduzir retrabalho de 9% para 5%");
+    expect(reply.match(/9% para 5%/g)).toHaveLength(1);
+    expect(reply).toContain("Ações que mudam a abordagem");
+    expect(reply).toContain("Foco de aprendizado");
+    expect(reply).toContain("auditoria amostral semanal");
+    expect(reply).toContain("2 ações");
+    expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
   it("blocks an annual activity and self-declared weak target when they are accepted without challenge", () => {

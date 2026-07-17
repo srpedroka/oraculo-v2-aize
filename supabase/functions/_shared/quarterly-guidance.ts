@@ -10,7 +10,7 @@ type QuarterlyValidationInput = {
 
 const ACTIVITY_TITLE_PATTERN = /^(?:implantar|implementar|instalar|criar|fazer|planejar|organizar|contratar|desenvolver|configurar)\b/i;
 const ANNUAL_RITUAL_SWITCH_PATTERN = /\b(?:vamos|precisamos|vou)\s+(?:construir|montar|fazer|iniciar|come[cç]ar)\s+(?:o\s+)?(?:planejamento|plano)\s+(?:estrat[eé]gico\s+)?anual\b/i;
-const CADENCE_ACTION_PATTERN = /\b(?:acompanhar|acompanhamento|revisar|revis[aã]o|reuni[aã]o|check-?in|ritual|monitorar|monitoramento)\b/i;
+const CADENCE_ACTION_PATTERN = /\b(?:acompanhar|acompanhamento|auditar|auditoria|revisar|revis[aã]o|reuni[aã]o|check-?in|ritual|monitorar|monitoramento)\b/i;
 const CADENCE_FREQUENCY_PATTERN = /\b(?:di[aá]ri[oa]s?|diariamente|semanal|semanalmente|quinzenal|quinzenalmente|mensal|mensalmente|bimestral|bimestralmente|trimestral|trimestralmente)\b/i;
 
 export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL (obrigatorias):
@@ -22,6 +22,7 @@ export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL 
 - Se baseline, indicador, fonte, prazo, dono ou criterio ainda nao existirem, nao monte proposal: pergunte somente a lacuna que torna o objetivo verificavel.
 - Se houver mais de tres prioridades, conduza a escolha de 1 a 3 resultados. Registre itens adiados em tradeOffs[]; nao os esconda como uma lista excessiva de acoes.
 - Preserve risks[], learningFocus[] e cadence quando forem informados. Cadencia e o ritmo de acompanhamento, nao uma nova burocracia.
+- Em meta recorrente, preserve a trajetoria parcial, a causa confirmada e a mudanca de abordagem. Nao repita indicador ou baseline ja informados; use a proxima pergunta para definir a evidencia intermediaria do aprendizado.
 - annualAlignment.status deve ser linked quando houver vinculo real, acompanhado do titulo ou id aplicavel; ou exception com justificativa explicita.
 
 Formato completo da proposal trimestral:

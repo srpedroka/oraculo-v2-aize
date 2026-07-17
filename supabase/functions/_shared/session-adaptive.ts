@@ -59,6 +59,12 @@ const QUARTERLY_DIAGNOSIS_REPLY_PATTERN = /\b(?:problema|dor|gargalo|causa|impac
 const QUARTERLY_PROBLEM_IMPACT_PATTERN = /\b(?:dor|problema)\b[\s\S]{0,220}\bimpacto\b|\bimpacto\b[\s\S]{0,220}\b(?:dor|problema)\b/i;
 const QUARTERLY_CAUSE_PATTERN = /\b(?:causa|porque|por causa|devido|origem|gargalo)\b/i;
 const QUARTERLY_ALIGNMENT_JUMP_PATTERN = /\b(?:plano|objetivo|alinhamento)\s+(?:estrat[eé]gico|anual)\b[\s\S]{0,180}\b(?:exce[cç][aã]o|seguir|continuar)\b|\bexce[cç][aã]o\b[\s\S]{0,180}\b(?:plano|objetivo|alinhamento)\s+(?:estrat[eé]gico|anual)\b/i;
+const QUARTERLY_REPEATED_GOAL_PATTERN = /\b(?:repetir|repetida|repetido|novamente|de novo|manter)\b[\s\S]{0,180}\b(?:meta|alvo|objetiv[oa]|\d+(?:[.,]\d+)?\s*%|por cento)\b/i;
+const QUARTERLY_REPEATED_GOAL_MEMORY_PATTERN = /\b(?:repet|recorr|volt|ciclos? anteriores?|trajet[oó]ria|hist[oó]rico|avan[cç]o parcial)/i;
+const QUARTERLY_REPEATED_GOAL_CHANGE_PATTERN = /\b(?:o que muda|o que precisa ser diferente|precisa mudar|causa|abordagem|evid[eê]ncia|aprendizado)\b/i;
+const QUARTERLY_REPEATED_FACTS_PATTERN = /\b(?:ciclos?|trimestres?|per[ií]odos?)\s+anteriores?\b[\s\S]{0,320}\bcausa\b[\s\S]{0,320}\b(?:nova abordagem|abordagem diferente|mudan[cç]a de abordagem)\b/i;
+const QUARTERLY_BASELINE_REINTERVIEW_PATTERN = /\b(?:qual|definir|confirma(?:r|e))\b[\s\S]{0,140}\b(?:indicador|baseline|linha de base|valor atual)\b/i;
+const QUARTERLY_REPEATED_GOAL_MALFORMED_ECHO_PATTERN = /\bmanter\s+(?:reduzir|aumentar|elevar|diminuir)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -108,6 +114,10 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_incomplete_actions: "faltou ao menos uma acao com dono, prazo e criterio de conclusao",
   quarterly_vague_diagnosis_missing: "uma abertura trimestral vaga recebeu campos genericos em vez de investigar o problema de negocio",
   quarterly_cause_bypassed: "a conducao pulou da dor e do impacto para o alinhamento anual sem investigar a causa",
+  quarterly_repeated_goal_unchallenged: "uma meta trimestral recorrente nao usou o historico para perguntar o que muda no novo ciclo",
+  quarterly_repeated_goal_reinterview: "trajetoria, causa e nova abordagem ja foram confirmadas, mas indicador ou baseline foram perguntados novamente",
+  quarterly_repeated_goal_memory_omitted: "os ciclos anteriores foram confirmados, mas a resposta nao reconheceu a trajetoria antes de avancar",
+  quarterly_repeated_goal_malformed_echo: "a meta recorrente foi repetida com uma frase truncada ou pouco natural",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
   monthly_wrong_proposal_type: "a proposta nao e do tipo mensal esperado",
   monthly_missing_objectives: "a proposta mensal nao possui resultado priorizado",
@@ -393,6 +403,23 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
       && QUARTERLY_ALIGNMENT_JUMP_PATTERN.test(reply)) {
       reasons.push("quarterly_cause_bypassed");
     }
+    if (QUARTERLY_REPEATED_GOAL_PATTERN.test(input.userMessage)
+      && !(QUARTERLY_REPEATED_GOAL_MEMORY_PATTERN.test(reply)
+        && QUARTERLY_REPEATED_GOAL_CHANGE_PATTERN.test(reply))) {
+      reasons.push("quarterly_repeated_goal_unchallenged");
+    }
+    if (QUARTERLY_REPEATED_GOAL_PATTERN.test(input.userMessage)
+      && QUARTERLY_REPEATED_GOAL_MALFORMED_ECHO_PATTERN.test(reply)) {
+      reasons.push("quarterly_repeated_goal_malformed_echo");
+    }
+    if (QUARTERLY_REPEATED_FACTS_PATTERN.test(input.userMessage)
+      && QUARTERLY_BASELINE_REINTERVIEW_PATTERN.test(reply)) {
+      reasons.push("quarterly_repeated_goal_reinterview");
+    }
+    if (QUARTERLY_REPEATED_FACTS_PATTERN.test(input.userMessage)
+      && !QUARTERLY_REPEATED_GOAL_MEMORY_PATTERN.test(reply)) {
+      reasons.push("quarterly_repeated_goal_memory_omitted");
+    }
   }
 
   const currentIndex = input.phases.indexOf(input.currentPhase);
@@ -567,7 +594,47 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
       return `O mês fica focado em “${result}”${suffix}. Posso gravar?`;
     }
   }
-  if (sessionType === "quarterly") return "O plano do trimestre ficou pronto com as escolhas que você fez. Posso gravar?";
+  if (sessionType === "quarterly") {
+    const objectives = Array.isArray(value.quarterlyObjectives)
+      ? value.quarterlyObjectives.map(asRecord)
+      : [];
+    const learningFocus = Array.isArray(value.learningFocus)
+      ? value.learningFocus.map(text).filter(Boolean)
+      : [];
+    const cadence = text(value.cadence);
+    const objectiveLines = objectives.map((objective, index) => {
+      const result = text(objective.result) || text(objective.title) || `Resultado ${index + 1}`;
+      const current = text(objective.current) || text(objective.baseline);
+      const target = text(objective.target);
+      const source = text(objective.source);
+      const deadline = text(objective.deadline);
+      const owner = text(objective.owner);
+      const normalizedResult = normalizeForComparison(result);
+      const resultAlreadyMeasured = current && target
+        && normalizedResult.includes(normalizeForComparison(current))
+        && normalizedResult.includes(normalizeForComparison(target));
+      const measure = resultAlreadyMeasured ? "" : current && target ? ` de ${current} para ${target}` : target ? ` com alvo ${target}` : "";
+      const proof = source ? `, medido por ${source}` : "";
+      const due = deadline ? `, até ${deadline}` : "";
+      const responsible = owner ? `, com ${owner} responsável` : "";
+      return `${objectives.length > 1 ? `${index + 1}. ` : ""}${result}${measure}${proof}${due}${responsible}.`;
+    });
+    const actionCount = objectives.reduce((sum, objective) =>
+      sum + (Array.isArray(objective.actions) ? objective.actions.length : 0), 0);
+    const actionDescriptions = objectives.flatMap((objective) =>
+      Array.isArray(objective.actions)
+        ? objective.actions.map(asRecord).map((action) => text(action.description)).filter(Boolean)
+        : []);
+    return [
+      "**Plano do trimestre**",
+      ...objectiveLines,
+      actionDescriptions.length ? `Ações que mudam a abordagem: ${actionDescriptions.join("; ")}.` : "",
+      learningFocus.length ? `Foco de aprendizado: ${learningFocus.join("; ")}.` : "",
+      cadence ? `Ritmo de acompanhamento: ${cadence}.` : "",
+      actionCount ? `Execução: ${actionCount} ${actionCount === 1 ? "ação" : "ações"} com prazo e critério de conclusão.` : "",
+      "Posso gravar?",
+    ].filter(Boolean).join("\n");
+  }
   if (sessionType === "strategic") return "O plano anual ficou pronto com as escolhas que você fez. Posso gravar?";
   return "A proposta ficou pronta com o que você definiu. Posso gravar?";
 }
@@ -650,6 +717,20 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
       return "Crescer ainda deixa três caminhos bem diferentes. Qual precisa liderar o ano: ampliar receita na carteira, proteger margem ou destravar capacidade de entrega?";
     }
   }
+  if (sessionType === "quarterly" && QUARTERLY_REPEATED_FACTS_PATTERN.test(userMessage)) {
+    const trajectory = userMessage
+      .split(/\n+/)
+      .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+      .find((line) => /\b(?:ciclos?|trimestres?|per[ií]odos?)\s+anteriores?\b/i.test(line));
+    return [
+      trajectory ? trajectory.replace(/[.!?]+$/, "") + "." : "A trajetória dos ciclos anteriores já está clara.",
+      "A causa e a nova abordagem também estão confirmadas.",
+      "Qual evidência intermediária vai mostrar que a mudança está funcionando antes do fechamento?",
+    ].join(" ");
+  }
+  if (sessionType === "quarterly" && QUARTERLY_REPEATED_GOAL_PATTERN.test(userMessage)) {
+    return "Essa meta está voltando, então não vale simplesmente copiá-la. O que mudou desde o ciclo anterior na causa, na abordagem ou na evidência de acompanhamento?";
+  }
   const quarterlyActivity = sessionType === "quarterly" && userMessage.length <= 180
     ? userMessage.match(QUARTERLY_ACTIVITY_PATTERN)?.[1]?.trim() ?? ""
     : "";
@@ -669,6 +750,14 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
     return "O impacto no resultado já está claro. O que mais causa esse problema hoje: processo, dados, rotina da equipe ou outro gargalo?";
   }
   return "";
+}
+
+export function normalizeProposalConfirmationEnvelope(envelope: SessionEnvelope, sessionType: string) {
+  if (sessionType !== "quarterly" || text(asRecord(envelope.proposal).type) !== "save_quarterly_plan") return envelope;
+  return {
+    ...envelope,
+    reply: proposalConfirmationReply(envelope.proposal, sessionType),
+  };
 }
 
 export function adaptiveFallbackReply(

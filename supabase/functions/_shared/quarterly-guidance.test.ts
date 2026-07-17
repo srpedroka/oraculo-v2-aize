@@ -109,4 +109,14 @@ describe("quarterly guidance", () => {
     expect((normalized.proposal as any).cadence).toBe("Ação 2: revisar semanalmente as exceções até o fim do trimestre.");
     expect(untouched).toBe(withoutCadence);
   });
+
+  it("reconhece auditoria semanal como cadência explícita", () => {
+    const withoutCadence = { reply: "Plano pronto. Confirma?", proposal: completeProposal({ cadence: "" }) };
+    const normalized = preserveExplicitQuarterlyCadence(
+      withoutCadence,
+      "A nova abordagem é checklist obrigatório com auditoria amostral semanal.\nAção: publicar o padrão.",
+    );
+
+    expect((normalized.proposal as any).cadence).toContain("auditoria amostral semanal");
+  });
 });

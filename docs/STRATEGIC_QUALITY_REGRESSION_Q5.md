@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4K aprovada; Q5B r6 pausada na oitava medicao por conducao de meta repetida**
+Status: **Q5A preservada; Q4L aprovada; Q5B r7 limpa para nova execucao autorizada**
 
 ## Objetivo
 
@@ -316,3 +316,47 @@ Nao houve falha critica, erro tecnico ou check deterministico reprovado. O plano
 | Limite autorizado | US$ 20,00 |
 
 O fail-fast encerrou antes da nona chamada. Cleanup e preflight confirmaram zero organizacao descartavel. A proxima correcao deve ser isolada: diante de meta repetida com historico, usar a trajetoria anterior, a causa e a nova abordagem; perguntar o que muda e qual evidencia provará o aprendizado; nunca reentrevistar indicador/baseline ja confirmados. Depois de smoke isolado aprovado, as oito medicoes r6 podem ser arquivadas e a Q5B reiniciada novamente, preservando custo e relatorios.
+
+## Correcao Q4L
+
+A Q4L transformou a orientacao de memoria trimestral em contrato verificavel:
+
+- meta recorrente precisa reconhecer historico/recorrencia antes de perguntar o que muda;
+- respostas truncadas como `manter reduzir` sao recusadas;
+- depois de trajetoria, causa e nova abordagem confirmadas, indicador e baseline nao podem ser perguntados novamente;
+- se a IA ainda omitir a memoria, o fallback recupera literalmente a frase de trajetoria fornecida pelo gestor e pergunta somente pela evidencia intermediaria;
+- a sintese final nao duplica baseline/alvo e separa acoes que mudam a abordagem de foco de aprendizado;
+- a confirmacao mostra fonte, prazo, responsavel, cadencia e quantidade de acoes, com uma unica pergunta para gravar.
+
+Validacao local: 387 testes unitarios, catalogo estrategico, lint, build/bundle e secret scan verdes. Somente `oracle-session` foi publicada no staging.
+
+### Primeiro smoke preservado
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 77,50 |
+| Plano Trimestral | 92,50 |
+| Media conjunta | 85,00 |
+
+O plano estava verificavel, mas a conversa ainda nao citava os ciclos 11% e 9%, abriu com `Manter reduzir` e o resumo duplicou `9% para 5%`. O gate bloqueou sem falha critica, erro tecnico ou residuo. Custo: **US$ 0,045706**.
+
+### Smoke final aprovado
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 100,00 |
+| Plano Trimestral | 96,25 |
+| Media conjunta | 98,13 |
+
+A conversa reconheceu que a meta estava voltando, recuperou literalmente os dois ciclos anteriores, confirmou causa e nova abordagem, perguntou pela evidencia intermediaria e fechou com baseline 9%, alvo 5%, fonte, prazo, dono, acoes, aprendizado e cadencia em uma unica confirmacao. Todos os checks tecnicos passaram, sem candidato de falha critica; cleanup e preflight confirmaram zero organizacao descartavel.
+
+| Item | Valor |
+|---|---:|
+| Primeiro smoke Q4L | US$ 0,045706 |
+| Smoke final Q4L | US$ 0,044093 |
+| Custo total Q4L | US$ 0,089799 |
+| Acumulado antes | US$ 5,152432 |
+| Acumulado depois | US$ 5,242231 |
+| Limite autorizado | US$ 20,00 |
+
+`restart-after-correction Q4L` preservou as oito medicoes Q5B r6 como calibracao e abriu `2026-07-17.q5-regression-r7`. Permanecem oficiais dez resultados Q5A e nove deterministas; Q5B esta zerada. Producao, frontend, banco real e WhatsApp real permaneceram inalterados.

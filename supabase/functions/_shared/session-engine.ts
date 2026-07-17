@@ -57,6 +57,7 @@ import {
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeReadyProposalEnvelope,
+  normalizeProposalConfirmationEnvelope,
   safeAdaptiveNextPhase,
   validateAdaptiveEnvelope,
 } from "./session-adaptive.ts";
@@ -367,9 +368,13 @@ export async function processPlanningMessage(
   const conversationText = history.messages
     .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
     .join("\n");
-  const normalizeEnvelope = (envelope: any) => session.type === "quarterly"
-    ? preserveExplicitQuarterlyCadence(envelope, conversationText)
-    : envelope;
+  const normalizeEnvelope = (envelope: any) => {
+    if (session.type !== "quarterly") return envelope;
+    return normalizeProposalConfirmationEnvelope(
+      preserveExplicitQuarterlyCadence(envelope, conversationText),
+      session.type,
+    );
+  };
   const validateEnvelope = (envelope: any) => [
     ...validateAdaptiveEnvelope({
       envelope,

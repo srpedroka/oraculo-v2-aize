@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q5B r6 pausada na oitava medicao por conducao de meta repetida**
+Status: **em execucao; Q4L aprovada e Q5B r7 limpa para nova execucao autorizada**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -509,6 +509,8 @@ Estado apos Q4K em 2026-07-17: atividades trimestrais curtas agora sao reenquadr
 
 Bloqueio Q5B r6 em 2026-07-17: sete de oito medicoes passaram. Meta repetida R2 bloqueou com Conducao 75, Plano Trimestral 88,75 e media 81,88, sem falha critica/check/erro tecnico. Depois de receber ciclos 11% e 9%, causa e nova abordagem, o Oraculo perguntou novamente indicador e baseline e fechou com resumo generico. O fail-fast impediu a nona chamada; cleanup limpo. Custo parcial US$ 0,300678; acumulado US$ 5,152432. Voltar ao Q4 para correcao focada em memoria/aprendizado de meta recorrente, sem repetir Q5B automaticamente.
 
+Estado apos Q4L em 2026-07-17: meta recorrente agora exige reconhecer a memoria, absorver trajetoria/causa/nova abordagem e perguntar somente pela evidencia que prova o aprendizado; indicador e baseline confirmados nao sao reentrevistados. A sintese trimestral explicita resultado, medida, fonte, dono, acoes, foco e cadencia sem duplicacao e com uma confirmacao. O primeiro smoke bloqueou Conducao 77,50 e revelou memoria numerica/resumo ainda fracos; a rodada final passou Conducao 100, Plano Trimestral 96,25 e media 98,13. Custo Q4L US$ 0,089799; acumulado US$ 5,242231. As oito medicoes r6 foram preservadas e a Q5B abriu limpa como `2026-07-17.q5-regression-r7`.
+
 ## Q6 — Aceite da qualidade estratégica
 
 ### Entregáveis
@@ -837,4 +839,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **correcao de meta trimestral repetida**: usar trajetoria anterior, causa e nova abordagem ja confirmadas; perguntar o que muda e qual evidencia prova o aprendizado; nao repetir indicador/baseline nem inventar hipotese. Reforcar a sintese final com mudanca de abordagem e cadencia, sem etapa adicional. Depois de testes e smoke isolado aprovado, pedir novo aceite para reiniciar Q5B. Nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao.
+Apresentar o briefing da **nova execucao Q5B r7**. Manter Q5A, matriz deterministica, calibracoes e livro de custos preservados; executar as 16 medicoes trimestrais com fail-fast por erro tecnico ou qualidade e informar custo/saldo antes da primeira chamada. Nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao automaticamente.
