@@ -4,6 +4,8 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { serviceClient } from "../tests/helpers/staging.ts";
+import { buildPlanDocumentPreview } from "../supabase/functions/_shared/plan-documents.ts";
+import { renderPlanForWhatsApp } from "../supabase/functions/_shared/plan-render.ts";
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
@@ -82,6 +84,15 @@ interface StrategicProgress {
   initialCumulativeCostUsd: number;
   runs: BaselineRunSummary[];
   calibrationRuns?: Array<BaselineRunSummary & { calibrationReason: string; archivedAt: string }>;
+  restarts?: Array<{
+    correctionReference: string;
+    archivedAt: string;
+    previousBaselineVersion: string;
+    previousStartedAt: string;
+    previousInitialCumulativeCostUsd: number;
+    archivedRunCount: number;
+    archivedDeterministicCount: number;
+  }>;
   deterministic: Array<{
     caseId: string;
     status: "pass" | "fail" | "pending-human";
@@ -100,6 +111,28 @@ interface ExecuteCaseOptions {
   runLabel?: string;
   reportVersion?: string;
   ledgerLabel?: string;
+}
+
+function derivedOutputEvidence(item: ReferenceCase, proposal: Record<string, any> | null, sessionId: string) {
+  if (!proposal || !item.rubrics.includes("RUBRIC-DERIVED-OUTPUT")) return null;
+  const content = buildPlanDocumentPreview(proposal, {
+    organizationName: "ORG_FIXTURE_A",
+    areaName: item.sessionType === "strategic" || item.sessionType === "strategic_review" ? null : "AREA_FIXTURE_A",
+    managerName: "PERSON_FIXTURE_A",
+    sessionId,
+    sessionType: item.sessionType,
+    period: expectedPeriod(item),
+  });
+  if (!content) return null;
+  const canonicalFingerprint = createHash("sha256").update(JSON.stringify(content)).digest("hex");
+  return {
+    evidenceType: "deterministic-pre-confirmation-projection",
+    canonicalDocument: content,
+    webProjection: { source: "canonicalDocument", canonicalFingerprint },
+    pdfProjection: { source: "canonicalDocument", renderer: "plan-pdf", canonicalFingerprint },
+    whatsappRender: renderPlanForWhatsApp(content, { version: 1, origin: "session" }),
+    auditProjection: (content as any).rastreabilidade ?? null,
+  };
 }
 
 const PHASE_SUFFIX_TO_REFERENCE: Record<string, ReferencePhase> = {
@@ -526,8 +559,14 @@ export async function executeCase(
         provider: config.provider,
         model: config.judgeModel,
         evaluationCase: item,
+        sessionScope: {
+          type: item.sessionType,
+          period,
+          area: item.sessionType === "strategic" || item.sessionType === "strategic_review" ? null : handle.areaId,
+        },
         transcript,
         proposal: proposal ?? { status: "not-generated", reason: shouldCreateProposal ? "missing" : "blocking-gap-preserved" },
+        derivedOutputs: derivedOutputEvidence(item, proposal, sessionId),
         rubric: selectRubricForCase(rubric, item),
       });
       judge = { status: "completed", result: judged.result, usage: judged.usage };
@@ -764,6 +803,44 @@ async function archiveExecutionErrors() {
   progress.runs = progress.runs.filter((run) => run.status !== "execution-error");
   await writePrivateJson(PROGRESS_PATH, progress);
   console.log(`${failed.length} erro(s) tecnico(s) arquivado(s); as combinacoes podem ser repetidas sem apagar o custo.`);
+}
+
+async function restartQ5AfterCorrection(correctionReference: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("restart-after-correction e exclusivo da regressao Q5");
+  const normalizedReference = correctionReference.toUpperCase();
+  if (!(["Q4G", "Q4H"] as string[]).includes(normalizedReference)) {
+    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G ou Q4H)");
+  }
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  if (!progress.runs.length) throw new Error("Q5 ja esta sem medicoes oficiais; reinicio recusado para evitar sobrescrita");
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = `tentativas Q5A preservadas antes do reinicio completo apos aprovacao da correcao ${normalizedReference}`;
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: normalizedReference,
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: progress.runs.length,
+      archivedDeterministicCount: progress.deterministic.length,
+    },
+  ];
+  progress.runs = [];
+  progress.deterministic = [];
+  progress.baselineVersion = normalizedReference === "Q4H"
+    ? "2026-07-17.q5-regression-r3"
+    : "2026-07-17.q5-regression-r2";
+  progress.startedAt = archivedAt;
+  progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Q5 reiniciada apos ${normalizedReference}: ${progress.calibrationRuns.length} medicao(oes) preservada(s); custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}; matriz deterministica pendente.`);
 }
 
 async function cleanupStaleFixtures() {
@@ -1187,6 +1264,96 @@ async function repairExecutionChecks() {
   console.log(`${repaired} relatorio(s) de erro tecnico reclassificado(s) sem alterar custo, transcricao ou resposta.`);
 }
 
+async function rejudgeReportWithCanonicalScope(reportPathValue: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("rejudge-report e exclusivo da regressao Q5");
+  assertEvaluationEnvironment(process.env);
+  const reportPath = resolve(reportPathValue);
+  if (!reportPath.startsWith(`${PRIVATE_DIR}/strategic-q5-q2`) || !reportPath.endsWith(".json")) {
+    throw new Error("rejudge-report aceita somente relatorio generativo Q5 privado");
+  }
+  const report = await readJson(reportPath) as Record<string, any>;
+  if (!report.cleanup?.disposableOrganizationRemoved) throw new Error("rejudge recusado: cleanup anterior incompleto");
+  if (!Array.isArray(report.transcript) || !report.proposal || typeof report.proposal !== "object") {
+    throw new Error("rejudge recusado: relatorio sem transcricao ou proposta reutilizavel");
+  }
+  const { blocks, rubric } = await loadCatalog();
+  const item = blocks.flatMap((block) => block.cases).find((candidate) => candidate.caseId === report.caseId);
+  if (!item) throw new Error("rejudge recusado: caso fora do catalogo aprovado");
+  const applicableRubric = selectRubricForCase(rubric, item);
+  const config = runtimeConfiguration();
+  const ledger = await readLedger();
+  assertBudgetAllowsNextCall({
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
+    currentCaseCostUsd: 0,
+    reserveUsd: JUDGE_RESERVE_USD,
+    policy: rubric.costPolicy,
+  });
+
+  const period = expectedPeriod(item);
+  const judged = await runJudge({
+    apiKey: config.apiKey,
+    provider: config.provider,
+    model: config.judgeModel,
+    evaluationCase: item,
+    sessionScope: { type: item.sessionType, period, area: item.sessionType === "strategic" ? null : "synthetic-area" },
+    transcript: report.transcript as TranscriptMessage[],
+    proposal: report.proposal as Record<string, unknown>,
+    rubric: applicableRubric,
+  });
+  const newJudgeCostUsd = usageCostUsd(judged.usage, config.judgePricing);
+  const qualityGate = buildStrategicQualityGate({
+    technicalGateStatus: report.technicalStatus === "approved" ? "approved" : "blocked",
+    judgeStatus: "completed",
+    judgeResult: judged.result,
+    applicableRubric,
+    minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
+    minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+  });
+  const completedAt = new Date().toISOString();
+  report.judgeHistory = [
+    ...(Array.isArray(report.judgeHistory) ? report.judgeHistory : []),
+    {
+      archivedAt: completedAt,
+      reason: "reavaliacao com periodo e tipo canonicos da sessao explicitos",
+      judge: report.judge,
+      qualityGate: report.qualityGate,
+    },
+  ];
+  report.sessionScope = { type: item.sessionType, period, area: item.sessionType === "strategic" ? null : "synthetic-area" };
+  report.judge = { status: "completed", result: judged.result, usage: judged.usage };
+  report.qualityGate = qualityGate;
+  report.cost = {
+    ...(report.cost && typeof report.cost === "object" ? report.cost : {}),
+    judgeCostUsd: Number(report.cost?.judgeCostUsd ?? 0) + newJudgeCostUsd,
+    totalCostUsd: Number(report.cost?.totalCostUsd ?? 0) + newJudgeCostUsd,
+    lastJudgeExecution: { completedAt, judgeCostUsd: newJudgeCostUsd, reason: "canonical-session-scope" },
+  };
+
+  const progress = await readRequiredProgress(PROGRESS_PATH, "regressao Q5");
+  const run = progress.runs.find((candidate) => candidate.reportPath === reportPath);
+  if (!run) throw new Error("rejudge recusado: relatorio nao pertence ao progresso Q5 atual");
+  run.rubricScores = qualityGate.rubricScores.map((entry) => ({ rubricId: entry.rubricId, score: entry.score }));
+  run.criticalFailureCandidates = qualityGate.criticalFailureCandidates;
+  run.judgeCostUsd += newJudgeCostUsd;
+  run.defectClasses = qualityGate.status === "approved" ? [] : run.defectClasses;
+
+  const nextLedger: CostLedger = {
+    schemaVersion: 1,
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + newJudgeCostUsd,
+    runs: [...ledger.runs, {
+      runId: runId(),
+      caseId: `Q5-REJUDGE:${item.caseId}-R${run.round}`,
+      totalCostUsd: newJudgeCostUsd,
+      completedAt,
+      status: qualityGate.status,
+    }],
+  };
+  await writePrivateJson(reportPath, sanitizeEvaluationValue(report));
+  await writePrivateJson(PROGRESS_PATH, progress);
+  await writePrivateJson(LEDGER_PATH, nextLedger);
+  console.log(`Rejudge ${item.caseId} R${run.round}: ${qualityGate.status}; custo US$ ${newJudgeCostUsd.toFixed(6)}; acumulado US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}.`);
+}
+
 async function preflight() {
   assertEvaluationEnvironment(process.env);
   const { manifest, blocks, rubric } = await loadCatalog();
@@ -1230,15 +1397,17 @@ export async function main(args = process.argv.slice(2)) {
   if (command === "preflight") await preflight();
   else if (command === "archive-calibration") await archiveCalibration();
   else if (command === "archive-errors") await archiveExecutionErrors();
+  else if (command === "restart-after-correction" && value) await restartQ5AfterCorrection(value);
   else if (command === "cleanup-stale") await cleanupStaleFixtures();
   else if (command === "deterministic") await runDeterministicBaseline();
   else if (command === "human-packet") await writeHumanReviewPacket();
   else if (command === "repair-execution-checks") await repairExecutionChecks();
+  else if (command === "rejudge-report" && value) await rejudgeReportWithCanonicalScope(value);
   else if (command === "phase" && value) await runPhase(value);
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | cleanup-stale | deterministic | human-packet | repair-execution-checks | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4G aprovada no staging e Q5 pronta para reinicio controlado**
+Status: **em execução; Q4H e Q5A aprovadas no staging, Q5B pendente**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -494,6 +494,8 @@ Se falhar, voltar ao Q4 somente para os defeitos comprovados e repetir Q5.
 Estado em 2026-07-17: o preflight e a matriz determinista passaram, mas a Q5 foi interrompida no segundo caso pago. A primeira rodada entregou Plano Anual 96,25 e Conducao 57,50, abaixo do minimo 80 por diagnostico generico e falta de desafio. A segunda rodada falhou em `oracle-session` com `400/INTERNAL_ERROR` depois de receber os fatos completos. Cleanup e preflight final confirmaram zero residuo. Custo Q5 US$ 0,062662; acumulado US$ 2,953504. Producao nao mudou. O retorno ao Q4 deve corrigir somente conducao anual vaga e classificacao/tratamento seguro da falha interna; Q5, Q6 e Mapa B permanecem bloqueados. Relatorio: `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
 
 Correcao Q4G aprovada em 2026-07-17: a abertura vaga ficou contextual, o retry passou a ser unico por requisicao e propostas completas deixam de ser regeneradas por defeito apenas de envelope. O smoke final repetiu o mesmo caso anual e passou com Conducao 85, Plano Anual 100, media 92,50, confirmacao 1/1, zero gravacao prematura e cleanup. Q4G total US$ 0,100148; acumulado US$ 3,053653. A Q5 ainda nao foi reiniciada: as tentativas anteriores devem ser preservadas/arquivadas e o ciclo completo exige briefing e nova autorizacao paga.
+
+Estado apos Q4H/Q5A em 2026-07-17: os cinco riscos anuais passaram no smoke Q4H. A regressao foi reiniciada como `2026-07-17.q5-regression-r3`, preservando as tentativas anteriores como calibracao, e concluiu 10/10 rodadas Q5A. Plano Anual 99,75, Conducao 94,13, Saida Derivada 100, media conjunta 97,96; zero erro tecnico, falha critica ou check reprovado. Um falso positivo do judge sobre o ano canonico da sessao foi reavaliado somente leitura com auditoria preservada. Q5A total US$ 0,504286; acumulado US$ 4,544644. Q5B ainda nao foi iniciada e continua sendo o proximo gate pago separado.
 
 ## Q6 — Aceite da qualidade estratégica
 

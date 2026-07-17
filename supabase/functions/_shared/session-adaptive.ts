@@ -19,6 +19,7 @@ type ValidationInput = {
   currentPhase: string;
   phases: string[];
   sessionState?: unknown;
+  conversationText?: string;
   previousOracleReply: string;
   userMessage: string;
 };
@@ -35,6 +36,22 @@ const STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN = /\b(?:caiu|queda|reduziu|piorou|dimin
 const STRATEGIC_DIRECTION_JUMP_PATTERN = /\b(?:prop[oó]sito|miss[aã]o|vis[aã]o|valores?)\b/i;
 const STRATEGIC_GROWTH_ASPIRATION_PATTERN = /\b(?:crescer|crescimento|expandir|expans[aã]o)\b/i;
 const STRATEGIC_GROWTH_TENSION_PATTERN = /\breceita\b[\s\S]{0,260}\bmargem\b[\s\S]{0,260}\bcapacidade\b|\bmargem\b[\s\S]{0,260}\bcapacidade\b[\s\S]{0,260}\b(?:receita|crescimento)\b/i;
+const STRATEGIC_GROWTH_TENSION_CHALLENGE_PATTERN = /\b(?:tens[aã]o|for[cç]ar|apertar|ren[uú]ncia|abrir m[aã]o|n[aã]o ser[aá] prioridade|deixar de priorizar|qual das outras)\b/i;
+const STRATEGIC_GROWTH_CHOICE_PATTERN = /\breceita\b/i;
+const STRATEGIC_MARGIN_CHOICE_PATTERN = /\bmargem\b/i;
+const STRATEGIC_CAPACITY_CHOICE_PATTERN = /\bcapacidade\b/i;
+const STRATEGIC_REPEATED_GOAL_PATTERN = /\b(?:repetir|repetida|repetido|novamente|de novo|manter)\b[\s\S]{0,180}\b(?:meta|alvo|objetiv[oa]|\d+(?:[.,]\d+)?\s*%)\b/i;
+const STRATEGIC_REPEATED_GOAL_CHALLENGE_PATTERN = /\b(?:repet|recorr|volta|ciclo anterior|o que muda|diferente|travou|gargalo|avan[cç]ou)\b/i;
+const STRATEGIC_COMPLETE_PLAN_REQUEST_PATTERN = /\bplano(?:\s+anual)?\s+completo\b[\s\S]{0,260}\b(?:sem\s+(?:repetir|recome[cç]ar)|valid(?:ar|e)\s+lacunas?|mont(?:ar|e)\s+(?:a\s+)?proposta)\b|\b(?:sem\s+(?:repetir|recome[cç]ar)|valid(?:ar|e)\s+lacunas?)\b[\s\S]{0,260}\bplano(?:\s+anual)?\s+completo\b/i;
+const STRATEGIC_COMPLETE_PLAN_HANDOFF_PATTERN = /\b(?:envie|enviar|mande|mandar|cole|colar|compartilhe|bloco|arquivo)\b[\s\S]{0,180}\b(?:completo|conte[uú]do|dados|plano)\b|\b(?:lacuna|validar)\b[\s\S]{0,180}\b(?:bloco|conte[uú]do|plano)\b/i;
+const STRATEGIC_GENERIC_DECISION_PATTERN = /\bo que destrava o avan[cç]o agora\b|\bfechar o resultado,?\s+o prazo,?\s+o respons[aá]vel\b/i;
+const STRATEGIC_FACT_RESTART_PATTERN = /\bqual (?:e|é) (?:a |o )?(?:principal dor|prop[oó]sito|vis[aã]o|valores?)\b/i;
+const STRATEGIC_UNGROUNDED_EXAMPLE_PATTERN = /\b(?:por exemplo|pode mirar|como exemplo)\b[\s\S]{0,220}\b\d+(?:[.,]\d+)?\s*%/i;
+const STRATEGIC_DELEGATION_PENDING_PATTERN = /\b(?:delegac[aã]o|retaguarda)\b[\s\S]{0,140}\b(?:concentra[cç][aã]o|respons[aá]ve(?:l|is)|dono)\b|\bconcentra[cç][aã]o\b[\s\S]{0,140}\b(?:delegac[aã]o|retaguarda)\b/i;
+const STRATEGIC_LIMITED_CAPACITY_PATTERN = /\bcapacidade\b[\s\S]{0,80}\b(?:limitad[ao]|restrit[ao]|gargalo)\b|\b(?:limitad[ao]|restrit[ao]|gargalo)\b[\s\S]{0,80}\bcapacidade\b/i;
+const STRATEGIC_PORTFOLIO_LIMIT_PATTERN = /\b(?:quatro|4)\s+objetivos\b|\bobjetivo\s+4\b/i;
+const STRATEGIC_RENUNCIATION_CONTEXT_PATTERN = /\bren[uú]ncias?\b/i;
+const STRATEGIC_FINAL_TENSION_PATTERN = /\bcapacidade\b[\s\S]{0,260}\b(?:limite|ren[uú]ncia|prioridade|excesso|sobrecarga|pressionar)\b|\b(?:limite|ren[uú]ncia|prioridade|excesso|sobrecarga|pressionar)\b[\s\S]{0,260}\bcapacidade\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -100,6 +117,15 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   strategic_activity_unchallenged: "uma atividade candidata a objetivo anual nao foi reenquadrada como meio para um resultado",
   strategic_weak_target_unchallenged: "uma meta apresentada como pequena nao foi confrontada com a dor que precisa resolver",
   strategic_diagnosis_jump: "a resposta abandonou uma causa concreta para voltar a direcionadores genericos",
+  strategic_repeated_goal_unchallenged: "uma meta repetida nao foi tratada como recorrencia nem recebeu pergunta sobre o que muda agora",
+  strategic_complete_plan_request_ignored: "o owner pediu validacao de um plano completo, mas a resposta reiniciou a entrevista",
+  strategic_generic_decision_question: "a resposta anual caiu em uma pergunta generica que ignora os fatos ja fornecidos",
+  strategic_fact_block_restart: "um bloco rico em fatos fez a resposta voltar para uma pergunta inicial ja superada",
+  strategic_ungrounded_numeric_example: "a resposta sugeriu percentuais de exemplo que o gestor nao forneceu",
+  strategic_unasked_pending_decision: "a proposta criou uma pendencia de delegacao sem esse desafio ter sido feito na conversa",
+  strategic_growth_choice_incomplete: "uma aspiracao vaga de crescimento nao recebeu as escolhas de receita, margem e capacidade",
+  strategic_growth_tension_unchallenged: "a tensao entre receita, margem e capacidade virou apenas outro menu, sem explicitar a renuncia",
+  strategic_final_tension_missing: "a sintese anual ignorou que o portfolio ja pressiona uma capacidade explicitamente limitada",
 };
 
 const DETERMINISTIC_PROPOSAL_REPAIR_REASONS = new Set([
@@ -118,6 +144,8 @@ const DETERMINISTIC_PROPOSAL_REPAIR_REASONS = new Set([
   "ready_with_blocking_gap",
   "proposal_before_ready",
   "proposal_confirmation_count",
+  "strategic_unasked_pending_decision",
+  "strategic_final_tension_missing",
 ]);
 
 export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigatorio):
@@ -298,6 +326,45 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
     if (STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN.test(input.userMessage) && STRATEGIC_DIRECTION_JUMP_PATTERN.test(reply)) {
       reasons.push("strategic_diagnosis_jump");
     }
+    if (STRATEGIC_REPEATED_GOAL_PATTERN.test(input.userMessage) && !STRATEGIC_REPEATED_GOAL_CHALLENGE_PATTERN.test(reply)) {
+      reasons.push("strategic_repeated_goal_unchallenged");
+    }
+    if (!hasProposal
+      && STRATEGIC_GROWTH_ASPIRATION_PATTERN.test(input.userMessage)
+      && ![STRATEGIC_GROWTH_CHOICE_PATTERN, STRATEGIC_MARGIN_CHOICE_PATTERN, STRATEGIC_CAPACITY_CHOICE_PATTERN]
+        .every((pattern) => pattern.test(reply))) {
+      reasons.push("strategic_growth_choice_incomplete");
+    }
+    if (!hasProposal
+      && STRATEGIC_GROWTH_TENSION_PATTERN.test(input.userMessage)
+      && !STRATEGIC_GROWTH_TENSION_CHALLENGE_PATTERN.test(reply)) {
+      reasons.push("strategic_growth_tension_unchallenged");
+    }
+    if (STRATEGIC_COMPLETE_PLAN_REQUEST_PATTERN.test(input.userMessage) && !hasProposal && !STRATEGIC_COMPLETE_PLAN_HANDOFF_PATTERN.test(reply)) {
+      reasons.push("strategic_complete_plan_request_ignored");
+    }
+    if (!hasProposal && STRATEGIC_GENERIC_DECISION_PATTERN.test(reply)) {
+      reasons.push("strategic_generic_decision_question");
+    }
+    if (looksLikeFactBlock(input.userMessage) && !hasProposal && STRATEGIC_FACT_RESTART_PATTERN.test(reply)) {
+      reasons.push("strategic_fact_block_restart");
+    }
+    if (STRATEGIC_UNGROUNDED_EXAMPLE_PATTERN.test(reply) && !/\b\d+(?:[.,]\d+)?\s*%/i.test(input.userMessage)) {
+      reasons.push("strategic_ungrounded_numeric_example");
+    }
+    if (hasProposal
+      && STRATEGIC_LIMITED_CAPACITY_PATTERN.test(input.userMessage)
+      && STRATEGIC_PORTFOLIO_LIMIT_PATTERN.test(input.userMessage)
+      && STRATEGIC_RENUNCIATION_CONTEXT_PATTERN.test(input.userMessage)
+      && !STRATEGIC_FINAL_TENSION_PATTERN.test(reply)) {
+      reasons.push("strategic_final_tension_missing");
+    }
+    const pendingDecisions = asRecord(input.envelope.proposal).pendingDecisions;
+    const hasDelegationPending = Array.isArray(pendingDecisions)
+      && pendingDecisions.some((decision) => STRATEGIC_DELEGATION_PENDING_PATTERN.test(text(decision)));
+    if (hasDelegationPending && !STRATEGIC_DELEGATION_PENDING_PATTERN.test(text(input.conversationText))) {
+      reasons.push("strategic_unasked_pending_decision");
+    }
   }
 
   const currentIndex = input.phases.indexOf(input.currentPhase);
@@ -361,9 +428,21 @@ export function normalizeReadyProposalEnvelope(input: {
     || input.reasons.some((reason) => !DETERMINISTIC_PROPOSAL_REPAIR_REASONS.has(reason))) {
     return null;
   }
+  const proposal = input.reasons.includes("strategic_unasked_pending_decision")
+    ? {
+      ...asRecord(input.envelope.proposal),
+      pendingDecisions: Array.isArray(asRecord(input.envelope.proposal).pendingDecisions)
+        ? (asRecord(input.envelope.proposal).pendingDecisions as unknown[])
+          .filter((decision) => !STRATEGIC_DELEGATION_PENDING_PATTERN.test(text(decision)))
+        : [],
+    }
+    : input.envelope.proposal;
   return {
     ...input.envelope,
-    reply: proposalConfirmationReply(input.envelope.proposal, input.sessionType),
+    proposal,
+    reply: input.reasons.includes("strategic_final_tension_missing")
+      ? strategicTensionConfirmationReply(proposal)
+      : proposalConfirmationReply(proposal, input.sessionType),
     state_patch: ensureAdaptiveStatePatch(
       input.envelope.state_patch,
       input.userMessage,
@@ -416,6 +495,7 @@ function naturalizeRejectedReply(value: string, userMessage: string, hasProposal
     "strategic_activity_unchallenged",
     "strategic_weak_target_unchallenged",
     "strategic_diagnosis_jump",
+    "strategic_growth_tension_unchallenged",
   ]);
   if (!value || !reasons.length || reasons.some((reason) => unsafeVisibleReasons.has(reason)
     || reason.startsWith("quarterly_")
@@ -464,10 +544,61 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
   return "A proposta ficou pronta com o que você definiu. Posso gravar?";
 }
 
+function strategicTensionConfirmationReply(proposal: unknown) {
+  const value = asRecord(proposal);
+  const objectives = Array.isArray(value.objectives) ? value.objectives.map(asRecord) : [];
+  const projects = Array.isArray(value.projects) ? value.projects.map(asRecord) : [];
+  const themes = Array.isArray(value.themes) ? value.themes.map(text).filter(Boolean) : [];
+  const renunciations = Array.isArray(value.renunciations) ? value.renunciations.map(text).filter(Boolean) : [];
+  const risks = Array.isArray(value.risks) ? value.risks.map(text).filter(Boolean) : [];
+  const rituals = Array.isArray(value.rituals) ? value.rituals.map(text).filter(Boolean) : [];
+  const objectiveSummary = objectives.map((objective) => {
+    const label = text(objective.metric) || text(objective.title) || "resultado";
+    const current = text(objective.current);
+    const target = text(objective.target) || text(objective.result);
+    return [label, current && target ? `${current} para ${target}` : target].filter(Boolean).join(": ");
+  }).filter(Boolean);
+  const projectSummary = projects.map((project) => text(project.name)).filter(Boolean);
+  const year = text(value.year);
+  return [
+    `**Plano anual${year ? ` ${year}` : ""}**`,
+    themes.length ? `Tema: ${themes.join("; ")}.` : "",
+    objectiveSummary.length ? `Metas: ${objectiveSummary.join("; ")}.` : "",
+    projectSummary.length ? `Projetos: ${projectSummary.join("; ")}.` : "",
+    renunciations.length ? `Renúncias: ${renunciations.join("; ")}.` : "",
+    risks.length ? `Riscos: ${risks.join("; ")}.` : "",
+    rituals.length ? `Ritmo: ${rituals.join("; ")}.` : "",
+    `Ponto de tensão: ${objectives.length || "os"} objetivos e ${projects.length || "os"} projetos já ocupam o limite de uma empresa com capacidade restrita; as renúncias precisam ser reais para o crescimento não voltar a pressionar margem e entrega.`,
+    "Confirma para gravar?",
+  ].filter(Boolean).join("\n");
+}
+
 function strategicDecisionFallback(userMessage: string, sessionType: string) {
   if (sessionType === "strategic") {
+    if (STRATEGIC_COMPLETE_PLAN_REQUEST_PATTERN.test(userMessage)) {
+      return "Pode mandar o bloco completo em uma mensagem? Eu valido só as lacunas reais e devolvo a proposta sem refazer a entrevista.";
+    }
+    if (STRATEGIC_REPEATED_GOAL_PATTERN.test(userMessage)) {
+      const target = userMessage.match(/\b\d+(?:[.,]\d+)?\s*%/i)?.[0];
+      return `Essa meta${target ? ` de ${target}` : ""} está voltando, então vale preservar o aprendizado em vez de apenas copiá-la. O que travou no ciclo anterior e precisa ser diferente agora?`;
+    }
     if (STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN.test(userMessage)) {
       return "A queda que você descreveu já tem causas concretas. Qual delas precisa ser atacada primeiro para recuperar o resultado?";
+    }
+    if (looksLikeFactBlock(userMessage)) {
+      if (/\bciclo anterior\b/i.test(userMessage) && /\b(?:gargalo|fornecedor)\b/i.test(userMessage) && /\bnova abordagem\b/i.test(userMessage)) {
+        return "O resultado avançou em parte, e você já trouxe a causa e uma abordagem diferente para os gargalos. Qual evidência vai provar que essa mudança funcionou neste ciclo?";
+      }
+      if (/\bmargem\b/i.test(userMessage) && /\bcapacidade\b/i.test(userMessage)
+        && /\b(?:duas restri[cç][oõ]es|podem ser adiados|podem esperar|adiar)\b/i.test(userMessage)) {
+        return "Margem e prazo são as duas restrições, e algumas frentes já podem esperar. Qual delas deve receber capacidade primeiro para orientar as renúncias do ano?";
+      }
+      if (/\bfechamento\b/i.test(userMessage) && /\bdados padronizados\b/i.test(userMessage)) {
+        return "Você já trouxe dois efeitos mensuráveis: reduzir o fechamento e ampliar o uso de dados padronizados. Qual deles deve liderar o objetivo anual?";
+      }
+      if (/\bquatro objetivos\b/i.test(userMessage) && /\bbaseline\b/i.test(userMessage) && /\bquatro projetos\b/i.test(userMessage)) {
+        return "A estrutura está completa, mas os valores e vínculos ainda não vieram neste bloco. Pode enviar o conteúdo concreto inteiro para eu validar sem reentrevistar?";
+      }
     }
     const activity = userMessage.match(/["'“”]([^"'“”]{4,100})["'“”]/)?.[1]
       ?? userMessage.match(/\b((?:fazer|criar|lan[cç]ar|executar|realizar)\s+(?:um|uma)?\s*[^,.!?]{3,80})/i)?.[1];
@@ -485,7 +616,7 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
       return `A meta de ${target} precisa nascer do problema que queremos resolver. Qual mudança empresarial tornaria esse número relevante?`;
     }
     if (STRATEGIC_GROWTH_TENSION_PATTERN.test(userMessage)) {
-      return "Receita estável, margem variável e capacidade limitada formam a tensão central. Qual escolha deve liderar o ano: crescer na carteira, recuperar margem ou destravar capacidade de entrega?";
+      return "Receita estável, margem variável e capacidade limitada formam a tensão central: forçar crescimento sem capacidade pode apertar ainda mais a margem. Qual escolha deve liderar o ano, e qual das outras duas não será prioridade agora?";
     }
     if (STRATEGIC_GROWTH_ASPIRATION_PATTERN.test(userMessage)) {
       return "Crescer ainda deixa três caminhos bem diferentes. Qual precisa liderar o ano: ampliar receita na carteira, proteger margem ou destravar capacidade de entrega?";
@@ -504,6 +635,9 @@ export function adaptiveFallbackReply(
   context: { rejectedReply?: string; userMessage?: string; proposal?: unknown; sessionType?: string } = {},
 ) {
   if (paused) return "Tudo bem. A sessão fica salva e a gente retoma daqui quando você quiser.";
+  if (hasProposal && text(context.sessionType) === "strategic" && reasons.includes("strategic_final_tension_missing")) {
+    return strategicTensionConfirmationReply(context.proposal);
+  }
   const naturalized = naturalizeRejectedReply(
     text(context.rejectedReply),
     text(context.userMessage),

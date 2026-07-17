@@ -356,6 +356,112 @@ describe("adaptive planning session guard Q4A", () => {
       expect(visibleQuestions(reply)).toHaveLength(1);
     }
     expect(constrained).toMatch(/tens[aã]o|limite|escolha/i);
+    expect(constrained).toContain("não será prioridade agora");
+  });
+
+  it("rejects a growth menu that omits the capacity trade-off", () => {
+    const blocked = reasons({
+      reply: "Crescer pode vir por receita na carteira, novos mercados ou margem. Qual caminho parece prioritário?",
+    }, { sessionType: "strategic", userMessage: "Queremos crescer no próximo ano." });
+
+    expect(blocked).toContain("strategic_growth_choice_incomplete");
+  });
+
+  it("turns a known growth tension into a trade-off instead of repeating the menu", () => {
+    const userMessage = "A receita atual é estável, mas a margem varia e a capacidade de entrega limita o crescimento.";
+    const blocked = reasons({
+      reply: "Com receita estável, margem oscilando e capacidade limitada, qual caminho prioriza: receita, margem ou capacidade?",
+    }, { sessionType: "strategic", userMessage });
+
+    expect(blocked).toContain("strategic_growth_tension_unchallenged");
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      rejectedReply: "Com receita estável, margem oscilando e capacidade limitada, qual caminho prioriza: receita, margem ou capacidade?",
+      sessionType: "strategic",
+      userMessage,
+    });
+    expect(fallback).toContain("não será prioridade agora");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("requires a final tension check when the annual portfolio fills limited capacity", () => {
+    const userMessage = [
+      "Perfil industrial com capacidade de entrega limitada.",
+      "Tema: crescimento com disciplina.",
+      "Objetivo 1: receita.",
+      "Objetivo 2: margem.",
+      "Objetivo 3: entrega.",
+      "Objetivo 4: dados.",
+      "Renuncias: adiar novo canal.",
+    ].join("\n");
+    const proposal = {
+      type: "save_strategic_plan",
+      year: 2027,
+      themes: ["crescer com disciplina"],
+      renunciations: ["adiar novo canal"],
+      risks: ["dependência de fornecedores"],
+      rituals: ["revisão mensal"],
+      objectives: [{ metric: "receita", current: "R$ 120 milhões", target: "R$ 132 milhões" }],
+      projects: [{ name: "disciplina comercial" }],
+    };
+    const blocked = reasons({
+      reply: "O plano anual está completo com quatro objetivos e quatro projetos. Posso gravar?",
+      proposal,
+      state_patch: {
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: [],
+          blocking_gap: null,
+          question_goal: "confirmar gravação",
+          action_direction: "gravar plano",
+        },
+      },
+      next_phase: "sintese",
+    }, { sessionType: "strategic", userMessage });
+
+    expect(blocked).toContain("strategic_final_tension_missing");
+    expect(blocked).not.toContain("strategic_growth_choice_incomplete");
+    const fallback = adaptiveFallbackReply(true, false, blocked, {
+      userMessage,
+      proposal,
+      sessionType: "strategic",
+      rejectedReply: "Plano 2027 completo com tema, quatro objetivos, projetos e rituais. Confirma para gravar assim?",
+    });
+    expect(fallback).toContain("capacidade restrita");
+    expect(fallback).toContain("R$ 120 milhões para R$ 132 milhões");
+    expect(fallback).toContain("adiar novo canal");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+
+    const normalized = normalizeReadyProposalEnvelope({
+      envelope: envelope({
+        reply: "Plano 2027 completo com tema, quatro objetivos, projetos e rituais. Confirma para gravar assim?",
+        proposal,
+        state_patch: {
+          _adaptive: {
+            readiness: "ready",
+            confirmed_facts: [],
+            blocking_gap: null,
+            question_goal: "confirmar gravação",
+            action_direction: "gravar plano",
+          },
+        },
+        next_phase: "sintese",
+      }),
+      reasons: blocked,
+      sessionType: "strategic",
+      currentPhase: "abertura",
+      phases,
+      userMessage,
+      sessionState: {},
+    });
+    expect(normalized?.reply).toContain("capacidade restrita");
+    expect(validateAdaptiveEnvelope({
+      envelope: normalized ?? {},
+      sessionType: "strategic",
+      currentPhase: "abertura",
+      phases,
+      previousOracleReply: "Qual caminho deve liderar o ano?",
+      userMessage,
+    })).not.toContain("strategic_final_tension_missing");
   });
 
   it("normalizes proposal envelope hygiene without regenerating the full annual plan", () => {
@@ -475,6 +581,122 @@ describe("adaptive planning session guard Q4A", () => {
     expect(fallback).toContain("causas concretas");
     expect(fallback).toContain("atacada primeiro");
     expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("challenges a repeated annual goal instead of falling back to generic fields", () => {
+    const userMessage = "Quero repetir a meta de 95% de entregas no prazo.";
+    const blocked = reasons({
+      reply: "Já temos uma parte importante. O que destrava o avanço agora: fechar o resultado, o prazo, o responsável ou a primeira ação?",
+    }, { sessionType: "strategic", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "strategic",
+      userMessage,
+    });
+
+    expect(blocked).toContain("strategic_repeated_goal_unchallenged");
+    expect(blocked).toContain("strategic_generic_decision_question");
+    expect(fallback).toContain("meta de 95%");
+    expect(fallback).toContain("ciclo anterior");
+    expect(fallback).toContain("diferente agora");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("asks for one complete handoff instead of reinterviewing an experienced owner", () => {
+    const userMessage = "Tenho o plano anual completo. Quero que você valide lacunas e monte a proposta sem repetir a entrevista.";
+    const blocked = reasons({
+      reply: "Qual é o principal resultado que você quer atingir?",
+    }, { sessionType: "strategic", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "strategic",
+      userMessage,
+    });
+
+    expect(blocked).toContain("strategic_complete_plan_request_ignored");
+    expect(fallback).toContain("bloco completo");
+    expect(fallback).toContain("sem refazer a entrevista");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("does not restart initial questions after a rich annual fact block", () => {
+    const userMessage = [
+      "- O fechamento leva 12 dias e deve cair para 5.",
+      "- Só 30% das áreas usam dados padronizados; a meta é 90%.",
+      "- A fonte será o relatório mensal.",
+    ].join("\n");
+    const blocked = reasons({
+      reply: "Qual é a principal dor da empresa hoje?",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: [],
+          blocking_gap: "prioridade",
+          question_goal: "definir prioridade",
+          action_direction: "escolher o resultado principal",
+        },
+      },
+    }, { sessionType: "strategic", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "strategic",
+      userMessage,
+    });
+
+    expect(blocked).toContain("strategic_fact_block_restart");
+    expect(fallback).toContain("dois efeitos mensuráveis");
+    expect(fallback).toContain("liderar o objetivo anual");
+  });
+
+  it("blocks invented percentage examples during annual diagnosis", () => {
+    const blocked = reasons({
+      reply: "Implantar o sistema é o meio. Pode mirar, por exemplo, faturamento 20% maior ou margem de 15%. Qual resultado importa?",
+    }, { sessionType: "strategic", userMessage: "O objetivo anual é implantar um sistema de gestão." });
+
+    expect(blocked).toContain("strategic_ungrounded_numeric_example");
+  });
+
+  it("removes a delegation pending decision that was never asked in the conversation", () => {
+    const proposal = {
+      type: "save_strategic_plan",
+      year: 2027,
+      objectives: [{ title: "Elevar margem" }],
+      pendingDecisions: ["validar delegação ou retaguarda para a concentração de responsáveis"],
+    };
+    const malformed = envelope({
+      reply: "O plano anual ficou pronto. Posso gravar?",
+      proposal,
+      state_patch: {
+        objetivo: "Elevar margem",
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: ["objetivo"],
+          blocking_gap: null,
+          question_goal: "confirmar gravação",
+          action_direction: "gravar o plano",
+        },
+      },
+      next_phase: "sintese",
+    });
+    const blocked = validateAdaptiveEnvelope({
+      envelope: malformed,
+      sessionType: "strategic",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: {},
+      conversationText: "manager: quatro objetivos e quatro projetos completos",
+      previousOracleReply: "Pode enviar os dados completos?",
+      userMessage: "Dados concretos adicionais confirmados para completar o plano anual.",
+    });
+    const normalized = normalizeReadyProposalEnvelope({
+      envelope: malformed,
+      reasons: blocked,
+      sessionType: "strategic",
+      currentPhase: "diagnostico",
+      phases,
+      userMessage: "Dados concretos adicionais confirmados para completar o plano anual.",
+      sessionState: {},
+    });
+
+    expect(blocked).toContain("strategic_unasked_pending_decision");
+    expect((normalized?.proposal as any)?.pendingDecisions).toEqual([]);
   });
 
   it("finds the last oracle turn and gives repair instructions without exposing them to the user", () => {

@@ -209,6 +209,14 @@ describe("strategic evaluation runner Q1", () => {
     expect(judgeSource).not.toMatch(/serviceClient|anonClient|callFunction|\.from\(|\.rpc\(/);
   });
 
+  it("calibrates the judge for complete manager blocks without rewarding bureaucracy", () => {
+    const source = readFileSync(resolve(process.cwd(), "scripts/strategic-eval.ts"), "utf8");
+    expect(source).toContain("nao exija que o Oraculo repita a entrevista campo a campo");
+    expect(source).toContain("quantidade de turnos nao e qualidade");
+    expect(source).toContain("Nao reduza a nota do artefato apenas porque os dados vieram em uma resposta completa do gestor");
+    expect(source).toContain("O sessionScope recebido e contexto canonico do servidor");
+  });
+
   it("can retry only the judge without regenerating or touching staging data", () => {
     const source = readFileSync(resolve(process.cwd(), "scripts/strategic-eval.ts"), "utf8");
     const retryStart = source.indexOf("async function retryJudge");

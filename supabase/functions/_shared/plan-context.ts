@@ -198,6 +198,7 @@ export function historicalMemoryLines(
   const lines = [
     "MEMÓRIA ESTRATÉGICA (planos passados — referência):",
     "Antes de propor um plano novo, use estes documentos para recuperar decisões, metas e tentativas anteriores. Não trate como prova de resultado; quando inferir repetição ou trava, transforme em pergunta construtiva.",
+    "Metadados de período ajudam a localizar o documento, mas não mudam o texto-fonte: se o conteúdo disser apenas 'ciclo anterior', preserve essa expressão e não invente um ano no aprendizado.",
   ];
 
   for (const document of relevant) {

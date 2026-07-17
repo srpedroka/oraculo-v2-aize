@@ -852,3 +852,11 @@ Decisao: o aceite integrado Q4F usa as suites unitarias, fixtures, catalogo, int
 Motivo: a Q4F precisa provar que as correcoes funcionam juntas, nao introduzir outra camada de infraestrutura de teste. Duplicar a orquestracao aumentaria manutencao e poderia divergir do CI real.
 
 Consequencias: `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md` e a evidencia consolidada. Skips opt-in precisam de justificativa e cobertura alternativa explicita. Q4 termina com custo zero e Q5 continua separada porque repete casos generativos pagos e exige revisao humana.
+
+## 2026-07-17 - Trade-off anual e escopo canonico na avaliacao
+
+Decisao: quando receita, margem e capacidade ja formam uma tensao explicita, o condutor anual deve pedir a prioridade e a renuncia, nao repetir o mesmo menu. Se um plano completo ja ocupa a capacidade, a confirmacao final deriva uma sintese executiva da proposta valida e explicita o risco de sobrecarga sem regenerar o plano. O judge recebe tipo, periodo e area canonicos da sessao; um rejudge preserva o parecer anterior, nao acessa o banco e contabiliza apenas a nova avaliacao.
+
+Motivo: os smokes Q4H mostraram que regenerar uma proposta longa para corrigir apenas a sintese causa timeout, custo e variacao. A Q5A tambem produziu um falso positivo de fabricacao porque o judge nao sabia que `2027` ja era o periodo da sessao. Penalizar um gestor por enviar um bloco completo ainda incentivava burocracia contraria ao produto.
+
+Consequencias: a sintese deterministica nunca inventa fatos, pois le apenas a proposal ja validada; defeitos reais de conteudo continuam bloqueados. O protocolo de avaliacao trata blocos confirmados como respostas do gestor, separa nota do artefato da quantidade de turnos e registra `judgeHistory`. Q4H passou 5/5 e Q5A passou 10/10; Q5B continua separada.

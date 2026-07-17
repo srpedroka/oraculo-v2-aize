@@ -13,7 +13,7 @@ describe("memória estratégica no contexto", () => {
     ];
     const lines = historicalMemoryLines(documents, areas, { focus: "quarterly", areaId: "comercial" });
     const output = lines.join("\n");
-    expect(lines).toHaveLength(7);
+    expect(lines).toHaveLength(8);
     expect(output).toContain("Meta comercial");
     expect(output).toContain("Direção anual");
     expect(output).not.toContain("Meta industrial");

@@ -364,6 +364,9 @@ export async function processPlanningMessage(
   };
 
   const previousOracleReply = latestOracleReply(history.messages);
+  const conversationText = history.messages
+    .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
+    .join("\n");
   const validateEnvelope = (envelope: any) => [
     ...validateAdaptiveEnvelope({
       envelope,
@@ -371,6 +374,7 @@ export async function processPlanningMessage(
       currentPhase: session.phase,
       phases: CONDUCTORS[session.type].phases,
       sessionState: session.state,
+      conversationText,
       previousOracleReply,
       userMessage: params.message,
     }),

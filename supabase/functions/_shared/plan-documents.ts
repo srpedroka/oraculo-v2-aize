@@ -2,6 +2,15 @@ type Client = any;
 
 type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
 
+type PlanDocumentPreviewInput = {
+  organizationName: string;
+  areaName?: string | null;
+  managerName: string;
+  sessionId?: string;
+  sessionType: string;
+  period: string;
+};
+
 function asArray<T = any>(value: unknown): T[] {
   return Array.isArray(value) ? value as T[] : [];
 }
@@ -330,6 +339,35 @@ function buildCloseContent(base: Record<string, unknown>, proposal: any, period:
       proximo_periodo: asText(proposal.nextPeriod ?? proposal.next_period),
     },
   };
+}
+
+export function buildPlanDocumentPreview(proposal: any, input: PlanDocumentPreviewInput) {
+  const proposalType = asText(proposal?.type);
+  const documentType = documentTypeFromProposalType(proposalType);
+  if (!documentType) return null;
+  const period = asText(proposal.period ?? proposal.periodo, input.period);
+  const base = {
+    empresa: asText(input.organizationName, "Empresa"),
+    area: input.areaName ?? null,
+    tipo: documentType,
+    periodo: period,
+    gestor: asText(input.managerName),
+    rastreabilidade: {
+      schema_version: 1,
+      origem: "proposta_confirmada",
+      sessao_id: asText(input.sessionId, "SESSION_FIXTURE"),
+      tipo_sessao: asText(input.sessionType),
+    },
+    contexto_rapido: firstFilledArray<string>(proposal.context, proposal.contexto, proposal.contexto_rapido),
+  };
+
+  if (proposalType === "save_strategic_plan") return buildStrategicContent(base, proposal);
+  if (proposalType === "save_quarterly_plan") return buildQuarterlyContent(base, proposal, period);
+  if (proposalType === "save_monthly_plan") return buildMonthlyContent(base, proposal, period);
+  if (proposalType === "month_close" || proposalType === "quarter_close") {
+    return buildCloseContent(base, proposal, period, documentType);
+  }
+  return null;
 }
 
 async function savePlanDocument(

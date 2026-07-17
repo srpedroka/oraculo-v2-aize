@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **bloqueada na Q5A; nenhuma nova chamada paga deve ser feita antes da correcao focada no Q4**
+Status: **Q5A aprovada; Q5B ainda nao iniciada**
 
 ## Objetivo
 
@@ -124,3 +124,39 @@ Depois de autorizacao explicita, a normalizacao deterministica foi publicada som
 | Limite autorizado | US$ 20,00 |
 
 O preflight final confirmou zero organizacao sintetica pendente. A Q4G esta aprovada. Producao, Netlify, banco, WhatsApp real e Evolution permaneceram inalterados. A Q5 pode ser reiniciada apenas em um ciclo novo e comparavel, preservando as tentativas anteriores como calibracao e mediante novo briefing/autorizacao paga.
+
+## Q4H e reinicio comparavel
+
+A Q4H ampliou o smoke para os cinco riscos anuais antes de reiniciar a regressao. O runtime passou a:
+
+- transformar receita, margem e capacidade em trade-off explicito, sem repetir o mesmo menu;
+- desafiar meta recorrente pelo aprendizado e pela mudanca de abordagem;
+- aceitar o bloco completo de um gestor experiente sem entrevista campo a campo;
+- explicitar na sintese quando quatro objetivos e quatro projetos ja ocupam a capacidade;
+- corrigir deterministicamente apenas a sintese/confirmacao de uma proposta valida, sem regenerar o plano nem criar timeout adicional;
+- construir evidencia deterministica das saidas canonicas para o judge.
+
+Depois das rodadas diagnosticas preservadas no ledger, o smoke aprovado passou os cinco casos, sem falha critica, check reprovado ou residuo. Notas minimas observadas: Conducao 88,75, Plano Anual 97,50 e Saida Derivada 100. Custo do smoke aprovado: **US$ 0,263934**; acumulado antes do reinicio Q5: **US$ 4,040358**.
+
+## Resultado Q5A
+
+A Q5 foi reiniciada como baseline `2026-07-17.q5-regression-r3`, preservando 12 medicoes anteriores como calibracao. A matriz determinista passou em oito casos e manteve UX como `pending-human`. As dez rodadas anuais Q5A completaram sem erro tecnico e com cleanup.
+
+| Rubrica | Media | Minimo | Maximo |
+|---|---:|---:|---:|
+| Plano Anual | 99,75 | 97,50 | 100 |
+| Conducao | 94,13 | 85,00 | 100 |
+| Saida Derivada | 100 | 100 | 100 |
+| Media conjunta | 97,96 | - | - |
+
+Um judge marcou como fabricacao a expressao `plano de 2027`, embora `2027` fosse o periodo canonico informado ao iniciar a sessao. O protocolo passou a enviar `sessionScope` ao avaliador e o unico relatorio afetado foi reavaliado sem regenerar o plano, acessar o banco ou apagar o parecer anterior. O rejudge aprovou o caso e ficou registrado em `judgeHistory`.
+
+| Item | Valor |
+|---|---:|
+| Geracao Q5A | US$ 0,338124 |
+| Judges Q5A, incluindo rejudge | US$ 0,166162 |
+| Total Q5A | US$ 0,504286 |
+| Acumulado do plano | US$ 4,544644 |
+| Limite autorizado | US$ 20,00 |
+
+Gate Q5A: **10/10 medicoes, zero erro tecnico, zero falha critica, zero check reprovado**. Q5B trimestral permanece separada e nao foi iniciada. Producao, Netlify, banco real, WhatsApp real e Evolution nao participaram deste ciclo.

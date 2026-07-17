@@ -492,6 +492,8 @@ export async function runJudge(params: {
   evaluationCase: unknown;
   transcript: TranscriptMessage[];
   proposal: Record<string, unknown>;
+  derivedOutputs?: unknown;
+  sessionScope?: unknown;
   rubric: unknown;
 }) {
   const systemPrompt = [
@@ -502,11 +504,18 @@ export async function runJudge(params: {
     "Formato: {\"summary\":\"\",\"rubricScores\":[{\"rubricId\":\"\",\"criteria\":[{\"id\":\"\",\"rating\":0,\"justification\":\"\"}],\"score\":0}],\"humanCriticalFailureCandidates\":[{\"id\":\"\",\"occurred\":false,\"justification\":\"\"}]}.",
     "Rating deve ser inteiro de 0 a 4. Nao aprove o gate; apenas forneca evidencia para revisao humana.",
     "Avalie todos os criterios e todas as falhas criticas humanas recebidas. Use justificativas objetivas de no maximo 20 palavras.",
+    "PROTOCOLO DOS CASOS SINTETICOS: mensagens com 'Informacoes confirmadas' ou 'Dados concretos adicionais confirmados' sao respostas explicitas do gestor, nao preenchimento automatico do sistema.",
+    "Quando o gestor acelerar e enviar um bloco completo, nao exija que o Oraculo repita a entrevista campo a campo. Avalie se ele absorveu o bloco, preservou fidelidade, fez os desafios de alto valor cabiveis e fechou sem burocracia.",
+    "Na rubrica do plano, avalie a qualidade objetiva da proposal e das saidas derivadas. Nao reduza a nota do artefato apenas porque os dados vieram em uma resposta completa do gestor.",
+    "Na conducao, quantidade de turnos nao e qualidade: uma pergunta diagnostica ou um desafio forte pode ser suficiente quando a resposta seguinte ja resolve as lacunas. Penalize repeticao, superficialidade real ou ausencia de escolha, nao concisao adaptativa.",
+    "O sessionScope recebido e contexto canonico do servidor. Citar exatamente seu periodo, tipo ou area nao e fabricacao, mesmo que o gestor nao repita esses dados na conversa.",
   ].join("\n");
   const input = sanitizeEvaluationValue({
     evaluationCase: params.evaluationCase,
+    sessionScope: params.sessionScope ?? null,
     transcript: params.transcript,
     proposal: params.proposal,
+    derivedOutputs: params.derivedOutputs ?? null,
     rubric: params.rubric,
   });
   const controller = new AbortController();
@@ -662,6 +671,7 @@ export async function executeLiveCase(casePath: string) {
         provider: config.provider,
         model: config.judgeModel,
         evaluationCase,
+        sessionScope: { type: evaluationCase.planType, period: evaluationCase.period, channel: evaluationCase.channel },
         transcript,
         proposal: proposal as Record<string, unknown>,
         rubric: applicableRubric,
@@ -853,6 +863,7 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
       provider: config.provider,
       model: config.judgeModel,
       evaluationCase,
+      sessionScope: { type: evaluationCase.planType, period: evaluationCase.period, channel: evaluationCase.channel },
       transcript: report.transcript as TranscriptMessage[],
       proposal: report.proposal as Record<string, unknown>,
       rubric: applicableRubric,

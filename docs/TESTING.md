@@ -130,7 +130,7 @@ pnpm run eval:strategic:q5 -- compare
 pnpm run eval:strategic:q5 -- human-packet
 ```
 
-`compare` exige as mesmas 40 combinacoes, nove resultados deterministas, 15 entregas cobertas, modelos iguais aos registrados na Q3, inputs sinteticos equivalentes, cleanup, notas minimas, regressao por dimensao, mediana de turnos e custo. `human-packet` monta cinco pares A/B e guarda o gabarito em arquivo privado separado. A tentativa de 2026-07-17 bloqueou na Q5A; nao retome fases pagas ate concluir a correcao indicada em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
+`compare` exige as mesmas 40 combinacoes, nove resultados deterministas, 15 entregas cobertas, modelos iguais aos registrados na Q3, inputs sinteticos equivalentes, cleanup, notas minimas, regressao por dimensao, mediana de turnos e custo. `human-packet` monta cinco pares A/B e guarda o gabarito em arquivo privado separado. Em 2026-07-17, a Q4H aprovou os cinco riscos anuais e a Q5A concluiu 10/10 medicoes, sem erro, falha critica ou check reprovado. O runner tambem aceita `rejudge-report <arquivo>` somente para relatorio Q5 privado com cleanup concluido; ele reutiliza transcricao/proposta, envia o escopo canonico ao judge, preserva o parecer anterior e registra apenas o novo custo. Q5B ainda exige seu gate separado; detalhes em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
 
 A Q4A possui 15 testes unitarios em `_shared/session-adaptive.test.ts` e um smoke pago, opt-in e restrito ao staging:
 
@@ -182,6 +182,14 @@ pnpm run eval:strategic:q4g
 ```
 
 O motor oferece caminhos contextuais para aspiracoes vagas, classifica falhas do provedor sem expor resposta bruta e compartilha uma unica repeticao transitoria por requisicao. Cada mensagem tem teto inferior ao timeout do cliente. Quando uma proposta completa ja existe e a falha e somente de envelope, estado, fase ou confirmacao, o servidor normaliza esses campos deterministicamente; defeitos de conteudo continuam no reparo por IA. As duas primeiras rodadas bloqueadas foram preservadas (US$ 0,032266 e US$ 0,027390). A rodada final passou com Conducao 85, Plano Anual 100, media 92,50, confirmacao 1/1, zero gravacao prematura, documento canonico e cleanup. Custou US$ 0,040492; Q4G total US$ 0,100148 e acumulado US$ 3,053653. Somente `oracle-session` de staging foi publicada.
+
+A Q4H repete os cinco riscos anuais com parada no primeiro gate reprovado:
+
+```bash
+pnpm run eval:strategic:q4h
+```
+
+Ela exige nota minima 80 em cada rubrica, media 85, zero candidato critico e zero check reprovado. A rodada aprovada custou US$ 0,263934 e liberou o reinicio limpo da Q5. O judge recebe `sessionScope` com tipo, periodo e area canonicos; um rejudge Q5 nunca regenera o plano nem acessa staging.
 
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 

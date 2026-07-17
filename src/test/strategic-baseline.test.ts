@@ -143,6 +143,40 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("reexecuta na Q4H os cinco riscos anuais antes de reiniciar a Q5", () => {
+    const source = readFileSync("scripts/strategic-q4h-smoke.ts", "utf8");
+    expect(source).toContain("for (const item of block.cases)");
+    expect(source).toContain("executeCase(item, \"Q2A\", 1");
+    expect(source).toContain("runLabel: \"q4h\"");
+    expect(source).toContain("ledgerLabel: \"Q4H\"");
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
+  it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain('["Q4G", "Q4H"]');
+    expect(source).toContain("correctionReference: normalizedReference");
+    expect(source).toContain("...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt }))");
+    expect(source).toContain("progress.restarts = [");
+    expect(source).toContain("progress.runs = []");
+    expect(source).toContain("progress.deterministic = []");
+    expect(source).toContain('"2026-07-17.q5-regression-r3"');
+    expect(source).toContain("progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd");
+  });
+
+  it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain("rejudgeReportWithCanonicalScope");
+    expect(source).toContain("reavaliacao com periodo e tipo canonicos da sessao explicitos");
+    expect(source).toContain("judgeHistory");
+    expect(source).toContain("Q5-REJUDGE:");
+    expect(source).toContain("cleanup anterior incompleto");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("aprova somente uma Q5 completa, comparavel e dentro dos gates", () => {
     const run = (score: number, reportPath: string) => ({
       phase: "Q2B" as const,
