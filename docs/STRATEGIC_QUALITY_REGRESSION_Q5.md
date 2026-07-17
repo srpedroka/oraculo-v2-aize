@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A aprovada; Q5B ainda nao iniciada**
+Status: **Q5A aprovada; Q5B bloqueada no primeiro caso**
 
 ## Objetivo
 
@@ -159,4 +159,22 @@ Um judge marcou como fabricacao a expressao `plano de 2027`, embora `2027` fosse
 | Acumulado do plano | US$ 4,544644 |
 | Limite autorizado | US$ 20,00 |
 
-Gate Q5A: **10/10 medicoes, zero erro tecnico, zero falha critica, zero check reprovado**. Q5B trimestral permanece separada e nao foi iniciada. Producao, Netlify, banco real, WhatsApp real e Evolution nao participaram deste ciclo.
+Gate Q5A: **10/10 medicoes, zero erro tecnico, zero falha critica, zero check reprovado**. Producao, Netlify, banco real, WhatsApp real e Evolution nao participaram deste ciclo.
+
+## Bloqueio Q5B
+
+A Q5B foi autorizada para 16 medicoes trimestrais, mas a primeira rodada de `Q2B-QUARTERLY-VAGUE-PROBLEM-001` bloqueou o gate e encerrou a ampliacao do teste:
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 75,00 |
+| Plano Trimestral | 92,50 |
+| Media conjunta | 83,75 |
+
+O plano final permaneceu no Comercial/T3, registrou corretamente a excecao por ausencia de plano anual, preservou indicador, baseline, alvo, fonte, prazo, dono, acoes, risco, aprendizado e backlog. Os dez checks deterministas passaram; nao houve falha critica, gravacao prematura, confirmacao duplicada, divergencia ou residuo da rodada medida.
+
+O defeito esta na conducao: depois da abertura vaga `melhorar o Comercial`, o Oraculo ofereceu cedo demais o menu generico `resultado, prazo, responsavel ou primeira acao`, sem explorar dor, causa e impacto. A proposta tambem deixou a cadencia vazia apesar de o bloco confirmado informar revisao e acompanhamento semanais.
+
+O runner atual interrompia automaticamente apenas `execution-error`, nao `qualityGate=blocked`. A execucao foi cancelada manualmente enquanto preparava a segunda rodada. Isso deixou uma unica organizacao sintetica, removida pelo comando restrito `cleanup-stale`; o preflight posterior confirmou zero fixture pendente e acumulado de **US$ 4,578120**. O ledger registrou **US$ 0,033476** para a rodada completa. Como a segunda chamada foi abortada antes de gerar relatorio, eventual custo parcial so pode aparecer no faturamento do provedor e nao foi somado artificialmente ao ledger.
+
+Antes de retomar a Q5B, a correcao focada deve: fazer a primeira pergunta trimestral vaga investigar dor/causa/impacto; aproveitar uma cadencia explicitamente informada sem inventar; e tornar o runner fail-fast tambem para gate de qualidade bloqueado, depois de persistir relatorio, custo e cleanup. Nao iniciar nova rodada paga nem alterar producao sem briefing e autorizacao.

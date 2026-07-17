@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4H e Q5A aprovadas no staging, Q5B pendente**
+Status: **em execução; Q4H e Q5A aprovadas no staging, Q5B bloqueada no primeiro caso**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -496,6 +496,8 @@ Estado em 2026-07-17: o preflight e a matriz determinista passaram, mas a Q5 foi
 Correcao Q4G aprovada em 2026-07-17: a abertura vaga ficou contextual, o retry passou a ser unico por requisicao e propostas completas deixam de ser regeneradas por defeito apenas de envelope. O smoke final repetiu o mesmo caso anual e passou com Conducao 85, Plano Anual 100, media 92,50, confirmacao 1/1, zero gravacao prematura e cleanup. Q4G total US$ 0,100148; acumulado US$ 3,053653. A Q5 ainda nao foi reiniciada: as tentativas anteriores devem ser preservadas/arquivadas e o ciclo completo exige briefing e nova autorizacao paga.
 
 Estado apos Q4H/Q5A em 2026-07-17: os cinco riscos anuais passaram no smoke Q4H. A regressao foi reiniciada como `2026-07-17.q5-regression-r3`, preservando as tentativas anteriores como calibracao, e concluiu 10/10 rodadas Q5A. Plano Anual 99,75, Conducao 94,13, Saida Derivada 100, media conjunta 97,96; zero erro tecnico, falha critica ou check reprovado. Um falso positivo do judge sobre o ano canonico da sessao foi reavaliado somente leitura com auditoria preservada. Q5A total US$ 0,504286; acumulado US$ 4,544644. Q5B ainda nao foi iniciada e continua sendo o proximo gate pago separado.
+
+Bloqueio Q5B em 2026-07-17: a primeira rodada trimestral vaga entregou Plano Trimestral 92,50, Conducao 75 e media 83,75, sem falha critica e com dez checks deterministas verdes. O defeito comprovado e o menu generico prematuro antes de investigar dor, causa e impacto, alem de cadencia vazia apesar de acompanhamento semanal explicito. A execucao foi interrompida porque o runner ainda tratava apenas erro tecnico como fail-fast; uma fixture sintetica iniciada na rodada seguinte foi removida e o preflight confirmou staging limpo. Custo confirmado US$ 0,033476; acumulado US$ 4,578120, com eventual custo parcial da chamada abortada verificavel somente no provedor. Voltar ao Q4 para correcao focada e briefing antes de nova chamada paga.
 
 ## Q6 — Aceite da qualidade estratégica
 
