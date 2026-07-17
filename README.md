@@ -71,6 +71,14 @@ pnpm run eval:strategic:q3 -- preflight
 
 O baseline atual esta em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`. Nunca execute as fases pagas no CI.
 
+A regressao Q5 usa o mesmo catalogo sem sobrescrever a Q3 e acrescenta os comandos `compare` e `human-packet` A/B:
+
+```bash
+pnpm run eval:strategic:q5 -- preflight
+```
+
+Ela tambem e manual, paga e exclusiva do staging. O estado e a regra de retomada ficam em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
+
 ## Deploy
 
 Frontend em producao:

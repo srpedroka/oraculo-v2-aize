@@ -26,6 +26,7 @@
     "test:strategic-cases": "node --experimental-strip-types scripts/verify-strategic-reference-cases.ts",
     "eval:strategic:q1": "node --experimental-strip-types scripts/strategic-eval.ts run tests/evals/strategic-quality/cases/q1-minimal-annual.json",
     "eval:strategic:q3": "node --experimental-strip-types scripts/strategic-baseline.ts",
+    "eval:strategic:q5": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-baseline.ts",
     "eval:strategic:q4a": "node --experimental-strip-types scripts/strategic-q4a-smoke.ts",
     "eval:strategic:q4b": "node --experimental-strip-types scripts/strategic-q4b-smoke.ts",
     "eval:strategic:q4c": "node --experimental-strip-types scripts/strategic-q4c-smoke.ts",

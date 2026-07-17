@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4 concluida no staging; Q5 e a proxima fatia**
+Status: **em execução; Q5 bloqueada na Q5A e retornando ao Q4 somente para os dois defeitos comprovados**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada e Q4A-Q4F concluidas no staging. O gate integrado passou 350 unitarios, 122 integracoes, 7 testes de seguranca, 11 E2E desktop/mobile, fixtures, catalogo, igualdade das saidas, lint/build/bundle e secret scan. Auditoria final confirmou zero residuo; custo Q4F US$ 0 e acumulado US$ 2,890842. Producao, Netlify e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q5 antes da regressao comparativa paga.
+Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada e Q4A-Q4F concluidas no staging. O gate integrado passou 350 unitarios, 122 integracoes, 7 testes de seguranca, 11 E2E desktop/mobile, fixtures, catalogo, igualdade das saidas, lint/build/bundle e secret scan. Auditoria final confirmou zero residuo; custo Q4F US$ 0 e acumulado US$ 2,890842. A Q5 foi autorizada depois desse briefing e bloqueou na Q5A; os detalhes estao na propria secao Q5.
 
 ## Q4 — Correções orientadas pela evidência
 
@@ -490,6 +490,8 @@ Reverter condutor/validador por versão; preservar baseline e relatórios para c
 - custo acumulado abaixo de US$ 20.
 
 Se falhar, voltar ao Q4 somente para os defeitos comprovados e repetir Q5.
+
+Estado em 2026-07-17: o preflight e a matriz determinista passaram, mas a Q5 foi interrompida no segundo caso pago. A primeira rodada entregou Plano Anual 96,25 e Conducao 57,50, abaixo do minimo 80 por diagnostico generico e falta de desafio. A segunda rodada falhou em `oracle-session` com `400/INTERNAL_ERROR` depois de receber os fatos completos. Cleanup e preflight final confirmaram zero residuo. Custo Q5 US$ 0,062662; acumulado US$ 2,953504. Producao nao mudou. O retorno ao Q4 deve corrigir somente conducao anual vaga e classificacao/tratamento seguro da falha interna; Q5, Q6 e Mapa B permanecem bloqueados. Relatorio: `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
 
 ## Q6 — Aceite da qualidade estratégica
 
@@ -819,4 +821,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **Q5 — regressão estratégica comparativa**. Explicar repetição exata da Q3, modelos/judge, custo estimado, regra de parada, revisão humana e rollback; obter autorização explícita antes de qualquer chamada paga. Não iniciar Q6, Mapa B ou produção automaticamente.
+Apresentar o briefing de uma **correcao Q4 focada** nos dois defeitos comprovados pela Q5A: conduzir melhor uma aspiracao anual vaga e diagnosticar/tratar de forma segura o `INTERNAL_ERROR` da sessao. Explicar claramente a mudanca funcional antes de editar `oracle-session`; publicar e testar somente no staging. Nao retomar chamadas pagas da Q5, iniciar Q6/Mapa B ou tocar producao automaticamente.

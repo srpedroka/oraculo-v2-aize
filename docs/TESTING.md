@@ -116,6 +116,22 @@ pnpm run eval:strategic:q3 -- human-packet
 
 Transcricoes, propostas, ledger e pacote humano ficam em `.agents-private/` com permissao `600`. O relatorio sanitizado e versionado fica em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`. Nao use `archive-calibration`, `archive-errors`, `cleanup-stale` ou `repair-execution-checks` fora de um incidente documentado do laboratorio.
 
+O mesmo executor isola a regressao Q5 da baseline Q3. A Q5 exige autorizacao paga propria, para em erro tecnico e nao permite arquivar uma falha para continuar silenciosamente:
+
+```bash
+pnpm run eval:strategic:q5 -- preflight
+pnpm run eval:strategic:q5 -- deterministic
+pnpm run eval:strategic:q5 -- phase Q5A
+pnpm run eval:strategic:q5 -- phase Q5B
+pnpm run eval:strategic:q5 -- phase Q5C
+pnpm run eval:strategic:q5 -- phase Q5D
+pnpm run eval:strategic:q5 -- summary
+pnpm run eval:strategic:q5 -- compare
+pnpm run eval:strategic:q5 -- human-packet
+```
+
+`compare` exige as mesmas 40 combinacoes, nove resultados deterministas, 15 entregas cobertas, modelos iguais aos registrados na Q3, inputs sinteticos equivalentes, cleanup, notas minimas, regressao por dimensao, mediana de turnos e custo. `human-packet` monta cinco pares A/B e guarda o gabarito em arquivo privado separado. A tentativa de 2026-07-17 bloqueou na Q5A; nao retome fases pagas ate concluir a correcao indicada em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
+
 A Q4A possui 15 testes unitarios em `_shared/session-adaptive.test.ts` e um smoke pago, opt-in e restrito ao staging:
 
 ```bash

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ReferenceCase } from "../../scripts/strategic-reference-cases";
 import {
   aggregateBaseline,
+  compareStrategicRegression,
   buildBaselineChecks,
   buildManagerTurns,
   expectedPeriod,
@@ -125,6 +126,88 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain("destroyEvaluationOrg(handle)");
     expect(source).toContain("appendLedger(summary");
     expect(source).toContain("owner-approved");
+    expect(source).toContain("ORACULO_STRATEGIC_COHORT");
+    expect(source).toContain("strategic-q5-comparison.json");
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
+  it("aprova somente uma Q5 completa, comparavel e dentro dos gates", () => {
+    const run = (score: number, reportPath: string) => ({
+      phase: "Q2B" as const,
+      caseId: "CASE",
+      round: 1,
+      status: "measured" as const,
+      rubricScores: [{ rubricId: "RUBRIC-CONDUCTION", score }],
+      criticalFailureCandidates: [],
+      failedChecks: [],
+      generationCostUsd: 0.1,
+      judgeCostUsd: 0.05,
+      latencyMs: 100,
+      defectClasses: [],
+      reportPath,
+    });
+    const comparison = compareStrategicRegression({
+      baselineRuns: [run(82, "/private/q3.json")],
+      currentRuns: [run(90, "/private/q5.json")],
+      baselineManagerTurns: { "CASE:R1": 4 },
+      currentManagerTurns: { "CASE:R1": 4 },
+      expectedRunKeys: ["CASE:R1"],
+      deterministic: [{ caseId: "DET", status: "pending-human" }],
+      expectedDeterministicCaseIds: ["DET"],
+      coveredDeliveryIds: ["DELIVERY"],
+      expectedDeliveryIds: ["DELIVERY"],
+      cleanupFailures: [],
+      inputMismatches: [],
+      runtimeMismatches: [],
+      cumulativeCostUsd: 4,
+      authorizedLimitUsd: 20,
+      minimumPerRubric: 80,
+      minimumJointAverage: 85,
+      maximumRubricRegression: 5,
+      maximumMedianTurnIncreaseRatio: 0.25,
+    });
+    expect(comparison.status).toBe("approved-automatic");
+    expect(comparison.current.jointAverage).toBe(90);
+    expect(comparison.managerTurns).toEqual({ baselineMedian: 4, currentMedian: 4, increaseRatio: 0 });
+  });
+
+  it("bloqueia Q5 com nota baixa, falha critica, input divergente ou conversa longa", () => {
+    const comparison = compareStrategicRegression({
+      baselineRuns: [{
+        phase: "Q2A", caseId: "CASE", round: 1, status: "measured",
+        rubricScores: [{ rubricId: "RUBRIC-CONDUCTION", score: 90 }],
+        criticalFailureCandidates: [], failedChecks: [], generationCostUsd: 0, judgeCostUsd: 0,
+        latencyMs: 1, defectClasses: [], reportPath: "/private/q3.json",
+      }],
+      currentRuns: [{
+        phase: "Q2A", caseId: "CASE", round: 1, status: "measured",
+        rubricScores: [{ rubricId: "RUBRIC-CONDUCTION", score: 70 }],
+        criticalFailureCandidates: ["CRIT-SCOPE-001"], failedChecks: [], generationCostUsd: 0, judgeCostUsd: 0,
+        latencyMs: 1, defectClasses: [], reportPath: "/private/q5.json",
+      }],
+      baselineManagerTurns: { "CASE:R1": 4 },
+      currentManagerTurns: { "CASE:R1": 6 },
+      expectedRunKeys: ["CASE:R1"],
+      deterministic: [],
+      expectedDeterministicCaseIds: [],
+      coveredDeliveryIds: ["DELIVERY"],
+      expectedDeliveryIds: ["DELIVERY"],
+      cleanupFailures: [],
+      inputMismatches: ["Q5:CASE:R1"],
+      runtimeMismatches: [],
+      cumulativeCostUsd: 4,
+      authorizedLimitUsd: 20,
+      minimumPerRubric: 80,
+      minimumJointAverage: 85,
+      maximumRubricRegression: 5,
+      maximumMedianTurnIncreaseRatio: 0.25,
+    });
+    expect(comparison.status).toBe("blocked");
+    expect(comparison.reasons).toEqual(expect.arrayContaining([
+      expect.stringContaining("falha critica"),
+      expect.stringContaining("abaixo de 80"),
+      expect.stringContaining("nao repetiram"),
+      expect.stringContaining("mediana de turnos"),
+    ]));
   });
 });

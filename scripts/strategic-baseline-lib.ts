@@ -23,6 +23,50 @@ export interface BaselineRunSummary {
   reportPath: string;
 }
 
+export interface RegressionDeterministicResult {
+  caseId: string;
+  status: "pass" | "fail" | "pending-human";
+}
+
+export interface RegressionComparisonInput {
+  baselineRuns: BaselineRunSummary[];
+  currentRuns: BaselineRunSummary[];
+  baselineManagerTurns: Record<string, number>;
+  currentManagerTurns: Record<string, number>;
+  expectedRunKeys: string[];
+  deterministic: RegressionDeterministicResult[];
+  expectedDeterministicCaseIds: string[];
+  coveredDeliveryIds: string[];
+  expectedDeliveryIds: string[];
+  cleanupFailures: string[];
+  inputMismatches: string[];
+  runtimeMismatches: string[];
+  cumulativeCostUsd: number;
+  authorizedLimitUsd: number;
+  minimumPerRubric: number;
+  minimumJointAverage: number;
+  maximumRubricRegression: number;
+  maximumMedianTurnIncreaseRatio: number;
+}
+
+export interface RegressionComparisonResult {
+  status: "approved-automatic" | "blocked";
+  reasons: string[];
+  baseline: ReturnType<typeof aggregateBaseline>;
+  current: ReturnType<typeof aggregateBaseline>;
+  rubricComparison: Array<{
+    rubricId: string;
+    baselineAverage: number | null;
+    currentAverage: number | null;
+    delta: number | null;
+  }>;
+  managerTurns: {
+    baselineMedian: number;
+    currentMedian: number;
+    increaseRatio: number | null;
+  };
+}
+
 const SESSION_PROPOSAL_TYPES: Record<string, string> = {
   strategic: "save_strategic_plan",
   quarterly: "save_quarterly_plan",
@@ -317,5 +361,96 @@ export function aggregateBaseline(runs: BaselineRunSummary[]) {
     totalJudgeCostUsd: runs.reduce((sum, run) => sum + run.judgeCostUsd, 0),
     totalCostUsd,
     averageLatencyMs: runs.length ? Math.round(runs.reduce((sum, run) => sum + run.latencyMs, 0) / runs.length) : 0,
+  };
+}
+
+export function baselineRunKey(run: Pick<BaselineRunSummary, "caseId" | "round">) {
+  return `${run.caseId}:R${run.round}`;
+}
+
+export function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+export function compareStrategicRegression(input: RegressionComparisonInput): RegressionComparisonResult {
+  const reasons: string[] = [];
+  const expectedRunKeys = [...new Set(input.expectedRunKeys)].sort();
+  const baselineRunKeys = input.baselineRuns.map(baselineRunKey).sort();
+  const currentRunKeys = input.currentRuns.map(baselineRunKey).sort();
+  if (JSON.stringify(baselineRunKeys) !== JSON.stringify(expectedRunKeys)) {
+    reasons.push("a baseline Q3 nao contem exatamente todas as rodadas esperadas");
+  }
+  if (JSON.stringify(currentRunKeys) !== JSON.stringify(expectedRunKeys)) {
+    reasons.push("a regressao Q5 nao contem exatamente todas as rodadas esperadas");
+  }
+  if (input.currentRuns.some((run) => run.status !== "measured" || run.failedChecks.length > 0)) {
+    reasons.push("a Q5 possui erro de execucao ou check deterministico reprovado");
+  }
+  if (input.currentRuns.some((run) => run.criticalFailureCandidates.length > 0)) {
+    reasons.push("a Q5 possui candidato a falha critica");
+  }
+
+  const belowMinimum = input.currentRuns.flatMap((run) => run.rubricScores
+    .filter((score) => score.score < input.minimumPerRubric)
+    .map((score) => `${baselineRunKey(run)}:${score.rubricId}=${score.score}`));
+  if (belowMinimum.length) {
+    reasons.push(`${belowMinimum.length} nota(s) aplicavel(is) ficaram abaixo de ${input.minimumPerRubric}`);
+  }
+
+  const deterministicById = new Map(input.deterministic.map((item) => [item.caseId, item.status]));
+  const missingDeterministic = input.expectedDeterministicCaseIds.filter((caseId) => !deterministicById.has(caseId));
+  if (missingDeterministic.length) reasons.push(`${missingDeterministic.length} caso(s) deterministico(s) estao sem resultado`);
+  if (input.deterministic.some((item) => item.status === "fail")) reasons.push("a matriz deterministica da Q5 possui falha");
+
+  const missingDeliveries = input.expectedDeliveryIds.filter((deliveryId) => !input.coveredDeliveryIds.includes(deliveryId));
+  if (missingDeliveries.length) reasons.push(`${missingDeliveries.length} entrega(s) estao sem resultado de qualidade`);
+  if (input.cleanupFailures.length) reasons.push(`${input.cleanupFailures.length} fixture(s) nao comprovaram cleanup`);
+  if (input.inputMismatches.length) reasons.push(`${input.inputMismatches.length} rodada(s) nao repetiram o roteiro sintetico da Q3`);
+  if (input.runtimeMismatches.length) reasons.push(`${input.runtimeMismatches.length} rodada(s) divergem dos modelos registrados na Q3`);
+  if (input.cumulativeCostUsd >= input.authorizedLimitUsd) reasons.push("o custo acumulado atingiu ou ultrapassou o limite autorizado");
+
+  const baseline = aggregateBaseline(input.baselineRuns);
+  const current = aggregateBaseline(input.currentRuns);
+  if (current.jointAverage === null || current.jointAverage < input.minimumJointAverage) {
+    reasons.push(`a media conjunta da Q5 ficou abaixo de ${input.minimumJointAverage}`);
+  }
+  const baselineByRubric = new Map(baseline.rubricScores.map((item) => [item.rubricId, item.average]));
+  const currentByRubric = new Map(current.rubricScores.map((item) => [item.rubricId, item.average]));
+  const rubricIds = [...new Set([...baselineByRubric.keys(), ...currentByRubric.keys()])].sort();
+  const rubricComparison = rubricIds.map((rubricId) => {
+    const baselineAverage = baselineByRubric.get(rubricId) ?? null;
+    const currentAverage = currentByRubric.get(rubricId) ?? null;
+    const delta = baselineAverage === null || currentAverage === null
+      ? null
+      : Number((currentAverage - baselineAverage).toFixed(2));
+    return { rubricId, baselineAverage, currentAverage, delta };
+  });
+  if (rubricComparison.some((item) => item.delta === null || item.delta < -input.maximumRubricRegression)) {
+    reasons.push(`uma ou mais dimensoes pioraram mais de ${input.maximumRubricRegression} pontos ou ficaram sem comparacao`);
+  }
+
+  const baselineMedian = median(expectedRunKeys.map((key) => input.baselineManagerTurns[key] ?? 0));
+  const currentMedian = median(expectedRunKeys.map((key) => input.currentManagerTurns[key] ?? 0));
+  const increaseRatio = baselineMedian > 0 ? (currentMedian - baselineMedian) / baselineMedian : null;
+  if (increaseRatio === null ? currentMedian > 0 : increaseRatio > input.maximumMedianTurnIncreaseRatio) {
+    reasons.push(`a mediana de turnos do gestor aumentou mais de ${Math.round(input.maximumMedianTurnIncreaseRatio * 100)}%`);
+  }
+
+  return {
+    status: reasons.length ? "blocked" : "approved-automatic",
+    reasons,
+    baseline,
+    current,
+    rubricComparison,
+    managerTurns: {
+      baselineMedian,
+      currentMedian,
+      increaseRatio: increaseRatio === null ? null : Number(increaseRatio.toFixed(4)),
+    },
   };
 }
