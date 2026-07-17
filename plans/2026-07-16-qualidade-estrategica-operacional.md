@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4M aprovada e Q5B r8 aguarda briefing/autorizacao**
+Status: **em execucao; Q5B r8 pausada por timeout e Q4N pendente**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -839,4 +839,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **nova execucao Q5B r8**. A Q4M foi aprovada no smoke isolado de area equivalente com Conducao 87,50, Plano Trimestral 97,50, media 92,50, dez checks verdes e custo US$ 0,056119; acumulado US$ 5,524982. Antes da nova bateria, usar `restart-after-correction Q4M` para preservar as seis medicoes r7 e abrir a baseline r8. Executar as 16 medicoes trimestrais com fail-fast por erro tecnico ou qualidade. Nao reiniciar nem fazer chamada paga sem briefing e autorizacao; nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao automaticamente.
+Apresentar o briefing da **Q4N**, correcao tecnica do timeout introduzido pelo caminho de reparo da Q4M. A Q5B r8 parou na quarta de 16 medicoes: tres aprovadas e uma `AI_PROVIDER_TIMEOUT` antes de proposta/judge; custo parcial US$ 0,193431 e acumulado US$ 5,718412. A Q4N deve preservar a mesma pergunta estrategica visivel, mas construí-la deterministicamente antes de uma segunda chamada ao modelo, evitando competir com o teto de 52 segundos. Depois dos testes locais e deploy somente no staging, repetir apenas o CRM R2 em smoke isolado. Nao reiniciar Q5B nem iniciar Q5C/Q5D/Q6/Mapa B sem smoke aprovado, novo briefing e autorizacao paga.

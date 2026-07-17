@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4M aprovada; Q5B r8 aguarda briefing e autorizacao**
+Status: **Q5A preservada; Q5B r8 pausada na quarta medicao; correcao tecnica Q4N pendente**
 
 ## Objetivo
 
@@ -428,3 +428,20 @@ Os dez checks deterministas passaram: escopo, proposta, tipo, ausencia de gravac
 | Limite autorizado | US$ 20,00 |
 
 O preflight final confirmou zero organizacao sintetica pendente e os modelos esperados. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados. A Q5B r7 continua preservada ate um comando explicito de reinicio; a proxima baseline prevista e `2026-07-17.q5-regression-r8`, somente depois de briefing e autorizacao paga.
+
+## Execucao Q5B r8
+
+Depois de autorizacao explicita, `restart-after-correction Q4M` preservou as seis medicoes r7 e abriu `2026-07-17.q5-regression-r8`. A fase parou automaticamente na quarta de 16 medicoes, antes da quinta chamada:
+
+| Caso | Rodada | Conducao | Plano Trimestral | Resultado | Custo |
+|---|---:|---:|---:|---|---:|
+| Problema trimestral vago | 1 | 91,25 | 95,00 | aprovada | US$ 0,060160 |
+| Problema trimestral vago | 2 | 87,50 | 95,00 | aprovada | US$ 0,051483 |
+| CRM como atividade | 1 | 97,50 | 97,50 | aprovada | US$ 0,055386 |
+| CRM como atividade | 2 | - | - | erro tecnico | US$ 0,026403 |
+
+A conversa bloqueada fez corretamente o reenquadramento de CRM como meio, preservou o alvo de 40% para 85%, fonte, adocao e responsavel. Ao receber o bloco completo, a primeira geracao tentou montar a proposta; a Q4M a recusou para exigir o desafio estrategico. A segunda geracao interna nao terminou dentro do teto total de 52 segundos e a Function devolveu `400/AI_PROVIDER_TIMEOUT`. Nenhuma proposta, confirmacao, gravacao ou judge foi executado nessa rodada.
+
+O cleanup removeu empresa, usuario e chave descartavel. O preflight final confirmou staging limpo e acumulado de **US$ 5,718412**. O custo parcial Q5B r8 foi **US$ 0,193431**; o fail-fast impediu a quinta chamada. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
+
+A proxima correcao Q4N deve manter a pergunta aprovada pela Q4M, mas elimina-la do caminho de reparo por IA: quando um bloco completo ainda nao recebeu desafio, o servidor deve adiar a proposta e construir deterministicamente a unica pergunta contextual antes de aceitar nova geracao. Assim, a mesma requisicao nao consome uma segunda chamada ao provedor nem compete com o timeout. A regra continua sem reentrevista, sem reabrir area e sem gravar antes da confirmacao. Depois de testes locais e deploy apenas no staging, repetir somente `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002`; nao reiniciar a Q5B automaticamente.
