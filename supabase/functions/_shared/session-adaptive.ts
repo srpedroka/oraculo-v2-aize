@@ -65,6 +65,7 @@ const QUARTERLY_REPEATED_GOAL_CHANGE_PATTERN = /\b(?:o que muda|o que precisa se
 const QUARTERLY_REPEATED_FACTS_PATTERN = /\b(?:ciclos?|trimestres?|per[ií]odos?)\s+anteriores?\b[\s\S]{0,320}\bcausa\b[\s\S]{0,320}\b(?:nova abordagem|abordagem diferente|mudan[cç]a de abordagem)\b/i;
 const QUARTERLY_BASELINE_REINTERVIEW_PATTERN = /\b(?:qual|definir|confirma(?:r|e))\b[\s\S]{0,140}\b(?:indicador|baseline|linha de base|valor atual)\b/i;
 const QUARTERLY_REPEATED_GOAL_MALFORMED_ECHO_PATTERN = /\bmanter\s+(?:reduzir|aumentar|elevar|diminuir)\b/i;
+const QUARTERLY_STRATEGIC_CHALLENGE_PATTERN = /\b(?:meta|alvo)\b[\s\S]{0,160}\b(?:suficiente|ambicios[oa]|realista|sustent[aá]vel|resolve)\b|\b(?:capacidade|sobrecarga|comporta|cabem|cabe)\b|\b(?:evid[eê]ncia intermedi[aá]ria|sinal antecipado|antes do fechamento|provar que)\b|\b(?:o que|qual)\b[\s\S]{0,100}\b(?:impedir|comprometer|risco|mudar o resultado)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -118,6 +119,7 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_repeated_goal_reinterview: "trajetoria, causa e nova abordagem ja foram confirmadas, mas indicador ou baseline foram perguntados novamente",
   quarterly_repeated_goal_memory_omitted: "os ciclos anteriores foram confirmados, mas a resposta nao reconheceu a trajetoria antes de avancar",
   quarterly_repeated_goal_malformed_echo: "a meta recorrente foi repetida com uma frase truncada ou pouco natural",
+  quarterly_complete_block_unchallenged: "um bloco trimestral quase completo virou proposta antes de um desafio curto e contextual sobre meta, capacidade, risco, evidencia ou consistencia das acoes",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
   monthly_wrong_proposal_type: "a proposta nao e do tipo mensal esperado",
   monthly_missing_objectives: "a proposta mensal nao possui resultado priorizado",
@@ -266,6 +268,33 @@ function adaptiveMetadata(envelope: SessionEnvelope): AdaptiveMetadata | null {
 
 function hasGuidedOptions(reply: string) {
   return /\b(?:ou|entre)\b/i.test(reply) || /(?:^|\n)\s*(?:1[.)]|[-*•]).*(?:\n|$)/.test(reply);
+}
+
+function looksLikeCompleteQuarterlyBlock(value: string) {
+  if (!looksLikeFactBlock(value)) return false;
+  const signals = [
+    /\b(?:resultado principal|objetivo trimestral|objetivo principal)\b/i,
+    /\b(?:baseline|valor atual|meta|alvo)\b|\bde\s+\d+(?:[.,]\d+)?\s*%?\s+para\s+\d+(?:[.,]\d+)?\s*%?/i,
+    /\b(?:fonte|medido por|medida por)\b/i,
+    /\b(?:prazo|per[ií]odo|at[eé]\s+\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b/i,
+    /\brespons[aá]vel\b/i,
+    /\ba[cç][aã]o\s*\d*\b/i,
+    /\bcrit[eé]rio\b/i,
+    /\b(?:risco|mitiga[cç][aã]o|foco de aprendizado|cad[eê]ncia|acompanhamento)\b/i,
+  ].filter((pattern) => pattern.test(value)).length;
+  return signals >= 6;
+}
+
+function oracleConversation(conversationText: string) {
+  return conversationText
+    .split(/\n(?=(?:oracle|user):\s*)/i)
+    .filter((block) => /^oracle:\s*/i.test(block))
+    .map((block) => block.replace(/^oracle:\s*/i, ""))
+    .join("\n");
+}
+
+function hasQuarterlyStrategicChallenge(conversationText: string) {
+  return QUARTERLY_STRATEGIC_CHALLENGE_PATTERN.test(oracleConversation(conversationText));
 }
 
 function firstVisibleLine(value: string) {
@@ -419,6 +448,11 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
     if (QUARTERLY_REPEATED_FACTS_PATTERN.test(input.userMessage)
       && !QUARTERLY_REPEATED_GOAL_MEMORY_PATTERN.test(reply)) {
       reasons.push("quarterly_repeated_goal_memory_omitted");
+    }
+    if (hasProposal
+      && looksLikeCompleteQuarterlyBlock(input.userMessage)
+      && !hasQuarterlyStrategicChallenge(text(input.conversationText))) {
+      reasons.push("quarterly_complete_block_unchallenged");
     }
   }
 
@@ -730,6 +764,11 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
   }
   if (sessionType === "quarterly" && QUARTERLY_REPEATED_GOAL_PATTERN.test(userMessage)) {
     return "Essa meta está voltando, então não vale simplesmente copiá-la. O que mudou desde o ciclo anterior na causa, na abordagem ou na evidência de acompanhamento?";
+  }
+  if (sessionType === "quarterly" && looksLikeCompleteQuarterlyBlock(userMessage)) {
+    const range = userMessage.match(/\bde\s+(\d+(?:[.,]\d+)?\s*%)\s+para\s+(\d+(?:[.,]\d+)?\s*%)/i);
+    const measure = range ? ` de ${range[1]} para ${range[2]}` : "";
+    return `A meta${measure} está clara. Qual evidência intermediária vai mostrar, antes do fechamento, que as ações realmente estão mudando esse resultado?`;
   }
   const quarterlyActivity = sessionType === "quarterly" && userMessage.length <= 180
     ? userMessage.match(QUARTERLY_ACTIVITY_PATTERN)?.[1]?.trim() ?? ""

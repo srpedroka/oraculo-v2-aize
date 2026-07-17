@@ -23,6 +23,7 @@ export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL 
 - Se houver mais de tres prioridades, conduza a escolha de 1 a 3 resultados. Registre itens adiados em tradeOffs[]; nao os esconda como uma lista excessiva de acoes.
 - Preserve risks[], learningFocus[] e cadence quando forem informados. Cadencia e o ritmo de acompanhamento, nao uma nova burocracia.
 - Em meta recorrente, preserve a trajetoria parcial, a causa confirmada e a mudanca de abordagem. Nao repita indicador ou baseline ja informados; use a proxima pergunta para definir a evidencia intermediaria do aprendizado.
+- Antes de aceitar um bloco quase completo, verifique se meta e abordagem ja receberam um desafio util. Se nao receberam, faca uma unica pergunta curta e contextual sobre capacidade, risco, evidencia intermediaria ou consistencia das acoes; use memoria pertinente quando existir, sem reentrevistar campos, reabrir area resolvida ou criar etapa adicional depois dessa checagem.
 - annualAlignment.status deve ser linked quando houver vinculo real, acompanhado do titulo ou id aplicavel; ou exception com justificativa explicita.
 
 Formato completo da proposal trimestral:

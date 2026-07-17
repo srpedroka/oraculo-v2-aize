@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q5B r7 pausada na sexta medicao; correcao Q4M pendente**
+Status: **Q5A preservada; Q4M aprovada; Q5B r8 aguarda briefing e autorizacao**
 
 ## Objetivo
 
@@ -393,3 +393,38 @@ O defeito ficou isolado na qualidade da conducao. Depois de o gestor sintetico f
 O fail-fast impediu a setima chamada. O preflight final confirmou staging acessivel, zero organizacao sintetica pendente e os modelos `xai/grok-4.3` no condutor e `xai/grok-4.5` no judge. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
 
 Antes de reiniciar a Q5B, a Q4M deve tornar verificavel um desafio estrategico curto quando um bloco pronto ainda nao demonstra que meta e abordagem foram testadas. A pergunta deve aproveitar o fato mais relevante e escolher somente uma dimensao util, como capacidade, risco, evidencia intermediaria ou consistencia da acao. Nao deve reentrevistar campos completos, criar etapa extra quando o bloco ja foi criticamente validado, inventar memoria nem tornar a equivalencia de area uma duvida para o gestor. Depois da correcao local, repetir apenas `Q2B-QUARTERLY-EQUIVALENT-AREA-003` em smoke pago e limpo; somente um smoke aprovado permite arquivar as seis medicoes r7 e abrir uma nova baseline Q5B.
+
+## Correcao Q4M
+
+A Q4M tornou verificavel o desafio estrategico de um bloco trimestral quase completo. Antes de aceitar a proposta, o contrato agora verifica se a conversa ja testou uma dimensao util da decisao. Quando ainda nao testou:
+
+- faz uma unica pergunta curta sobre capacidade, risco, evidencia intermediaria ou consistencia das acoes;
+- parte da meta e dos fatos ja confirmados, sem reentrevistar indicador, baseline, area ou periodo;
+- nao reabre uma equivalencia de area segura nem inventa memoria;
+- permite seguir para a sintese no turno seguinte, sem criar uma segunda entrevista;
+- impede que a mesma checagem seja exigida novamente quando a conversa ja a realizou.
+
+A validacao local final passou 389 testes unitarios, catalogo estrategico, lint, build/bundle e secret scan em 476 arquivos. O runner `eval:strategic:q4m` repete somente `Q2B-QUARTERLY-EQUIVALENT-AREA-003` e nao altera o progresso oficial da Q5B. Somente `oracle-session` foi publicada no staging.
+
+### Smoke aprovado
+
+A transcricao preservou `Industrial` como alias da unica area `Producao`, manteve T3 2027 e o objetivo anual aplicavel. Depois do bloco completo, o Oraculo perguntou: qual evidencia intermediaria mostraria, antes do fechamento, que as acoes estavam mudando o resultado de 82% para 92%. No turno seguinte, fechou o plano sem nova entrevista e pediu uma unica confirmacao.
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 87,50 |
+| Plano Trimestral | 97,50 |
+| Media conjunta | 92,50 |
+
+Os dez checks deterministas passaram: escopo, proposta, tipo, ausencia de gravacao prematura, confirmacao 1/1, banco, documento canonico, judge somente leitura e cleanup. Nao houve falha critica, erro tecnico ou residuo.
+
+| Item | Valor |
+|---|---:|
+| Geracao Q4M | US$ 0,044161 |
+| Judge Q4M | US$ 0,011958 |
+| Total Q4M | US$ 0,056119 |
+| Acumulado antes | US$ 5,468862 |
+| Acumulado depois | US$ 5,524982 |
+| Limite autorizado | US$ 20,00 |
+
+O preflight final confirmou zero organizacao sintetica pendente e os modelos esperados. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados. A Q5B r7 continua preservada ate um comando explicito de reinicio; a proxima baseline prevista e `2026-07-17.q5-regression-r8`, somente depois de briefing e autorizacao paga.

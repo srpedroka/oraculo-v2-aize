@@ -178,9 +178,21 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4M somente o caso trimestral de area equivalente", () => {
+    const source = readFileSync("scripts/strategic-q4m-smoke.ts", "utf8");
+    expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-EQUIVALENT-AREA-003"');
+    expect(source).toContain('executeCase(item, "Q2B", 1');
+    expect(source).toContain('runLabel: "q4m"');
+    expect(source).toContain('ledgerLabel: "Q4M"');
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K"]');
+    expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"]');
     expect(source).toContain("correctionReference: normalizedReference");
     expect(source).toContain("...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt }))");
     expect(source).toContain("progress.restarts = [");
@@ -188,12 +200,13 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain("progress.deterministic = []");
     expect(source).toContain('"2026-07-17.q5-regression-r3"');
     expect(source).toContain("progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd");
-    expect(source).toContain('["Q4I", "Q4J", "Q4K"].includes(normalizedReference)');
+    expect(source).toContain('["Q4I", "Q4J", "Q4K", "Q4L", "Q4M"].includes(normalizedReference)');
     expect(source).toContain('normalizedReference === "Q4J"');
     expect(source).toContain('progress.runs.filter((run) => run.phase !== "Q2B")');
     expect(source).toContain("Q5A e matriz deterministica mantidas");
     expect(source).toContain('"2026-07-17.q5-regression-r5"');
     expect(source).toContain('"2026-07-17.q5-regression-r6"');
+    expect(source).toContain('"2026-07-17.q5-regression-r8"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q5B r7 pausada na sexta medicao e Q4M pendente**
+Status: **em execucao; Q4M aprovada e Q5B r8 aguarda briefing/autorizacao**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -839,4 +839,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **Q4M**, focada no desafio estrategico curto diante de bloco trimestral quase completo. A Q5B r7 parou automaticamente na sexta de 16 medicoes: cinco aprovadas e uma bloqueada por Conducao 70, embora o Plano Trimestral tenha recebido 97,50 e todos os checks tecnicos tenham passado. A correcao nao pode reentrevistar o gestor, criar duvida sobre uma equivalencia de area segura ou acrescentar burocracia; deve testar uma unica dimensao relevante da meta/abordagem e usar memoria pertinente somente quando existir. Depois dos testes locais e deploy apenas no staging, repetir somente o caso de area equivalente. Nao reiniciar Q5B nem iniciar Q5C/Q5D/Q6/Mapa B sem smoke aprovado, novo briefing e autorizacao paga.
+Apresentar o briefing da **nova execucao Q5B r8**. A Q4M foi aprovada no smoke isolado de area equivalente com Conducao 87,50, Plano Trimestral 97,50, media 92,50, dez checks verdes e custo US$ 0,056119; acumulado US$ 5,524982. Antes da nova bateria, usar `restart-after-correction Q4M` para preservar as seis medicoes r7 e abrir a baseline r8. Executar as 16 medicoes trimestrais com fail-fast por erro tecnico ou qualidade. Nao reiniciar nem fazer chamada paga sem briefing e autorizacao; nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao automaticamente.

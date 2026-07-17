@@ -811,14 +811,14 @@ async function archiveExecutionErrors() {
 async function restartQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("restart-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (!(["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L"] as string[]).includes(normalizedReference)) {
-    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G, Q4H, Q4I, Q4J, Q4K ou Q4L)");
+  if (!(["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"] as string[]).includes(normalizedReference)) {
+    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G, Q4H, Q4I, Q4J, Q4K, Q4L ou Q4M)");
   }
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.runs.length) throw new Error("Q5 ja esta sem medicoes oficiais; reinicio recusado para evitar sobrescrita");
   const archivedAt = new Date().toISOString();
-  if (["Q4I", "Q4J", "Q4K", "Q4L"].includes(normalizedReference)) {
+  if (["Q4I", "Q4J", "Q4K", "Q4L", "Q4M"].includes(normalizedReference)) {
     const affectedRuns = progress.runs.filter((run) => run.phase === "Q2B");
     if (!affectedRuns.length) throw new Error(`Q5B nao possui medicao para reiniciar apos ${normalizedReference}`);
     const calibrationReason = `medicoes Q5B preservadas antes do reinicio trimestral apos aprovacao da correcao ${normalizedReference}`;
@@ -839,7 +839,9 @@ async function restartQ5AfterCorrection(correctionReference: string) {
       },
     ];
     progress.runs = progress.runs.filter((run) => run.phase !== "Q2B");
-    progress.baselineVersion = normalizedReference === "Q4L"
+    progress.baselineVersion = normalizedReference === "Q4M"
+      ? "2026-07-17.q5-regression-r8"
+      : normalizedReference === "Q4L"
       ? "2026-07-17.q5-regression-r7"
       : normalizedReference === "Q4K"
       ? "2026-07-17.q5-regression-r6"
@@ -1443,7 +1445,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

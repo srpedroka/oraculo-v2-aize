@@ -650,6 +650,53 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(fallback)).toHaveLength(1);
   });
 
+  it("challenges a nearly complete quarterly block once without reopening the resolved area", () => {
+    const userMessage = [
+      "Dados concretos adicionais confirmados pelo gestor sintetico para fechar o plano trimestral:",
+      "- Resultado principal confirmado: elevar entregas no prazo de 82% para 92% ate 30/09/2027, fonte relatorio de expedicao.",
+      "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
+      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
+      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
+      "- Risco: baixa adesao. Mitigacao: acompanhamento semanal. Foco de aprendizado: validar a padronizacao.",
+    ].join("\n");
+    const readyEnvelope = {
+      reply: "O plano trimestral ficou pronto. Posso gravar?",
+      proposal: { type: "save_quarterly_plan", quarterlyObjectives: [{ result: "Elevar entregas no prazo" }] },
+      state_patch: {
+        resultado: "Elevar entregas no prazo",
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: ["resultado"],
+          blocking_gap: null,
+          question_goal: "confirmar gravacao",
+          action_direction: "gravar plano",
+        },
+      },
+      next_phase: "sintese",
+    };
+    const blocked = reasons(readyEnvelope, {
+      sessionType: "quarterly",
+      userMessage,
+      conversationText: "oracle: Qual a primeira acao executavel que comeca a mover essa metrica?",
+    });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "quarterly",
+      userMessage,
+    });
+    const accepted = reasons(readyEnvelope, {
+      sessionType: "quarterly",
+      userMessage,
+      conversationText: "oracle: A meta esta clara. Qual evidencia intermediaria vai provar, antes do fechamento, que as acoes mudam o resultado?",
+    });
+
+    expect(blocked).toContain("quarterly_complete_block_unchallenged");
+    expect(fallback).toContain("82% para 92%");
+    expect(fallback).toContain("evidência intermediária");
+    expect(fallback).not.toMatch(/qual (?:e|é) a [aá]rea/i);
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+    expect(accepted).not.toContain("quarterly_complete_block_unchallenged");
+  });
+
   it("builds a useful single-confirmation summary for a quarterly proposal", () => {
     const normalized = normalizeProposalConfirmationEnvelope({
       reply: "O plano ficou pronto. Posso gravar?",
