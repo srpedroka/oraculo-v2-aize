@@ -207,7 +207,7 @@ export async function answerDocumentQuestion(
     };
   }
 
-  const rendered = renderPlanForWhatsApp(document.content ?? {});
+  const rendered = renderPlanForWhatsApp(document.content ?? {}, document);
   const versionLine = `Documento: ${document.title} · v${document.version}`;
   const sendAsAttachment = wantsDocumentAttachment(params.message);
   return {

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **briefing aprovado; Q4A, Q4B, Q4C e Q4D concluidas e validadas no staging; Q4E aguarda briefing**
+Status: **briefing aprovado; Q4A-Q4E concluidas e validadas no staging; Q4F aguarda briefing**
 
 ## O que vai mudar para o gestor
 
@@ -87,6 +87,8 @@ Estado em 2026-07-17: concluida no staging. Persona, condutores e `_shared/sessi
 - Exibir ou preservar origem, versao e revisao sem poluir o documento executivo.
 - Garantir hierarquia anual, trimestral e mensal e igualdade material entre canais.
 - Manter precisao numerica e os testes deterministas que ja passaram.
+
+Estado em 2026-07-17: concluida no staging. Toda proposta confirmada agora carrega rastreabilidade deterministica de sessao/tipo/origem no documento canonico, sem nova tabela e sem expor esse identificador como texto executivo. Tela, PDF e WhatsApp renderizam a mesma estrutura canonica e preservam versao/origem, prazo do objetivo, alinhamentos anual/trimestral, decisoes de capacidade, revisoes e fechamentos completos. O smoke `pnpm run eval:strategic:q4e` criou uma empresa descartavel, confirmou uma proposta trimestral pela Function real, comparou proposta, banco e documento por objeto semantico e verificou 18 fatos materiais nas tres saidas; o fingerprint foi identico, a renderizacao causou zero mutacao, houve zero chamada de IA e o cleanup foi completo. Foram publicados somente `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker` no staging porque compartilham os renderizadores alterados. Producao, Netlify, migrations e WhatsApp real nao mudaram. Q4E custou US$ 0 e o acumulado permanece US$ 2,890842. Proxima fatia: apresentar o briefing Q4F de integracao e aceite tecnico.
 
 ### Q4F - Integracao e aceite tecnico
 

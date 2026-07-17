@@ -60,9 +60,18 @@ function normalizeActions(actions: unknown, objectiveNumber: number) {
 function normalizeObjective(objective: any, index: number, fallbackTitle: string) {
   const number = index + 1;
   return {
+    origem_id: asText(objective.id ?? objective.objectiveId ?? objective.objective_id),
     numero: number,
     titulo: asText(objective.title ?? objective.titulo, fallbackTitle),
     vinculo: asText(objective.parentTitle ?? objective.vinculo ?? objective.linkedObjectiveTitle ?? objective.objetivo_anual),
+    vinculo_id: asText(
+      objective.parentId
+        ?? objective.parent_id
+        ?? objective.linkedStrategicObjectiveId
+        ?? objective.linked_strategic_objective_id
+        ?? objective.linkedQuarterlyObjectiveId
+        ?? objective.linked_quarterly_objective_id,
+    ),
     tipo: asObjectiveType(objective.type ?? objective.tipo),
     resultado: asText(objective.result ?? objective.resultado),
     indicador: asText(objective.metric ?? objective.indicador),
@@ -102,6 +111,12 @@ async function loadDocumentBase(client: Client, session: any, documentType: Plan
     tipo: documentType,
     periodo: asText(proposal.period ?? proposal.periodo, session.period),
     gestor: asText(profileResult.data?.full_name ?? profileResult.data?.email),
+    rastreabilidade: {
+      schema_version: 1,
+      origem: "proposta_confirmada",
+      sessao_id: asText(session.id),
+      tipo_sessao: asText(session.type),
+    },
     contexto_rapido: firstFilledArray<string>(proposal.context, proposal.contexto, proposal.contexto_rapido),
   };
 }
@@ -347,6 +362,7 @@ async function savePlanDocument(
       area_id: session.area_id ?? null,
       session_id: session.id,
       type: documentType,
+      origin: "session",
       period,
       title,
       content,
