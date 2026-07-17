@@ -56,18 +56,52 @@ async function countActionsByDescription(description: string): Promise<number> {
   return count ?? 0;
 }
 
-function monthlyProposal(objTitle: string, actionDesc: string, parentTitle: string) {
+async function seedQuarterlyParent(areaId: string, title: string) {
+  const { data, error } = await admin
+    .from("objectives")
+    .insert({
+      org_id: org.orgId,
+      area_id: areaId,
+      level: "quarterly",
+      type: "harvest",
+      title,
+      result: "Resultado trimestral de referência",
+      metric: "Indicador trimestral",
+      target: "100%",
+      owner: "Responsável",
+      status: "on_track",
+      progress: 0,
+      period: "T3 2026",
+    })
+    .select("id, title")
+    .single();
+  if (error || !data) throw new Error(`falha ao semear objetivo trimestral: ${error?.message}`);
+  return data as { id: string; title: string };
+}
+
+function monthlyProposal(objTitle: string, actionDesc: string, parent: { id: string; title: string }) {
   return {
     type: "save_monthly_plan",
     period: "2026-07",
+    quarterlyAlignment: {
+      status: "linked",
+      quarterlyObjectiveId: parent.id,
+      quarterlyObjectiveTitle: parent.title,
+    },
+    capacity: { maxCommittedActions: 5 },
     objectives: [
       {
         title: objTitle,
         result: "Resultado alvo",
         metric: "Métrica",
+        current: "0%",
         target: "100%",
+        source: "Relatório mensal",
+        deadline: "2026-07-31",
         owner: "Responsável",
-        parentTitle,
+        period: "2026-07",
+        linkedQuarterlyObjectiveId: parent.id,
+        parentTitle: parent.title,
         actions: [
           { description: actionDesc, completionCriterion: "Concluído", deadline: "2026-07-31", owner: "Responsável" },
         ],
@@ -93,13 +127,14 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
   it("caso feliz: grava objetivos, ação e documento; limpa a proposta pendente", async () => {
     const objTitle = "Obj Mensal Feliz 1A";
     const actionDesc = "Ação Feliz 1A";
+    const parent = await seedQuarterlyParent(org.areas.producaoId, "Pai Trimestral Feliz 1A");
     const sessionId = await seedSession({
       org_id: org.orgId,
       area_id: org.areas.producaoId,
       user_id: org.owner.id,
       type: "monthly",
       period: "2026-07",
-      pending_proposal: monthlyProposal(objTitle, actionDesc, "Pai Trimestral Feliz 1A"),
+      pending_proposal: monthlyProposal(objTitle, actionDesc, parent),
     });
 
     const { status, body } = await confirm(sessionId);
@@ -108,7 +143,7 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
 
     expect(await countObjectivesByTitle(objTitle)).toBe(1);
     expect(await countActionsByDescription(actionDesc)).toBe(1);
-    // pai anual + pai trimestral criados automaticamente
+    // O vínculo trimestral real é reutilizado; a confirmação não inventa hierarquia.
     expect(await countObjectivesByTitle("Pai Trimestral Feliz 1A")).toBe(1);
 
     const { data: sess } = await admin.from("planning_sessions").select("pending_proposal, status").eq("id", sessionId).single();
@@ -129,7 +164,8 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
   it("idempotência: reconfirmar a MESMA proposta não duplica nada", async () => {
     const objTitle = "Obj Mensal Idem 1A";
     const actionDesc = "Ação Idem 1A";
-    const proposal = monthlyProposal(objTitle, actionDesc, "Pai Trimestral Idem 1A");
+    const parent = await seedQuarterlyParent(org.areas.producaoId, "Pai Trimestral Idem 1A");
+    const proposal = monthlyProposal(objTitle, actionDesc, parent);
     const sessionId = await seedSession({
       org_id: org.orgId, area_id: org.areas.producaoId, user_id: org.owner.id,
       type: "monthly", period: "2026-07", pending_proposal: proposal,
@@ -152,10 +188,11 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
   it("concorrência: duas confirmações simultâneas da mesma proposta gravam uma vez só", async () => {
     const objTitle = "Obj Mensal Concorrência 1A";
     const actionDesc = "Ação Concorrência 1A";
+    const parent = await seedQuarterlyParent(org.areas.comercialId, "Pai Trimestral Concorrência 1A");
     const sessionId = await seedSession({
       org_id: org.orgId, area_id: org.areas.comercialId, user_id: org.owner.id,
       type: "monthly", period: "2026-07",
-      pending_proposal: monthlyProposal(objTitle, actionDesc, "Pai Trimestral Concorrência 1A"),
+      pending_proposal: monthlyProposal(objTitle, actionDesc, parent),
     });
 
     const [a, b] = await Promise.all([confirm(sessionId), confirm(sessionId)]);
