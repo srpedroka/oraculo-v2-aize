@@ -58,6 +58,61 @@ describe("adaptive planning session guard Q4A", () => {
     expect(reasons({ reply }, { previousOracleReply: previous })).toEqual([]);
   });
 
+  it("blocks a mechanical acknowledgement followed by paraphrase", () => {
+    expect(reasons({
+      reply: "Entendi: você quer recuperar margem. Para definir a meta, qual patamar precisa ser alcançado?",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: [],
+          blocking_gap: "meta",
+          question_goal: "definir meta",
+          action_direction: "fechar o resultado",
+        },
+      },
+    })).toContain("mechanical_acknowledgement");
+  });
+
+  it("blocks the same canned acknowledgement in consecutive turns", () => {
+    expect(reasons({
+      reply: "Certo. Para escolher a frente, você quer atacar preço, mix ou desconto?",
+    }, {
+      previousOracleReply: "Certo. O foco anterior ficou claro. Você quer começar por receita ou margem?",
+    })).toContain("repeated_acknowledgement");
+  });
+
+  it("blocks a bare field question and allows a grounded decision question", () => {
+    const partialState = {
+      _adaptive: {
+        readiness: "partial",
+        confirmed_facts: [],
+        blocking_gap: "meta",
+        question_goal: "definir meta",
+        action_direction: "fechar o resultado",
+      },
+    };
+    expect(reasons({ reply: "Qual é a meta?", state_patch: partialState })).toContain("ungrounded_question");
+    expect(reasons({
+      reply: "A margem caiu mesmo com o volume estável. Para escolher a primeira alavanca, o maior vazamento está em preço, mix ou desconto?",
+      state_patch: partialState,
+    })).not.toContain("ungrounded_question");
+  });
+
+  it("keeps ordinary turns brief", () => {
+    expect(reasons({
+      reply: "A margem caiu. O volume ficou estável. O desconto aumentou. O mix piorou. Para escolher a primeira alavanca, o maior vazamento está em preço, mix ou desconto?",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: [],
+          blocking_gap: "causa",
+          question_goal: "identificar causa",
+          action_direction: "escolher a primeira alavanca",
+        },
+      },
+    })).toContain("verbose_regular_turn");
+  });
+
   it("blocks multiple visible questions in one turn", () => {
     expect(reasons({ reply: "Qual é o resultado esperado? E qual é o prazo?" })).toContain("multiple_questions");
   });
@@ -205,6 +260,120 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(confirmation)).toHaveLength(1);
     expect(visibleQuestions(pause)).toHaveLength(0);
     expect([followUp, confirmation, pause].join(" ")).not.toMatch(/state_patch|base_confirmada|proposal/i);
+  });
+
+  it("preserves a useful summary when the rejection is only stylistic", () => {
+    const summary = adaptiveFallbackReply(true, false, ["mechanical_acknowledgement"], {
+      rejectedReply: "Entendi. **Resultado:** elevar adoção de 40% para 60%. Posso gravar?",
+      userMessage: "Elevar adoção de 40% para 60%.",
+    });
+    const grounded = adaptiveFallbackReply(false, false, ["ungrounded_question"], {
+      rejectedReply: "Qual é a meta?",
+      userMessage: "A margem caiu mesmo com o volume estável.",
+    });
+
+    expect(summary).toContain("elevar adoção de 40% para 60%");
+    expect(summary).not.toMatch(/^Entendi/);
+    expect(grounded).toContain("A margem caiu");
+    expect(visibleQuestions(grounded)).toHaveLength(1);
+  });
+
+  it("preserves a safe strategic question when only the internal state is rejected", () => {
+    const reply = adaptiveFallbackReply(false, false, ["backward_phase", "incomplete_adaptive_state"], {
+      rejectedReply: "Fazer uma campanha é uma atividade, não o resultado anual. Crescer 2% resolve a queda de margem ou precisamos mirar uma mudança maior?",
+      userMessage: "Quero fazer uma campanha e crescer 2%.",
+    });
+
+    expect(reply).toContain("atividade, não o resultado anual");
+    expect(reply).toContain("Crescer 2%");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("does not preserve a visibly unsafe reply", () => {
+    const reply = adaptiveFallbackReply(false, false, ["multiple_questions"], {
+      rejectedReply: "Qual é a meta? Qual é o prazo?",
+      userMessage: "Quero crescer.",
+    });
+
+    expect(reply).not.toContain("Qual é a meta?");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("summarizes monthly and review proposals in the single fallback confirmation", () => {
+    const monthly = adaptiveFallbackReply(true, false, ["proposal_confirmation_count"], {
+      sessionType: "monthly",
+      proposal: {
+        type: "save_monthly_plan",
+        objectives: [{ result: "elevar adoção do CRM de 40% para 60%" }],
+      },
+    });
+    const review = adaptiveFallbackReply(true, false, ["proposal_confirmation_count"], {
+      sessionType: "strategic_review",
+      proposal: {
+        type: "apply_strategic_review",
+        adjustments: [{ title: "Aumentar previsibilidade", from: "52%", to: "45%", because: "o fechamento mudou" }],
+      },
+    });
+
+    expect(monthly).toContain("elevar adoção do CRM de 40% para 60%");
+    expect(review).toContain("Aumentar previsibilidade");
+    expect(review).toContain("52% para 45%");
+    expect(visibleQuestions(monthly)).toHaveLength(1);
+    expect(visibleQuestions(review)).toHaveLength(1);
+  });
+
+  it("challenges an annual activity and a weak target instead of using the generic fallback", () => {
+    const reply = adaptiveFallbackReply(false, false, ["multiple_questions"], {
+      sessionType: "strategic",
+      rejectedReply: "Qual é a meta? Qual é o prazo?",
+      userMessage: "Quero colocar 'fazer uma campanha' como objetivo e crescer 2%, mas não sei se o problema é margem, volume ou previsibilidade.",
+    });
+
+    expect(reply).toContain("descreve o meio");
+    expect(reply).toContain("2%");
+    expect(reply).toContain("margem, volume ou previsibilidade");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("forces a quarterly trade-off when priorities exceed capacity", () => {
+    const reply = adaptiveFallbackReply(false, false, ["incomplete_adaptive_state"], {
+      sessionType: "quarterly",
+      userMessage: "Tenho oito prioridades, mas a equipe comporta duas.",
+    });
+
+    expect(reply).toContain("mais prioridades do que capacidade");
+    expect(reply).toContain("objetivo anual");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("blocks an annual activity and self-declared weak target when they are accepted without challenge", () => {
+    const userMessage = "Quero fazer uma campanha e crescer só 2%, mas não sei se o problema é margem, volume ou previsibilidade.";
+    const unchallenged = reasons({
+      reply: "Campanha com 2% é uma escolha concreta. Qual dor ela resolve: margem, volume ou previsibilidade?",
+    }, { sessionType: "strategic", userMessage });
+    const challenged = reasons({
+      reply: "Fazer uma campanha é o meio, não o resultado, e a meta de 2% precisa provar que resolve a dor. Qual foco deve mudar: margem, volume ou previsibilidade?",
+    }, { sessionType: "strategic", userMessage });
+
+    expect(unchallenged).toContain("strategic_activity_unchallenged");
+    expect(unchallenged).toContain("strategic_weak_target_unchallenged");
+    expect(challenged).not.toContain("strategic_activity_unchallenged");
+    expect(challenged).not.toContain("strategic_weak_target_unchallenged");
+  });
+
+  it("blocks a jump to generic drivers after the manager already explains the cause", () => {
+    const userMessage = "A margem caiu de 12% para 7% porque os descontos aumentaram e o mix piorou.";
+    expect(reasons({
+      reply: "A queda ficou clara. Qual é o propósito da empresa?",
+    }, { sessionType: "strategic", userMessage })).toContain("strategic_diagnosis_jump");
+
+    const fallback = adaptiveFallbackReply(false, false, ["strategic_diagnosis_jump"], {
+      sessionType: "strategic",
+      userMessage,
+    });
+    expect(fallback).toContain("causas concretas");
+    expect(fallback).toContain("atacada primeiro");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
   });
 
   it("finds the last oracle turn and gives repair instructions without exposing them to the user", () => {

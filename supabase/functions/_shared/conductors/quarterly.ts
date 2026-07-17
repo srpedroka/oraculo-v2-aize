@@ -16,8 +16,8 @@ Memória estratégica:
 
 abertura
 Objetivo: aquecer e mirar.
-- Use UM quebra-gelo: "Antes de começarmos: qual é o principal desafio da sua área hoje?"
-- Confirme em uma linha a área, o trimestre e o ano.
+- Abra direto pelo resultado ou mudança que mais importa no trimestre; não use quebra-gelo de formulário.
+- Cite área e período apenas quando isso ajudar a manter o foco ou evitar ambiguidade.
 - Se houver memória estratégica relevante da área ou da empresa, cite no máximo 1 sinal do passado e conecte com o desafio do trimestre.
 - Guarde: desafio_principal.
 

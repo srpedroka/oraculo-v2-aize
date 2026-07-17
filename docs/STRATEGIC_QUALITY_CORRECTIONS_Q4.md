@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **briefing aprovado; Q4A, Q4B e Q4C concluidas e validadas no staging; Q4D aguarda briefing**
+Status: **briefing aprovado; Q4A, Q4B, Q4C e Q4D concluidas e validadas no staging; Q4E aguarda briefing**
 
 ## O que vai mudar para o gestor
 
@@ -78,6 +78,8 @@ Estado em 2026-07-16: concluida no staging. O contexto deriva o trimestre do mes
 - Toda pergunta deve citar o fato que a motivou e indicar a decisao que ela destrava.
 - Fechamentos preservam veredito honesto, aprendizado e ponte para o proximo ciclo.
 - Nenhum texto tecnico como `base_confirmada`, nomes de fases ou chaves de schema chega ao gestor.
+
+Estado em 2026-07-17: concluida no staging. Persona, condutores e `_shared/session-adaptive.ts` passaram a limitar respostas comuns, remover bordoes, bloquear pergunta sem contexto e preservar a fala segura quando apenas o envelope interno precisa de reparo. O anual reenquadra atividade como meio, confronta meta autodeclarada pequena e nao abandona causa concreta para perguntar proposito/visao. Mensal e Revisao Estrategica usam resumo especifico na confirmacao; fechamentos preservam veredito, aprendizado e proxima decisao. O runner cobre os seis rituais, zero mutacao antes da confirmacao, contexto autorizado, diagnostico isolado e cleanup. O ultimo judge atribuiu `4,3,4,4,4,4,4`, sem falha critica. O relatorio original ficou 81,25 por pesos aplicaveis somando 85; a normalizacao auditavel para 100 recalculou os mesmos ratings em 95,59, custo adicional zero. Todas as tentativas bloqueadas permanecem privadas. Q4D custou US$ 0,553094 e levou o acumulado a US$ 2,890842. Somente `oracle-session` mudou no staging; producao, frontend e WhatsApp real permanecem anteriores.
 
 ### Q4E - Saidas e rastreabilidade
 

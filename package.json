@@ -29,6 +29,8 @@
     "eval:strategic:q4a": "node --experimental-strip-types scripts/strategic-q4a-smoke.ts",
     "eval:strategic:q4b": "node --experimental-strip-types scripts/strategic-q4b-smoke.ts",
     "eval:strategic:q4c": "node --experimental-strip-types scripts/strategic-q4c-smoke.ts",
+    "eval:strategic:q4d": "node --experimental-strip-types scripts/strategic-q4d-smoke.ts",
+    "eval:strategic:q4d:recompute": "node --experimental-strip-types scripts/strategic-q4d-recompute.ts",
     "eval:strategic:review": "RUN_STRATEGIC_REVIEW_LIVE=true vitest --config vitest.integration.config.ts run tests/integration/strategic-review-live.test.ts --passWithNoTests=false",
     "test:master:setup": "node --experimental-strip-types scripts/master-test.ts setup",
     "test:master:verify": "node --experimental-strip-types scripts/master-test.ts verify",

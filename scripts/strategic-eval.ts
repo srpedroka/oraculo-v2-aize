@@ -148,7 +148,10 @@ export async function callFunction(
       signal: controller.signal,
     });
     const payload = await response.json() as Record<string, any>;
-    if (!response.ok) throw new Error(`${slug} falhou (${response.status}): ${String(payload.error ?? "erro desconhecido")}`);
+    if (!response.ok) {
+      const errorCode = String(payload.errorCode ?? "UNKNOWN").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 80);
+      throw new Error(`${slug} falhou (${response.status}/${errorCode}): ${String(payload.error ?? "erro desconhecido")}`);
+    }
     return payload;
   } finally {
     clearTimeout(timeout);
