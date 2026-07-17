@@ -829,6 +829,14 @@ Estado da Q4C: o owner aprovou e autorizou staging. O mes sempre deriva seu trim
 
 Estado da Q4D: o owner aprovou e autorizou staging. Naturalidade virou contrato server-side, nao apenas instrucao de prompt: bordao/parafrase, pergunta solta, resposta comum longa, atividade anual aceita como objetivo, meta autodeclarada pequena sem desafio e salto de causa concreta para direcionadores sao reparados ou recebem fallback seguro. Texto visivel seguro pode sobreviver a erro apenas interno; proposta e estado continuam sob validacao. Mensal/Revisao usam confirmacao especifica e fechamentos preservam veredito, aprendizado e proxima decisao. O judge final nao apontou falha critica e atribuiu `4,3,4,4,4,4,4`. Como a rubrica Q4D omite memoria e seus pesos originais somavam 85, os pesos aplicaveis sao normalizados para 100 antes do gate; o relatorio original permanece imutavel e o derivado recalcula 95,59 sem provider. Q4D custou US$ 0,553094, acumulado US$ 2,890842. Producao e WhatsApp real seguem intocados; Q4E exige briefing separado.
 
+## 2026-07-17 - Retry de IA limitado por requisicao e reparo deterministico de envelope
+
+Decisao: o planejamento possui no maximo uma repeticao transitoria compartilhada por toda a mensagem, inclusive entre geracao e reparo adaptativo. Timeout, rede, rate limit e 5xx recebem codigos sanitizados; autenticacao, modelo, formato e validacao nao repetem. A requisicao reserva tempo para responder antes do timeout do cliente. Quando a IA ja devolveu uma proposta e os defeitos sao apenas de envelope, estado adaptativo, fase ou texto de confirmacao, o servidor preserva o conteudo e normaliza esses campos sem nova chamada.
+
+Motivo: a Q5 mostrou `INTERNAL_ERROR` em timeout, e os dois primeiros smokes Q4G provaram que repetir por chamada ou regenerar uma proposta longa podia ultrapassar o cliente mesmo com resposta de conteudo ja produzida. Regenerar tudo aumentava latencia, custo e variacao sem melhorar a decisao estrategica.
+
+Consequencias: erros tecnicos ficam identificaveis sem detalhes brutos do provedor; uma proposta valida nao e descartada por higiene de envelope; defeitos semanticos e regras trimestrais/mensais continuam exigindo reparo real. O smoke final anual passou com Conducao 85, Plano Anual 100, uma confirmacao, zero gravacao prematura e cleanup. A politica nao adiciona clique ou etapa para o gestor.
+
 ## 2026-07-17 - Documento canonico como fonte unica das saidas
 
 Decisao: proposta confirmada, banco e `plan_documents.content` preservam um contrato semantico verificavel; tela, PDF e WhatsApp devem renderizar esse mesmo conteudo, sem nova chamada de IA e sem mutacao. O documento registra origem, versao e rastreabilidade da sessao, enquanto a apresentacao executiva mostra apenas origem/versao e os fatos de negocio relevantes.

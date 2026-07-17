@@ -19,6 +19,7 @@ import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quar
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
+import { AiProviderError, createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
@@ -55,6 +56,7 @@ import {
   buildAdaptiveRepairDirective,
   ensureAdaptiveStatePatch,
   latestOracleReply,
+  normalizeReadyProposalEnvelope,
   safeAdaptiveNextPhase,
   validateAdaptiveEnvelope,
 } from "./session-adaptive.ts";
@@ -311,17 +313,29 @@ export async function processPlanningMessage(
   ].filter(Boolean).join("\n\n");
 
   const modelMessages = conversationMessagesForModel(history);
+  const transientRetryBudget = createTransientAiRetryBudget(1);
+  const planningRequestDeadline = Date.now() + 52_000;
+  const planningModelTimeout = () => {
+    const availableMs = planningRequestDeadline - Date.now() - 4_000;
+    if (availableMs < 5_000) {
+      throw new AiProviderError(
+        "AI_PROVIDER_TIMEOUT",
+        "A condução excedeu o tempo seguro desta resposta. Nenhum plano foi alterado; tente novamente.",
+      );
+    }
+    return Math.min(40_000, availableMs);
+  };
   const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
-    const output = await callModelForFunction(
+    const output = await withTransientAiRetry(() => callModelForFunction(
       client,
       session.org_id,
       "planning",
       aiRoute,
       prompt,
       modelMessages,
-      aiRoute.limits,
+      { ...aiRoute.limits, timeoutMs: planningModelTimeout() },
       { userId: params.userId },
-    );
+    ), transientRetryBudget);
     await recordAiUsage({
       client,
       orgId: session.org_id,
@@ -373,6 +387,20 @@ export async function processPlanningMessage(
     repairReasons = validateEnvelope(parsed);
   } catch {
     repairReasons = ["invalid_json_envelope"];
+  }
+
+  const normalizedReadyProposal = normalizeReadyProposalEnvelope({
+    envelope: parsed ?? {},
+    reasons: repairReasons,
+    sessionType: session.type,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+    userMessage: params.message,
+    sessionState: session.state,
+  });
+  if (normalizedReadyProposal) {
+    parsed = normalizedReadyProposal;
+    repairReasons = validateEnvelope(parsed);
   }
 
   if (repairReasons.length) {

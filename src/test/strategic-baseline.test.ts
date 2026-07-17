@@ -131,6 +131,18 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("reexecuta na Q4G exatamente o primeiro caso anual da Q5 sem tocar seu progresso", () => {
+    const source = readFileSync("scripts/strategic-q4g-smoke.ts", "utf8");
+    expect(source).toContain("Q2A-ANNUAL-VAGUE-ASPIRATION-001");
+    expect(source).toContain("executeCase(item, \"Q2A\", 1");
+    expect(source).toContain("runLabel: \"q4g\"");
+    expect(source).toContain("ledgerLabel: \"Q4G\"");
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("aprova somente uma Q5 completa, comparavel e dentro dos gates", () => {
     const run = (score: number, reportPath: string) => ({
       phase: "Q2B" as const,

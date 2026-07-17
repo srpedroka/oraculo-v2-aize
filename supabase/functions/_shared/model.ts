@@ -19,11 +19,81 @@ export interface ModelCallResult {
 export interface ModelCallOptions {
   maxTokens?: number;
   temperature?: number;
+  timeoutMs?: number;
 }
 
 export interface ModelImageInput {
   mimeType: "image/jpeg" | "image/png";
   base64: string;
+}
+
+export type AiProviderErrorCode =
+  | "AI_PROVIDER_TIMEOUT"
+  | "AI_PROVIDER_UNAVAILABLE"
+  | "AI_PROVIDER_RATE_LIMIT"
+  | "AI_PROVIDER_AUTH"
+  | "AI_PROVIDER_UNKNOWN_MODEL"
+  | "AI_PROVIDER_BAD_REQUEST"
+  | "AI_PROVIDER_REJECTED";
+
+export class AiProviderError extends Error {
+  readonly code: AiProviderErrorCode;
+  readonly httpStatus: number | null;
+  readonly retryable: boolean;
+
+  constructor(code: AiProviderErrorCode, message: string, options: { httpStatus?: number | null; retryable?: boolean; cause?: unknown } = {}) {
+    super(message);
+    this.name = "AiProviderError";
+    this.code = code;
+    this.httpStatus = options.httpStatus ?? null;
+    this.retryable = options.retryable === true;
+    if (options.cause !== undefined) {
+      Object.defineProperty(this, "cause", { value: options.cause, configurable: true });
+    }
+  }
+}
+
+function providerLabel(provider: Provider) {
+  if (provider === "moonshot") return "Kimi/Moonshot";
+  if (provider === "xai") return "xAI/Grok";
+  if (provider === "anthropic") return "Anthropic";
+  return "OpenAI";
+}
+
+export function modelProviderHttpError(provider: Provider, status: number) {
+  const label = providerLabel(provider);
+  if (status === 408) return new AiProviderError("AI_PROVIDER_TIMEOUT", `${label} excedeu o tempo limite.`, { httpStatus: status, retryable: true });
+  if (status === 429) return new AiProviderError("AI_PROVIDER_RATE_LIMIT", `${label} atingiu o limite temporário de solicitações.`, { httpStatus: status, retryable: true });
+  if (status >= 500) return new AiProviderError("AI_PROVIDER_UNAVAILABLE", `${label} está temporariamente indisponível.`, { httpStatus: status, retryable: true });
+  if (status === 401 || status === 403) return new AiProviderError("AI_PROVIDER_AUTH", `${label} recusou a credencial configurada.`, { httpStatus: status });
+  if (status === 404) return new AiProviderError("AI_PROVIDER_UNKNOWN_MODEL", `${label} não reconheceu o modelo configurado.`, { httpStatus: status });
+  if (status === 400) return new AiProviderError("AI_PROVIDER_BAD_REQUEST", `${label} recusou o formato da solicitação.`, { httpStatus: status });
+  return new AiProviderError("AI_PROVIDER_REJECTED", `${label} recusou a solicitação.`, { httpStatus: status });
+}
+
+export function isRetryableAiProviderError(error: unknown): error is AiProviderError {
+  return error instanceof AiProviderError && error.retryable;
+}
+
+export interface AiRetryBudget {
+  remaining: number;
+}
+
+export function createTransientAiRetryBudget(maxRetries = 1): AiRetryBudget {
+  return { remaining: Math.max(0, Math.floor(maxRetries)) };
+}
+
+export async function withTransientAiRetry<T>(
+  operation: () => Promise<T>,
+  budget = createTransientAiRetryBudget(),
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isRetryableAiProviderError(error) || budget.remaining <= 0) throw error;
+    budget.remaining -= 1;
+    return await operation();
+  }
 }
 
 function emptyUsage(): ModelUsage {
@@ -53,10 +123,15 @@ function responseText(data: any) {
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 25000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort("Tempo limite da IA atingido"), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+      throw new AiProviderError("AI_PROVIDER_TIMEOUT", "O provedor de IA excedeu o tempo limite.", { retryable: true, cause: error });
+    }
+    throw new AiProviderError("AI_PROVIDER_UNAVAILABLE", "Não foi possível alcançar o provedor de IA.", { retryable: true, cause: error });
   } finally {
     clearTimeout(timeout);
   }
@@ -91,11 +166,11 @@ export async function callModel(
           ...(typeof temperature === "number" ? { temperature } : {}),
           store: false,
         }),
-      });
+      }, options.timeoutMs);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAI não respondeu corretamente: ${errorText}`);
+        await response.body?.cancel().catch(() => undefined);
+        throw modelProviderHttpError(provider, response.status);
       }
 
       const data = await response.json();
@@ -117,11 +192,11 @@ export async function callModel(
         max_tokens: maxTokens,
         temperature,
       }),
-    });
+    }, options.timeoutMs);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`${provider === "moonshot" ? "Kimi/Moonshot" : provider === "xai" ? "xAI/Grok" : "OpenAI"} não respondeu corretamente: ${errorText}`);
+      await response.body?.cancel().catch(() => undefined);
+      throw modelProviderHttpError(provider, response.status);
     }
 
     const data = await response.json();
@@ -146,11 +221,11 @@ export async function callModel(
         max_tokens: maxTokens ?? 900,
         temperature: temperature ?? 0.4,
       }),
-    });
+    }, options.timeoutMs);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Anthropic não respondeu corretamente: ${errorText}`);
+      await response.body?.cancel().catch(() => undefined);
+      throw modelProviderHttpError(provider, response.status);
     }
 
     const data = await response.json();

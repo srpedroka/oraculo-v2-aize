@@ -65,3 +65,62 @@ Antes de repetir a Q5:
 6. reiniciar a Q5 inteira somente depois desses checks passarem.
 
 Os dois artefatos pagos permanecem privados em `.agents-private`, junto com o ledger. Eles nao devem ser apagados nem promovidos a resultado aprovado.
+
+## Tentativa corretiva Q4G
+
+Em 2026-07-17, a correcao Q4G foi implementada e publicada **somente no staging**:
+
+- a abertura anual vaga passou a oferecer caminhos contextuais de receita, margem e capacidade, em vez do menu generico de campos;
+- timeout, indisponibilidade e rate limit do provedor passaram a ter codigos sanitizados e uma unica repeticao; rejeicoes de validacao, autenticacao, modelo ou formato nao repetem;
+- 358 testes unitarios, 39 testes do padrao estrategico, lint, build/orcamento e secret scan passaram localmente;
+- somente `oracle-session` foi publicada no staging; producao, frontend, banco e WhatsApp real nao foram alterados.
+
+O smoke pago repetiu exatamente `Q2A-ANNUAL-VAGUE-ASPIRATION-001` R1. As duas respostas iniciais ficaram contextuais, mas a chamada que recebeu o plano anual completo excedeu o timeout de 60 segundos do runner. O retry agora pode se somar a uma segunda chamada de reparo adaptativo, portanto o limite externo terminou primeiro com `This operation was aborted`. Nao houve proposta, confirmacao ou judge; o gate permaneceu bloqueado.
+
+| Item | Valor |
+|---|---:|
+| Smoke Q4G | US$ 0,032266 |
+| Acumulado antes | US$ 2,953504 |
+| Acumulado depois | US$ 2,985771 |
+| Limite autorizado | US$ 20,00 |
+
+O cleanup final confirmou zero organizacao sintetica pendente e removeu a chave descartavel junto com a empresa. Nao repetir o smoke antes de limitar a repeticao transitoria a **uma por requisicao completa**, considerando tambem a tentativa de reparo adaptativo, e harmonizar esse teto com o timeout externo sem simplesmente ampliar espera para o usuario. A Q5 continua pausada.
+
+### Segunda correcao e smoke
+
+A repeticao passou a usar um unico budget de retry por requisicao, primeira chamada de ate 40 segundos e teto total de 52 segundos. A segunda rodada provou que o cliente nao aborta mais: o servidor encerrou de forma controlada com `400/AI_PROVIDER_TIMEOUT`. Mesmo assim, nao houve proposta ou judge, pois a primeira geracao longa foi seguida por uma tentativa de reparo do envelope e esgotou o tempo seguro.
+
+| Item | Valor |
+|---|---:|
+| Segundo smoke Q4G | US$ 0,027390 |
+| Acumulado antes | US$ 2,985771 |
+| Acumulado depois | US$ 3,013161 |
+| Limite autorizado | US$ 20,00 |
+
+O cleanup voltou a confirmar zero organizacao sintetica pendente. Nao houve terceira chamada paga.
+
+Naquele momento, uma terceira correcao foi preparada **somente localmente**: quando a proposta completa ja existe e os defeitos sao apenas de estado adaptativo, fase ou texto da confirmacao, o servidor preserva a proposta e normaliza o envelope deterministicamente. Defeitos semanticos ou de conteudo trimestral/mensal continuam no reparo por IA. A versao local passou 361 testes unitarios, lint, build/orcamento e secret scan antes do gate final. Producao permaneceu inalterada e a Q5 continuou pausada.
+
+### Gate final Q4G
+
+Depois de autorizacao explicita, a normalizacao deterministica foi publicada somente no staging e o terceiro smoke repetiu o mesmo caso anual. Resultado:
+
+- Conducao: **85**;
+- Plano Anual: **100**;
+- media conjunta: **92,50**;
+- zero falha critica e dez checks deterministas verdes;
+- exatamente um pedido de confirmacao e uma confirmacao enviada;
+- zero gravacao antes da confirmacao;
+- banco e documento canonico coerentes com a proposta;
+- judge somente leitura e cleanup completo.
+
+| Item | Valor |
+|---|---:|
+| Geracao final Q4G | US$ 0,026826 |
+| Judge final Q4G | US$ 0,013666 |
+| Terceiro smoke Q4G | US$ 0,040492 |
+| Total das tres rodadas Q4G | US$ 0,100148 |
+| Acumulado final do plano | US$ 3,053653 |
+| Limite autorizado | US$ 20,00 |
+
+O preflight final confirmou zero organizacao sintetica pendente. A Q4G esta aprovada. Producao, Netlify, banco, WhatsApp real e Evolution permaneceram inalterados. A Q5 pode ser reiniciada apenas em um ciclo novo e comparavel, preservando as tentativas anteriores como calibracao e mediante novo briefing/autorizacao paga.

@@ -96,6 +96,12 @@ interface SeededContext {
   monthlyObjectiveId: string | null;
 }
 
+interface ExecuteCaseOptions {
+  runLabel?: string;
+  reportVersion?: string;
+  ledgerLabel?: string;
+}
+
 const PHASE_SUFFIX_TO_REFERENCE: Record<string, ReferencePhase> = {
   A: "Q2A",
   B: "Q2B",
@@ -400,7 +406,7 @@ async function canonicalDocumentCount(handle: EvaluationOrg, sessionId: string) 
   return Number(result.count ?? 0);
 }
 
-async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" | "blocked") {
+async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" | "blocked", ledgerLabel = COHORT_LABEL) {
   const ledger = await readLedger();
   const totalCostUsd = run.generationCostUsd + run.judgeCostUsd;
   const next: CostLedger = {
@@ -408,7 +414,7 @@ async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" |
     cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCostUsd,
     runs: [...ledger.runs, {
       runId: run.reportPath.split("-").slice(-2).join("-").replace(/\.json$/, ""),
-      caseId: `${COHORT_LABEL}:${run.caseId}-R${run.round}`,
+      caseId: `${ledgerLabel}:${run.caseId}-R${run.round}`,
       totalCostUsd,
       completedAt: new Date().toISOString(),
       status: qualityStatus,
@@ -418,7 +424,13 @@ async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" |
   return { before: ledger.cumulativePlanCostUsd, after: next.cumulativePlanCostUsd };
 }
 
-async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: number, rubric: Record<string, any>): Promise<BaselineRunSummary> {
+export async function executeCase(
+  item: ReferenceCase,
+  phase: ReferencePhase,
+  round: number,
+  rubric: Record<string, any>,
+  options: ExecuteCaseOptions = {},
+): Promise<BaselineRunSummary> {
   assertEvaluationEnvironment(process.env);
   const config = runtimeConfiguration();
   const ledgerAtStart = await readLedger();
@@ -426,7 +438,9 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
   assertBudgetAllowsNextCall({ cumulativePlanCostUsd: ledgerAtStart.cumulativePlanCostUsd, currentCaseCostUsd: 0, reserveUsd: PLANNING_RESERVE_USD, policy });
 
   const id = runId();
-  const reportPath = resolve(PRIVATE_DIR, `strategic-${EVALUATION_COHORT}-${phase.toLowerCase()}-${item.caseId.toLowerCase()}-r${round}-${id}.json`);
+  const runLabel = String(options.runLabel ?? EVALUATION_COHORT).toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!runLabel) throw new Error("rotulo da execucao estrategica invalido");
+  const reportPath = resolve(PRIVATE_DIR, `strategic-${runLabel}-${phase.toLowerCase()}-${item.caseId.toLowerCase()}-r${round}-${id}.json`);
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
   let handle: EvaluationOrg | null = null;
@@ -464,7 +478,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
       type: item.sessionType,
       period,
       channel: "web",
-    }, `strategic-${EVALUATION_COHORT}-${id}-start`);
+    }, `strategic-${runLabel}-${id}-start`);
     sessionId = String(start.session?.id ?? "");
     if (!sessionId) throw new Error("oracle-session nao devolveu sessionId");
     sessionScopeMatches = start.session?.org_id === handle.orgId
@@ -487,7 +501,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
         sessionId,
         message: turn,
         channel: "web",
-      }, `strategic-${EVALUATION_COHORT}-${id}-message-${transcript.length}`);
+      }, `strategic-${runLabel}-${id}-message-${transcript.length}`);
       transcript.push({ sequence: transcript.length + 1, role: "oracle", content: String(response.reply ?? "") });
       if (response.pendingProposal && typeof response.pendingProposal === "object") {
         proposal = response.pendingProposal as Record<string, any>;
@@ -527,7 +541,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     if (proposal && shouldCreateProposal) {
       const beforeConfirmHash = await businessSnapshotHash(handle);
       confirmationCallCount += 1;
-      await callFunction("oracle-session", token, { action: "confirm", sessionId, channel: "web" }, `strategic-${EVALUATION_COHORT}-${id}-confirm`);
+      await callFunction("oracle-session", token, { action: "confirm", sessionId, channel: "web" }, `strategic-${runLabel}-${id}-confirm`);
       databaseChangedAfterConfirmation = beforeConfirmHash !== await businessSnapshotHash(handle);
       canonicalDocumentCreated = await canonicalDocumentCount(handle, sessionId) === 1;
     }
@@ -590,7 +604,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
   };
   const report = {
     schemaVersion: 1,
-    reportVersion: COHORT_VERSION,
+    reportVersion: options.reportVersion ?? COHORT_VERSION,
     catalogVersion: "2026-07-16.q2",
     phase,
     caseId: item.caseId,
@@ -626,7 +640,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     defectClasses: summary.defectClasses,
   };
   await writePrivateJson(reportPath, sanitizeEvaluationValue(report));
-  const ledgerMove = await appendLedger(summary, qualityGate.status);
+  const ledgerMove = await appendLedger(summary, qualityGate.status, options.ledgerLabel ?? COHORT_LABEL);
   console.log(`${item.caseId} R${round}: ${summary.status}; qualidade ${qualityGate.status}; US$ ${(generation.totalCostUsd + judgeCostUsd).toFixed(6)}; acumulado US$ ${ledgerMove.before.toFixed(6)} -> US$ ${ledgerMove.after.toFixed(6)}`);
   if (!cleanupSucceeded) throw new Error(`${item.caseId}: cleanup descartavel falhou; ${COHORT_LABEL} interrompida`);
   return summary;

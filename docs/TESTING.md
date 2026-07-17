@@ -175,6 +175,14 @@ O teste cria empresa e usuario descartaveis, confirma uma proposta trimestral pe
 
 A Q4F reutiliza os gates existentes em vez de criar uma segunda orquestracao. O aceite executa, nesta ordem, unitarios/fixtures/catalogo, integracao completa no staging, RLS/seguranca, E2E staging desktop/mobile, lint, build/bundle, secret scan e auditoria independente de residuos. Resultado de 2026-07-17: 350 unitarios, 122 integracoes, 7 testes de seguranca e 11 E2E aprovados; zero organizacao/usuario descartavel remanescente. Skips opt-in e justificativas ficam registrados no relatorio `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`. Custo Q4F US$ 0.
 
+A Q4G reproduz exatamente o primeiro caso anual que bloqueou a Q5, sem alterar o progresso da regressao:
+
+```bash
+pnpm run eval:strategic:q4g
+```
+
+O motor oferece caminhos contextuais para aspiracoes vagas, classifica falhas do provedor sem expor resposta bruta e compartilha uma unica repeticao transitoria por requisicao. Cada mensagem tem teto inferior ao timeout do cliente. Quando uma proposta completa ja existe e a falha e somente de envelope, estado, fase ou confirmacao, o servidor normaliza esses campos deterministicamente; defeitos de conteudo continuam no reparo por IA. As duas primeiras rodadas bloqueadas foram preservadas (US$ 0,032266 e US$ 0,027390). A rodada final passou com Conducao 85, Plano Anual 100, media 92,50, confirmacao 1/1, zero gravacao prematura, documento canonico e cleanup. Custou US$ 0,040492; Q4G total US$ 0,100148 e acumulado US$ 3,053653. Somente `oracle-session` de staging foi publicada.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

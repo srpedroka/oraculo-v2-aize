@@ -33,7 +33,10 @@ const STRATEGIC_WEAK_TARGET_CUE_PATTERN = /\b(?:s[oó]|apenas)\s+(?:crescer\s+)?
 const STRATEGIC_TARGET_CHALLENGE_PATTERN = /\b(?:meta|alvo|ambicios[oa]|suficiente|fraca|pequena)\b|\d+(?:[.,]\d+)?\s*%[^.!?]{0,80}\b(?:resolve|provar|suficiente|relevante)\b/i;
 const STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN = /\b(?:caiu|queda|reduziu|piorou|diminuiu)\b[\s\S]{0,220}\b(?:porque|por causa|devido)\b/i;
 const STRATEGIC_DIRECTION_JUMP_PATTERN = /\b(?:prop[oó]sito|miss[aã]o|vis[aã]o|valores?)\b/i;
+const STRATEGIC_GROWTH_ASPIRATION_PATTERN = /\b(?:crescer|crescimento|expandir|expans[aã]o)\b/i;
+const STRATEGIC_GROWTH_TENSION_PATTERN = /\breceita\b[\s\S]{0,260}\bmargem\b[\s\S]{0,260}\bcapacidade\b|\bmargem\b[\s\S]{0,260}\bcapacidade\b[\s\S]{0,260}\b(?:receita|crescimento)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
+const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
 const FACT_SIGNALS = [
   /\bobjetiv[oa]s?\b/i,
@@ -98,6 +101,24 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   strategic_weak_target_unchallenged: "uma meta apresentada como pequena nao foi confrontada com a dor que precisa resolver",
   strategic_diagnosis_jump: "a resposta abandonou uma causa concreta para voltar a direcionadores genericos",
 };
+
+const DETERMINISTIC_PROPOSAL_REPAIR_REASONS = new Set([
+  "missing_adaptive_state",
+  "incomplete_adaptive_state",
+  "unverified_confirmed_facts",
+  "fact_block_misclassified",
+  "repeated_question",
+  "mechanical_acknowledgement",
+  "repeated_acknowledgement",
+  "multiple_questions",
+  "vague_without_options",
+  "ungrounded_question",
+  "technical_state_leak",
+  "backward_phase",
+  "ready_with_blocking_gap",
+  "proposal_before_ready",
+  "proposal_confirmation_count",
+]);
 
 export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigatorio):
 - As fases sao um checklist de decisoes, nao um formulario por turnos. Absorva TODOS os fatos da mensagem atual e do historico; pule qualquer fase ja satisfeita e use next_phase para ir direto a primeira lacuna real, inclusive sintese.
@@ -323,6 +344,42 @@ export function safeAdaptiveNextPhase(currentPhase: string, requestedPhase: unkn
   return requested || currentPhase;
 }
 
+export function normalizeReadyProposalEnvelope(input: {
+  envelope: SessionEnvelope;
+  reasons: string[];
+  sessionType: string;
+  currentPhase: string;
+  phases: string[];
+  userMessage: string;
+  sessionState?: unknown;
+}) {
+  const metadata = adaptiveMetadata(input.envelope);
+  const readinessConfirmed = metadata?.readiness === "ready"
+    || COMPLETION_REQUEST_PATTERN.test(input.userMessage)
+    || EXPLICIT_READY_PROPOSAL_PATTERN.test(input.userMessage);
+  if (!readinessConfirmed || !input.envelope.proposal || !input.reasons.length
+    || input.reasons.some((reason) => !DETERMINISTIC_PROPOSAL_REPAIR_REASONS.has(reason))) {
+    return null;
+  }
+  return {
+    ...input.envelope,
+    reply: proposalConfirmationReply(input.envelope.proposal, input.sessionType),
+    state_patch: ensureAdaptiveStatePatch(
+      input.envelope.state_patch,
+      input.userMessage,
+      true,
+      true,
+      input.sessionState,
+    ),
+    next_phase: safeAdaptiveNextPhase(
+      input.currentPhase,
+      input.envelope.next_phase,
+      input.phases,
+      input.reasons,
+    ),
+  };
+}
+
 export function ensureAdaptiveStatePatch(
   statePatch: unknown,
   userMessage: string,
@@ -426,6 +483,12 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
     }
     if (target) {
       return `A meta de ${target} precisa nascer do problema que queremos resolver. Qual mudança empresarial tornaria esse número relevante?`;
+    }
+    if (STRATEGIC_GROWTH_TENSION_PATTERN.test(userMessage)) {
+      return "Receita estável, margem variável e capacidade limitada formam a tensão central. Qual escolha deve liderar o ano: crescer na carteira, recuperar margem ou destravar capacidade de entrega?";
+    }
+    if (STRATEGIC_GROWTH_ASPIRATION_PATTERN.test(userMessage)) {
+      return "Crescer ainda deixa três caminhos bem diferentes. Qual precisa liderar o ano: ampliar receita na carteira, proteger margem ou destravar capacidade de entrega?";
     }
   }
   if (sessionType === "quarterly" && /\bprioridades?\b/i.test(userMessage) && /\b(?:capacidade|comporta|cabem|cabe)\b/i.test(userMessage)) {

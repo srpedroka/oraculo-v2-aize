@@ -5,6 +5,7 @@ import {
   buildAdaptiveRepairDirective,
   ensureAdaptiveStatePatch,
   latestOracleReply,
+  normalizeReadyProposalEnvelope,
   repeatsPreviousQuestion,
   safeAdaptiveNextPhase,
   validateAdaptiveEnvelope,
@@ -333,6 +334,106 @@ describe("adaptive planning session guard Q4A", () => {
     expect(reply).toContain("2%");
     expect(reply).toContain("margem, volume ou previsibilidade");
     expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("turns a vague annual growth aspiration into a contextual strategic choice", () => {
+    const vague = adaptiveFallbackReply(false, false, ["vague_without_options"], {
+      sessionType: "strategic",
+      rejectedReply: "Qual resultado faria a maior diferença?",
+      userMessage: "Queremos crescer no próximo ano.",
+    });
+    const constrained = adaptiveFallbackReply(false, false, ["fact_block_misclassified"], {
+      sessionType: "strategic",
+      rejectedReply: "Qual é a principal dor?",
+      userMessage: "A receita atual é estável, mas a margem varia e a capacidade de entrega limita o crescimento.",
+    });
+
+    for (const reply of [vague, constrained]) {
+      expect(reply).toMatch(/receita/i);
+      expect(reply).toMatch(/margem/i);
+      expect(reply).toMatch(/capacidade/i);
+      expect(reply).not.toContain("resultado, o prazo, o responsável ou a primeira ação");
+      expect(visibleQuestions(reply)).toHaveLength(1);
+    }
+    expect(constrained).toMatch(/tens[aã]o|limite|escolha/i);
+  });
+
+  it("normalizes proposal envelope hygiene without regenerating the full annual plan", () => {
+    const proposal = { type: "save_strategic_plan", year: 2027, objectives: [{ title: "Elevar margem" }] };
+    const malformed = envelope({
+      reply: "A proposal está pronta. Confirmo? Ou quer revisar?",
+      proposal,
+      state_patch: { objective: "Elevar margem" },
+      next_phase: "sintese",
+    });
+    const initialReasons = validateAdaptiveEnvelope({
+      envelope: malformed,
+      sessionType: "strategic",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: {},
+      previousOracleReply: "Qual caminho deve liderar o ano?",
+      userMessage: "Dados concretos adicionais confirmados para completar o plano anual.",
+    });
+    const normalized = normalizeReadyProposalEnvelope({
+      envelope: malformed,
+      reasons: initialReasons,
+      sessionType: "strategic",
+      currentPhase: "diagnostico",
+      phases,
+      userMessage: "Dados concretos adicionais confirmados para completar o plano anual.",
+      sessionState: {},
+    });
+
+    expect(normalized?.proposal).toBe(proposal);
+    expect(normalized?.reply).toBe("O plano anual ficou pronto com as escolhas que você fez. Posso gravar?");
+    expect(visibleQuestions(String(normalized?.reply))).toHaveLength(1);
+    expect(validateAdaptiveEnvelope({
+      envelope: normalized ?? {},
+      sessionType: "strategic",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: {},
+      previousOracleReply: "Qual caminho deve liderar o ano?",
+      userMessage: "Dados concretos adicionais confirmados para completar o plano anual.",
+    })).toEqual([]);
+  });
+
+  it("keeps semantic or proposal-content defects on the model repair path", () => {
+    const proposal = { type: "save_quarterly_plan", objectives: [] };
+    expect(normalizeReadyProposalEnvelope({
+      envelope: { reply: "Posso gravar?", proposal },
+      reasons: ["quarterly_missing_objectives"],
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      phases,
+      userMessage: "Pode montar.",
+      sessionState: {},
+    })).toBeNull();
+  });
+
+  it("does not promote a premature proposal without readiness or an explicit completion cue", () => {
+    expect(normalizeReadyProposalEnvelope({
+      envelope: {
+        reply: "Posso gravar?",
+        proposal: { type: "save_strategic_plan", objectives: [{ title: "Crescer" }] },
+        state_patch: {
+          _adaptive: {
+            readiness: "partial",
+            confirmed_facts: [],
+            blocking_gap: "indicador",
+            question_goal: "definir indicador",
+            action_direction: "tornar o objetivo verificavel",
+          },
+        },
+      },
+      reasons: ["proposal_before_ready"],
+      sessionType: "strategic",
+      currentPhase: "diagnostico",
+      phases,
+      userMessage: "Ainda estou pensando no crescimento.",
+      sessionState: {},
+    })).toBeNull();
   });
 
   it("forces a quarterly trade-off when priorities exceed capacity", () => {
