@@ -14,7 +14,7 @@ import {
   maybeSummarize,
 } from "./conversations.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
-import { validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
+import { preserveExplicitQuarterlyCadence, validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
 import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
@@ -367,6 +367,9 @@ export async function processPlanningMessage(
   const conversationText = history.messages
     .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
     .join("\n");
+  const normalizeEnvelope = (envelope: any) => session.type === "quarterly"
+    ? preserveExplicitQuarterlyCadence(envelope, conversationText)
+    : envelope;
   const validateEnvelope = (envelope: any) => [
     ...validateAdaptiveEnvelope({
       envelope,
@@ -387,7 +390,7 @@ export async function processPlanningMessage(
   let parsed: any = null;
   let repairReasons: string[] = [];
   try {
-    parsed = parseEnvelope(result.text);
+    parsed = normalizeEnvelope(parseEnvelope(result.text));
     repairReasons = validateEnvelope(parsed);
   } catch {
     repairReasons = ["invalid_json_envelope"];
@@ -411,7 +414,7 @@ export async function processPlanningMessage(
     const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
     result = await callPlanningModel(repairPrompt, 2, repairReasons);
     try {
-      parsed = parseEnvelope(result.text);
+      parsed = normalizeEnvelope(parseEnvelope(result.text));
     } catch {
       throw new Error("A IA não conseguiu estruturar a condução com segurança. Nenhum plano foi alterado; tente novamente.");
     }

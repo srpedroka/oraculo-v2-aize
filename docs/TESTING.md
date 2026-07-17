@@ -130,7 +130,7 @@ pnpm run eval:strategic:q5 -- compare
 pnpm run eval:strategic:q5 -- human-packet
 ```
 
-`compare` exige as mesmas 40 combinacoes, nove resultados deterministas, 15 entregas cobertas, modelos iguais aos registrados na Q3, inputs sinteticos equivalentes, cleanup, notas minimas, regressao por dimensao, mediana de turnos e custo. `human-packet` monta cinco pares A/B e guarda o gabarito em arquivo privado separado. Em 2026-07-17, a Q4H aprovou os cinco riscos anuais e a Q5A concluiu 10/10 medicoes, sem erro, falha critica ou check reprovado. O runner tambem aceita `rejudge-report <arquivo>` somente para relatorio Q5 privado com cleanup concluido; ele reutiliza transcricao/proposta, envia o escopo canonico ao judge, preserva o parecer anterior e registra apenas o novo custo. A primeira rodada Q5B bloqueou por conducao trimestral 75; antes da retomada, o runner precisa encerrar a fase tambem quando `qualityGate=blocked`, sempre depois de persistir relatorio/custo e concluir cleanup. Detalhes em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
+`compare` exige as mesmas 40 combinacoes, nove resultados deterministas, 15 entregas cobertas, modelos iguais aos registrados na Q3, inputs sinteticos equivalentes, cleanup, notas minimas, regressao por dimensao, mediana de turnos e custo. `human-packet` monta cinco pares A/B e guarda o gabarito em arquivo privado separado. Em 2026-07-17, a Q4H aprovou os cinco riscos anuais e a Q5A concluiu 10/10 medicoes, sem erro, falha critica ou check reprovado. O runner tambem aceita `rejudge-report <arquivo>` somente para relatorio Q5 privado com cleanup concluido; ele reutiliza transcricao/proposta, envia o escopo canonico ao judge, preserva o parecer anterior e registra apenas o novo custo. Depois do bloqueio inicial da Q5B, o runner passou a encerrar a fase tambem quando `qualityGate=blocked`, sempre depois de persistir relatorio/custo e concluir cleanup; rejudge mantem `qualityStatus` sincronizado. Detalhes em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
 
 A Q4A possui 15 testes unitarios em `_shared/session-adaptive.test.ts` e um smoke pago, opt-in e restrito ao staging:
 
@@ -190,6 +190,14 @@ pnpm run eval:strategic:q4h
 ```
 
 Ela exige nota minima 80 em cada rubrica, media 85, zero candidato critico e zero check reprovado. A rodada aprovada custou US$ 0,263934 e liberou o reinicio limpo da Q5. O judge recebe `sessionScope` com tipo, periodo e area canonicos; um rejudge Q5 nunca regenera o plano nem acessa staging.
+
+A Q4I repete somente o caso trimestral vago que bloqueou a Q5B:
+
+```bash
+pnpm run eval:strategic:q4i
+```
+
+O smoke exige notas minimas 80, media conjunta 85, zero candidato critico, dez checks deterministas e cleanup completo. Ele verifica diagnostico de situacao/causa/impacto, ausencia de menu generico prematuro e preservacao conservadora de cadencia explicitamente informada. A rodada aprovada obteve Conducao 96,25, Plano Trimestral 97,50 e media 96,88; custou US$ 0,034506 e levou o acumulado a US$ 4,612626. Somente `oracle-session` de staging foi publicada.
 
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 

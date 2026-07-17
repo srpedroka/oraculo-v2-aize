@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
+import { preserveExplicitQuarterlyCadence, validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
 
 function completeObjective(overrides: Record<string, unknown> = {}) {
   return {
@@ -96,5 +96,17 @@ describe("quarterly guidance", () => {
   it("exige ao menos uma ação com dono, prazo e critério", () => {
     const proposal = completeProposal({ quarterlyObjectives: [completeObjective({ actions: [] })] });
     expect(reasons(proposal)).toContain("quarterly_incomplete_actions");
+  });
+
+  it("preserva uma cadência semanal explícita sem inventar rotina", () => {
+    const withoutCadence = { reply: "Plano pronto. Confirma?", proposal: completeProposal({ cadence: "" }) };
+    const normalized = preserveExplicitQuarterlyCadence(
+      withoutCadence,
+      "Ação 2: revisar semanalmente as exceções até o fim do trimestre.\nFonte: relatório semanal do funil.",
+    );
+    const untouched = preserveExplicitQuarterlyCadence(withoutCadence, "Fonte: relatório semanal do funil.");
+
+    expect((normalized.proposal as any).cadence).toBe("Ação 2: revisar semanalmente as exceções até o fim do trimestre.");
+    expect(untouched).toBe(withoutCadence);
   });
 });

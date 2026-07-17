@@ -1,6 +1,7 @@
 type QuarterlyEnvelope = {
   reply?: unknown;
   proposal?: unknown;
+  [key: string]: unknown;
 };
 
 type QuarterlyValidationInput = {
@@ -9,6 +10,8 @@ type QuarterlyValidationInput = {
 
 const ACTIVITY_TITLE_PATTERN = /^(?:implantar|implementar|instalar|criar|fazer|planejar|organizar|contratar|desenvolver|configurar)\b/i;
 const ANNUAL_RITUAL_SWITCH_PATTERN = /\b(?:vamos|precisamos|vou)\s+(?:construir|montar|fazer|iniciar|come[cç]ar)\s+(?:o\s+)?(?:planejamento|plano)\s+(?:estrat[eé]gico\s+)?anual\b/i;
+const CADENCE_ACTION_PATTERN = /\b(?:acompanhar|acompanhamento|revisar|revis[aã]o|reuni[aã]o|check-?in|ritual|monitorar|monitoramento)\b/i;
+const CADENCE_FREQUENCY_PATTERN = /\b(?:di[aá]ri[oa]s?|diariamente|semanal|semanalmente|quinzenal|quinzenalmente|mensal|mensalmente|bimestral|bimestralmente|trimestral|trimestralmente)\b/i;
 
 export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL (obrigatorias):
 - O trimestre transforma a direcao anual em 1 a 3 resultados decisivos. Nunca mude para o ritual anual durante esta sessao.
@@ -34,6 +37,28 @@ function text(value: unknown) {
 
 function asArray(value: unknown) {
   return Array.isArray(value) ? value : [];
+}
+
+function explicitCadence(conversationText: string) {
+  return conversationText
+    .split(/[\n;]+/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+    .find((line) => CADENCE_ACTION_PATTERN.test(line) && CADENCE_FREQUENCY_PATTERN.test(line))
+    ?.slice(0, 180) ?? "";
+}
+
+export function preserveExplicitQuarterlyCadence(envelope: QuarterlyEnvelope, conversationText: string) {
+  const proposal = asRecord(envelope.proposal);
+  if (proposal.type !== "save_quarterly_plan" || text(proposal.cadence ?? proposal.cadencia)) return envelope;
+  const cadence = explicitCadence(conversationText);
+  if (!cadence) return envelope;
+  return {
+    ...envelope,
+    proposal: {
+      ...proposal,
+      cadence,
+    },
+  };
 }
 
 function objectiveIsVerifiable(objective: Record<string, unknown>) {

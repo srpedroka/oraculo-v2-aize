@@ -46,6 +46,7 @@ import {
   expectedProposalType,
   isGenerativeCase,
   proposalShouldExist,
+  phaseRunStopReason,
   selectRubricForCase,
   type BaselineRunSummary,
 } from "./strategic-baseline-lib.ts";
@@ -632,6 +633,7 @@ export async function executeCase(
     caseId: item.caseId,
     round,
     status: executionError ? "execution-error" : "measured",
+    qualityStatus: qualityGate.status,
     rubricScores: qualityGate.rubricScores.map((entry) => ({ rubricId: entry.rubricId, score: entry.score })),
     criticalFailureCandidates,
     failedChecks: checks.filter((check) => check.status === "fail").map((check) => check.id),
@@ -709,8 +711,9 @@ async function runPhase(requestedPhase: string) {
       const summary = await executeCase(item, phase, round, rubric);
       progress.runs.push(summary);
       await writePrivateJson(PROGRESS_PATH, progress);
-      if (summary.status === "execution-error") {
-        throw new Error(`${item.caseId} R${round}: erro tecnico registrado; fase interrompida antes da proxima chamada`);
+      const stopReason = phaseRunStopReason(summary);
+      if (stopReason) {
+        throw new Error(`${item.caseId} R${round}: ${stopReason}; fase interrompida antes da proxima chamada`);
       }
     }
   }
@@ -808,13 +811,39 @@ async function archiveExecutionErrors() {
 async function restartQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("restart-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (!(["Q4G", "Q4H"] as string[]).includes(normalizedReference)) {
-    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G ou Q4H)");
+  if (!(["Q4G", "Q4H", "Q4I"] as string[]).includes(normalizedReference)) {
+    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G, Q4H ou Q4I)");
   }
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.runs.length) throw new Error("Q5 ja esta sem medicoes oficiais; reinicio recusado para evitar sobrescrita");
   const archivedAt = new Date().toISOString();
+  if (normalizedReference === "Q4I") {
+    const affectedRuns = progress.runs.filter((run) => run.phase === "Q2B");
+    if (!affectedRuns.length) throw new Error("Q5B nao possui medicao para reiniciar apos Q4I");
+    const calibrationReason = "medicoes Q5B preservadas antes do reinicio trimestral apos aprovacao da correcao Q4I";
+    progress.calibrationRuns = [
+      ...(progress.calibrationRuns ?? []),
+      ...affectedRuns.map((run) => ({ ...run, calibrationReason, archivedAt })),
+    ];
+    progress.restarts = [
+      ...(progress.restarts ?? []),
+      {
+        correctionReference: normalizedReference,
+        archivedAt,
+        previousBaselineVersion: progress.baselineVersion,
+        previousStartedAt: progress.startedAt,
+        previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+        archivedRunCount: affectedRuns.length,
+        archivedDeterministicCount: 0,
+      },
+    ];
+    progress.runs = progress.runs.filter((run) => run.phase !== "Q2B");
+    progress.baselineVersion = "2026-07-17.q5-regression-r4";
+    await writePrivateJson(PROGRESS_PATH, progress);
+    console.log(`Q5B reiniciada apos Q4I: ${affectedRuns.length} medicao(oes) trimestral(is) preservada(s); Q5A e matriz deterministica mantidas; custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
+    return;
+  }
   const calibrationReason = `tentativas Q5A preservadas antes do reinicio completo apos aprovacao da correcao ${normalizedReference}`;
   progress.calibrationRuns = [
     ...(progress.calibrationRuns ?? []),
@@ -1332,6 +1361,7 @@ async function rejudgeReportWithCanonicalScope(reportPathValue: string) {
   const progress = await readRequiredProgress(PROGRESS_PATH, "regressao Q5");
   const run = progress.runs.find((candidate) => candidate.reportPath === reportPath);
   if (!run) throw new Error("rejudge recusado: relatorio nao pertence ao progresso Q5 atual");
+  run.qualityStatus = qualityGate.status;
   run.rubricScores = qualityGate.rubricScores.map((entry) => ({ rubricId: entry.rubricId, score: entry.score }));
   run.criticalFailureCandidates = qualityGate.criticalFailureCandidates;
   run.judgeCostUsd += newJudgeCostUsd;
@@ -1407,7 +1437,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

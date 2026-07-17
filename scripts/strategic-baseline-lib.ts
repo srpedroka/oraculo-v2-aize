@@ -13,6 +13,7 @@ export interface BaselineRunSummary {
   caseId: string;
   round: number;
   status: "measured" | "execution-error";
+  qualityStatus?: "approved" | "blocked";
   rubricScores: Array<{ rubricId: string; score: number }>;
   criticalFailureCandidates: string[];
   failedChecks: string[];
@@ -21,6 +22,12 @@ export interface BaselineRunSummary {
   latencyMs: number;
   defectClasses: string[];
   reportPath: string;
+}
+
+export function phaseRunStopReason(run: BaselineRunSummary) {
+  if (run.status === "execution-error") return "erro tecnico registrado";
+  if (run.qualityStatus === "blocked") return "gate de qualidade bloqueado";
+  return null;
 }
 
 export interface RegressionDeterministicResult {

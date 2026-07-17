@@ -8,6 +8,7 @@ import {
   buildManagerTurns,
   expectedPeriod,
   expectedProposalType,
+  phaseRunStopReason,
   proposalShouldExist,
   selectRubricForCase,
 } from "../../scripts/strategic-baseline-lib";
@@ -131,6 +132,28 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("interrompe a fase depois de persistir um gate de qualidade bloqueado", () => {
+    const run = {
+      phase: "Q2B" as const,
+      caseId: "CASE",
+      round: 1,
+      status: "measured" as const,
+      qualityStatus: "blocked" as const,
+      rubricScores: [{ rubricId: "RUBRIC-CONDUCTION", score: 75 }],
+      criticalFailureCandidates: [],
+      failedChecks: [],
+      generationCostUsd: 0.02,
+      judgeCostUsd: 0.01,
+      latencyMs: 1,
+      defectClasses: [],
+      reportPath: "/private/report.json",
+    };
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+
+    expect(phaseRunStopReason(run)).toBe("gate de qualidade bloqueado");
+    expect(source.indexOf("writePrivateJson(PROGRESS_PATH, progress)")).toBeLessThan(source.indexOf("phaseRunStopReason(summary)"));
+  });
+
   it("reexecuta na Q4G exatamente o primeiro caso anual da Q5 sem tocar seu progresso", () => {
     const source = readFileSync("scripts/strategic-q4g-smoke.ts", "utf8");
     expect(source).toContain("Q2A-ANNUAL-VAGUE-ASPIRATION-001");
@@ -157,7 +180,7 @@ describe("Q3 strategic baseline", () => {
 
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4G", "Q4H"]');
+    expect(source).toContain('["Q4G", "Q4H", "Q4I"]');
     expect(source).toContain("correctionReference: normalizedReference");
     expect(source).toContain("...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt }))");
     expect(source).toContain("progress.restarts = [");
@@ -165,6 +188,9 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain("progress.deterministic = []");
     expect(source).toContain('"2026-07-17.q5-regression-r3"');
     expect(source).toContain("progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd");
+    expect(source).toContain('normalizedReference === "Q4I"');
+    expect(source).toContain('progress.runs.filter((run) => run.phase !== "Q2B")');
+    expect(source).toContain("Q5A e matriz deterministica mantidas");
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {
@@ -173,6 +199,7 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain("reavaliacao com periodo e tipo canonicos da sessao explicitos");
     expect(source).toContain("judgeHistory");
     expect(source).toContain("Q5-REJUDGE:");
+    expect(source).toContain("run.qualityStatus = qualityGate.status");
     expect(source).toContain("cleanup anterior incompleto");
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });

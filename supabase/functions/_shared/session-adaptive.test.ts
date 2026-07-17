@@ -553,6 +553,38 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
+  it("turns a vague quarterly improvement into a business diagnosis", () => {
+    const userMessage = "Precisamos melhorar o Comercial neste trimestre.";
+    const blocked = reasons({
+      reply: "O que destrava o avanço agora: resultado, prazo, responsável ou primeira ação?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "quarterly",
+      userMessage,
+    });
+
+    expect(blocked).toContain("quarterly_vague_diagnosis_missing");
+    expect(fallback).toMatch(/demanda|convers[aã]o|previsibilidade/i);
+    expect(fallback).not.toContain("prazo");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("investigates the cause before jumping from impact to annual alignment", () => {
+    const userMessage = "A dor é a previsão inconsistente, com impacto em estoque e caixa.";
+    const blocked = reasons({
+      reply: "Não há plano anual. Quer seguir com uma exceção consciente?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      sessionType: "quarterly",
+      userMessage,
+    });
+
+    expect(blocked).toContain("quarterly_cause_bypassed");
+    expect(fallback).toContain("causa");
+    expect(fallback).toMatch(/processo|dados|rotina/i);
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
   it("blocks an annual activity and self-declared weak target when they are accepted without challenge", () => {
     const userMessage = "Quero fazer uma campanha e crescer só 2%, mas não sei se o problema é margem, volume ou previsibilidade.";
     const unchallenged = reasons({

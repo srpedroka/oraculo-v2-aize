@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A aprovada; Q5B bloqueada no primeiro caso**
+Status: **Q5A preservada; Q4I aprovada; Q5B pronta para nova execucao autorizada**
 
 ## Objetivo
 
@@ -178,3 +178,33 @@ O defeito esta na conducao: depois da abertura vaga `melhorar o Comercial`, o Or
 O runner atual interrompia automaticamente apenas `execution-error`, nao `qualityGate=blocked`. A execucao foi cancelada manualmente enquanto preparava a segunda rodada. Isso deixou uma unica organizacao sintetica, removida pelo comando restrito `cleanup-stale`; o preflight posterior confirmou zero fixture pendente e acumulado de **US$ 4,578120**. O ledger registrou **US$ 0,033476** para a rodada completa. Como a segunda chamada foi abortada antes de gerar relatorio, eventual custo parcial so pode aparecer no faturamento do provedor e nao foi somado artificialmente ao ledger.
 
 Antes de retomar a Q5B, a correcao focada deve: fazer a primeira pergunta trimestral vaga investigar dor/causa/impacto; aproveitar uma cadencia explicitamente informada sem inventar; e tornar o runner fail-fast tambem para gate de qualidade bloqueado, depois de persistir relatorio, custo e cleanup. Nao iniciar nova rodada paga nem alterar producao sem briefing e autorizacao.
+
+## Correcao Q4I
+
+A Q4I foi implementada e publicada **somente no staging** em 2026-07-17. O runtime trimestral agora:
+
+- transforma uma abertura vaga em caminhos concretos para diagnosticar situacao, causa, impacto e mudanca desejada;
+- nao deixa a ausencia de plano anual interromper o diagnostico do problema da area;
+- pede causa ou gargalo quando dor e impacto ja estao claros, antes de saltar para alinhamento ou campos operacionais;
+- preserva uma cadencia somente quando o gestor informa ao mesmo tempo uma acao de acompanhamento e uma frequencia explicita, evitando inventar rotina a partir de mencoes como "relatorio semanal".
+
+O runner passou a persistir progresso e interromper a fase tanto em erro de execucao quanto em gate de qualidade bloqueado. A parada acontece somente depois de relatorio, custo e cleanup; um rejudge tambem atualiza o estado resumido de qualidade da medicao.
+
+O smoke pago repetiu exatamente `Q2B-QUARTERLY-VAGUE-PROBLEM-001` e passou:
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 96,25 |
+| Plano Trimestral | 97,50 |
+| Media conjunta | 96,88 |
+
+Foram aprovados os dez checks deterministas, sem falha critica, gravacao prematura, confirmacao duplicada, divergencia ou residuo. A proposta preservou `revisar semanalmente as excecoes ate 30/09/2027` como cadencia explicita.
+
+| Item | Valor |
+|---|---:|
+| Smoke Q4I | US$ 0,034506 |
+| Acumulado antes | US$ 4,578120 |
+| Acumulado depois | US$ 4,612626 |
+| Limite autorizado | US$ 20,00 |
+
+Depois do preflight limpo, a Q5B foi reiniciada como baseline `2026-07-17.q5-regression-r4`. A tentativa bloqueada continua arquivada para auditoria; as dez medicoes Q5A e a matriz deterministica foram preservadas. Nenhuma nova rodada Q5B foi iniciada. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.

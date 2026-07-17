@@ -52,6 +52,11 @@ const STRATEGIC_LIMITED_CAPACITY_PATTERN = /\bcapacidade\b[\s\S]{0,80}\b(?:limit
 const STRATEGIC_PORTFOLIO_LIMIT_PATTERN = /\b(?:quatro|4)\s+objetivos\b|\bobjetivo\s+4\b/i;
 const STRATEGIC_RENUNCIATION_CONTEXT_PATTERN = /\bren[uú]ncias?\b/i;
 const STRATEGIC_FINAL_TENSION_PATTERN = /\bcapacidade\b[\s\S]{0,260}\b(?:limite|ren[uú]ncia|prioridade|excesso|sobrecarga|pressionar)\b|\b(?:limite|ren[uú]ncia|prioridade|excesso|sobrecarga|pressionar)\b[\s\S]{0,260}\bcapacidade\b/i;
+const QUARTERLY_VAGUE_IMPROVEMENT_PATTERN = /\b(?:precisamos|queremos|quero|vamos)?\s*melhorar\b[\s\S]{0,100}\b(?:neste|nesse|no)\s+trimestre\b/i;
+const QUARTERLY_DIAGNOSIS_REPLY_PATTERN = /\b(?:problema|dor|gargalo|causa|impacto|afeta|prejudica|convers[aã]o|previsibilidade|demanda)\b/i;
+const QUARTERLY_PROBLEM_IMPACT_PATTERN = /\b(?:dor|problema)\b[\s\S]{0,220}\bimpacto\b|\bimpacto\b[\s\S]{0,220}\b(?:dor|problema)\b/i;
+const QUARTERLY_CAUSE_PATTERN = /\b(?:causa|porque|por causa|devido|origem|gargalo)\b/i;
+const QUARTERLY_ALIGNMENT_JUMP_PATTERN = /\b(?:plano|objetivo|alinhamento)\s+(?:estrat[eé]gico|anual)\b[\s\S]{0,180}\b(?:exce[cç][aã]o|seguir|continuar)\b|\bexce[cç][aã]o\b[\s\S]{0,180}\b(?:plano|objetivo|alinhamento)\s+(?:estrat[eé]gico|anual)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -98,6 +103,8 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_unverifiable_objective: "um objetivo trimestral nao preservou indicador, baseline, alvo, fonte, prazo, dono e resultado",
   quarterly_activity_as_objective: "uma atividade foi tratada como resultado final do trimestre",
   quarterly_incomplete_actions: "faltou ao menos uma acao com dono, prazo e criterio de conclusao",
+  quarterly_vague_diagnosis_missing: "uma abertura trimestral vaga recebeu campos genericos em vez de investigar o problema de negocio",
+  quarterly_cause_bypassed: "a conducao pulou da dor e do impacto para o alinhamento anual sem investigar a causa",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
   monthly_wrong_proposal_type: "a proposta nao e do tipo mensal esperado",
   monthly_missing_objectives: "a proposta mensal nao possui resultado priorizado",
@@ -366,6 +373,17 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
       reasons.push("strategic_unasked_pending_decision");
     }
   }
+  if (input.sessionType === "quarterly") {
+    if (QUARTERLY_VAGUE_IMPROVEMENT_PATTERN.test(input.userMessage)
+      && !QUARTERLY_DIAGNOSIS_REPLY_PATTERN.test(reply)) {
+      reasons.push("quarterly_vague_diagnosis_missing");
+    }
+    if (QUARTERLY_PROBLEM_IMPACT_PATTERN.test(input.userMessage)
+      && !QUARTERLY_CAUSE_PATTERN.test(input.userMessage)
+      && QUARTERLY_ALIGNMENT_JUMP_PATTERN.test(reply)) {
+      reasons.push("quarterly_cause_bypassed");
+    }
+  }
 
   const currentIndex = input.phases.indexOf(input.currentPhase);
   const nextIndex = input.phases.indexOf(text(input.envelope.next_phase));
@@ -624,6 +642,12 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
   }
   if (sessionType === "quarterly" && /\bprioridades?\b/i.test(userMessage) && /\b(?:capacidade|comporta|cabem|cabe)\b/i.test(userMessage)) {
     return "Há mais prioridades do que capacidade, então manter todas esconderia a escolha. Quais entregas têm maior impacto no objetivo anual dentro da capacidade real?";
+  }
+  if (sessionType === "quarterly" && QUARTERLY_VAGUE_IMPROVEMENT_PATTERN.test(userMessage)) {
+    return "“Melhorar” ainda está amplo. O que mais prejudica o resultado hoje: geração de demanda, conversão, previsibilidade ou outro problema concreto?";
+  }
+  if (sessionType === "quarterly" && QUARTERLY_PROBLEM_IMPACT_PATTERN.test(userMessage) && !QUARTERLY_CAUSE_PATTERN.test(userMessage)) {
+    return "O impacto no resultado já está claro. O que mais causa esse problema hoje: processo, dados, rotina da equipe ou outro gargalo?";
   }
   return "";
 }

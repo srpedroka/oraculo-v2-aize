@@ -35,6 +35,7 @@
     "eval:strategic:q4e": "ORACULO_Q4E_REPORT=1 vitest --config vitest.integration.config.ts run tests/integration/strategic-q4e-output-equality.test.ts --passWithNoTests=false",
     "eval:strategic:q4g": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4g-smoke.ts",
     "eval:strategic:q4h": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4h-smoke.ts",
+    "eval:strategic:q4i": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4i-smoke.ts",
     "eval:strategic:review": "RUN_STRATEGIC_REVIEW_LIVE=true vitest --config vitest.integration.config.ts run tests/integration/strategic-review-live.test.ts --passWithNoTests=false",
     "test:master:setup": "node --experimental-strip-types scripts/master-test.ts setup",
     "test:master:verify": "node --experimental-strip-types scripts/master-test.ts verify",

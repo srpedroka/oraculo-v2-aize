@@ -860,3 +860,11 @@ Decisao: quando receita, margem e capacidade ja formam uma tensao explicita, o c
 Motivo: os smokes Q4H mostraram que regenerar uma proposta longa para corrigir apenas a sintese causa timeout, custo e variacao. A Q5A tambem produziu um falso positivo de fabricacao porque o judge nao sabia que `2027` ja era o periodo da sessao. Penalizar um gestor por enviar um bloco completo ainda incentivava burocracia contraria ao produto.
 
 Consequencias: a sintese deterministica nunca inventa fatos, pois le apenas a proposal ja validada; defeitos reais de conteudo continuam bloqueados. O protocolo de avaliacao trata blocos confirmados como respostas do gestor, separa nota do artefato da quantidade de turnos e registra `judgeHistory`. Q4H passou 5/5 e Q5A passou 10/10; Q5B continua separada.
+
+## 2026-07-17 - Diagnostico trimestral antes de campos e fail-fast por qualidade
+
+Decisao: uma abertura trimestral vaga deve investigar situacao, causa, impacto e mudanca desejada antes de perguntar resultado, prazo, responsavel, acao ou alinhamento anual. Cadencia so pode ser copiada para a proposta quando a conversa combina uma acao explicita de acompanhamento com uma frequencia explicita. No laboratorio pago, qualquer gate de qualidade bloqueado encerra a fase depois de persistir relatorio, custo e cleanup, da mesma forma que um erro tecnico.
+
+Motivo: a primeira Q5B produziu um plano materialmente forte, mas a conducao recebeu 75 porque ofereceu um menu generico cedo demais; tambem perdeu uma revisao semanal explicitamente informada. O runner chegou a iniciar a rodada seguinte porque distinguia falha tecnica de falha qualitativa, consumindo risco e custo sem utilidade.
+
+Consequencias: o gestor recebe uma conversa mais inteligente sem etapa adicional; ausencia de plano anual nao impede entender o problema da area; e rotina nao e inventada a partir de frases ambiguas. O smoke Q4I passou com Conducao 96,25, Plano Trimestral 97,50, media 96,88 e custo US$ 0,034506. A Q5B foi reiniciada preservando Q5A e a medicao bloqueada para auditoria; producao permaneceu inalterada.

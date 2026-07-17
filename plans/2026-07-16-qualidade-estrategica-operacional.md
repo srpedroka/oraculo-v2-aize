@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4H e Q5A aprovadas no staging, Q5B bloqueada no primeiro caso**
+Status: **em execucao; Q4I aprovada no staging, Q5A preservada e Q5B pronta para nova execucao autorizada**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -499,6 +499,8 @@ Estado apos Q4H/Q5A em 2026-07-17: os cinco riscos anuais passaram no smoke Q4H.
 
 Bloqueio Q5B em 2026-07-17: a primeira rodada trimestral vaga entregou Plano Trimestral 92,50, Conducao 75 e media 83,75, sem falha critica e com dez checks deterministas verdes. O defeito comprovado e o menu generico prematuro antes de investigar dor, causa e impacto, alem de cadencia vazia apesar de acompanhamento semanal explicito. A execucao foi interrompida porque o runner ainda tratava apenas erro tecnico como fail-fast; uma fixture sintetica iniciada na rodada seguinte foi removida e o preflight confirmou staging limpo. Custo confirmado US$ 0,033476; acumulado US$ 4,578120, com eventual custo parcial da chamada abortada verificavel somente no provedor. Voltar ao Q4 para correcao focada e briefing antes de nova chamada paga.
 
+Estado apos Q4I em 2026-07-17: a conversa trimestral vaga passou a investigar situacao, causa, impacto e mudanca desejada antes de campos operacionais ou alinhamento anual. Cadencia explicita e preservada apenas quando existe acao de acompanhamento mais frequencia, sem inferir rotina de mencoes ambiguas. O runner agora encerra a fase em erro tecnico ou qualidade bloqueada, sempre depois de persistir relatorio, custo e cleanup. O smoke exato passou com Conducao 96,25, Plano Trimestral 97,50, media 96,88, zero falha critica e dez checks verdes. Custo US$ 0,034506; acumulado US$ 4,612626. A Q5B foi reiniciada como `2026-07-17.q5-regression-r4`, preservando Q5A, matriz deterministica e a medicao bloqueada para auditoria. Somente `oracle-session` de staging mudou; producao segue intocada.
+
 ## Q6 — Aceite da qualidade estratégica
 
 ### Entregáveis
@@ -827,4 +829,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing de **reinicio controlado da Q5**. Preservar as tentativas Q5A anteriores como calibracao, abrir progresso limpo para as 40 rodadas comparaveis e manter o mesmo catalogo/modelos. Informar custo estimado e pedir nova autorizacao paga antes da primeira fase. Nao iniciar Q6/Mapa B nem tocar producao automaticamente.
+Apresentar o briefing da **nova execucao Q5B trimestral**. Manter Q5A e a matriz deterministica ja aprovadas, executar as 16 medicoes Q5B com fail-fast de execucao e qualidade e informar custo estimado, saldo e rollback antes da primeira chamada paga. Nao iniciar Q5C, Q5D, Q6/Mapa B nem tocar producao automaticamente.
