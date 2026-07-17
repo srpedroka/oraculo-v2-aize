@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4A, Q4B, Q4C e Q4D concluidas no staging; Q4E e a proxima fatia**
+Status: **em execução; Q4A-Q4E concluidas no staging; Q4F e a proxima fatia**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada. Q4A-Q4D foram concluidas no staging. A Q4D corrigiu bordoes, perguntas sem fato, descarte de fala segura, confirmacoes genericas, atividade/meta fraca no anual e saltos do diagnostico para direcionadores; fechamentos ganharam veredito, aprendizado e ponte. O gate final reutilizou o judge ja pago e normalizou os criterios aplicaveis de 85 para 100 pontos, aprovando 95,59 sem alterar ratings nem fazer nova chamada. Q4D custou US$ 0,553094; acumulado US$ 2,890842. Producao, frontend e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4E antes de alterar saidas e rastreabilidade.
+Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada. Q4A-Q4E foram concluidas no staging. A Q4D corrigiu naturalidade e os fechamentos; a Q4E passou a preservar origem/versao/rastreabilidade e comprovou igualdade material entre proposta, banco, documento, tela, PDF e WhatsApp. O smoke Q4E comparou 18 fatos materiais, sem mutacao de renderizacao, chamada de IA ou residuo. Q4E custou US$ 0; acumulado permanece US$ 2,890842. Producao, Netlify e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4F antes da integracao completa.
 
 ## Q4 — Correções orientadas pela evidência
 
@@ -462,7 +462,7 @@ Corrige apenas falhas demonstradas no baseline. Antes desta fatia, apresentar ex
 
 Todas as correções têm teste reproduzindo a falha original e briefing funcional aprovado.
 
-Estado parcial: Q4A (motor adaptativo), Q4B (trimestral), Q4C (mensal) e Q4D (naturalidade/fechamentos) estao aprovadas no staging. Q4E e Q4F ainda nao foram iniciadas; Q5 continua bloqueada ate o gate completo da Q4.
+Estado parcial: Q4A (motor adaptativo), Q4B (trimestral), Q4C (mensal), Q4D (naturalidade/fechamentos) e Q4E (saidas/rastreabilidade) estao aprovadas no staging. Q4F ainda nao foi iniciada; Q5 continua bloqueada ate o gate completo da Q4.
 
 ### Rollback
 
@@ -819,4 +819,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Criar manualmente a chave xAI temporária `oraculo-q1-staging-temporary`, guardá-la apenas no arquivo privado e executar a **Q1 anual** no staging. Ao final, informar custo de geração, judge, total e acumulado; apresentar plano real, notas, falhas, cleanup e decisão do gate. Não iniciar Q2 antes do aceite do relatório Q1.
+Apresentar o briefing da **Q4F — integração e aceite técnico**. Explicar a regressão completa, ambientes, dados descartáveis, custo estimado e rollback; obter autorização explícita antes de executar. Não iniciar Q5, Mapa B ou produção automaticamente.

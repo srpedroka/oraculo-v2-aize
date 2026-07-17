@@ -149,6 +149,14 @@ pnpm run eval:strategic:q4d:recompute .agents-private/<relatorio-q4d>.json
 
 O runner executa anual, trimestral, mensal, Revisao Estrategica e fechamentos mensal/trimestral em uma empresa descartavel. Checa uma pergunta, resposta curta, ausencia de bordao/estado tecnico, pergunta ancorada, proposta mensal, zero mutacao e cleanup; o judge avalia escopo, diagnostico, pergunta, desafio, naturalidade, fidelidade e fechamento. `ORACULO_Q4D_DIAGNOSTIC=1` e `ORACULO_Q4D_CASES=ANNUAL|MONTHLY` isolam defeitos sem chamar judge. O recálculo e somente leitura: preserva o relatorio original, normaliza os pesos aplicaveis para 100 e nao chama provider nem staging. Gate final: 95,59, zero candidato critico. Q4D total US$ 0,553094; acumulado US$ 2,890842. Os relatorios bloqueados e erros transitórios foram preservados; todas as empresas, usuarios e chaves descartaveis foram removidos.
 
+A Q4E adiciona testes unitarios dos tres renderizadores e uma integracao opt-in restrita ao staging:
+
+```bash
+pnpm run eval:strategic:q4e
+```
+
+O teste cria empresa e usuario descartaveis, confirma uma proposta trimestral pela `oracle-session`, compara os objetos semanticos da proposta, banco e documento canonico e procura os mesmos 18 fatos materiais na tela, PDF e WhatsApp. Tambem verifica fingerprint igual, zero mutacao durante a renderizacao, zero `ai_usage_logs` e cleanup. O relatorio opcional fica privado em `.agents-private/strategic-q4e-output-equality-*.json`. Em 2026-07-17, a prova final passou 18/18 sem chamar IA; custo Q4E US$ 0 e acumulado US$ 2,890842.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

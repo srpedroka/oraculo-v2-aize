@@ -68,6 +68,7 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
     asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
     asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
     asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
+    asText(objective.prazo) ? `Prazo: ${asText(objective.prazo)}` : "",
     asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
     asText(objective.status_final) ? `Status final: ${asText(objective.status_final)}` : "",
     objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
@@ -171,6 +172,70 @@ function StrategicSection({ content }: { content: Record<string, unknown> }) {
   );
 }
 
+function QuarterlySection({ content }: { content: Record<string, unknown> }) {
+  const quarterly = asRecord(content.quarterly);
+  const role = asRecord(quarterly.papel_area);
+  const diagnosis = asRecord(quarterly.diagnostico);
+  const alignment = asRecord(quarterly.alinhamento_anual);
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <KeyValue label="Papel da área" value={role.missao} />
+      <KeyValue label="Contribuição" value={asArray<string>(role.contribuicao).join("; ")} />
+      <KeyValue label="Alinhamento anual" value={alignment.objetivo} />
+      <KeyValue label="Justificativa" value={alignment.justificativa} />
+      <KeyValue label="Forças" value={asArray<string>(diagnosis.forcas).join("; ")} />
+      <KeyValue label="Gargalos" value={asArray<string>(diagnosis.gargalos).join("; ")} />
+      <KeyValue label="Riscos" value={asArray<string>(quarterly.riscos).join("; ")} />
+      <KeyValue label="Escolhas e renúncias" value={asArray<string>(quarterly.trade_offs).join("; ")} />
+      <KeyValue label="Acompanhamento" value={quarterly.cadencia} />
+    </div>
+  );
+}
+
+function MonthlySection({ content }: { content: Record<string, unknown> }) {
+  const monthly = asRecord(content.monthly);
+  const alignment = asRecord(monthly.alinhamento_trimestral);
+  const capacity = asRecord(monthly.capacidade);
+  const pending = asArray<Record<string, unknown>>(monthly.decisoes_pendentes)
+    .map((item) => [asText(item.item), asText(item.decisao)].filter(Boolean).join(" → "))
+    .filter(Boolean);
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <KeyValue label="Alinhamento trimestral" value={alignment.objetivo} />
+      <KeyValue label="Justificativa" value={alignment.justificativa} />
+      <KeyValue
+        label="Capacidade"
+        value={capacity.acoes_comprometidas !== undefined ? `${capacity.acoes_comprometidas}/${capacity.maximo_acoes_comprometidas} ações comprometidas` : ""}
+      />
+      <KeyValue label="Pendências" value={pending.join("; ")} />
+      <KeyValue label="Backlog" value={asArray<string>(monthly.backlog).join("; ")} />
+      <KeyValue label="Riscos" value={asArray<string>(monthly.riscos).join("; ")} />
+      <KeyValue label="Bloqueios" value={asArray<string>(monthly.bloqueios).join("; ")} />
+      <KeyValue label="Acompanhamento" value={monthly.cadencia} />
+      <KeyValue label="Próximo compromisso" value={monthly.proximo_compromisso} />
+    </div>
+  );
+}
+
+function StrategicReviewSection({ content }: { content: Record<string, unknown> }) {
+  const adjustments = asArray<Record<string, unknown>>(content.ajustes);
+  return (
+    <div className="space-y-5">
+      <KeyValue label="Motivo" value={content.motivo_revisao} />
+      {adjustments.map((adjustment, index) => (
+        <article key={`${asText(adjustment.objetivo_id)}-${index}`} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+          <p className="text-sm font-semibold text-text">{asText(adjustment.titulo, "Objetivo")}</p>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">
+            <span className="font-medium text-text">Alteração: </span>
+            {asText(adjustment.campo)}: {asText(adjustment.de)} → {asText(adjustment.para)}
+          </p>
+          <KeyValue label="Justificativa" value={adjustment.porque} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function PlanDocumentView({ document, printMode = false }: { document: PlanDocument; printMode?: boolean }) {
   const content = document.content ?? {};
   const type = document.type;
@@ -245,6 +310,60 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
     );
   }
 
+  const traceability = asRecord(content.rastreabilidade);
+  const traceabilitySource = asText(traceability.origem) === "proposta_confirmada"
+    ? "Proposta confirmada"
+    : document.origin === "session" ? "Sessão do Oráculo" : "Documento do Oráculo";
+  const sections: ReactNode[] = [];
+  const addSection = (key: string, title: string, children: ReactNode) => {
+    sections.push(<Section key={key} index={sections.length + 1} title={title}>{children}</Section>);
+  };
+
+  if (context.length) addSection("context", "Contexto Rápido", <TextList items={context} />);
+  if (["strategic", "quarterly", "monthly"].includes(type)) {
+    addSection(
+      "reference",
+      type === "strategic" ? "Estrutura Estratégica" : "Referência",
+      type === "strategic" ? (
+        <StrategicSection content={content} />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          <KeyValue label="Objetivo anual" value={asRecord(content.referencia).objetivo_anual} />
+          <KeyValue label="Objetivos do trimestre" value={asArray<string>(asRecord(content.referencia).objetivos_trimestre).join("; ")} />
+        </div>
+      ),
+    );
+  }
+  if (type === "quarterly") addSection("quarterly", "Decisões do Trimestre", <QuarterlySection content={content} />);
+  if (type === "monthly") addSection("monthly", "Decisões do Mês", <MonthlySection content={content} />);
+  if (type === "strategic_review") addSection("strategic-review", "Ajustes da Revisão", <StrategicReviewSection content={content} />);
+  if (objectives.length) {
+    addSection(
+      "objectives",
+      type.includes("close") ? "Revisão dos Objetivos" : "Objetivos e Ações",
+      <div className="space-y-7">
+        {objectives.map((objective, index) => (
+          <ObjectiveBlock key={`${asText(objective.titulo)}-${index}`} objective={objective} />
+        ))}
+      </div>,
+    );
+  }
+  if (Object.keys(closing).length) {
+    addSection(
+      "closing",
+      "Fechamento",
+      <div className="grid gap-4 md:grid-cols-2">
+        <KeyValue label="Resumo" value={closing.resumo} />
+        <KeyValue label="Conclusão" value={closing.percentual !== null && closing.percentual !== undefined ? `${closing.percentual}%` : ""} />
+        <KeyValue label="Aprendizados" value={asArray<string>(closing.aprendizados).join("; ")} />
+        <KeyValue label="Pendências" value={asArray<string>(closing.pendencias).join("; ")} />
+        <KeyValue label="Decisões" value={asArray<string>(closing.decisoes).join("; ")} />
+        <KeyValue label="Próximo período" value={closing.proximo_periodo} />
+      </div>,
+    );
+  }
+  if (focus.length) addSection("learning", "Foco de Aprendizado", <TextList items={focus} />);
+
   return (
     <article className={["plan-document mx-auto bg-white text-text", printMode ? "max-w-[210mm] px-0 py-0" : "rounded-[18px] border border-border p-6 shadow-card lg:p-10"].join(" ")}>
       <header className="plan-document-header border-b border-border pb-8">
@@ -258,63 +377,17 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
           </div>
           <div className="text-left text-xs leading-5 text-text-tertiary sm:text-right">
             <p>Versão {document.version}</p>
-            <p>Gerado pelo Oráculo</p>
+            <p>Origem: {traceabilitySource}</p>
           </div>
         </div>
       </header>
 
-      <div className="space-y-10 py-8">
-        {context.length ? (
-          <Section index={1} title="Contexto Rápido">
-            <TextList items={context} />
-          </Section>
-        ) : null}
+      <div className="space-y-10 py-8">{sections}</div>
 
-        <Section index={context.length ? 2 : 1} title={type === "strategic" ? "Estrutura Estratégica" : "Referência"}>
-          {type === "strategic" ? (
-            <StrategicSection content={content} />
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              <KeyValue label="Objetivo anual" value={asRecord(content.referencia).objetivo_anual} />
-              <KeyValue label="Objetivos do trimestre" value={asArray<string>(asRecord(content.referencia).objetivos_trimestre).join("; ")} />
-            </div>
-          )}
-        </Section>
-
-        {objectives.length ? (
-          <Section index={context.length ? 3 : 2} title={type.includes("close") ? "Revisão dos Objetivos" : "Objetivos e Ações"}>
-            <div className="space-y-7">
-              {objectives.map((objective, index) => (
-                <ObjectiveBlock key={`${asText(objective.titulo)}-${index}`} objective={objective} />
-              ))}
-            </div>
-          </Section>
-        ) : null}
-
-        {Object.keys(closing).length ? (
-          <Section index={context.length ? 4 : 3} title="Fechamento">
-            <div className="grid gap-4 md:grid-cols-2">
-              <KeyValue label="Resumo" value={closing.resumo} />
-              <KeyValue label="Conclusão" value={closing.percentual !== null && closing.percentual !== undefined ? `${closing.percentual}%` : ""} />
-              <KeyValue label="Aprendizados" value={asArray<string>(closing.aprendizados).join("; ")} />
-              <KeyValue label="Pendências" value={asArray<string>(closing.pendencias).join("; ")} />
-              <KeyValue label="Decisões" value={asArray<string>(closing.decisoes).join("; ")} />
-              <KeyValue label="Próximo período" value={closing.proximo_periodo} />
-            </div>
-          </Section>
-        ) : null}
-
-        {focus.length ? (
-          <Section index={Object.keys(closing).length ? 5 : 4} title="Foco de Aprendizado">
-            <TextList items={focus} />
-          </Section>
-        ) : null}
-      </div>
-
-      {asText(content.frase_de_foco) ? (
+      {asText(content.frase_de_foco) || printMode ? (
         <footer className="plan-document-footer border-t border-border pt-8 text-center">
-          <p className="text-lg font-medium italic leading-8 text-text-secondary">{asText(content.frase_de_foco)}</p>
-          {printMode ? <p className="mt-8 text-[10px] not-italic uppercase tracking-[0.16em] text-text-tertiary">Gerado pelo Oráculo · {generatedAt}</p> : null}
+          {asText(content.frase_de_foco) ? <p className="text-lg font-medium italic leading-8 text-text-secondary">{asText(content.frase_de_foco)}</p> : null}
+          {printMode ? <p className="mt-8 text-[10px] not-italic uppercase tracking-[0.16em] text-text-tertiary">{traceabilitySource} · versão {document.version} · {generatedAt}</p> : null}
         </footer>
       ) : null}
     </article>

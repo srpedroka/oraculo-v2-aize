@@ -20,6 +20,7 @@ describe("PlanDocumentView", () => {
       content: {
         empresa: "Empresa Q1",
         periodo: "2026",
+        rastreabilidade: { schema_version: 1, origem: "proposta_confirmada", tipo_sessao: "strategic" },
         strategic: {
           temas: ["Crescer com previsibilidade"],
           renuncias: ["Nao abrir projetos paralelos"],
@@ -34,6 +35,7 @@ describe("PlanDocumentView", () => {
             atual: "55%",
             indicador: "Receita prevista realizada",
             meta: "80%",
+            prazo: "2026-12-31",
             fonte: "CRM",
             estrategias: ["Revisar o funil semanalmente"],
           },
@@ -49,10 +51,51 @@ describe("PlanDocumentView", () => {
     expect(screen.getByText("Decisões pendentes:")).toBeInTheDocument();
     expect(screen.getByText("Aprendizados anteriores:")).toBeInTheDocument();
     expect(screen.getByText(/Baseline: 55%/)).toBeInTheDocument();
+    expect(screen.getByText(/Prazo: 2026-12-31/)).toBeInTheDocument();
     expect(screen.getByText("Fonte:")).toBeInTheDocument();
     expect(screen.getByText("CRM")).toBeInTheDocument();
     expect(screen.getByText("Revisar o funil semanalmente")).toBeInTheDocument();
     expect(screen.queryByText("Forças")).not.toBeInTheDocument();
     expect(screen.queryByText("Fraquezas")).not.toBeInTheDocument();
+    expect(screen.getByText("Origem: Proposta confirmada")).toBeInTheDocument();
+  });
+
+  it("renderiza a revisão estratégica com antes, depois e justificativa", () => {
+    const document: PlanDocument = {
+      id: "document-review",
+      orgId: "org-review",
+      areaId: null,
+      sessionId: "session-review",
+      type: "strategic_review",
+      origin: "session",
+      period: "2027",
+      title: "Revisão Estratégica 2027",
+      version: 2,
+      createdBy: "owner-review",
+      createdAt: "2026-07-17T12:00:00.000Z",
+      content: {
+        empresa: "Empresa Q4E",
+        tipo: "strategic_review",
+        periodo: "2027",
+        motivo_revisao: "Fechamento validou uma nova linha de base",
+        rastreabilidade: { schema_version: 1, origem: "proposta_confirmada", tipo_sessao: "strategic_review" },
+        ajustes: [{
+          objetivo_id: "objective-review",
+          titulo: "Aumentar previsibilidade",
+          campo: "current",
+          de: "52%",
+          para: "45%",
+          porque: "O relatório semanal consolidou o resultado",
+        }],
+      },
+    };
+
+    render(<PlanDocumentView document={document} />);
+
+    expect(screen.getByText("Ajustes da Revisão")).toBeInTheDocument();
+    expect(screen.getByText("Fechamento validou uma nova linha de base")).toBeInTheDocument();
+    expect(screen.getByText(/current: 52% → 45%/)).toBeInTheDocument();
+    expect(screen.getByText("O relatório semanal consolidou o resultado")).toBeInTheDocument();
+    expect(screen.queryByText("Referência")).not.toBeInTheDocument();
   });
 });

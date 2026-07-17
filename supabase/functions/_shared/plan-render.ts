@@ -7,6 +7,10 @@ function asText(value: unknown, fallback = "") {
   return text || fallback;
 }
 
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
 function documentTypeLabel(value: unknown) {
   const type = asText(value);
   if (type === "strategic") return "PLANO ESTRATÉGICO";
@@ -14,8 +18,13 @@ function documentTypeLabel(value: unknown) {
   if (type === "monthly") return "PLANO MENSAL";
   if (type === "month_close") return "FECHAMENTO MENSAL";
   if (type === "quarter_close") return "FECHAMENTO TRIMESTRAL";
+  if (type === "strategic_review") return "REVISÃO ESTRATÉGICA";
   if (type === "kpi_history") return "HISTÓRICO DE KPIs";
   return "DOCUMENTO ORÁCULO";
+}
+
+function sourceLabel(value: unknown) {
+  return asText(value) === "proposta_confirmada" ? "Proposta confirmada" : "Documento do Oráculo";
 }
 
 function actionLine(action: any) {
@@ -34,6 +43,7 @@ function objectiveBlock(objective: any) {
     asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
     asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
     asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
+    asText(objective.prazo) ? `Prazo: ${asText(objective.prazo)}` : "",
     asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
     asText(objective.status_final) ? `Status final: ${asText(objective.status_final)}` : "",
     objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
@@ -45,65 +55,145 @@ function objectiveBlock(objective: any) {
   const deliverables = asArray<string>(objective.entregas).length ? [`Entregas: ${asArray<string>(objective.entregas).join("; ")}`] : [];
   const actions = asArray<any>(objective.acoes).map(actionLine);
   const evidence = asText(objective.evidencia) ? [`Evidência: ${asText(objective.evidencia)}`] : [];
-  return [header, ...meta, ...result, ...source, ...link, ...strategies, ...deliverables, ...actions, ...evidence].filter(Boolean).join("\n");
+  const decision = asText(objective.decisao) ? [`Decisão: ${asText(objective.decisao)}`] : [];
+  return [header, ...meta, ...result, ...source, ...link, ...strategies, ...deliverables, ...actions, ...evidence, ...decision].filter(Boolean).join("\n");
 }
 
-export function renderPlanForWhatsApp(content: any) {
+function strategicBlock(content: any) {
+  const strategic = asRecord(content?.strategic);
+  if (!Object.keys(strategic).length) return "";
+  const drivers = asRecord(strategic.direcionadores);
+  const swot = asRecord(strategic.swot);
+  const lines = ["*Estrutura estratégica*"];
+  if (asText(drivers.proposito)) lines.push(`Propósito: ${asText(drivers.proposito)}`);
+  if (asText(drivers.visao)) lines.push(`Visão: ${asText(drivers.visao)}`);
+  for (const [label, values] of [
+    ["Valores", drivers.valores],
+    ["Temas", strategic.temas],
+    ["Forças", swot.forcas],
+    ["Fraquezas", swot.fraquezas],
+    ["Oportunidades", swot.oportunidades],
+    ["Ameaças", swot.ameacas],
+    ["Renúncias", strategic.renuncias],
+    ["Riscos", strategic.riscos],
+    ["Decisões pendentes", strategic.decisoes_pendentes],
+    ["Aprendizados anteriores", strategic.aprendizados_historicos],
+    ["Rituais", strategic.rituais],
+  ] as Array<[string, unknown]>) {
+    const items = asArray<string>(values).filter(Boolean);
+    if (items.length) lines.push(`${label}: ${items.join("; ")}`);
+  }
+  const projects = asArray<any>(strategic.projetos);
+  if (projects.length) {
+    lines.push("Projetos prioritários:");
+    lines.push(...projects.map((project) => {
+      const details = [asText(project.responsavel) && `dono: ${asText(project.responsavel)}`, asText(project.prazo) && `prazo: ${asText(project.prazo)}`, asText(project.vinculo) && `vínculo: ${asText(project.vinculo)}`].filter(Boolean);
+      return `- ${asText(project.nome, "Projeto")}${details.length ? ` (${details.join(" · ")})` : ""}`;
+    }));
+  }
+  return lines.join("\n");
+}
+
+function quarterlyBlock(content: any) {
+  const quarterly = asRecord(content?.quarterly);
+  if (!Object.keys(quarterly).length) return "";
+  const role = asRecord(quarterly.papel_area);
+  const diagnosis = asRecord(quarterly.diagnostico);
+  const alignment = asRecord(quarterly.alinhamento_anual);
+  const lines = ["*Decisões do trimestre*"];
+  if (asText(role.missao)) lines.push(`Papel da área: ${asText(role.missao)}`);
+  if (asArray<string>(role.contribuicao).length) lines.push(`Contribuição: ${asArray<string>(role.contribuicao).join("; ")}`);
+  if (asText(alignment.objetivo)) lines.push(`Alinhamento anual: ${asText(alignment.objetivo)}`);
+  if (asText(alignment.justificativa)) lines.push(`Justificativa: ${asText(alignment.justificativa)}`);
+  if (asArray<string>(diagnosis.forcas).length) lines.push(`Forças: ${asArray<string>(diagnosis.forcas).join("; ")}`);
+  if (asArray<string>(diagnosis.gargalos).length) lines.push(`Gargalos: ${asArray<string>(diagnosis.gargalos).join("; ")}`);
+  if (asArray<string>(quarterly.riscos).length) lines.push(`Riscos: ${asArray<string>(quarterly.riscos).join("; ")}`);
+  if (asArray<string>(quarterly.trade_offs).length) lines.push(`Escolhas e renúncias: ${asArray<string>(quarterly.trade_offs).join("; ")}`);
+  if (asText(quarterly.cadencia)) lines.push(`Acompanhamento: ${asText(quarterly.cadencia)}`);
+  return lines.join("\n");
+}
+
+function monthlyBlock(content: any) {
+  const monthly = asRecord(content?.monthly);
+  if (!Object.keys(monthly).length) return "";
+  const alignment = asRecord(monthly.alinhamento_trimestral);
+  const capacity = asRecord(monthly.capacidade);
+  const lines = ["*Decisões do mês*"];
+  if (asText(alignment.objetivo)) lines.push(`Alinhamento trimestral: ${asText(alignment.objetivo)}`);
+  if (asText(alignment.justificativa)) lines.push(`Justificativa: ${asText(alignment.justificativa)}`);
+  if (capacity.acoes_comprometidas !== undefined) lines.push(`Capacidade: ${capacity.acoes_comprometidas}/${capacity.maximo_acoes_comprometidas} ações comprometidas`);
+  const pending = asArray<any>(monthly.decisoes_pendentes);
+  if (pending.length) lines.push(`Pendências: ${pending.map((item) => [asText(item.item), asText(item.decisao)].filter(Boolean).join(" → ")).join("; ")}`);
+  for (const [label, value] of [["Backlog", monthly.backlog], ["Riscos", monthly.riscos], ["Bloqueios", monthly.bloqueios]] as Array<[string, unknown]>) {
+    const items = asArray<string>(value).filter(Boolean);
+    if (items.length) lines.push(`${label}: ${items.join("; ")}`);
+  }
+  if (asText(monthly.cadencia)) lines.push(`Acompanhamento: ${asText(monthly.cadencia)}`);
+  if (asText(monthly.proximo_compromisso)) lines.push(`Próximo compromisso: ${asText(monthly.proximo_compromisso)}`);
+  return lines.join("\n");
+}
+
+function strategicReviewBlock(content: any) {
+  const adjustments = asArray<any>(content?.ajustes);
+  if (!adjustments.length && !asText(content?.motivo_revisao)) return "";
+  const lines = ["*Ajustes da revisão*"];
+  if (asText(content?.motivo_revisao)) lines.push(`Motivo: ${asText(content.motivo_revisao)}`);
+  lines.push(...adjustments.map((adjustment) => `- ${asText(adjustment.titulo, "Objetivo")}: ${asText(adjustment.campo)} de ${asText(adjustment.de)} para ${asText(adjustment.para)}${asText(adjustment.porque) ? `, porque ${asText(adjustment.porque)}` : ""}`));
+  return lines.join("\n");
+}
+
+export function renderPlanForWhatsApp(content: any, document: { version?: unknown; origin?: unknown } = {}) {
   const title = [
     documentTypeLabel(content?.tipo),
     asText(content?.area).toUpperCase(),
     asText(content?.periodo).toUpperCase(),
   ].filter(Boolean).join(" · ");
+  const traceability = asRecord(content?.rastreabilidade);
+  const version = Number(document.version ?? 0);
 
   const header = [
     `*${title}*`,
     asText(content?.empresa) ? `Empresa: ${asText(content.empresa)}` : "",
     asText(content?.gestor) ? `Gestor: ${asText(content.gestor)}` : "",
+    version > 0 ? `Versão ${version} · Origem: ${sourceLabel(traceability.origem || document.origin)}` : "",
   ].filter(Boolean);
 
   const context = asArray<string>(content?.contexto_rapido);
   if (context.length) {
     header.push("");
     header.push("*Contexto rápido*");
-    header.push(...context.slice(0, 4).map((item) => `- ${item}`));
+    header.push(...context.slice(0, 5).map((item) => `- ${item}`));
   }
 
-  const strategic = content?.strategic && typeof content.strategic === "object" ? content.strategic : {};
-  const renunciations = asArray<string>(strategic.renuncias);
-  const risks = asArray<string>(strategic.riscos);
-  const pendingDecisions = asArray<string>(strategic.decisoes_pendentes);
-  const historicalLessons = asArray<string>(strategic.aprendizados_historicos);
-  if (renunciations.length || risks.length || pendingDecisions.length || historicalLessons.length) {
-    header.push("");
-    header.push("*Escolhas, riscos e aprendizados*");
-    if (renunciations.length) header.push(`Renúncias: ${renunciations.join("; ")}`);
-    if (risks.length) header.push(`Riscos: ${risks.join("; ")}`);
-    if (pendingDecisions.length) header.push(`Decisões pendentes: ${pendingDecisions.join("; ")}`);
-    if (historicalLessons.length) header.push(`Aprendizados anteriores: ${historicalLessons.join("; ")}`);
-  }
+  const blocks = [
+    header.join("\n"),
+    strategicBlock(content),
+    quarterlyBlock(content),
+    monthlyBlock(content),
+    strategicReviewBlock(content),
+  ];
 
   const objectives = asArray<any>(content?.objetivos);
-  const blocks = [header.join("\n")];
-
   for (let index = 0; index < objectives.length; index += 2) {
     blocks.push(objectives.slice(index, index + 2).map(objectiveBlock).join("\n\n"));
   }
 
   const focus = asArray<string>(content?.foco_aprendizado);
-  const closing = [];
+  const closing: string[] = [];
   if (focus.length) {
     closing.push("*Foco de aprendizado*");
     closing.push(...focus.slice(0, 5).map((item) => `- ${item}`));
   }
   if (content?.fechamento) {
-    const close = content.fechamento;
-    if (asText(close.resumo)) {
-      closing.push("*Revisão*");
-      closing.push(asText(close.resumo));
-    }
+    const close = asRecord(content.fechamento);
+    closing.push("*Fechamento*");
+    if (asText(close.resumo)) closing.push(`Resumo: ${asText(close.resumo)}`);
     if (close.percentual !== null && close.percentual !== undefined) closing.push(`Conclusão: ${close.percentual}%`);
-    const decisions = asArray<string>(close.decisoes).filter(Boolean);
-    if (decisions.length) closing.push(`Decisões: ${decisions.join("; ")}`);
+    for (const [label, value] of [["Aprendizados", close.aprendizados], ["Pendências", close.pendencias], ["Decisões", close.decisoes]] as Array<[string, unknown]>) {
+      const items = asArray<string>(value).filter(Boolean);
+      if (items.length) closing.push(`${label}: ${items.join("; ")}`);
+    }
+    if (asText(close.proximo_periodo)) closing.push(`Próximo período: ${asText(close.proximo_periodo)}`);
   }
   if (asText(content?.frase_de_foco)) {
     closing.push("");

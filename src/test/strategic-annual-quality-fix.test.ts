@@ -37,7 +37,7 @@ describe("strategic annual quality correction", () => {
       expect(renderer).toContain("Baseline:");
     }
     expect(webDocument).toContain("Aprendizados anteriores");
-    expect(whatsapp).toContain("Escolhas, riscos e aprendizados");
+    expect(whatsapp).toContain("Aprendizados anteriores");
     expect(pdf).toContain("Renúncias");
   });
 
