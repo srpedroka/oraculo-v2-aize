@@ -28,7 +28,7 @@
     {
       "date": "2026-07-16",
       "gate": "Q4C",
-      "reason": "Conducao mensal ligada ao trimestre correto, uma a tres entregas, cinco acoes no total, decisoes explicitas de capacidade e excecao trimestral sem criacao automatica de objetivo."
+      "reason": "Conducao mensal ligada ao trimestre correto, uma a tres entregas, cinco acoes no total, decisoes explicitas de capacidade, excecao trimestral sem criacao automatica de objetivo e compatibilidade com periodos legados YYYY-MM."
     }
   ],
   "runtimeAssignments": [
@@ -72,7 +72,7 @@
     { "path": "supabase/functions/_shared/model.ts", "sha256": "666f946c74f18f18f0636b14710cb892935db892f030c5e68e679b0abe04f5f5" },
     { "path": "supabase/functions/_shared/proposals.ts", "sha256": "899dda8ef37c52707fa3bf5aea0cb977b96576c39f7280c7b9fc80d525390327" },
     { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "c362e13885b50462dce270cf9d34260df841190821863cf2a09c457f5d8626a0" },
-    { "path": "supabase/functions/_shared/periods.ts", "sha256": "7ad3f76bc9ede9be903e139ec99238eea920cc8e7ac771a585292f9f4235ec36" },
+    { "path": "supabase/functions/_shared/periods.ts", "sha256": "ff0b89f58abbd4929b4fae20eede319aebe1ee1b3632a10152574f3e33e98792" },
     { "path": "supabase/functions/_shared/monthly-guidance.ts", "sha256": "3b00499d0eed9ec737365559e4fc3478a7ee9f4e1033a25fb88e9cfb69f42d6d" }
   ]
 }

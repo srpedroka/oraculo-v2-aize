@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   inferPlanningType,
+  monthPeriodParts,
   nextMonthPeriod,
   nextQuarterPeriod,
   normalizeTextForRouting,
@@ -34,6 +35,11 @@ describe("períodos server-side", () => {
     expect(quarterPeriodForMonth("Fev 2027")).toBe("T1 2027");
     expect(quarterPeriodForMonth("Mai 2027")).toBe("T2 2027");
     expect(quarterPeriodForMonth("Nov 2025")).toBe("T4 2025");
+    expect(quarterPeriodForMonth("2026-07")).toBe("T3 2026");
+  });
+
+  it("aceita o formato mensal ISO já presente em registros antigos", () => {
+    expect(monthPeriodParts("2026-07")).toEqual({ month: 7, year: 2026 });
   });
 
   it("usa a data de fallback apenas quando o período mensal é inválido", () => {

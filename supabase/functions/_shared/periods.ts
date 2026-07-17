@@ -91,6 +91,8 @@ function yearFromText(text: string, fallback = currentYear()) {
 
 function monthFromText(text: string) {
   const normalized = normalizeTextForRouting(text);
+  const isoMonth = normalized.match(/\b20\d{2}-(0[1-9]|1[0-2])\b/);
+  if (isoMonth) return Number(isoMonth[1]) - 1;
   for (const [name, index] of Object.entries(MONTH_BY_TEXT)) {
     if (new RegExp(`\\b${name}\\b`).test(normalized)) return index;
   }
