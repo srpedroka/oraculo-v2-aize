@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4K aprovada; Q5B r6 pronta para nova execucao autorizada**
+Status: **Q5A preservada; Q4K aprovada; Q5B r6 pausada na oitava medicao por conducao de meta repetida**
 
 ## Objetivo
 
@@ -287,3 +287,32 @@ A primeira pergunta apos `implantar um CRM` tratou CRM como acao e pediu o resul
 | Limite autorizado | US$ 20,00 |
 
 Com o preflight limpo, `restart-after-correction Q4K` arquivou as quatro medicoes Q5B r4 como calibracao e abriu `2026-07-17.q5-regression-r6`. Permanecem oficiais as dez medicoes Q5A e os nove resultados deterministas; Q5B voltou a zero. Nenhuma medicao r6 foi iniciada. Producao, frontend, banco real e WhatsApp real permaneceram inalterados.
+
+## Execucao Q5B r6
+
+A Q5B r6 foi autorizada para 16 medicoes e interrompida pelo fail-fast na oitava. As duas rodadas do problema vago, CRM como atividade e equivalencia de area passaram; a primeira rodada de meta repetida tambem passou. A segunda rodada de meta repetida bloqueou:
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 75,00 |
+| Plano Trimestral | 88,75 |
+| Media conjunta | 81,88 |
+
+Nao houve falha critica, erro tecnico ou check deterministico reprovado. O plano preservou baseline 9%, alvo 5%, fonte, prazo, dono, acoes, risco, aprendizado, backlog, cadencia e vinculo anual. O defeito foi a conducao:
+
+- a primeira resposta escreveu `Manter reduzir retrabalho para 5%` e ofereceu tres hipoteses antes de conhecer o historico;
+- o gestor informou dois ciclos anteriores em 11% e 9%, a causa confirmada e uma nova abordagem com checklist e auditoria semanal;
+- a resposta seguinte ignorou que baseline e indicador ja estavam claros e perguntou ambos novamente;
+- a confirmacao final ficou generica, sem explicitar o aprendizado e a mudanca de abordagem.
+
+| Item | Valor |
+|---|---:|
+| Medicoes Q5B r6 executadas | 8 de 16 |
+| Aprovadas | 7 |
+| Bloqueadas | 1 |
+| Custo parcial Q5B r6 | US$ 0,300678 |
+| Acumulado antes | US$ 4,851754 |
+| Acumulado depois | US$ 5,152432 |
+| Limite autorizado | US$ 20,00 |
+
+O fail-fast encerrou antes da nona chamada. Cleanup e preflight confirmaram zero organizacao descartavel. A proxima correcao deve ser isolada: diante de meta repetida com historico, usar a trajetoria anterior, a causa e a nova abordagem; perguntar o que muda e qual evidencia provará o aprendizado; nunca reentrevistar indicador/baseline ja confirmados. Depois de smoke isolado aprovado, as oito medicoes r6 podem ser arquivadas e a Q5B reiniciada novamente, preservando custo e relatorios.

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4K aprovada e Q5B r6 pronta para nova execucao autorizada**
+Status: **em execucao; Q5B r6 pausada na oitava medicao por conducao de meta repetida**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -507,6 +507,8 @@ Estado Q4J em 2026-07-17: o fallback canonico passou 382 unitarios e 7/7 integra
 
 Estado apos Q4K em 2026-07-17: atividades trimestrais curtas agora sao reenquadradas deterministicamente pelo resultado empresarial, adocao ou mudanca mensuravel, sem etapa adicional. O smoke CRM passou com Conducao 81,25, Plano Trimestral 93,75, media 87,50, zero falha critica/check/residuo. Custo US$ 0,049289; acumulado US$ 4,851754. As quatro medicoes Q5B r4 foram arquivadas e a fase abriu como `2026-07-17.q5-regression-r6`, preservando 10 Q5A e 9 deterministas; Q5B oficial esta zerada. Somente staging mudou.
 
+Bloqueio Q5B r6 em 2026-07-17: sete de oito medicoes passaram. Meta repetida R2 bloqueou com Conducao 75, Plano Trimestral 88,75 e media 81,88, sem falha critica/check/erro tecnico. Depois de receber ciclos 11% e 9%, causa e nova abordagem, o Oraculo perguntou novamente indicador e baseline e fechou com resumo generico. O fail-fast impediu a nona chamada; cleanup limpo. Custo parcial US$ 0,300678; acumulado US$ 5,152432. Voltar ao Q4 para correcao focada em memoria/aprendizado de meta recorrente, sem repetir Q5B automaticamente.
+
 ## Q6 — Aceite da qualidade estratégica
 
 ### Entregáveis
@@ -835,4 +837,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **nova execucao Q5B r6**. Manter Q5A e a matriz deterministica preservadas, executar as 16 medicoes trimestrais com fail-fast por erro tecnico ou qualidade e informar custo estimado/saldo antes da primeira chamada paga. Nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao automaticamente.
+Apresentar o briefing da **correcao de meta trimestral repetida**: usar trajetoria anterior, causa e nova abordagem ja confirmadas; perguntar o que muda e qual evidencia prova o aprendizado; nao repetir indicador/baseline nem inventar hipotese. Reforcar a sintese final com mudanca de abordagem e cadencia, sem etapa adicional. Depois de testes e smoke isolado aprovado, pedir novo aceite para reiniciar Q5B. Nao iniciar Q5C/Q5D/Q6/Mapa B nem tocar producao.
