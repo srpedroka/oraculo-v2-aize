@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4I aprovada no staging, Q5A preservada e Q5B pronta para nova execucao autorizada**
+Status: **em execucao; Q5A preservada e Q5B r4 pausada por falha tecnica na quarta medicao**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -501,6 +501,8 @@ Bloqueio Q5B em 2026-07-17: a primeira rodada trimestral vaga entregou Plano Tri
 
 Estado apos Q4I em 2026-07-17: a conversa trimestral vaga passou a investigar situacao, causa, impacto e mudanca desejada antes de campos operacionais ou alinhamento anual. Cadencia explicita e preservada apenas quando existe acao de acompanhamento mais frequencia, sem inferir rotina de mencoes ambiguas. O runner agora encerra a fase em erro tecnico ou qualidade bloqueada, sempre depois de persistir relatorio, custo e cleanup. O smoke exato passou com Conducao 96,25, Plano Trimestral 97,50, media 96,88, zero falha critica e dez checks verdes. Custo US$ 0,034506; acumulado US$ 4,612626. A Q5B foi reiniciada como `2026-07-17.q5-regression-r4`, preservando Q5A, matriz deterministica e a medicao bloqueada para auditoria. Somente `oracle-session` de staging mudou; producao segue intocada.
 
+Bloqueio tecnico Q5B r4 em 2026-07-17: tres medicoes passaram e a quarta foi interrompida somente na gravacao, embora Conducao 86,25 e Plano Trimestral 90 estivessem acima do gate e sem falha critica. A proposta vinculou o objetivo estrategico existente, mas omitiu a copia redundante em `annualObjectives`; o aplicador nao reutilizou o `main_annual_objective_id` ja salvo para a mesma area e ano. O fail-fast encerrou antes da quinta chamada e o preflight confirmou staging limpo. Custo da tentativa US$ 0,153962; acumulado US$ 4,766588. Voltar ao Q4 para uma correcao tecnica focada e smoke isolado, sem mudar a conversa nem repetir Q5B automaticamente.
+
 ## Q6 — Aceite da qualidade estratégica
 
 ### Entregáveis
@@ -829,4 +831,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **nova execucao Q5B trimestral**. Manter Q5A e a matriz deterministica ja aprovadas, executar as 16 medicoes Q5B com fail-fast de execucao e qualidade e informar custo estimado, saldo e rollback antes da primeira chamada paga. Nao iniciar Q5C, Q5D, Q6/Mapa B nem tocar producao automaticamente.
+Apresentar o briefing da **correcao tecnica trimestral seguinte**: resolver o pai anual ja existente por ID canonico da mesma empresa, area e ano quando a proposta vinculada nao repetir `annualObjectives`. Nao criar objetivo anual, nao aceitar ID de outra empresa/area, nao acrescentar pergunta ao gestor e nao repetir Q5B ainda. Depois de testes locais e deploy somente no staging, executar um smoke pago isolado de `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002`; a Q5B so pode ser reiniciada com novo aceite apos esse gate.

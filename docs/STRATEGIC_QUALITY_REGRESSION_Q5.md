@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4I aprovada; Q5B pronta para nova execucao autorizada**
+Status: **Q5A preservada; Q4I aprovada; Q5B r4 pausada por falha tecnica na quarta medicao**
 
 ## Objetivo
 
@@ -208,3 +208,27 @@ Foram aprovados os dez checks deterministas, sem falha critica, gravacao prematu
 | Limite autorizado | US$ 20,00 |
 
 Depois do preflight limpo, a Q5B foi reiniciada como baseline `2026-07-17.q5-regression-r4`. A tentativa bloqueada continua arquivada para auditoria; as dez medicoes Q5A e a matriz deterministica foram preservadas. Nenhuma nova rodada Q5B foi iniciada. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
+
+## Execucao Q5B r4
+
+A nova Q5B foi autorizada e iniciada em 2026-07-17. O fail-fast aprovado na Q4I encerrou a fase na quarta de 16 medicoes, antes de abrir a quinta chamada:
+
+| Caso | Rodada | Conducao | Plano Trimestral | Resultado | Custo |
+|---|---:|---:|---:|---|---:|
+| Problema trimestral vago | 1 | 100 | 97,50 | aprovada | US$ 0,034386 |
+| Problema trimestral vago | 2 | 96,25 | 97,50 | aprovada | US$ 0,040394 |
+| CRM como atividade | 1 | 93,75 | 97,50 | aprovada | US$ 0,036889 |
+| CRM como atividade | 2 | 86,25 | 90,00 | erro tecnico | US$ 0,042293 |
+
+A conversa e o plano da rodada bloqueada ficaram acima dos limites e nao tiveram candidato de falha critica. O erro ocorreu somente ao confirmar a gravacao: `Plano trimestral exige vinculo anual existente ou excecao explicita`.
+
+O staging possuia plano anual da area, `main_annual_objective_id` e objetivo estrategico vinculados. A proposta confirmou `annualAlignment.status = linked`, `linkedStrategicObjectiveIds` e o titulo correto do objetivo superior, mas devolveu `annualObjectives = []`. O aplicador procurou o pai pelo array da proposta ou pelo titulo e nao usou como fallback final o `main_annual_objective_id` canonico ja salvo em `area_plans`. A primeira rodada do mesmo caso passou porque o modelo repetiu o objetivo em `annualObjectives`; essa redundancia estocastica nao pode ser requisito de integridade.
+
+| Item | Valor |
+|---|---:|
+| Q5B r4 executada | US$ 0,153962 |
+| Acumulado antes | US$ 4,612626 |
+| Acumulado depois | US$ 4,766588 |
+| Limite autorizado | US$ 20,00 |
+
+O cleanup da rodada bloqueada removeu empresa, usuario e chave descartavel; o preflight posterior confirmou zero organizacao de avaliacao pendente. Nao houve repeticao paga. A proxima correcao deve resolver o pai anual existente por ID canonico validado na mesma empresa/area/ano, sem criar objetivo, inventar vinculo ou acrescentar pergunta ao gestor. Depois disso, um smoke isolado deve repetir somente `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002` antes de reiniciar a Q5B.
