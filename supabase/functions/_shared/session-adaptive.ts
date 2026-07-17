@@ -64,6 +64,22 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_unverifiable_objective: "um objetivo trimestral nao preservou indicador, baseline, alvo, fonte, prazo, dono e resultado",
   quarterly_activity_as_objective: "uma atividade foi tratada como resultado final do trimestre",
   quarterly_incomplete_actions: "faltou ao menos uma acao com dono, prazo e criterio de conclusao",
+  monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
+  monthly_wrong_proposal_type: "a proposta nao e do tipo mensal esperado",
+  monthly_missing_objectives: "a proposta mensal nao possui resultado priorizado",
+  monthly_result_overload: "a proposta mensal excede o limite de tres resultados",
+  monthly_action_overload: "a proposta mensal excede cinco acoes comprometidas no total",
+  monthly_wrong_period: "o periodo da proposta nao corresponde ao mes planejado",
+  monthly_alignment_missing: "faltou vinculo trimestral real ou excecao trimestral explicita",
+  monthly_alignment_exception_missing_reason: "a excecao ao alinhamento trimestral ficou sem justificativa",
+  monthly_exception_with_quarterly_link: "a proposta declarou excecao e vinculo trimestral ao mesmo tempo",
+  monthly_unverifiable_objective: "um resultado mensal nao preservou indicador, baseline, alvo, fonte, prazo, dono e resultado",
+  monthly_activity_as_result: "uma atividade foi tratada como resultado final do mes",
+  monthly_incomplete_actions: "faltou ao menos uma acao mensal com dono, prazo e criterio de conclusao",
+  monthly_deadline_out_of_period: "o prazo do resultado ficou fora do mes planejado",
+  monthly_action_out_of_period: "o prazo de uma acao ficou fora do mes planejado",
+  monthly_pending_decision_incomplete: "uma pendencia herdada ficou sem origem, motivo ou decisao explicita",
+  monthly_pending_without_options: "uma pendencia indecisa nao recebeu opcoes de rolar, renegociar, cortar ou enviar ao backlog",
 };
 
 export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigatorio):
@@ -278,8 +294,11 @@ export function ensureAdaptiveStatePatch(
   };
 }
 
-export function adaptiveFallbackReply(hasProposal: boolean, paused: boolean) {
+export function adaptiveFallbackReply(hasProposal: boolean, paused: boolean, reasons: string[] = []) {
   if (paused) return "Tudo bem. A sessão fica salva e a gente retoma daqui quando você quiser.";
   if (hasProposal) return "Organizei o que você trouxe e deixei a proposta pronta, sem repetir etapas. Confirma a gravação?";
+  if (reasons.includes("monthly_pending_without_options")) {
+    return "Essa pendência precisa de um destino claro para não entrar silenciosamente em maio. Você prefere rolar com um novo prazo, renegociar, cortar ou deixar no backlog?";
+  }
   return "Você já trouxe informação suficiente para eu não repetir a etapa anterior. Entre o resultado, o prazo, o responsável ou a primeira ação, qual ponto ainda precisa ser decidido para seguirmos?";
 }

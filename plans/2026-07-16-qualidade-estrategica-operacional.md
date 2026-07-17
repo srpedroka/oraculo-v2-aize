@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4A e Q4B concluidas no staging; Q4C e a proxima fatia**
+Status: **em execução; Q4A, Q4B e Q4C concluidas no staging; Q4D e a proxima fatia**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O owner aprovou o briefing Q4 e autorizou a execucao por fatias. Q4A e Q4B foram concluidas no staging. A Q4B adicionou dez testes puros e smoke real 21/21 para gestor completo, resposta vaga, excesso de prioridades, atividade convertida em resultado, excecao anual, confirmacao unica e consistencia proposta/banco/documento. A validacao foi repetida apos o reforco final: US$ 0,124095 no total da Q4B; acumulado do plano US$ 2,168174. Producao e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4C antes de alterar a conducao mensal.
+Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O owner aprovou o briefing Q4 e autorizou a execucao por fatias. Q4A, Q4B e Q4C foram concluidas no staging. A Q4C corrigiu periodo mensal/trimestre, reconfirmacao artificial, limite de 1-3 resultados e 5 acoes totais, pendencias/capacidade, criacao indevida de pai trimestral e compatibilidade com periodos legados `YYYY-MM`. O primeiro smoke encontrou fallback generico (21/22); tres rodadas posteriores passaram 22/22. Q4C custou US$ 0,169574 e o acumulado ficou US$ 2,337748. Producao e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4D antes de alterar naturalidade e polimento dos rituais.
 
 ## Q4 — Correções orientadas pela evidência
 
@@ -461,6 +461,8 @@ Corrige apenas falhas demonstradas no baseline. Antes desta fatia, apresentar ex
 ### Gate Q4
 
 Todas as correções têm teste reproduzindo a falha original e briefing funcional aprovado.
+
+Estado parcial: Q4A (motor adaptativo), Q4B (trimestral) e Q4C (mensal) estao aprovadas no staging. Q4D, Q4E e Q4F ainda nao foram iniciadas; Q5 continua bloqueada ate o gate completo da Q4.
 
 ### Rollback
 

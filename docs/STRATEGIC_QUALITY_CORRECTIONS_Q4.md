@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **briefing aprovado; Q4A e Q4B concluidas e validadas no staging; Q4C aguarda briefing**
+Status: **briefing aprovado; Q4A, Q4B e Q4C concluidas e validadas no staging; Q4D aguarda briefing**
 
 ## O que vai mudar para o gestor
 
@@ -68,6 +68,8 @@ Estado em 2026-07-16: concluida no staging. `_shared/quarterly-guidance.ts` vali
 - Absorver objetivo e acoes completos em bloco; perguntar apenas a lacuna impeditiva.
 - Tratar capacidade e backlog como decisao: manter, adiar, renegociar ou cortar.
 - Gravar acompanhamento, confianca, bloqueio e compromisso seguinte no plano mensal.
+
+Estado em 2026-07-16: concluida no staging. O contexto deriva o trimestre do mes solicitado; `_shared/monthly-guidance.ts` valida 1 a 3 resultados, no maximo 5 acoes totais, campos verificaveis, datas dentro do mes, vinculo trimestral real ou excecao justificada e decisao explicita para pendencias. A confirmacao nao cria mais pai trimestral generico e o documento preserva capacidade, backlog, riscos, bloqueios, cadencia e proximo compromisso. O parser mensal aceita tanto `Jul 2026` quanto o formato legado `2026-07`, evitando recusa de sessoes antigas. A primeira rodada detectou fallback generico para pendencia (21/22); apos a correcao deterministica, tres rodadas passaram 22/22. A ultima executou o codigo final republicado no staging, com cleanup completo. Q4C custou US$ 0,169574 nas quatro rodadas; acumulado US$ 2,337748. Somente `oracle-session` foi publicada no staging; producao, frontend e WhatsApp real nao mudaram.
 
 ### Q4D - Naturalidade e polimento dos rituais
 

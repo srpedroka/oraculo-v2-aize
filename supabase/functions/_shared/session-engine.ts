@@ -3,6 +3,7 @@ import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
 import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
+import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
 import {
   conversationMessagesForModel,
   formatConversationMemory,
@@ -359,6 +360,9 @@ export async function processPlanningMessage(
       userMessage: params.message,
     }),
     ...(session.type === "quarterly" ? validateQuarterlyGuidanceEnvelope({ envelope }) : []),
+    ...(session.type === "monthly"
+      ? validateMonthlyGuidanceEnvelope({ envelope, sessionPeriod: session.period, userMessage: params.message })
+      : []),
   ].filter((reason, index, values) => values.indexOf(reason) === index);
   let result = await callPlanningModel(systemPrompt, 1);
   let parsed: any = null;
@@ -382,11 +386,11 @@ export async function processPlanningMessage(
     if (remainingReasons.length) {
       const proposalIsPremature = remainingReasons.includes("proposal_before_ready")
         || remainingReasons.includes("ready_with_blocking_gap")
-        || remainingReasons.some((reason) => reason.startsWith("quarterly_"));
+        || remainingReasons.some((reason) => reason.startsWith("quarterly_") || reason.startsWith("monthly_"));
       if (proposalIsPremature) parsed.proposal = null;
       const hasProposal = Boolean(parsed?.proposal);
       const paused = parsed?.state_patch?.pausa_solicitada === true;
-      parsed.reply = adaptiveFallbackReply(hasProposal, paused);
+      parsed.reply = adaptiveFallbackReply(hasProposal, paused, remainingReasons);
       parsed.state_patch = ensureAdaptiveStatePatch(parsed?.state_patch, params.message, hasProposal, true, session.state);
       parsed.next_phase = safeAdaptiveNextPhase(
         session.phase,

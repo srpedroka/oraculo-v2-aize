@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { historicalMemoryLines, objectiveLine } from "./plan-context.ts";
+import { historicalMemoryLines, objectiveLine, planContextPeriods } from "./plan-context.ts";
 
 describe("memória estratégica no contexto", () => {
   const areas = [{ id: "comercial", name: "Comercial" }, { id: "producao", name: "Produção" }];
@@ -49,5 +49,13 @@ describe("memória estratégica no contexto", () => {
     expect(line).toContain("atual: 55%");
     expect(line).toContain("meta: 80%");
     expect(line).toContain("prazo: 2026-12-31");
+  });
+
+  it("usa o trimestre do mês solicitado em vez do trimestre do relógio", () => {
+    expect(planContextPeriods("monthly", "Mai 2027", new Date(2026, 6, 16))).toEqual({
+      quarterLabels: ["T2 2027", "Q2 2027"],
+      quarterDisplay: "T2 2027",
+      monthDisplay: "Mai 2027",
+    });
   });
 });
