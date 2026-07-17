@@ -15,6 +15,7 @@ type AdaptiveMetadata = {
 
 type ValidationInput = {
   envelope: SessionEnvelope;
+  sessionType?: string;
   currentPhase: string;
   phases: string[];
   sessionState?: unknown;
@@ -23,6 +24,15 @@ type ValidationInput = {
 };
 
 const TECHNICAL_STATE_PATTERN = /\b(?:base_confirmada|state_patch|next_phase|pending_proposal|proposal)\b|\bfase\s+(?:abertura|alinhamento|diagnostico|síntese|sintese)\b/i;
+const MECHANICAL_ACKNOWLEDGEMENT_PATTERN = /^(?:entendi|perfeito|[oó]timo|boa)[.!,:-]?\s+(?:voc[eê]\s+(?:quer|disse|trouxe)|que\s+)/i;
+const BARE_QUESTION_PATTERN = /^(?:qual|quem|quando|como|onde|quanto|o que|existe|h[aá])\b/i;
+const ACKNOWLEDGEMENT_PATTERN = /^(entendi|perfeito|[oó]timo|boa|certo|fechado)\b/i;
+const STRATEGIC_ACTIVITY_PATTERN = /\b(?:fazer|criar|lan[cç]ar|executar|realizar)\s+(?:um|uma)?\s*(?:campanha|reuni[aã]o|treinamento|evento|pesquisa|relat[oó]rio|projeto)\b/i;
+const STRATEGIC_ACTIVITY_CHALLENGE_PATTERN = /\b(?:meio|atividade|resultado|mudan[cç]a|efeito|impacto)\b/i;
+const STRATEGIC_WEAK_TARGET_CUE_PATTERN = /\b(?:s[oó]|apenas)\s+(?:crescer\s+)?\d+(?:[.,]\d+)?\s*%|\bcrescer\s+(?:s[oó]|apenas)\s+\d+(?:[.,]\d+)?\s*%/i;
+const STRATEGIC_TARGET_CHALLENGE_PATTERN = /\b(?:meta|alvo|ambicios[oa]|suficiente|fraca|pequena)\b|\d+(?:[.,]\d+)?\s*%[^.!?]{0,80}\b(?:resolve|provar|suficiente|relevante)\b/i;
+const STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN = /\b(?:caiu|queda|reduziu|piorou|diminuiu)\b[\s\S]{0,220}\b(?:porque|por causa|devido)\b/i;
+const STRATEGIC_DIRECTION_JUMP_PATTERN = /\b(?:prop[oó]sito|miss[aã]o|vis[aã]o|valores?)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
 const FACT_SIGNALS = [
@@ -43,6 +53,10 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   repeated_question: "a pergunta repete semanticamente a pergunta anterior",
   multiple_questions: "ha mais de uma pergunta visivel",
   missing_next_question: "faltou uma unica pergunta que destrave a proxima decisao",
+  mechanical_acknowledgement: "a resposta usa uma confirmacao mecanica seguida de parafrase",
+  repeated_acknowledgement: "a resposta repete o mesmo bordao de abertura do turno anterior",
+  ungrounded_question: "a pergunta pede um campo sem partir do fato que a motivou",
+  verbose_regular_turn: "uma resposta comum ficou longa demais para uma conversa natural",
   vague_without_options: "a resposta vaga nao recebeu duas ou tres possibilidades concretas",
   technical_state_leak: "o texto visivel expoe estado ou nome tecnico interno",
   backward_phase: "a resposta tenta voltar para uma fase anterior",
@@ -80,6 +94,9 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   monthly_action_out_of_period: "o prazo de uma acao ficou fora do mes planejado",
   monthly_pending_decision_incomplete: "uma pendencia herdada ficou sem origem, motivo ou decisao explicita",
   monthly_pending_without_options: "uma pendencia indecisa nao recebeu opcoes de rolar, renegociar, cortar ou enviar ao backlog",
+  strategic_activity_unchallenged: "uma atividade candidata a objetivo anual nao foi reenquadrada como meio para um resultado",
+  strategic_weak_target_unchallenged: "uma meta apresentada como pequena nao foi confrontada com a dor que precisa resolver",
+  strategic_diagnosis_jump: "a resposta abandonou uma causa concreta para voltar a direcionadores genericos",
 };
 
 export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigatorio):
@@ -90,7 +107,8 @@ export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigato
 - Se a resposta for parcial, faca somente a pergunta da lacuna bloqueante. Cite o fato que motivou a pergunta e a decisao ou acao que ela destrava.
 - Se a resposta estiver pronta, monte a proposal na mesma resposta e peça UMA unica confirmacao. Nao pergunte se a pessoa quer resumo, proposta ou proxima etapa.
 - Nunca repita semanticamente a ultima pergunta do Oraculo. Nunca exponha nomes de fase, _adaptive, base_confirmada, state_patch, next_phase ou a palavra tecnica proposal.
-- Fora de resumos finais, reply deve ter de 1 a 3 frases, em tom casual, tranquilo e objetivo. Toda pergunta precisa aproximar resultado, escolha, meta ou proxima acao executavel.`;
+- Nao use "Entendi: voce quer..." nem outro bordao seguido de parafrase. Reconheca apenas quando isso acrescentar algo e varie a entrada; muitas vezes, va direto ao ponto.
+- Fora de resumos finais, reply deve ter de 1 a 3 frases, em tom casual, tranquilo e objetivo. Listas servem apenas para opcoes de decisao. Toda pergunta precisa aproximar resultado, escolha, meta ou proxima acao executavel.`;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -181,6 +199,19 @@ function hasGuidedOptions(reply: string) {
   return /\b(?:ou|entre)\b/i.test(reply) || /(?:^|\n)\s*(?:1[.)]|[-*•]).*(?:\n|$)/.test(reply);
 }
 
+function firstVisibleLine(value: string) {
+  return value.split("\n").map((line) => line.replace(/^[\s\-*>#]+/, "").trim()).find(Boolean) ?? "";
+}
+
+function openingAcknowledgement(value: string) {
+  return normalizeForComparison(firstVisibleLine(value)).match(ACKNOWLEDGEMENT_PATTERN)?.[1] ?? "";
+}
+
+function regularTurnSentenceCount(value: string) {
+  const prose = value.replace(/(?:^|\n)\s*(?:[-*•]|\d+[.)])\s+/g, " ").trim();
+  return (prose.match(/[.!?]+(?=\s|$)/g) ?? []).length || (prose ? 1 : 0);
+}
+
 function isPause(statePatch: unknown) {
   return asRecord(statePatch).pausa_solicitada === true;
 }
@@ -224,10 +255,29 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
   }
   if (metadata?.readiness === "vague" && looksLikeFactBlock(input.userMessage)) reasons.push("fact_block_misclassified");
   if (repeatsPreviousQuestion(reply, input.previousOracleReply)) reasons.push("repeated_question");
+  if (MECHANICAL_ACKNOWLEDGEMENT_PATTERN.test(firstVisibleLine(reply))) reasons.push("mechanical_acknowledgement");
+  const currentAcknowledgement = openingAcknowledgement(reply);
+  const previousAcknowledgement = openingAcknowledgement(input.previousOracleReply);
+  if (currentAcknowledgement && currentAcknowledgement === previousAcknowledgement) reasons.push("repeated_acknowledgement");
   if (questions.length > 1) reasons.push("multiple_questions");
   if (!hasProposal && !paused && questions.length === 0) reasons.push("missing_next_question");
   if (metadata?.readiness === "vague" && questions.length === 1 && !hasGuidedOptions(reply)) reasons.push("vague_without_options");
+  if (metadata?.readiness === "partial" && questions.length === 1 && BARE_QUESTION_PATTERN.test(firstVisibleLine(reply))) {
+    reasons.push("ungrounded_question");
+  }
+  if (!hasProposal && !paused && regularTurnSentenceCount(reply) > 4) reasons.push("verbose_regular_turn");
   if (TECHNICAL_STATE_PATTERN.test(reply)) reasons.push("technical_state_leak");
+  if (input.sessionType === "strategic") {
+    if (STRATEGIC_ACTIVITY_PATTERN.test(input.userMessage) && !STRATEGIC_ACTIVITY_CHALLENGE_PATTERN.test(reply)) {
+      reasons.push("strategic_activity_unchallenged");
+    }
+    if (STRATEGIC_WEAK_TARGET_CUE_PATTERN.test(input.userMessage) && !STRATEGIC_TARGET_CHALLENGE_PATTERN.test(reply)) {
+      reasons.push("strategic_weak_target_unchallenged");
+    }
+    if (STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN.test(input.userMessage) && STRATEGIC_DIRECTION_JUMP_PATTERN.test(reply)) {
+      reasons.push("strategic_diagnosis_jump");
+    }
+  }
 
   const currentIndex = input.phases.indexOf(input.currentPhase);
   const nextIndex = input.phases.indexOf(text(input.envelope.next_phase));
@@ -294,11 +344,115 @@ export function ensureAdaptiveStatePatch(
   };
 }
 
-export function adaptiveFallbackReply(hasProposal: boolean, paused: boolean, reasons: string[] = []) {
+function naturalizeRejectedReply(value: string, userMessage: string, hasProposal: boolean, reasons: string[]) {
+  const unsafeVisibleReasons = new Set([
+    "fact_block_misclassified",
+    "repeated_question",
+    "multiple_questions",
+    "missing_next_question",
+    "vague_without_options",
+    "technical_state_leak",
+    "ready_without_proposal",
+    "proposal_before_ready",
+    "ignored_completion_request",
+    "proposal_confirmation_count",
+    "strategic_activity_unchallenged",
+    "strategic_weak_target_unchallenged",
+    "strategic_diagnosis_jump",
+  ]);
+  if (!value || !reasons.length || reasons.some((reason) => unsafeVisibleReasons.has(reason)
+    || reason.startsWith("quarterly_")
+    || reason.startsWith("monthly_"))) return "";
+  if (TECHNICAL_STATE_PATTERN.test(value) || visibleQuestions(value).length !== 1) return "";
+
+  let reply = value
+    .replace(/^(?:entendi|perfeito|[oó]timo|boa|certo|fechado)[.!,:-]?\s+(?:voc[eê]\s+(?:quer|disse|trouxe)|que\s+)[^.!?]+[.!?]\s*/i, "")
+    .replace(/^(?:entendi|perfeito|[oó]timo|boa|certo|fechado)[.!,:-]?\s*/i, "")
+    .trim();
+  if (!hasProposal && regularTurnSentenceCount(reply) > 4) {
+    const sentences = reply.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((item) => item.trim()).filter(Boolean) ?? [];
+    const question = [...sentences].reverse().find((item) => item.endsWith("?"));
+    reply = [sentences.find((item) => !item.endsWith("?")), question].filter(Boolean).join(" ");
+  }
+  if (!hasProposal && reasons.includes("ungrounded_question") && BARE_QUESTION_PATTERN.test(firstVisibleLine(reply))) {
+    const fact = userMessage.split(/[.!?\n]/).map((item) => item.trim()).find((item) => item.length >= 12)?.slice(0, 140);
+    if (fact) reply = `${fact}. ${reply}`;
+  }
+  return reply && !TECHNICAL_STATE_PATTERN.test(reply) && visibleQuestions(reply).length === 1 ? reply : "";
+}
+
+function proposalConfirmationReply(proposal: unknown, sessionType: string) {
+  const value = asRecord(proposal);
+  const type = text(value.type);
+  if (type === "apply_strategic_review") {
+    const adjustments = Array.isArray(value.adjustments) ? value.adjustments.map(asRecord) : [];
+    const first = adjustments[0] ?? {};
+    if (adjustments.length === 1 && text(first.title) && text(first.from) && text(first.to)) {
+      const reason = text(first.because);
+      return `A revisão altera apenas “${text(first.title)}”, de ${text(first.from)} para ${text(first.to)}${reason ? `, porque ${reason}` : ""}. Posso aplicar?`;
+    }
+    if (adjustments.length > 0) return `A revisão reúne ${adjustments.length} ajustes no plano atual. Posso aplicar?`;
+  }
+  if (type === "save_monthly_plan") {
+    const objectives = Array.isArray(value.objectives) ? value.objectives.map(asRecord) : [];
+    const first = objectives[0] ?? {};
+    const result = text(first.result) || text(first.title);
+    if (result) {
+      const suffix = objectives.length > 1 ? ` e mais ${objectives.length - 1} resultado${objectives.length > 2 ? "s" : ""}` : "";
+      return `O mês fica focado em “${result}”${suffix}. Posso gravar?`;
+    }
+  }
+  if (sessionType === "quarterly") return "O plano do trimestre ficou pronto com as escolhas que você fez. Posso gravar?";
+  if (sessionType === "strategic") return "O plano anual ficou pronto com as escolhas que você fez. Posso gravar?";
+  return "A proposta ficou pronta com o que você definiu. Posso gravar?";
+}
+
+function strategicDecisionFallback(userMessage: string, sessionType: string) {
+  if (sessionType === "strategic") {
+    if (STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN.test(userMessage)) {
+      return "A queda que você descreveu já tem causas concretas. Qual delas precisa ser atacada primeiro para recuperar o resultado?";
+    }
+    const activity = userMessage.match(/["'“”]([^"'“”]{4,100})["'“”]/)?.[1]
+      ?? userMessage.match(/\b((?:fazer|criar|lan[cç]ar|executar|realizar)\s+(?:um|uma)?\s*[^,.!?]{3,80})/i)?.[1];
+    const target = userMessage.match(/\b\d+(?:[.,]\d+)?\s*%/i)?.[0];
+    const optionNames = ["margem", "receita", "volume", "previsibilidade", "conversão", "conversao"]
+      .filter((option, index, values) => values.indexOf(option) === index && new RegExp(`\\b${option}\\b`, "i").test(userMessage));
+    if (activity) {
+      const targetChallenge = target ? `, e ${target} ainda precisa provar que resolve a dor` : "";
+      const options = optionNames.length >= 2
+        ? optionNames.map((option) => option === "conversao" ? "conversão" : option).join(", ").replace(/, ([^,]+)$/, " ou $1")
+        : "resultado empresarial";
+      return `“${activity.trim()}” descreve o meio, não a mudança que a empresa precisa alcançar${targetChallenge}. Qual foco precisa mudar de verdade: ${options}?`;
+    }
+    if (target) {
+      return `A meta de ${target} precisa nascer do problema que queremos resolver. Qual mudança empresarial tornaria esse número relevante?`;
+    }
+  }
+  if (sessionType === "quarterly" && /\bprioridades?\b/i.test(userMessage) && /\b(?:capacidade|comporta|cabem|cabe)\b/i.test(userMessage)) {
+    return "Há mais prioridades do que capacidade, então manter todas esconderia a escolha. Quais entregas têm maior impacto no objetivo anual dentro da capacidade real?";
+  }
+  return "";
+}
+
+export function adaptiveFallbackReply(
+  hasProposal: boolean,
+  paused: boolean,
+  reasons: string[] = [],
+  context: { rejectedReply?: string; userMessage?: string; proposal?: unknown; sessionType?: string } = {},
+) {
   if (paused) return "Tudo bem. A sessão fica salva e a gente retoma daqui quando você quiser.";
-  if (hasProposal) return "Organizei o que você trouxe e deixei a proposta pronta, sem repetir etapas. Confirma a gravação?";
+  const naturalized = naturalizeRejectedReply(
+    text(context.rejectedReply),
+    text(context.userMessage),
+    hasProposal,
+    reasons,
+  );
+  if (naturalized) return naturalized;
+  if (hasProposal) return proposalConfirmationReply(context.proposal, text(context.sessionType));
   if (reasons.includes("monthly_pending_without_options")) {
     return "Essa pendência precisa de um destino claro para não entrar silenciosamente em maio. Você prefere rolar com um novo prazo, renegociar, cortar ou deixar no backlog?";
   }
-  return "Você já trouxe informação suficiente para eu não repetir a etapa anterior. Entre o resultado, o prazo, o responsável ou a primeira ação, qual ponto ainda precisa ser decidido para seguirmos?";
+  const strategicFallback = strategicDecisionFallback(text(context.userMessage), text(context.sessionType));
+  if (strategicFallback) return strategicFallback;
+  return "Já temos uma parte importante definida e falta transformar isso na próxima decisão. O que destrava o avanço agora: fechar o resultado, o prazo, o responsável ou a primeira ação?";
 }

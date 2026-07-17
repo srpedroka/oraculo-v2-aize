@@ -73,32 +73,32 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
   strategic: {
     phases: STRATEGIC_PHASES,
     prompt: STRATEGIC_CONDUCTOR,
-    opening: "Vamos construir o Plano Estratégico anual com calma e método. Pelo contexto, vou considerar a empresa cadastrada no Oráculo. Qual é a principal dor da empresa hoje, em uma frase?",
+    opening: "Vamos olhar o ano com foco no que realmente precisa mudar. Qual resultado faria a maior diferença para a empresa neste ciclo?",
   },
   quarterly: {
     phases: QUARTERLY_PHASES,
     prompt: QUARTERLY_CONDUCTOR,
-    opening: "Vamos montar o plano do trimestre da área. Antes de começarmos: qual é o principal desafio da sua área hoje?",
+    opening: "Neste trimestre, qual mudança na área faria mais diferença de verdade?",
   },
   monthly: {
     phases: MONTHLY_PHASES,
     prompt: MONTHLY_CONDUCTOR,
-    opening: "Vamos montar um plano mensal enxuto e executável. Qual é o principal resultado que você quer enxergar, de forma concreta, até o fim deste mês na sua área?",
+    opening: "No fim deste mês, o que precisa estar concretamente diferente na área?",
   },
   month_close: {
     phases: MONTH_CLOSE_PHASES,
     prompt: MONTH_CLOSE_CONDUCTOR,
-    opening: "Vamos fechar o mês antes de abrir o próximo. Vou olhar objetivos, ações, evidências e aprendizados; começamos pelo que estava planejado para este período.",
+    opening: "Vamos fechar o mês sem maquiar resultado. Qual objetivo melhor representa como o período terminou?",
   },
   quarter_close: {
     phases: QUARTER_CLOSE_PHASES,
     prompt: QUARTER_CLOSE_CONDUCTOR,
-    opening: "Vamos fechar o trimestre subindo um andar: resultado dos objetivos, evidências, aprendizados e o que fica para o próximo ciclo.",
+    opening: "Vamos fechar o trimestre olhando resultado, evidência e aprendizado. Qual objetivo melhor resume como o ciclo terminou?",
   },
   strategic_review: {
     phases: STRATEGIC_REVIEW_PHASES,
     prompt: STRATEGIC_REVIEW_CONDUCTOR,
-    opening: "Vamos fazer uma Revisão Estratégica: microajustes no plano anual, sem recriar a estratégia. O que mudou no contexto e por que vale revisar agora?",
+    opening: "Vamos ajustar o plano anual sem recomeçar do zero. O que mudou no contexto e passou a exigir uma revisão agora?",
   },
 };
 
@@ -353,6 +353,7 @@ export async function processPlanningMessage(
   const validateEnvelope = (envelope: any) => [
     ...validateAdaptiveEnvelope({
       envelope,
+      sessionType: session.type,
       currentPhase: session.phase,
       phases: CONDUCTORS[session.type].phases,
       sessionState: session.state,
@@ -390,7 +391,12 @@ export async function processPlanningMessage(
       if (proposalIsPremature) parsed.proposal = null;
       const hasProposal = Boolean(parsed?.proposal);
       const paused = parsed?.state_patch?.pausa_solicitada === true;
-      parsed.reply = adaptiveFallbackReply(hasProposal, paused, remainingReasons);
+      parsed.reply = adaptiveFallbackReply(hasProposal, paused, remainingReasons, {
+        rejectedReply: parsed?.reply,
+        userMessage: params.message,
+        proposal: parsed?.proposal,
+        sessionType: session.type,
+      });
       parsed.state_patch = ensureAdaptiveStatePatch(parsed?.state_patch, params.message, hasProposal, true, session.state);
       parsed.next_phase = safeAdaptiveNextPhase(
         session.phase,

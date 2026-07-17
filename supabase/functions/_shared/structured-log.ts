@@ -49,6 +49,10 @@ export function logStructured(level: LogLevel, fields: LogFields) {
 }
 
 export function safeErrorCode(error: unknown) {
+  const nativeCode = error && typeof error === "object" && "code" in error
+    ? String((error as { code?: unknown }).code ?? "").trim()
+    : "";
+  if (/^[A-Za-z0-9_.:-]{2,80}$/.test(nativeCode)) return nativeCode.toUpperCase();
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (/timeout|timed out/i.test(message)) return "TIMEOUT";
   if (/unauthori[sz]|forbidden|permission/i.test(message)) return "AUTHORIZATION";
@@ -79,4 +83,3 @@ export function withRequestLog<T>(
       throw error;
     });
 }
-

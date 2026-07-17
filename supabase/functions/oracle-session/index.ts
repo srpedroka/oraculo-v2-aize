@@ -107,6 +107,7 @@ serve(async (req) => {
 
     return jsonResponse({ error: "Ação de sessão inválida" }, 400);
   } catch (error) {
+    const errorCode = safeErrorCode(error);
     logStructured("error", {
       requestId: requestLogId,
       functionName: "oracle-session",
@@ -114,8 +115,8 @@ serve(async (req) => {
       operation: action,
       durationMs: Math.round(performance.now() - startedAt),
       status: "error",
-      errorCode: safeErrorCode(error),
+      errorCode,
     });
-    return jsonResponse({ error: error instanceof Error ? error.message : "Erro na sessão do Oráculo" }, 400);
+    return jsonResponse({ error: error instanceof Error ? error.message : "Erro na sessão do Oráculo", errorCode }, 400);
   }
 });

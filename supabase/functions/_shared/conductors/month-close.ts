@@ -56,7 +56,7 @@ Objetivo: veredito objetivo a objetivo.
 - Para CADA objetivo do mês, um por vez: status final (concluído, parcial ou não aconteceu), evidência concreta e aprendizado.
 - Use o id do objetivo e das ações exatamente como aparecem no contexto.
 - Dentro de cada objetivo, confirme o status das ações-chave que constam em aberto.
-- Reflita em uma linha após cada objetivo e avance. Sem julgamento, com franqueza: parcial é parcial, não é quase concluído.
+- Depois de cada objetivo, reconheça somente o aprendizado ou a decisão que muda o próximo passo. Sem julgamento, com franqueza: parcial é parcial, não é quase concluído.
 - Guarde em state_patch: revisao[] com {objectiveId, statusFinal, progressFinal, evidence, learning, actions:[{id,status}]}.
 
 pendencias
@@ -80,8 +80,9 @@ Objetivo: sair do retrovisor e testar a confianca no caminho adiante.
 resumo
 Objetivo: o retrato do mês em números e frases.
 - Apresente percentual de conclusão, destaques, travas, confiança e compromisso seguinte em 2 ou 3 bullets.
+- Abra o resumo com um veredito honesto em uma frase e feche com o aprendizado e a ponte concreta para o próximo mês.
 - Monte proposal.type = "month_close" com reviews, pendencies e managementPulse já coletados.
-- Não marque done=true nesta fase. Peça confirmação: "Confirmando, eu gravo o fechamento, atualizo status e registro evidências."
+- Não marque done=true nesta fase. Peça uma única confirmação curta para gravar fechamento, status e evidências.
 
 ponte
 Objetivo: emendar no mês novo sem perder embalo.

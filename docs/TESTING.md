@@ -140,6 +140,15 @@ pnpm run eval:strategic:q4c
 
 O runner usa duas empresas descartaveis para cobrir mes futuro ligado ao trimestre correto e ausencia de plano trimestral. Ele testa bloco completo, uma confirmacao, limite global de cinco acoes, pendencia herdada, capacidade/backlog, excecao consciente, zero mutacao antes da confirmacao e correspondencia entre proposta, banco e documento. A primeira rodada reprovou apenas o fallback de pendencia em 21/22 e custou US$ 0,042510. Depois da correcao server-side, tres rodadas passaram 22/22: US$ 0,041647, US$ 0,042509 e a prova final apos compatibilidade `YYYY-MM` por US$ 0,042908. Q4C totalizou US$ 0,169574; o acumulado do plano ficou US$ 2,337748. Cleanup foi confirmado nas quatro rodadas; producao e WhatsApp real nao participam.
 
+A Q4D acrescenta testes de naturalidade em `_shared/session-adaptive.test.ts`, `_shared/natural-conversation.test.ts`, a rubrica aplicavel normalizada e um smoke pago opt-in no staging:
+
+```bash
+pnpm run eval:strategic:q4d
+pnpm run eval:strategic:q4d:recompute .agents-private/<relatorio-q4d>.json
+```
+
+O runner executa anual, trimestral, mensal, Revisao Estrategica e fechamentos mensal/trimestral em uma empresa descartavel. Checa uma pergunta, resposta curta, ausencia de bordao/estado tecnico, pergunta ancorada, proposta mensal, zero mutacao e cleanup; o judge avalia escopo, diagnostico, pergunta, desafio, naturalidade, fidelidade e fechamento. `ORACULO_Q4D_DIAGNOSTIC=1` e `ORACULO_Q4D_CASES=ANNUAL|MONTHLY` isolam defeitos sem chamar judge. O recálculo e somente leitura: preserva o relatorio original, normaliza os pesos aplicaveis para 100 e nao chama provider nem staging. Gate final: 95,59, zero candidato critico. Q4D total US$ 0,553094; acumulado US$ 2,890842. Os relatorios bloqueados e erros transitórios foram preservados; todas as empresas, usuarios e chaves descartaveis foram removidos.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

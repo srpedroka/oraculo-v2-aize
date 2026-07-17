@@ -31,5 +31,7 @@ describe("structured logging", () => {
 
   it("maps dependency failures to a stable code", () => {
     expect(safeErrorCode(new Error("fetch failed"))).toBe("DEPENDENCY_UNAVAILABLE");
+    expect(safeErrorCode({ code: "pgrst116", message: "private database detail" })).toBe("PGRST116");
+    expect(safeErrorCode({ code: "invalid code with spaces" })).toBe("INTERNAL_ERROR");
   });
 });
