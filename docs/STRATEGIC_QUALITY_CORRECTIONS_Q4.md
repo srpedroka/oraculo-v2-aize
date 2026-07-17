@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **briefing aprovado; Q4A-Q4E concluidas e validadas no staging; Q4F aguarda briefing**
+Status: **Q4A-Q4F concluidas; gate tecnico aprovado no staging**
 
 ## O que vai mudar para o gestor
 
@@ -96,6 +96,8 @@ Estado em 2026-07-17: concluida no staging. Toda proposta confirmada agora carre
 - Rodar memoria relevante e irrelevante, area/periodo, confirmacao unica e documento canonico.
 - Validar desktop e mobile, lint, build, secret scan e CI.
 - Publicar primeiro no staging. Producao e Q5 exigem gates separados.
+
+Estado em 2026-07-17: concluida no staging sem mudanca funcional nem novo deploy. A matriz existente executou 350 unitarios, 3 fixtures, 29 casos de referencia, 122 testes em 27 arquivos de integracao, 7 testes de RLS/seguranca e 11 E2E desktop/mobile. Area/periodo, uma confirmacao, atomicidade, memoria, documento canonico, WhatsApp duravel e igualdade das saidas passaram. Lint, build, bundle de 134,5 KB gzip e secret scan em 465 arquivos ficaram verdes. Dois testes pagos/automaticos permaneceram opt-in de forma deliberada; suas fronteiras possuem cobertura deterministica e provas anteriores. Auditoria independente confirmou zero organizacoes e zero usuarios descartaveis criados pela Q4F. Custo US$ 0; acumulado US$ 2,890842. Relatorio em `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`. Q4 encerrada tecnicamente; Q5 exige briefing e autorizacao separados.
 
 ## Gate da Q4
 

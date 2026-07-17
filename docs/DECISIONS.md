@@ -836,3 +836,11 @@ Decisao: proposta confirmada, banco e `plan_documents.content` preservam um cont
 Motivo: a Q3 apontou baixa fidelidade e pouca evidencia entre canais. Manter renderizadores independentes sem teste de igualdade permitiria perder prazo, alinhamento, decisoes mensais ou detalhes de fechamento em apenas uma saida, mesmo com banco correto.
 
 Consequencias: a Q4E compara por objeto proposal/banco/documento, calcula fingerprint e exige 18 fatos materiais em tela, PDF e WhatsApp. Renderizacao nao pode criar nova revisao, custo ou log de IA. O identificador da sessao permanece dado privado sob o RLS de `plan_documents` e nao e exibido como texto executivo. A prova usa staging descartavel; producao exige gate separado.
+
+## 2026-07-17 - Q4F reutiliza os gates existentes
+
+Decisao: o aceite integrado Q4F usa as suites unitarias, fixtures, catalogo, integracao, RLS, E2E e build ja obrigatorias, complementadas por auditoria independente de residuos. Nao foi criado um segundo runner que duplicasse comandos, nem foi republicado runtime sem mudanca.
+
+Motivo: a Q4F precisa provar que as correcoes funcionam juntas, nao introduzir outra camada de infraestrutura de teste. Duplicar a orquestracao aumentaria manutencao e poderia divergir do CI real.
+
+Consequencias: `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md` e a evidencia consolidada. Skips opt-in precisam de justificativa e cobertura alternativa explicita. Q4 termina com custo zero e Q5 continua separada porque repete casos generativos pagos e exige revisao humana.
