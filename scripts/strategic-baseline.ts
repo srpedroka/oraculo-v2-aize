@@ -482,7 +482,15 @@ export async function executeCase(
   let transcript: TranscriptMessage[] = [];
   let proposal: Record<string, any> | null = null;
   let proposalSequence = Number.MAX_SAFE_INTEGER;
-  let generation = { promptTokens: 0, completionTokens: 0, totalTokens: 0, totalCostUsd: 0 };
+  let generation = {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    totalCostUsd: 0,
+    callCount: 0,
+    adaptiveAttemptCounts: {} as Record<string, number>,
+    adaptiveRepairReasonCounts: {} as Record<string, number>,
+  };
   let judge: { status: "completed" | "error"; result?: any; error?: string; usage?: any } = { status: "error", error: "judge nao executado" };
   let judgeCostUsd = 0;
   let sessionScopeMatches = false;
@@ -878,6 +886,38 @@ async function restartQ5AfterCorrection(correctionReference: string) {
   progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
   await writePrivateJson(PROGRESS_PATH, progress);
   console.log(`Q5 reiniciada apos ${normalizedReference}: ${progress.calibrationRuns.length} medicao(oes) preservada(s); custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}; matriz deterministica pendente.`);
+}
+
+async function resumeQ5AfterCorrection(correctionReference: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("resume-after-correction e exclusivo da regressao Q5");
+  const normalizedReference = correctionReference.toUpperCase();
+  if (normalizedReference !== "Q4N") throw new Error("retomada incremental Q5 exige a correcao aprovada Q4N");
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  const failedRuns = progress.runs.filter((run) => run.phase === "Q2B" && run.status === "execution-error");
+  if (!failedRuns.length) throw new Error("Q5B nao possui erro tecnico para retomar apos Q4N");
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = "medicao Q5B preservada como erro tecnico antes da retomada incremental apos aprovacao da correcao Q4N";
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...failedRuns.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: normalizedReference,
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: failedRuns.length,
+      archivedDeterministicCount: 0,
+    },
+  ];
+  progress.runs = progress.runs.filter((run) => !(run.phase === "Q2B" && run.status === "execution-error"));
+  progress.baselineVersion = "2026-07-17.q5-regression-r8-incremental-q4n";
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Q5B pronta para retomada incremental apos Q4N: ${failedRuns.length} erro(s) tecnico(s) arquivado(s); ${progress.runs.length} medicao(oes) aprovada(s) preservada(s); custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
 }
 
 async function cleanupStaleFixtures() {
@@ -1436,6 +1476,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "archive-calibration") await archiveCalibration();
   else if (command === "archive-errors") await archiveExecutionErrors();
   else if (command === "restart-after-correction" && value) await restartQ5AfterCorrection(value);
+  else if (command === "resume-after-correction" && value) await resumeQ5AfterCorrection(value);
   else if (command === "cleanup-stale") await cleanupStaleFixtures();
   else if (command === "deterministic") await runDeterministicBaseline();
   else if (command === "human-packet") await writeHumanReviewPacket();
@@ -1445,7 +1486,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

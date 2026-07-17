@@ -54,6 +54,7 @@ import {
   ADAPTIVE_SESSION_RULES,
   adaptiveFallbackReply,
   buildAdaptiveRepairDirective,
+  deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeReadyProposalEnvelope,
@@ -370,8 +371,16 @@ export async function processPlanningMessage(
     .join("\n");
   const normalizeEnvelope = (envelope: any) => {
     if (session.type !== "quarterly") return envelope;
+    const preparedEnvelope = deferUnchallengedQuarterlyProposal({
+      envelope,
+      sessionType: session.type,
+      currentPhase: session.phase,
+      sessionState: session.state,
+      conversationText,
+      userMessage: params.message,
+    });
     return normalizeProposalConfirmationEnvelope(
-      preserveExplicitQuarterlyCadence(envelope, conversationText),
+      preserveExplicitQuarterlyCadence(preparedEnvelope, conversationText),
       session.type,
     );
   };

@@ -445,3 +445,31 @@ A conversa bloqueada fez corretamente o reenquadramento de CRM como meio, preser
 O cleanup removeu empresa, usuario e chave descartavel. O preflight final confirmou staging limpo e acumulado de **US$ 5,718412**. O custo parcial Q5B r8 foi **US$ 0,193431**; o fail-fast impediu a quinta chamada. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
 
 A proxima correcao Q4N deve manter a pergunta aprovada pela Q4M, mas elimina-la do caminho de reparo por IA: quando um bloco completo ainda nao recebeu desafio, o servidor deve adiar a proposta e construir deterministicamente a unica pergunta contextual antes de aceitar nova geracao. Assim, a mesma requisicao nao consome uma segunda chamada ao provedor nem compete com o timeout. A regra continua sem reentrevista, sem reabrir area e sem gravar antes da confirmacao. Depois de testes locais e deploy apenas no staging, repetir somente `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002`; nao reiniciar a Q5B automaticamente.
+
+## Correcao Q4N
+
+A Q4N foi aprovada somente no staging em 2026-07-17. Quando o primeiro envelope de um bloco trimestral completo ja contem proposta, mas a conversa ainda nao fez o desafio estrategico, o servidor agora:
+
+1. preserva os fatos canonicos extraidos;
+2. adia a proposta localmente e mantem a sessao aberta;
+3. faz a mesma pergunta curta sobre evidencia intermediaria;
+4. aceita uma nova proposta no turno seguinte, sem chamar novamente o provedor dentro da resposta que gerou o desafio.
+
+O smoke repetiu apenas `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002` R2. O CRM foi reenquadrado como meio; o alvo de 40% para 85%, a fonte semanal, a adocao e o vinculo anual foram preservados. A conversa perguntou qual evidencia antecipada provaria a mudanca e depois apresentou o plano com duas acoes e uma unica confirmacao.
+
+| Evidencia | Resultado |
+|---|---:|
+| Conducao | 93,75 |
+| Plano Trimestral | 95,00 |
+| Media conjunta | 94,38 |
+| Checks deterministas | 10/10 |
+| Falhas criticas | 0 |
+| Reparos `quarterly_complete_block_unchallenged` | 0 |
+| Custo de geracao | US$ 0,042371 |
+| Custo do judge | US$ 0,011800 |
+| Total Q4N | US$ 0,054171 |
+| Acumulado do plano | US$ 5,772584 |
+
+O relatorio registrou seis chamadas de planejamento ao longo dos quatro turnos do gestor. Duas foram reparos adaptativos de outros motivos, preservados pelo contrato geral; nenhuma decorreu do bloco trimestral completo e nenhuma disputou o timeout da pergunta Q4N. Empresa, usuario e chave descartaveis foram removidos, e o preflight final confirmou staging sem residuos.
+
+A retomada seguinte sera incremental. O comando `resume-after-correction Q4N` arquiva somente a medicao tecnica CRM R2 com erro, mantem as tres medicoes aprovadas da Q5B r8 e deixa o runner repetir a combinacao ausente antes de continuar os casos ainda nao executados. Depois que Q5A-Q5D e os gates finais estiverem aprovados, sera feita uma regressao geral limpa com todos os cenarios; ate la, resultados aprovados nao serao repetidos sem necessidade.

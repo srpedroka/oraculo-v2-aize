@@ -361,16 +361,43 @@ export async function ownerToken(handle: EvaluationOrg) {
 export async function generationUsage(handle: EvaluationOrg, startedAt: string) {
   const result = await serviceClient()
     .from("ai_usage_logs")
-    .select("prompt_tokens,completion_tokens,total_tokens,total_cost_usd")
+    .select("prompt_tokens,completion_tokens,total_tokens,total_cost_usd,metadata")
     .eq("org_id", handle.orgId)
     .gte("created_at", startedAt);
   if (result.error) throw result.error;
-  return (result.data ?? []).reduce((total, item) => ({
-    promptTokens: total.promptTokens + Number(item.prompt_tokens ?? 0),
-    completionTokens: total.completionTokens + Number(item.completion_tokens ?? 0),
-    totalTokens: total.totalTokens + Number(item.total_tokens ?? 0),
-    totalCostUsd: total.totalCostUsd + Number(item.total_cost_usd ?? 0),
-  }), { promptTokens: 0, completionTokens: 0, totalTokens: 0, totalCostUsd: 0 });
+  return (result.data ?? []).reduce((total, item) => {
+    const metadata = item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+      ? item.metadata as Record<string, unknown>
+      : {};
+    const attempt = Number(metadata.adaptiveAttempt);
+    const attemptKey = Number.isInteger(attempt) && attempt > 0 ? String(attempt) : "unclassified";
+    const repairReasons = Array.isArray(metadata.adaptiveRepairReasons)
+      ? metadata.adaptiveRepairReasons.map(String).filter(Boolean)
+      : [];
+    return {
+      promptTokens: total.promptTokens + Number(item.prompt_tokens ?? 0),
+      completionTokens: total.completionTokens + Number(item.completion_tokens ?? 0),
+      totalTokens: total.totalTokens + Number(item.total_tokens ?? 0),
+      totalCostUsd: total.totalCostUsd + Number(item.total_cost_usd ?? 0),
+      callCount: total.callCount + 1,
+      adaptiveAttemptCounts: {
+        ...total.adaptiveAttemptCounts,
+        [attemptKey]: (total.adaptiveAttemptCounts[attemptKey] ?? 0) + 1,
+      },
+      adaptiveRepairReasonCounts: repairReasons.reduce((counts, reason) => ({
+        ...counts,
+        [reason]: (counts[reason] ?? 0) + 1,
+      }), total.adaptiveRepairReasonCounts),
+    };
+  }, {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    totalCostUsd: 0,
+    callCount: 0,
+    adaptiveAttemptCounts: {} as Record<string, number>,
+    adaptiveRepairReasonCounts: {} as Record<string, number>,
+  });
 }
 
 async function targetPlanState(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {

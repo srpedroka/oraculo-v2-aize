@@ -3,6 +3,7 @@ type SessionEnvelope = {
   state_patch?: unknown;
   next_phase?: unknown;
   proposal?: unknown;
+  done?: unknown;
 };
 
 type AdaptiveMetadata = {
@@ -285,6 +286,12 @@ function looksLikeCompleteQuarterlyBlock(value: string) {
   return signals >= 6;
 }
 
+function quarterlyCompleteBlockChallengeReply(userMessage: string) {
+  const range = userMessage.match(/\bde\s+(\d+(?:[.,]\d+)?\s*%)\s+para\s+(\d+(?:[.,]\d+)?\s*%)/i);
+  const measure = range ? ` de ${range[1]} para ${range[2]}` : "";
+  return `A meta${measure} está clara. Qual evidência intermediária vai mostrar, antes do fechamento, que as ações realmente estão mudando esse resultado?`;
+}
+
 function oracleConversation(conversationText: string) {
   return conversationText
     .split(/\n(?=(?:oracle|user):\s*)/i)
@@ -329,6 +336,41 @@ function mergedCanonicalState(sessionState: unknown, statePatch: unknown) {
 function verifiedStateKeys(sessionState: unknown, statePatch: unknown) {
   const merged = mergedCanonicalState(sessionState, statePatch);
   return Object.keys(merged).filter((key) => key !== "_adaptive" && hasConcreteValue(merged[key]));
+}
+
+export function deferUnchallengedQuarterlyProposal(input: {
+  envelope: SessionEnvelope;
+  sessionType: string;
+  currentPhase: string;
+  sessionState?: unknown;
+  conversationText?: string;
+  userMessage: string;
+}) {
+  if (input.sessionType !== "quarterly"
+    || !input.envelope.proposal
+    || !looksLikeCompleteQuarterlyBlock(input.userMessage)
+    || hasQuarterlyStrategicChallenge(text(input.conversationText))) {
+    return input.envelope;
+  }
+
+  const statePatch = asRecord(input.envelope.state_patch);
+  return {
+    ...input.envelope,
+    reply: quarterlyCompleteBlockChallengeReply(input.userMessage),
+    proposal: null,
+    done: false,
+    state_patch: {
+      ...statePatch,
+      _adaptive: {
+        readiness: "partial",
+        confirmed_facts: verifiedStateKeys(input.sessionState, statePatch),
+        blocking_gap: "evidencia intermediaria ou decisao consciente de seguir",
+        question_goal: "testar a consistencia da meta e das acoes",
+        action_direction: "validar a abordagem antes da sintese",
+      },
+    },
+    next_phase: input.currentPhase,
+  };
 }
 
 export function validateAdaptiveEnvelope(input: ValidationInput) {
@@ -766,9 +808,7 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
     return "Essa meta está voltando, então não vale simplesmente copiá-la. O que mudou desde o ciclo anterior na causa, na abordagem ou na evidência de acompanhamento?";
   }
   if (sessionType === "quarterly" && looksLikeCompleteQuarterlyBlock(userMessage)) {
-    const range = userMessage.match(/\bde\s+(\d+(?:[.,]\d+)?\s*%)\s+para\s+(\d+(?:[.,]\d+)?\s*%)/i);
-    const measure = range ? ` de ${range[1]} para ${range[2]}` : "";
-    return `A meta${measure} está clara. Qual evidência intermediária vai mostrar, antes do fechamento, que as ações realmente estão mudando esse resultado?`;
+    return quarterlyCompleteBlockChallengeReply(userMessage);
   }
   const quarterlyActivity = sessionType === "quarterly" && userMessage.length <= 180
     ? userMessage.match(QUARTERLY_ACTIVITY_PATTERN)?.[1]?.trim() ?? ""

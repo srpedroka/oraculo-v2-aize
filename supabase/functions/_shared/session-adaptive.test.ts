@@ -3,6 +3,7 @@ import {
   ADAPTIVE_SESSION_RULES,
   adaptiveFallbackReply,
   buildAdaptiveRepairDirective,
+  deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeProposalConfirmationEnvelope,
@@ -695,6 +696,86 @@ describe("adaptive planning session guard Q4A", () => {
     expect(fallback).not.toMatch(/qual (?:e|é) a [aá]rea/i);
     expect(visibleQuestions(fallback)).toHaveLength(1);
     expect(accepted).not.toContain("quarterly_complete_block_unchallenged");
+  });
+
+  it("defers a ready quarterly proposal locally instead of requiring a second model call", () => {
+    const userMessage = [
+      "Dados concretos adicionais confirmados pelo gestor sintetico para fechar o plano trimestral:",
+      "- Resultado principal confirmado: elevar oportunidades com proxima acao registrada de 40% para 85% ate 30/09/2027, fonte relatorio semanal do funil.",
+      "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
+      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
+      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
+      "- Risco: baixa adesao. Mitigacao: acompanhamento semanal. Foco de aprendizado: validar a padronizacao.",
+    ].join("\n");
+    const readyEnvelope = {
+      reply: "O plano trimestral ficou pronto. Posso gravar?",
+      proposal: { type: "save_quarterly_plan", quarterlyObjectives: [{ result: "Elevar oportunidades" }] },
+      done: true,
+      state_patch: {
+        resultado: "Elevar oportunidades",
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: ["resultado"],
+          blocking_gap: null,
+          question_goal: "confirmar gravacao",
+          action_direction: "gravar plano",
+        },
+      },
+      next_phase: "sintese",
+    };
+    const prepared = deferUnchallengedQuarterlyProposal({
+      envelope: readyEnvelope,
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      sessionState: {},
+      conversationText: "oracle: O que o CRM precisa mudar no resultado?",
+      userMessage,
+    });
+    const preparedReasons = validateAdaptiveEnvelope({
+      envelope: prepared,
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: {},
+      conversationText: "oracle: O que o CRM precisa mudar no resultado?",
+      previousOracleReply: "O que o CRM precisa mudar no resultado?",
+      userMessage,
+    });
+
+    expect(prepared.proposal).toBeNull();
+    expect(prepared.done).toBe(false);
+    expect(prepared.next_phase).toBe("diagnostico");
+    expect(prepared.reply).toContain("40% para 85%");
+    expect(prepared.reply).toContain("evidência intermediária");
+    expect(visibleQuestions(String(prepared.reply))).toHaveLength(1);
+    expect(preparedReasons).toEqual([]);
+  });
+
+  it("keeps a quarterly proposal after the strategic challenge already happened", () => {
+    const userMessage = [
+      "Dados concretos adicionais confirmados para fechar o plano trimestral:",
+      "- Resultado principal: elevar entregas no prazo de 82% para 92%, fonte expedicao.",
+      "- Responsavel: Diego. Periodo: T3 2027.",
+      "- Acao 1: publicar padrao; criterio: padrao aprovado.",
+      "- Acao 2: revisar excecoes; criterio: doze revisoes.",
+      "- Risco: baixa adesao. Mitigacao: acompanhamento semanal.",
+    ].join("\n");
+    const readyEnvelope = {
+      reply: "O plano ficou pronto. Posso gravar?",
+      proposal: { type: "save_quarterly_plan" },
+      state_patch: {},
+      next_phase: "sintese",
+    };
+    const prepared = deferUnchallengedQuarterlyProposal({
+      envelope: readyEnvelope,
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      conversationText: "oracle: Qual evidência intermediária vai provar, antes do fechamento, que as ações mudam o resultado?",
+      userMessage,
+    });
+
+    expect(prepared).toBe(readyEnvelope);
+    expect(prepared.proposal).toEqual({ type: "save_quarterly_plan" });
   });
 
   it("builds a useful single-confirmation summary for a quarterly proposal", () => {
