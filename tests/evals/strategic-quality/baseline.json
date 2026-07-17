@@ -24,6 +24,11 @@
       "date": "2026-07-16",
       "gate": "Q4B",
       "reason": "Conducao trimestral orientada a resultado, vinculo anual real ou excecao explicita, limite de tres prioridades e preservacao de baseline, fonte, prazo e acoes verificaveis."
+    },
+    {
+      "date": "2026-07-16",
+      "gate": "Q4C",
+      "reason": "Conducao mensal ligada ao trimestre correto, uma a tres entregas, cinco acoes no total, decisoes explicitas de capacidade e excecao trimestral sem criacao automatica de objetivo."
     }
   ],
   "runtimeAssignments": [
@@ -50,22 +55,24 @@
     { "path": "supabase/functions/oracle-session/index.ts", "sha256": "7009d4c4d3e94f47dcff43f9d9cf37ea8cfaf6cbb2b0f4cfad4afef861971002" },
     { "path": "supabase/functions/oracle-chat/index.ts", "sha256": "d997239676f52252a5c4efa1413ab05bccbc40a79174393bd9ccbe5947cb701b" },
     { "path": "supabase/functions/_shared/conductors/month-close.ts", "sha256": "43ce05899924af39119cb8e25124b9402b8dcaecd2bdd2f45c7b592e4b2b6323" },
-    { "path": "supabase/functions/_shared/conductors/monthly.ts", "sha256": "0b9c8d72d4fd7f3dabca93f8ac2c0a69c0ff5e3643da918c59162cf9e33350cc" },
+    { "path": "supabase/functions/_shared/conductors/monthly.ts", "sha256": "f606dd5daa946b518db7009057b5eb2262c6dc418b1bcf90b1cb9e9281bfb5cd" },
     { "path": "supabase/functions/_shared/conductors/persona.ts", "sha256": "180b954856ff190e49c78a586e407edf7fed7316227c90610a41b33d01d30586" },
     { "path": "supabase/functions/_shared/conductors/quarter-close.ts", "sha256": "0421278818e612118f58aebf807bb458fbf899da81eacf3d4d93de5af44225c7" },
     { "path": "supabase/functions/_shared/conductors/quarterly.ts", "sha256": "42a03756391c1c68fa652fdc4009343872da4466b46ecb78470c4e2babc695f3" },
     { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "31f948fff81143be95d0eb5bf21a67ab88fdacde9fabd687548be0187dc41a7e" },
     { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "5835c554fef96c327887fca0bb008117e7395feaefcb04abaec45e237f70bb3e" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
-    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "f2def57977bf6e30f3565e18aaff439f30230ca0b2747bbf7540918892d7e72c" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "832da38bd00ca7cace8e0972ce781186c6319cd3f06b9e6126852b6124226064" },
+    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "e709a84f5dd1006b5f1c4a97f464479c8ec76263307e2cc8dc727aa2340a6a72" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "48bbe6a3094303eebdd6b77883d4cf2d3ce2808bcf465b95814223f8f2ddf402" },
     { "path": "supabase/functions/_shared/session-runtime.ts", "sha256": "12995aaf4d99eb1db2713d2378ee852e422e4bd895b19a237b49144a6ce2d010" },
-    { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "3011e41405148bdc510ad80ffd89b4252dc86e57721d00774bc15c71f4002c47" },
+    { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "2e4b59d192cb8de6889aa1361f267f0d064a7f9b1a07b65514972a133a1b0e67" },
     { "path": "supabase/functions/_shared/session-imports.ts", "sha256": "d9ed3d6f0c0f8db62b8a9d029fdee77604b827d7aa348b5e69f2ff2322697820" },
-    { "path": "supabase/functions/_shared/plan-context.ts", "sha256": "77b847dd474e06415725b3de77f5f2b10b3fc5e5ecd79b1cdcbd45d784afc480" },
+    { "path": "supabase/functions/_shared/plan-context.ts", "sha256": "0335aa3d074c8b8a88b45550b7c246912e34203d4fa78d9c61daf8416d0689a8" },
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "666f946c74f18f18f0636b14710cb892935db892f030c5e68e679b0abe04f5f5" },
-    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "cd8a2eb295ee699fbdd3568922499ffda57c67efd3c29358f0c33d28f3e68f23" },
-    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "16456052191d742dac184e803cf14cc7ac5e17592d531550a70bf2a5e878ad93" }
+    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "899dda8ef37c52707fa3bf5aea0cb977b96576c39f7280c7b9fc80d525390327" },
+    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "c362e13885b50462dce270cf9d34260df841190821863cf2a09c457f5d8626a0" },
+    { "path": "supabase/functions/_shared/periods.ts", "sha256": "7ad3f76bc9ede9be903e139ec99238eea920cc8e7ac771a585292f9f4235ec36" },
+    { "path": "supabase/functions/_shared/monthly-guidance.ts", "sha256": "3b00499d0eed9ec737365559e4fc3478a7ee9f4e1033a25fb88e9cfb69f42d6d" }
   ]
 }

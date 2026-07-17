@@ -132,6 +132,14 @@ pnpm run eval:strategic:q4b
 
 O runner usa duas empresas descartaveis para cobrir plano anual presente e ausente. Ele testa gestor completo, resposta vaga, excesso de prioridades, atividade como falso objetivo e excecao anual; confirma somente o caso completo e compara proposta, objetivo, acoes e documento canonico. Em 2026-07-16, passou 21/21 antes e depois do reforco final. A rodada final custou US$ 0,066221; as duas validacoes Q4B somaram US$ 0,124095 e removeram empresas, usuarios e chaves. Producao e WhatsApp real nao participam.
 
+A Q4C acrescenta doze testes puros em `_shared/monthly-guidance.test.ts`, testes de periodo/contexto/importacao e um smoke pago, opt-in e restrito ao staging:
+
+```bash
+pnpm run eval:strategic:q4c
+```
+
+O runner usa duas empresas descartaveis para cobrir mes futuro ligado ao trimestre correto e ausencia de plano trimestral. Ele testa bloco completo, uma confirmacao, limite global de cinco acoes, pendencia herdada, capacidade/backlog, excecao consciente, zero mutacao antes da confirmacao e correspondencia entre proposta, banco e documento. A primeira rodada reprovou apenas o fallback de pendencia em 21/22 e custou US$ 0,042510. Depois da correcao server-side, duas rodadas passaram 22/22: US$ 0,041647 e a prova final do código exato do commit por US$ 0,042509. Q4C totalizou US$ 0,126666; o acumulado do plano ficou US$ 2,294841. Cleanup foi confirmado nas tres rodadas; producao e WhatsApp real nao participam.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

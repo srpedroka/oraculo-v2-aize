@@ -84,9 +84,9 @@ export function inferPlanningType(text: string): "strategic" | "quarterly" | "mo
   return null;
 }
 
-function yearFromText(text: string) {
+function yearFromText(text: string, fallback = currentYear()) {
   const match = text.match(/\b(20\d{2})\b/);
-  return match ? Number(match[1]) : currentYear();
+  return match ? Number(match[1]) : fallback;
 }
 
 function monthFromText(text: string) {
@@ -106,6 +106,20 @@ function quarterFromText(text: string) {
   const named = normalized.match(/\b(primeiro|segundo|terceiro|quarto)\s+trimestre\b/);
   if (named) return ["primeiro", "segundo", "terceiro", "quarto"].indexOf(named[1]) + 1;
   return null;
+}
+
+export function monthPeriodParts(period: string) {
+  const month = monthFromText(period);
+  const yearMatch = period.match(/\b(20\d{2})\b/);
+  if (month === null || !yearMatch) return null;
+  return { month: month + 1, year: Number(yearMatch[1]) };
+}
+
+export function quarterPeriodForMonth(period: string, fallbackDate = new Date()) {
+  const month = monthFromText(period);
+  if (month === null) return currentQuarterPeriod(fallbackDate);
+  const year = yearFromText(period, fallbackDate.getFullYear());
+  return `T${Math.floor(month / 3) + 1} ${year}`;
 }
 
 export function periodForPlanning(type: "strategic" | "quarterly" | "monthly", hint: string | null | undefined, sourceText = "") {

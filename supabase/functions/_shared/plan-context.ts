@@ -1,3 +1,4 @@
+import { quarterPeriodForMonth } from "./periods.ts";
 import { formatUntrustedDocument } from "./untrusted-content.ts";
 
 type Client = any;
@@ -73,6 +74,27 @@ function currentPeriods(date = new Date()) {
     month: `${MONTHS[monthIndex]} ${year}`,
     quarterLabels: [`T${quarter} ${year}`, `Q${quarter} ${year}`],
     quarterDisplay: `T${quarter} ${year}`,
+  };
+}
+
+export function planContextPeriods(
+  focus: PlanContextFocus,
+  requestedPeriod: string | null | undefined,
+  date = new Date(),
+) {
+  const periods = currentPeriods(date);
+  const periodInFocus = String(requestedPeriod ?? "").trim();
+  const explicitQuarter = Boolean(periodInFocus && /^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus));
+  const quarterInFocus = explicitQuarter
+    ? periodInFocus.replace(/^Q/i, "T")
+    : focus === "monthly" && periodInFocus
+    ? quarterPeriodForMonth(periodInFocus, date)
+    : periods.quarterDisplay;
+
+  return {
+    quarterLabels: [quarterInFocus, quarterInFocus.replace(/^T/i, "Q")],
+    quarterDisplay: quarterInFocus,
+    monthDisplay: periodInFocus && !explicitQuarter ? periodInFocus : periods.month,
   };
 }
 
@@ -214,12 +236,7 @@ export async function buildPlanContext(
 ) {
   const focus = options.focus ?? (options.areaId ? "area" : "org");
   const periods = currentPeriods();
-  const periodInFocus = String(options.period ?? "").trim();
-  const quarterLabels = periodInFocus && /^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus)
-    ? [periodInFocus.replace(/^Q/i, "T"), periodInFocus.replace(/^T/i, "Q")]
-    : periods.quarterLabels;
-  const quarterDisplay = quarterLabels[0] ?? periods.quarterDisplay;
-  const monthDisplay = periodInFocus && !/^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus) ? periodInFocus : periods.month;
+  const { quarterLabels, quarterDisplay, monthDisplay } = planContextPeriods(focus, options.period);
   let historicalDocumentsQuery = client
     .from("plan_documents")
     .select("id, area_id, type, period, title, content, version, created_at")

@@ -1,4 +1,5 @@
 import { PERSONA_ORACULO } from "./conductors/persona.ts";
+import { MONTHLY_GUIDANCE_RULES } from "./monthly-guidance.ts";
 import { UNTRUSTED_CONTENT_RULES } from "./untrusted-content.ts";
 
 export function currentYearFromPeriod(period: string) {
@@ -335,12 +336,65 @@ export function readyQuarterlyPlanSystemPrompt(context: string, period: string, 
 }
 
 export function normalizeReadyMonthlyProposal(rawProposal: any, period: string) {
+  let remainingActions = 5;
+  const rawObjectives = asArray<any>(rawProposal?.objectives ?? rawProposal?.objetivos_mes ?? rawProposal?.objetivos)
+    .filter((objective) => asText(objective?.title ?? objective?.titulo))
+    .slice(0, 3);
+  const objectives = rawObjectives
+    .map((objective) => {
+      const actions = asArray<any>(objective?.actions ?? objective?.acoes)
+        .map((action) => ({
+          description: asText(action?.description ?? action?.descricao),
+          completionCriterion: asText(action?.completionCriterion ?? action?.completion_criterion ?? action?.criterio),
+          deadline: asText(action?.deadline ?? action?.prazo),
+          owner: asText(action?.owner ?? action?.responsavel),
+        }))
+        .filter((action) => action.description)
+        .slice(0, remainingActions);
+      remainingActions -= actions.length;
+      return {
+        title: asText(objective?.title ?? objective?.titulo),
+        type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
+        result: asText(objective?.result ?? objective?.resultado),
+        metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
+        current: asText(objective?.current ?? objective?.baseline ?? objective?.valor_atual),
+        target: asText(objective?.target ?? objective?.meta),
+        source: asText(objective?.source ?? objective?.fonte ?? objective?.evidencePlan ?? objective?.evidence_plan),
+        deadline: asText(objective?.deadline ?? objective?.prazo),
+        owner: asText(objective?.owner ?? objective?.responsavel),
+        period: asText(objective?.period ?? objective?.periodo, period),
+        linkedQuarterlyObjectiveId: asText(objective?.linkedQuarterlyObjectiveId ?? objective?.linked_quarterly_objective_id),
+        parentTitle: asText(objective?.parentTitle ?? objective?.objetivo_trimestral_vinculado ?? objective?.vinculo),
+        kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
+        actions,
+      };
+    });
+  const alignment = rawProposal?.quarterlyAlignment ?? rawProposal?.alinhamento_trimestral ?? {};
+
   return {
     type: "save_monthly_plan",
     period,
     context: asTextArray(rawProposal?.context ?? rawProposal?.contexto ?? rawProposal?.contexto_rapido).slice(0, 5),
     learningFocus: asTextArray(rawProposal?.learningFocus ?? rawProposal?.foco_aprendizado).slice(0, 5),
     focusPhrase: asText(rawProposal?.focusPhrase ?? rawProposal?.frase_de_foco),
+    quarterlyAlignment: {
+      status: asText(alignment.status).toLowerCase(),
+      quarterlyObjectiveId: asText(alignment.quarterlyObjectiveId ?? alignment.quarterly_objective_id),
+      quarterlyObjectiveTitle: asText(alignment.quarterlyObjectiveTitle ?? alignment.quarterly_objective_title),
+      rationale: asText(alignment.rationale ?? alignment.justificativa),
+    },
+    capacity: { maxCommittedActions: 5 },
+    pendingDecisions: asArray<any>(rawProposal?.pendingDecisions ?? rawProposal?.decisoes_pendentes).map((decision) => ({
+      item: asText(decision?.item ?? decision?.pendencia),
+      origin: asText(decision?.origin ?? decision?.origem),
+      reason: asText(decision?.reason ?? decision?.motivo),
+      decision: asText(decision?.decision ?? decision?.decisao).toLowerCase(),
+    })).slice(0, 8),
+    backlog: asTextArray(rawProposal?.backlog ?? rawProposal?.tradeOffs ?? rawProposal?.renuncias).slice(0, 12),
+    risks: asTextArray(rawProposal?.risks ?? rawProposal?.riscos).slice(0, 8),
+    blockers: asTextArray(rawProposal?.blockers ?? rawProposal?.bloqueios).slice(0, 8),
+    cadence: asText(rawProposal?.cadence ?? rawProposal?.cadencia),
+    nextCommitment: asText(rawProposal?.nextCommitment ?? rawProposal?.proximo_compromisso),
     realism: rawProposal?.realism && typeof rawProposal.realism === "object"
       ? {
         fits: rawProposal.realism.fits ?? rawProposal.realism.cabe ?? true,
@@ -350,48 +404,38 @@ export function normalizeReadyMonthlyProposal(rawProposal: any, period: string) 
         fits: rawProposal?.realismo?.cabe ?? true,
         firstToRemove: asText(rawProposal?.realismo?.primeira_a_sair),
       },
-    objectives: asArray<any>(rawProposal?.objectives ?? rawProposal?.objetivos_mes ?? rawProposal?.objetivos)
-      .map((objective) => ({
-        title: asText(objective?.title ?? objective?.titulo, "Objetivo mensal"),
-        type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
-        result: asText(objective?.result ?? objective?.resultado),
-        metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
-        target: asText(objective?.target ?? objective?.meta),
-        owner: asText(objective?.owner ?? objective?.responsavel),
-        period: asText(objective?.period ?? objective?.periodo, period),
-        parentTitle: asText(objective?.parentTitle ?? objective?.objetivo_trimestral_vinculado ?? objective?.vinculo),
-        kpiLinks: normalizeKpiLinks(objective?.kpiLinks ?? objective?.kpi_links),
-        actions: asArray<any>(objective?.actions ?? objective?.acoes)
-          .map((action) => ({
-            description: asText(action?.description ?? action?.descricao, "Ação-chave"),
-            completionCriterion: asText(action?.completionCriterion ?? action?.completion_criterion ?? action?.criterio),
-            deadline: asText(action?.deadline ?? action?.prazo),
-            owner: asText(action?.owner ?? action?.responsavel),
-          }))
-          .filter((action) => action.description)
-          .slice(0, 5),
-      }))
-      .filter((objective) => objective.title)
-      .slice(0, 5),
+    objectives,
   };
 }
 
 function missingReadyMonthlyPlanFields(proposal: ReturnType<typeof normalizeReadyMonthlyProposal>) {
   const missing: string[] = [];
   const withoutMetric = proposal.objectives.filter((objective) => !asText(objective.metric)).length;
+  const withoutBaseline = proposal.objectives.filter((objective) => !asText(objective.current)).length;
   const withoutTarget = proposal.objectives.filter((objective) => !asText(objective.target)).length;
+  const withoutSource = proposal.objectives.filter((objective) => !asText(objective.source)).length;
+  const withoutDeadline = proposal.objectives.filter((objective) => !asText(objective.deadline)).length;
   const withoutOwner = proposal.objectives.filter((objective) => !asText(objective.owner)).length;
   const withoutActions = proposal.objectives.filter((objective) => !objective.actions.length).length;
   const actionsWithoutDeadline = proposal.objectives.reduce(
     (total, objective) => total + objective.actions.filter((action) => !asText(action.deadline)).length,
     0,
   );
+  const actionsWithoutCriterion = proposal.objectives.reduce(
+    (total, objective) => total + objective.actions.filter((action) => !asText(action.completionCriterion)).length,
+    0,
+  );
 
   if (withoutMetric) missing.push(`${withoutMetric} objetivo(s) sem indicador`);
+  if (withoutBaseline) missing.push(`${withoutBaseline} objetivo(s) sem baseline`);
   if (withoutTarget) missing.push(`${withoutTarget} objetivo(s) sem meta`);
+  if (withoutSource) missing.push(`${withoutSource} objetivo(s) sem fonte`);
+  if (withoutDeadline) missing.push(`${withoutDeadline} objetivo(s) sem prazo`);
   if (withoutOwner) missing.push(`${withoutOwner} objetivo(s) sem responsável`);
   if (withoutActions) missing.push(`${withoutActions} objetivo(s) sem ações-chave`);
   if (actionsWithoutDeadline) missing.push(`${actionsWithoutDeadline} ação(ões) sem prazo`);
+  if (actionsWithoutCriterion) missing.push(`${actionsWithoutCriterion} ação(ões) sem critério de conclusão`);
+  if (!['linked', 'exception'].includes(proposal.quarterlyAlignment.status)) missing.push("alinhamento trimestral não definido");
   return missing;
 }
 
@@ -435,6 +479,7 @@ export function readyMonthlyPlanSystemPrompt(context: string, period: string, ch
     PERSONA_ORACULO,
     tone,
     UNTRUSTED_CONTENT_RULES,
+    MONTHLY_GUIDANCE_RULES,
     "Você está importando um Plano Mensal pronto para dentro do Oráculo.",
     "Objetivo: transformar o texto recebido em dados estruturados que possam ser gravados no módulo de Execução Mensal.",
     "Não mande o usuário para WhatsApp ou para outra tela. O canal atual já é suficiente: " + channel + ".",
@@ -442,10 +487,10 @@ export function readyMonthlyPlanSystemPrompt(context: string, period: string, ch
     "Fidelidade ao arquivo é mais importante que completar campos. Não invente indicador próprio, meta, dono, prazo ou ação que não esteja explícita ou muito fortemente implícita.",
     "Como orientação separada, você pode sugerir em kpiLinks até 2 KPIs executivos que o objetivo pode impactar: revenue, operating_margin, production ou cash. Só sugira relação forte e explique em rationale.",
     "Se houver lacunas, use string vazia ou lista vazia. Preserve a linguagem do plano original quando transformar trechos em objetivos e ações.",
-    "Monte 1 a 5 objetivos mensais, cada um com 1 a 5 ações-chave. Se houver vínculo trimestral, preencha parentTitle; se não houver, deixe vazio.",
+    "Monte 1 a 3 resultados mensais e no máximo 5 ações-chave no plano inteiro. Use o objetivo trimestral existente no contexto quando houver; se não houver, use uma exceção explícita e não invente um vínculo.",
     "Use datas no formato YYYY-MM-DD quando o texto trouxer prazo claro; se o texto trouxer só 'até dia 15', converta usando o mês/período recebido.",
     "Responda SOMENTE JSON válido, sem markdown, com este formato:",
-    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_mensal_pronto":true},"next_phase":"sintese","proposal":{"type":"save_monthly_plan","period":"' + period + '","context":[],"learningFocus":[],"focusPhrase":"","realism":{"fits":true,"firstToRemove":""},"objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","target":"","owner":"","period":"' + period + '","parentTitle":"","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}],"actions":[{"description":"","completionCriterion":"","deadline":"","owner":""}]}]}}',
+    '{"reply":"mensagem curta de apoio; a previa detalhada sera montada pelo sistema","state_patch":{"importacao_plano_mensal_pronto":true},"next_phase":"sintese","proposal":{"type":"save_monthly_plan","period":"' + period + '","quarterlyAlignment":{"status":"linked|exception","quarterlyObjectiveId":"","quarterlyObjectiveTitle":"","rationale":""},"capacity":{"maxCommittedActions":5},"pendingDecisions":[],"backlog":[],"risks":[],"blockers":[],"cadence":"","nextCommitment":"","learningFocus":[],"focusPhrase":"","objectives":[{"title":"","type":"harvest|seed","result":"","metric":"","current":"","target":"","source":"","deadline":"","owner":"","period":"' + period + '","linkedQuarterlyObjectiveId":"","parentTitle":"","kpiLinks":[{"kpiKey":"revenue|operating_margin|production|cash","rationale":""}],"actions":[{"description":"","completionCriterion":"","deadline":"","owner":""}]}]}}',
     `Mês/período do plano: ${period}`,
     "Contexto atual do Oráculo:",
     context,

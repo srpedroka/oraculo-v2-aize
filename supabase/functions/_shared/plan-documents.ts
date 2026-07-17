@@ -217,14 +217,43 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
 function buildMonthlyContent(base: Record<string, unknown>, proposal: any, period: string) {
   const objectives = asArray<any>(proposal.objectives ?? proposal.objetivos_mes);
   const learningFocus = firstFilledArray<string>(proposal.learningFocus, proposal.foco_aprendizado);
+  const quarterlyAlignment = proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral ?? {};
+  const quarterlyException = asText(quarterlyAlignment.status).toLowerCase() === "exception";
   const quarterlyReferences = firstFilledArray<string>(
+    quarterlyException
+      ? [`Exceção confirmada: ${asText(quarterlyAlignment.rationale ?? quarterlyAlignment.justificativa)}`]
+      : [],
+    quarterlyAlignment.quarterlyObjectiveTitle,
     proposal.objetivos_trimestre,
     asArray<any>(proposal.quarterlyObjectives).map((objective) => asText(objective.title ?? objective.titulo ?? objective)),
     objectives.map((objective) => objective.parentTitle ?? objective.vinculo),
   );
+  const backlog = firstFilledArray<string>(proposal.backlog, proposal.tradeOffs, proposal.trade_offs, proposal.renuncias);
+  const risks = firstFilledArray<string>(proposal.risks, proposal.riscos);
+  const blockers = firstFilledArray<string>(proposal.blockers, proposal.bloqueios);
+  const cadence = asText(proposal.cadence ?? proposal.cadencia);
+  const nextCommitment = asText(proposal.nextCommitment ?? proposal.proximo_compromisso);
+  const pendingDecisions = asArray<any>(proposal.pendingDecisions ?? proposal.decisoes_pendentes).map((decision) => ({
+    item: asText(decision.item ?? decision.pendencia),
+    origem: asText(decision.origin ?? decision.origem),
+    motivo: asText(decision.reason ?? decision.motivo),
+    decisao: asText(decision.decision ?? decision.decisao),
+  }));
+  const totalActions = objectives.reduce(
+    (total, objective) => total + asArray(objective.actions ?? objective.acoes).length,
+    0,
+  );
+  const maxCommittedActions = Number(proposal.capacity?.maxCommittedActions ?? proposal.capacidade?.maximo_acoes ?? 5);
 
   return {
     ...base,
+    contexto_rapido: compactLines([
+      objectives.length ? `${objectives.length} resultado(s) mensal(is) para ${period}.` : "",
+      risks.length ? `Riscos: ${risks.join("; ")}` : "",
+      blockers.length ? `Bloqueios: ${blockers.join("; ")}` : "",
+      cadence ? `Acompanhamento: ${cadence}` : "",
+      nextCommitment ? `Próximo compromisso: ${nextCommitment}` : "",
+    ]),
     referencia: {
       objetivo_anual: asText(proposal.annualObjective ?? proposal.objetivo_anual),
       objetivos_trimestre: quarterlyReferences,
@@ -232,10 +261,28 @@ function buildMonthlyContent(base: Record<string, unknown>, proposal: any, perio
     objetivos: objectives.map((objective, index) => normalizeObjective(objective, index, "Objetivo mensal")),
     foco_aprendizado: learningFocus,
     checagem_realismo: {
-      cabe: proposal.realism?.fits ?? proposal.realismo?.cabe ?? true,
-      primeira_a_sair: asText(proposal.realism?.firstToRemove ?? proposal.realismo?.primeira_a_sair),
+      cabe: totalActions <= maxCommittedActions,
+      primeira_a_sair: backlog[0] ?? asText(proposal.realism?.firstToRemove ?? proposal.realismo?.primeira_a_sair),
     },
     frase_de_foco: asText(proposal.focusPhrase ?? proposal.frase_de_foco, `${period} é o mês de executar poucas coisas muito bem.`),
+    monthly: {
+      alinhamento_trimestral: {
+        status: asText(quarterlyAlignment.status),
+        objetivo_id: asText(quarterlyAlignment.quarterlyObjectiveId ?? quarterlyAlignment.quarterly_objective_id),
+        objetivo: asText(quarterlyAlignment.quarterlyObjectiveTitle ?? quarterlyAlignment.quarterly_objective_title),
+        justificativa: asText(quarterlyAlignment.rationale ?? quarterlyAlignment.justificativa),
+      },
+      capacidade: {
+        maximo_acoes_comprometidas: maxCommittedActions,
+        acoes_comprometidas: totalActions,
+      },
+      decisoes_pendentes: pendingDecisions,
+      backlog,
+      riscos: risks,
+      bloqueios: blockers,
+      cadencia: cadence,
+      proximo_compromisso: nextCommitment,
+    },
   };
 }
 

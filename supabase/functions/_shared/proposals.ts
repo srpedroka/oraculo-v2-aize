@@ -1,4 +1,6 @@
 import { createDocumentForProposal } from "./plan-documents.ts";
+import { validateMonthlyProposal } from "./monthly-guidance.ts";
+import { quarterPeriodForMonth } from "./periods.ts";
 import { assertImportedQuarterlyReferences } from "./untrusted-content.ts";
 
 type Client = any;
@@ -226,63 +228,46 @@ async function findObjectiveByTitle(client: Client, orgId: string, areaId: strin
   return data;
 }
 
-async function ensureAreaAnnualParent(client: Client, session: any, proposal: any, titleHint: string) {
-  const year = yearFromPeriod(session.period);
-  const annualCandidates = asArray(proposal.annualObjectives);
-  const candidate = annualCandidates[0] ?? {};
-  const title = asText(candidate.title, asText(titleHint, `Consolidar objetivo anual da área em ${year}`));
-  const existing = await findObjectiveByTitle(client, session.org_id, session.area_id, "area_annual", title);
-  if (existing) return existing;
+async function findMonthlyQuarterlyParent(client: Client, session: any, proposal: any, objective: any) {
+  const alignment = proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral ?? {};
+  const objectiveId = asText(
+    objective.linkedQuarterlyObjectiveId
+      ?? objective.linked_quarterly_objective_id
+      ?? alignment.quarterlyObjectiveId
+      ?? alignment.quarterly_objective_id,
+  );
+  const title = asText(
+    objective.parentTitle
+      ?? objective.vinculo
+      ?? alignment.quarterlyObjectiveTitle
+      ?? alignment.quarterly_objective_title,
+  );
+  const expectedPeriod = quarterPeriodForMonth(session.period);
+  const acceptedPeriods = [expectedPeriod, expectedPeriod.replace(/^T/i, "Q")];
 
-  return await insertObjective(client, {
-    org_id: session.org_id,
-    area_id: session.area_id,
-    level: "area_annual",
-    type: asObjectiveType(candidate.type),
-    title,
-    result: "",
-    metric: asText(candidate.metric),
-    target: asText(candidate.target),
-    owner: asText(candidate.owner),
-    status: "on_track",
-    progress: 0,
-    period: String(year),
-  });
-}
+  if (objectiveId) {
+    const parent = await findObjectiveById(client, session, objectiveId, "quarterly");
+    if (!parent || !acceptedPeriods.some((period) => period.toLowerCase() === asText(parent.period).toLowerCase())) {
+      throw new Error(`Objetivo trimestral vinculado não pertence a ${expectedPeriod}`);
+    }
+    return parent;
+  }
 
-async function ensureQuarterlyParent(client: Client, session: any, titleHint: string) {
-  const title = asText(titleHint);
-  const existingByTitle = await findObjectiveByTitle(client, session.org_id, session.area_id, "quarterly", title);
-  if (existingByTitle) return existingByTitle;
-
-  const { data: existing, error } = await client
+  if (!title) throw new Error("Plano mensal exige vínculo trimestral existente ou exceção explícita");
+  const { data, error } = await client
     .from("objectives")
     .select("*")
     .eq("org_id", session.org_id)
     .eq("area_id", session.area_id)
     .eq("level", "quarterly")
-    .eq("period", session.period)
+    .in("period", acceptedPeriods)
     .is("archived_at", null)
+    .ilike("title", title)
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  if (existing) return existing;
-
-  const annualParent = await ensureAreaAnnualParent(client, session, {}, `Sustentar evolução anual da área em ${yearFromPeriod(session.period)}`);
-  return await insertObjective(client, {
-    org_id: session.org_id,
-    area_id: session.area_id,
-    level: "quarterly",
-    type: "seed",
-    title: title || `Avançar prioridades do trimestre ${session.period}`,
-    result: "",
-    owner: "",
-    status: "on_track",
-    progress: 0,
-    deliverables: [],
-    parent_id: annualParent.id,
-    period: session.period,
-  });
+  if (!data) throw new Error(`Objetivo trimestral não encontrado em ${expectedPeriod}`);
+  return data;
 }
 
 async function saveStrategicPlan(client: Client, session: any, proposal: any, userId: string) {
@@ -506,11 +491,17 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
 
 async function saveMonthlyPlan(client: Client, session: any, proposal: any, userId: string) {
   if (!session.area_id) throw new Error("Plano mensal exige uma área");
+  const validationReasons = validateMonthlyProposal(proposal, session.period);
+  if (validationReasons.length) {
+    throw new Error(`Plano mensal incompleto ou inconsistente: ${validationReasons.join(", ")}`);
+  }
+  const alignment = proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral ?? {};
+  const quarterlyException = asText(alignment.status).toLowerCase() === "exception";
   const monthlyRows = [];
   const actionRows = [];
 
   for (const objective of asArray<any>(proposal.objectives ?? proposal.objetivos_mes)) {
-    const parent = await ensureQuarterlyParent(client, session, asText(objective.parentTitle ?? objective.vinculo));
+    const parent = quarterlyException ? null : await findMonthlyQuarterlyParent(client, session, proposal, objective);
     const monthly = await insertObjective(client, {
       org_id: session.org_id,
       area_id: session.area_id,
@@ -520,10 +511,13 @@ async function saveMonthlyPlan(client: Client, session: any, proposal: any, user
       result: asText(objective.result),
       metric: asText(objective.metric),
       target: asText(objective.target),
+      current: asText(objective.current ?? objective.baseline ?? objective.valor_atual),
+      deadline: cleanDate(objective.deadline ?? objective.prazo),
       owner: asText(objective.owner),
+      evidence_plan: asText(objective.source ?? objective.fonte ?? objective.evidencePlan ?? objective.evidence_plan),
       status: "on_track",
       progress: 0,
-      parent_id: parent.id,
+      parent_id: parent?.id ?? null,
       period: asText(objective.period, session.period),
     });
     await applyProposedKpiLinks(client, session, monthly, objective, userId);
