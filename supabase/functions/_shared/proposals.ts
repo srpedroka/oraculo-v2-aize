@@ -363,6 +363,17 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
   await assertImportedQuarterlyReferences(client, session.org_id, proposal);
   const year = yearFromPeriod(session.period);
   const annualObjectives = [];
+  const annualAlignment = proposal.annualAlignment ?? proposal.alinhamento_anual ?? {};
+  const annualException = asText(annualAlignment.status).toLowerCase() === "exception";
+  if (annualException && !asText(annualAlignment.rationale ?? annualAlignment.justificativa)) {
+    throw new Error("Exceção ao alinhamento anual exige justificativa");
+  }
+  if (annualException && (
+    asArray(proposal.annualObjectives).length
+    || asArray(proposal.linkedStrategicObjectiveIds).length
+  )) {
+    throw new Error("Exceção ao alinhamento anual não pode criar ou vincular objetivo anual");
+  }
 
   for (const objective of asArray<any>(proposal.annualObjectives)) {
     const inserted = await insertObjective(client, {
@@ -438,11 +449,16 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
   if (planError) throw planError;
 
   const quarterlyRows = [];
+  const actionRows = [];
   for (const objective of asArray<any>(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre)) {
     const parent =
       annualObjectives.find((item) => item.title === objective.parentTitle) ??
       (await findObjectiveByTitle(client, session.org_id, session.area_id, "area_annual", asText(objective.parentTitle))) ??
-      (annualObjectives[0] ?? await ensureAreaAnnualParent(client, session, proposal, asText(objective.parentTitle)));
+      annualObjectives[0] ??
+      null;
+    if (!parent && !annualException) {
+      throw new Error("Plano trimestral exige vínculo anual existente ou exceção explícita");
+    }
 
     const inserted = await insertObjective(client, {
         org_id: session.org_id,
@@ -453,18 +469,39 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
         result: asText(objective.result),
         metric: asText(objective.metric),
         target: asText(objective.target),
+        current: asText(objective.current ?? objective.baseline ?? objective.valor_atual),
+        deadline: cleanDate(objective.deadline ?? objective.prazo),
         owner: asText(objective.owner),
+        evidence_plan: asText(objective.source ?? objective.fonte ?? objective.evidencePlan ?? objective.evidence_plan),
         status: "on_track",
         progress: 0,
         deliverables: asArray<string>(objective.deliverables ?? objective.entregas),
-        parent_id: parent.id,
+        parent_id: parent?.id ?? null,
         period: asText(objective.period, session.period),
       });
     await applyProposedKpiLinks(client, session, inserted, objective, userId);
     quarterlyRows.push(inserted);
+
+    for (const action of asArray<any>(objective.actions ?? objective.acoes)) {
+      const { data, error } = await client
+        .from("key_actions")
+        .insert({
+          org_id: session.org_id,
+          objective_id: inserted.id,
+          description: asText(action.description ?? action.descricao, "Ação-chave"),
+          completion_criterion: asText(action.completionCriterion ?? action.completion_criterion ?? action.criterio),
+          deadline: cleanDate(action.deadline ?? action.prazo),
+          owner: asText(action.owner ?? action.responsavel),
+          status: "on_track",
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      actionRows.push(data);
+    }
   }
 
-  return `Plano trimestral gravado com ${quarterlyRows.length} objetivo(s).`;
+  return `Plano trimestral gravado com ${quarterlyRows.length} objetivo(s) e ${actionRows.length} ação(ões)-chave.`;
 }
 
 async function saveMonthlyPlan(client: Client, session: any, proposal: any, userId: string) {

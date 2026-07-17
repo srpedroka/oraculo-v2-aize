@@ -166,6 +166,14 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
   const annualObjectives = asArray<any>(proposal.annualObjectives ?? proposal.objetivos_anuais);
   const quarterlyObjectives = asArray<any>(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre);
   const learningFocus = firstFilledArray<string>(proposal.learningFocus, proposal.foco_aprendizado);
+  const annualAlignment = proposal.annualAlignment ?? proposal.alinhamento_anual ?? {};
+  const annualException = asText(annualAlignment.status).toLowerCase() === "exception";
+  const risks = firstFilledArray<string>(proposal.risks, proposal.riscos);
+  const tradeOffs = firstFilledArray<string>(proposal.tradeOffs, proposal.trade_offs, proposal.renuncias);
+  const cadence = asText(proposal.cadence ?? proposal.cadencia);
+  const annualReference = annualException
+    ? `Exceção confirmada: ${asText(annualAlignment.rationale ?? annualAlignment.justificativa)}`
+    : asText(annualAlignment.strategicObjectiveTitle ?? annualObjectives[0]?.title ?? annualObjectives[0]?.titulo);
 
   return {
     ...base,
@@ -173,14 +181,16 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
       asText(areaRole.mission ?? areaRole.missao),
       quarterlyObjectives.length ? `${quarterlyObjectives.length} objetivo(s) trimestral(is) para ${period}.` : "",
       learningFocus.length ? `Foco de aprendizado: ${learningFocus.join("; ")}` : "",
+      risks.length ? `Riscos: ${risks.join("; ")}` : "",
+      cadence ? `Acompanhamento: ${cadence}` : "",
     ]),
     referencia: {
-      objetivo_anual: asText(annualObjectives[0]?.title ?? annualObjectives[0]?.titulo),
+      objetivo_anual: annualReference,
       objetivos_trimestre: quarterlyObjectives.map((objective) => asText(objective.title ?? objective.titulo)).filter(Boolean),
     },
     objetivos: quarterlyObjectives.map((objective, index) => normalizeObjective(objective, index, "Objetivo trimestral")),
     foco_aprendizado: learningFocus,
-    checagem_realismo: { cabe: true, primeira_a_sair: "" },
+    checagem_realismo: { cabe: quarterlyObjectives.length <= 3, primeira_a_sair: tradeOffs[0] ?? "" },
     frase_de_foco: `No ${period}, o foco é transformar prioridade em entrega visível.`,
     quarterly: {
       papel_area: {
@@ -191,7 +201,15 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
         forcas: firstFilledArray<string>(diagnosis.strengths, diagnosis.forcas),
         gargalos: firstFilledArray<string>(diagnosis.weaknesses, diagnosis.gargalos, diagnosis.fraquezas),
       },
+      alinhamento_anual: {
+        status: asText(annualAlignment.status),
+        objetivo: asText(annualAlignment.strategicObjectiveTitle),
+        justificativa: asText(annualAlignment.rationale ?? annualAlignment.justificativa),
+      },
       objetivos_anuais: annualObjectives.map((objective, index) => normalizeObjective(objective, index, "Objetivo anual da área")),
+      riscos: risks,
+      trade_offs: tradeOffs,
+      cadencia: cadence,
     },
   };
 }

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q4A concluida no staging; Q4B e a proxima fatia**
+Status: **em execução; Q4A e Q4B concluidas no staging; Q4C e a proxima fatia**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O owner aprovou o briefing Q4 e autorizou a execucao por fatias. A Q4A foi concluida no staging: 15 testes unitarios especificos e smoke real 15/15 para bloco completo, resposta vaga, anti-loop, confirmacao unica, estado canonico e zero mutacao prematura. Incremento Q4A US$ 0,093434; acumulado do plano US$ 2,044079. Producao e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4B antes de alterar a conducao trimestral.
+Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O owner aprovou o briefing Q4 e autorizou a execucao por fatias. Q4A e Q4B foram concluidas no staging. A Q4B adicionou dez testes puros e smoke real 21/21 para gestor completo, resposta vaga, excesso de prioridades, atividade convertida em resultado, excecao anual, confirmacao unica e consistencia proposta/banco/documento. A validacao foi repetida apos o reforco final: US$ 0,124095 no total da Q4B; acumulado do plano US$ 2,168174. Producao e WhatsApp real permanecem anteriores. Proxima fatia: apresentar briefing Q4C antes de alterar a conducao mensal.
 
 ## Q4 — Correções orientadas pela evidência
 

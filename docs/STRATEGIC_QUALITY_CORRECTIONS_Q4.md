@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **briefing aprovado; Q4A concluida e validada no staging; Q4B aguarda briefing**
+Status: **briefing aprovado; Q4A e Q4B concluidas e validadas no staging; Q4C aguarda briefing**
 
 ## O que vai mudar para o gestor
 
@@ -58,6 +58,8 @@ Estado em 2026-07-16: concluida no staging. O novo `_shared/session-adaptive.ts`
 - Reenquadrar atividade como meio para um resultado e ajudar a reduzir excesso de prioridades.
 - Incluir baseline, alvo, fonte, dono, acoes, riscos, aprendizado e cadencia quando informados.
 - Fazer perguntas curtas com opcoes concretas quando o gestor estiver vago.
+
+Estado em 2026-07-16: concluida no staging. `_shared/quarterly-guidance.ts` valida de 1 a 3 resultados, indicador, baseline, alvo, fonte, prazo, dono, acao completa e alinhamento anual real ou excecao justificada. O condutor deixou forcas/gargalos proporcionais, reenquadra atividade como meio e registra trade-offs. A confirmacao nao cria mais pai anual generico e recusa a contradicao de excecao acompanhada por novo vinculo; preserva baseline, fonte, prazo e acoes estruturadas no banco e no documento. Dez testes puros foram adicionados e a suite completa passou 311/311. O smoke `pnpm run eval:strategic:q4b` aprovou 21/21 checks em cinco cenarios antes e depois do reforco final, sempre com cleanup. Rodada final US$ 0,066221; total Q4B US$ 0,124095; acumulado US$ 2,168174. Somente `oracle-session` foi publicada no staging; producao, frontend e WhatsApp real nao mudaram.
 
 ### Q4C - Conducao e plano mensal
 

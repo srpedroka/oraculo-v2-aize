@@ -27,6 +27,7 @@
     "eval:strategic:q1": "node --experimental-strip-types scripts/strategic-eval.ts run tests/evals/strategic-quality/cases/q1-minimal-annual.json",
     "eval:strategic:q3": "node --experimental-strip-types scripts/strategic-baseline.ts",
     "eval:strategic:q4a": "node --experimental-strip-types scripts/strategic-q4a-smoke.ts",
+    "eval:strategic:q4b": "node --experimental-strip-types scripts/strategic-q4b-smoke.ts",
     "eval:strategic:review": "RUN_STRATEGIC_REVIEW_LIVE=true vitest --config vitest.integration.config.ts run tests/integration/strategic-review-live.test.ts --passWithNoTests=false",
     "test:master:setup": "node --experimental-strip-types scripts/master-test.ts setup",
     "test:master:verify": "node --experimental-strip-types scripts/master-test.ts verify",

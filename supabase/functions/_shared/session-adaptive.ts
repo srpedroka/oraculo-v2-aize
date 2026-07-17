@@ -54,6 +54,16 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   phase_advance_without_evidence: "a resposta avancou de fase sem registrar nenhum fato novo",
   ignored_completion_request: "o gestor pediu sintese, mas recebeu de novo uma pergunta generica",
   proposal_confirmation_count: "a proposta nao termina com exatamente uma confirmacao",
+  quarterly_annual_ritual_switch: "o plano trimestral tentou mudar indevidamente para o ritual anual",
+  quarterly_wrong_proposal_type: "a proposta nao e do tipo trimestral esperado",
+  quarterly_missing_objectives: "a proposta trimestral nao possui resultado priorizado",
+  quarterly_priority_overload: "a proposta trimestral excede o limite de tres resultados decisivos",
+  quarterly_alignment_missing: "faltou vinculo anual real ou excecao anual explicita",
+  quarterly_alignment_exception_missing_reason: "a excecao ao alinhamento anual ficou sem justificativa",
+  quarterly_exception_with_annual_link: "a proposta declarou excecao anual e vinculo anual ao mesmo tempo",
+  quarterly_unverifiable_objective: "um objetivo trimestral nao preservou indicador, baseline, alvo, fonte, prazo, dono e resultado",
+  quarterly_activity_as_objective: "uma atividade foi tratada como resultado final do trimestre",
+  quarterly_incomplete_actions: "faltou ao menos uma acao com dono, prazo e criterio de conclusao",
 };
 
 export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigatorio):
