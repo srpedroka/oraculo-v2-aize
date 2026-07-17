@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q4I aprovada; Q5B r4 pausada por falha tecnica na quarta medicao**
+Status: **Q5A preservada; Q4J tecnica aprovada; smoke Q4J bloqueado por conducao; Q5B r4 pausada**
 
 ## Objetivo
 
@@ -232,3 +232,35 @@ O staging possuia plano anual da area, `main_annual_objective_id` e objetivo est
 | Limite autorizado | US$ 20,00 |
 
 O cleanup da rodada bloqueada removeu empresa, usuario e chave descartavel; o preflight posterior confirmou zero organizacao de avaliacao pendente. Nao houve repeticao paga. A proxima correcao deve resolver o pai anual existente por ID canonico validado na mesma empresa/area/ano, sem criar objetivo, inventar vinculo ou acrescentar pergunta ao gestor. Depois disso, um smoke isolado deve repetir somente `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002` antes de reiniciar a Q5B.
+
+## Correcao tecnica Q4J
+
+A Q4J implementou o fallback canonico sem alterar a conversa. O pai anual existente so pode ser reutilizado quando:
+
+- o ID vem de `area_plans.main_annual_objective_id` da mesma area e ano;
+- `objectives` confirma mesma empresa, mesma area, nivel `area_annual`, periodo anual correto e registro ativo;
+- o `parent_id` estrategico esta entre os IDs confirmados da proposta ou o titulo anual normalizado coincide;
+- a proposta nao declarou excecao anual.
+
+O aplicador nao cria um novo objetivo para compensar a omissao e continua falhando fechado diante de referencia de outra area, ano ou empresa. A validacao local passou 382 testes unitarios, lint, build/bundle e secret scan. Depois do deploy apenas de `oracle-session` no staging, a integracao real passou 7/7: caso feliz, idempotencia, concorrencia, rollback, fallback canonico, recusa de outra area e recusa de outra empresa.
+
+### Smoke Q4J bloqueado
+
+O smoke isolado repetiu `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002`. A falha tecnica original desapareceu: confirmacao, banco e documento foram concluídos, e o Plano Trimestral recebeu **95**. O gate geral permaneceu bloqueado:
+
+| Rubrica | Nota |
+|---|---:|
+| Conducao | 65,00 |
+| Plano Trimestral | 95,00 |
+| Media conjunta | 80,00 |
+
+Nao houve candidato de falha critica nem check deterministico reprovado. O defeito foi conversacional: apos `Nosso objetivo do trimestre e implantar um CRM`, a resposta ofereceu o menu generico `resultado, prazo, responsavel ou primeira acao`. O condutor possui a instrucao de tratar CRM como meio, mas o contrato adaptativo ainda nao bloqueia deterministicamente essa abertura de atividade; por isso o comportamento varia entre rodadas.
+
+| Item | Valor |
+|---|---:|
+| Smoke Q4J | US$ 0,035877 |
+| Acumulado antes | US$ 4,766588 |
+| Acumulado depois | US$ 4,802465 |
+| Limite autorizado | US$ 20,00 |
+
+O cleanup e o preflight final confirmaram zero organizacao descartavel. O progresso Q5B r4 nao foi reiniciado e nenhuma segunda chamada paga foi feita. A proxima correcao deve tornar deterministico o desafio de uma atividade trimestral: pedir qual resultado empresarial, adocao ou mudanca mensuravel ela precisa produzir, mantendo a atividade como acao. Somente depois de novo smoke aprovado a Q5B pode ser arquivada e reiniciada como `r5`.

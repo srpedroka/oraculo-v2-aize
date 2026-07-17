@@ -228,6 +228,49 @@ async function findObjectiveByTitle(client: Client, orgId: string, areaId: strin
   return data;
 }
 
+function normalizedObjectiveTitle(value: unknown) {
+  return asText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function proposalMatchesCanonicalAnnualParent(proposal: any, objective: any, parent: any) {
+  if (!parent?.id) return false;
+  const strategicParentId = asText(parent.parent_id);
+  const linkedStrategicObjectiveIds = asArray<string>(
+    proposal.linkedStrategicObjectiveIds ?? proposal.linked_strategic_objective_ids,
+  ).map((value) => asText(value)).filter(Boolean);
+  if (strategicParentId && linkedStrategicObjectiveIds.includes(strategicParentId)) return true;
+
+  const parentTitle = normalizedObjectiveTitle(parent.title);
+  if (!parentTitle) return false;
+  const annualAlignment = proposal.annualAlignment ?? proposal.alinhamento_anual ?? {};
+  return [
+    objective.parentTitle ?? objective.parent_title,
+    annualAlignment.strategicObjectiveTitle ?? annualAlignment.strategic_objective_title,
+  ].some((value) => normalizedObjectiveTitle(value) === parentTitle);
+}
+
+async function findCanonicalAreaAnnualParent(client: Client, session: any, year: number, existingAreaPlan: any) {
+  const objectiveId = asText(existingAreaPlan?.main_annual_objective_id);
+  if (!objectiveId || !session.area_id) return null;
+  const { data, error } = await client
+    .from("objectives")
+    .select("*")
+    .eq("id", objectiveId)
+    .eq("org_id", session.org_id)
+    .eq("area_id", session.area_id)
+    .eq("level", "area_annual")
+    .eq("period", String(year))
+    .is("archived_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 async function findMonthlyQuarterlyParent(client: Client, session: any, proposal: any, objective: any) {
   const alignment = proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral ?? {};
   const objectiveId = asText(
@@ -391,6 +434,9 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
     .eq("year", year)
     .maybeSingle();
   if (existingAreaPlanError) throw existingAreaPlanError;
+  const canonicalExistingAnnualParent = annualException
+    ? null
+    : await findCanonicalAreaAnnualParent(client, session, year, existingAreaPlan);
 
   const roleMission = asText(currentRole.mission ?? currentRole.missao, existingAreaPlan?.role?.mission ?? "");
   const roleContribution = asArray<string>(currentRole.contribution ?? currentRole.contribuicao).length
@@ -424,7 +470,7 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
         strengths,
         weaknesses,
       },
-      main_annual_objective_id: annualObjectives[0]?.id ?? existingAreaPlan?.main_annual_objective_id ?? null,
+      main_annual_objective_id: annualObjectives[0]?.id ?? canonicalExistingAnnualParent?.id ?? null,
       learning_focus: mergedLearningFocus,
       updated_by: userId,
       updated_at: new Date().toISOString(),
@@ -439,6 +485,9 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
     const parent =
       annualObjectives.find((item) => item.title === objective.parentTitle) ??
       (await findObjectiveByTitle(client, session.org_id, session.area_id, "area_annual", asText(objective.parentTitle))) ??
+      (proposalMatchesCanonicalAnnualParent(proposal, objective, canonicalExistingAnnualParent)
+        ? canonicalExistingAnnualParent
+        : null) ??
       annualObjectives[0] ??
       null;
     if (!parent && !annualException) {

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q5A preservada e Q5B r4 pausada por falha tecnica na quarta medicao**
+Status: **em execucao; Q4J tecnica aprovada, smoke bloqueado por conducao e Q5B r4 pausada**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -503,6 +503,8 @@ Estado apos Q4I em 2026-07-17: a conversa trimestral vaga passou a investigar si
 
 Bloqueio tecnico Q5B r4 em 2026-07-17: tres medicoes passaram e a quarta foi interrompida somente na gravacao, embora Conducao 86,25 e Plano Trimestral 90 estivessem acima do gate e sem falha critica. A proposta vinculou o objetivo estrategico existente, mas omitiu a copia redundante em `annualObjectives`; o aplicador nao reutilizou o `main_annual_objective_id` ja salvo para a mesma area e ano. O fail-fast encerrou antes da quinta chamada e o preflight confirmou staging limpo. Custo da tentativa US$ 0,153962; acumulado US$ 4,766588. Voltar ao Q4 para uma correcao tecnica focada e smoke isolado, sem mudar a conversa nem repetir Q5B automaticamente.
 
+Estado Q4J em 2026-07-17: o fallback canonico passou 382 unitarios e 7/7 integracoes no endpoint real, incluindo recusa entre areas/empresas. O smoke provou que a gravacao agora funciona e deu Plano Trimestral 95, mas bloqueou por Conducao 65 e media 80: a abertura `implantar um CRM` recebeu menu generico em vez de desafio pelo resultado empresarial. Sem falha critica ou check reprovado; custo US$ 0,035877; acumulado US$ 4,802465; cleanup limpo. Nao houve segunda chamada nem reinicio Q5B. A proxima correcao deve atuar apenas na conducao deterministica de atividade trimestral.
+
 ## Q6 — Aceite da qualidade estratégica
 
 ### Entregáveis
@@ -831,4 +833,4 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Apresentar o briefing da **correcao tecnica trimestral seguinte**: resolver o pai anual ja existente por ID canonico da mesma empresa, area e ano quando a proposta vinculada nao repetir `annualObjectives`. Nao criar objetivo anual, nao aceitar ID de outra empresa/area, nao acrescentar pergunta ao gestor e nao repetir Q5B ainda. Depois de testes locais e deploy somente no staging, executar um smoke pago isolado de `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002`; a Q5B so pode ser reiniciada com novo aceite apos esse gate.
+Apresentar o briefing da **correcao de conducao trimestral seguinte**: quando a abertura trouxer atividade como `implantar CRM`, bloquear o menu generico e perguntar qual resultado empresarial, adocao ou mudanca mensuravel ela precisa produzir. A atividade deve permanecer como acao. Nao alterar a gravacao Q4J, nao acrescentar etapa e nao repetir o smoke/Q5B sem nova autorizacao. Depois de gate isolado aprovado, arquivar Q5B r4 como calibracao e reiniciar a fase como `r5`.

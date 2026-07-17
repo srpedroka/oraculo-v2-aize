@@ -79,6 +79,90 @@ async function seedQuarterlyParent(areaId: string, title: string) {
   return data as { id: string; title: string };
 }
 
+async function seedAnnualHierarchy(areaId: string, title: string, period = "2026") {
+  const { data: strategic, error: strategicError } = await admin
+    .from("objectives")
+    .insert({
+      org_id: org.orgId,
+      area_id: null,
+      level: "strategic",
+      type: "harvest",
+      title,
+      result: title,
+      metric: "Indicador estratégico",
+      target: "100%",
+      owner: "Direção",
+      status: "on_track",
+      progress: 0,
+      period,
+    })
+    .select("id, title")
+    .single();
+  if (strategicError || !strategic) throw new Error(`falha ao semear objetivo estratégico: ${strategicError?.message}`);
+
+  const { data: areaAnnual, error: areaAnnualError } = await admin
+    .from("objectives")
+    .insert({
+      org_id: org.orgId,
+      area_id: areaId,
+      level: "area_annual",
+      type: "harvest",
+      title,
+      result: title,
+      metric: "Indicador anual da área",
+      target: "100%",
+      owner: "Coordenação",
+      status: "on_track",
+      progress: 0,
+      parent_id: strategic.id,
+      period,
+    })
+    .select("id, title, parent_id")
+    .single();
+  if (areaAnnualError || !areaAnnual) throw new Error(`falha ao semear objetivo anual da área: ${areaAnnualError?.message}`);
+
+  const { error: areaPlanError } = await admin.from("area_plans").upsert({
+    org_id: org.orgId,
+    area_id: areaId,
+    year: Number(period),
+    role: { mission: "Executar a prioridade anual", contribution: [title] },
+    linked_strategic_objective_ids: [strategic.id],
+    diagnosis: { strengths: [], weaknesses: [] },
+    main_annual_objective_id: areaAnnual.id,
+    learning_focus: {},
+    updated_by: org.owner.id,
+  }, { onConflict: "area_id,year" });
+  if (areaPlanError) throw new Error(`falha ao semear plano anual da área: ${areaPlanError.message}`);
+  return { strategic, areaAnnual };
+}
+
+function quarterlyProposalWithoutRepeatedAnnualObjective(title: string, strategicId: string, objectiveTitle: string) {
+  return {
+    type: "save_quarterly_plan",
+    annualAlignment: { status: "linked", strategicObjectiveTitle: title, rationale: "" },
+    linkedStrategicObjectiveIds: [strategicId],
+    annualObjectives: [],
+    quarterlyObjectives: [{
+      title: objectiveTitle,
+      result: "Elevar previsibilidade de 40% para 85%",
+      metric: "Oportunidades com próxima ação",
+      current: "40%",
+      target: "85%",
+      source: "Relatório semanal",
+      deadline: "2026-09-30",
+      owner: "Coordenação",
+      period: "T3 2026",
+      parentTitle: title,
+      actions: [{
+        description: "Revisar exceções semanalmente",
+        completionCriterion: "Doze revisões registradas",
+        deadline: "2026-09-30",
+        owner: "Coordenação",
+      }],
+    }],
+  };
+}
+
 function monthlyProposal(objTitle: string, actionDesc: string, parent: { id: string; title: string }) {
   return {
     type: "save_monthly_plan",
@@ -234,7 +318,72 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     expect(sess.status).toBe("active");
   });
 
+  it("Q4J: reutiliza o objetivo anual canônico sem exigir sua repetição na proposta", async () => {
+    const annualTitle = "Previsibilidade comercial anual Q4J";
+    const quarterlyTitle = "Previsibilidade trimestral Q4J";
+    const hierarchy = await seedAnnualHierarchy(org.areas.comercialId, annualTitle);
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: org.areas.comercialId,
+      user_id: org.owner.id,
+      type: "quarterly",
+      period: "T3 2026",
+      pending_proposal: quarterlyProposalWithoutRepeatedAnnualObjective(annualTitle, hierarchy.strategic.id, quarterlyTitle),
+    });
+
+    const { status, body } = await confirm(sessionId);
+    expect(status).toBe(200);
+    expect(body.reply).toContain("salvo");
+
+    const { data: quarterly, error: quarterlyError } = await admin
+      .from("objectives")
+      .select("parent_id")
+      .eq("org_id", org.orgId)
+      .eq("title", quarterlyTitle)
+      .single();
+    if (quarterlyError) throw quarterlyError;
+    expect(quarterly.parent_id).toBe(hierarchy.areaAnnual.id);
+    expect(await countObjectivesByTitle(annualTitle)).toBe(2);
+  });
+
+  it("Q4J: recusa o objetivo anual canônico quando ele pertence a outra área", async () => {
+    const annualTitle = "Pai anual de outra área Q4J";
+    const quarterlyTitle = "Trimestre não deve gravar Q4J";
+    const hierarchy = await seedAnnualHierarchy(org.areas.producaoId, annualTitle);
+    const { error: mismatchedPlanError } = await admin.from("area_plans").upsert({
+      org_id: org.orgId,
+      area_id: org.areas.comercialId,
+      year: 2026,
+      role: { mission: "Não reutilizar pai de outra área", contribution: [] },
+      linked_strategic_objective_ids: [hierarchy.strategic.id],
+      diagnosis: { strengths: [], weaknesses: [] },
+      main_annual_objective_id: hierarchy.areaAnnual.id,
+      learning_focus: {},
+      updated_by: org.owner.id,
+    }, { onConflict: "area_id,year" });
+    if (mismatchedPlanError) throw mismatchedPlanError;
+
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: org.areas.comercialId,
+      user_id: org.owner.id,
+      type: "quarterly",
+      period: "T3 2026",
+      pending_proposal: quarterlyProposalWithoutRepeatedAnnualObjective(annualTitle, hierarchy.strategic.id, quarterlyTitle),
+    });
+    const { status, body } = await confirm(sessionId);
+    expect(status).toBe(400);
+    expect(body.error).toContain("vínculo anual existente");
+    expect(await countObjectivesByTitle(quarterlyTitle)).toBe(0);
+  });
+
   it("segurança 2F: recusa objetivo estratégico de outra organização antes de gravar", async () => {
+    const { count: documentsBefore, error: documentsBeforeError } = await admin
+      .from("plan_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org.orgId)
+      .eq("period", "T3 2026");
+    if (documentsBeforeError) throw documentsBeforeError;
     const { data: foreignObjective, error: foreignError } = await admin
       .from("objectives")
       .insert({
@@ -281,6 +430,6 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
       .select("id", { count: "exact", head: true })
       .eq("org_id", org.orgId)
       .eq("period", "T3 2026");
-    expect(docs).toBe(0);
+    expect(docs).toBe(documentsBefore);
   });
 });

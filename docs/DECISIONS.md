@@ -868,3 +868,11 @@ Decisao: uma abertura trimestral vaga deve investigar situacao, causa, impacto e
 Motivo: a primeira Q5B produziu um plano materialmente forte, mas a conducao recebeu 75 porque ofereceu um menu generico cedo demais; tambem perdeu uma revisao semanal explicitamente informada. O runner chegou a iniciar a rodada seguinte porque distinguia falha tecnica de falha qualitativa, consumindo risco e custo sem utilidade.
 
 Consequencias: o gestor recebe uma conversa mais inteligente sem etapa adicional; ausencia de plano anual nao impede entender o problema da area; e rotina nao e inventada a partir de frases ambiguas. O smoke Q4I passou com Conducao 96,25, Plano Trimestral 97,50, media 96,88 e custo US$ 0,034506. A Q5B foi reiniciada preservando Q5A e a medicao bloqueada para auditoria; producao permaneceu inalterada.
+
+## 2026-07-17 - Pai anual canonico sem redundancia da IA
+
+Decisao: a gravacao trimestral nao depende de a IA repetir em `annualObjectives` um objetivo anual que ja esta salvo. Quando houver alinhamento vinculado, o aplicador pode reutilizar `area_plans.main_annual_objective_id` somente apos validar empresa, area, nivel, ano, arquivamento e correspondencia com o vinculo estrategico ou titulo confirmado. Excecao anual nunca usa esse fallback.
+
+Motivo: duas rodadas semanticamente equivalentes do caso CRM divergiram apenas porque uma repetiu o objetivo anual e outra nao. O banco ja possuia a hierarquia correta; transformar redundancia de envelope em requisito de integridade criou uma falha estocastica depois de uma conversa e um plano validos.
+
+Consequencias: nao ha nova pergunta, confirmacao ou objetivo criado; referencia cruzada continua falhando fechada. A integracao Q4J passou 7/7 e o smoke confirmou a gravacao, mas o gate Q4J continua bloqueado por uma falha independente de conducao da atividade CRM. Q5B nao foi reiniciada.

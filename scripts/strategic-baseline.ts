@@ -811,17 +811,17 @@ async function archiveExecutionErrors() {
 async function restartQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("restart-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (!(["Q4G", "Q4H", "Q4I"] as string[]).includes(normalizedReference)) {
-    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G, Q4H ou Q4I)");
+  if (!(["Q4G", "Q4H", "Q4I", "Q4J"] as string[]).includes(normalizedReference)) {
+    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G, Q4H, Q4I ou Q4J)");
   }
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.runs.length) throw new Error("Q5 ja esta sem medicoes oficiais; reinicio recusado para evitar sobrescrita");
   const archivedAt = new Date().toISOString();
-  if (normalizedReference === "Q4I") {
+  if (normalizedReference === "Q4I" || normalizedReference === "Q4J") {
     const affectedRuns = progress.runs.filter((run) => run.phase === "Q2B");
-    if (!affectedRuns.length) throw new Error("Q5B nao possui medicao para reiniciar apos Q4I");
-    const calibrationReason = "medicoes Q5B preservadas antes do reinicio trimestral apos aprovacao da correcao Q4I";
+    if (!affectedRuns.length) throw new Error(`Q5B nao possui medicao para reiniciar apos ${normalizedReference}`);
+    const calibrationReason = `medicoes Q5B preservadas antes do reinicio trimestral apos aprovacao da correcao ${normalizedReference}`;
     progress.calibrationRuns = [
       ...(progress.calibrationRuns ?? []),
       ...affectedRuns.map((run) => ({ ...run, calibrationReason, archivedAt })),
@@ -839,9 +839,11 @@ async function restartQ5AfterCorrection(correctionReference: string) {
       },
     ];
     progress.runs = progress.runs.filter((run) => run.phase !== "Q2B");
-    progress.baselineVersion = "2026-07-17.q5-regression-r4";
+    progress.baselineVersion = normalizedReference === "Q4J"
+      ? "2026-07-17.q5-regression-r5"
+      : "2026-07-17.q5-regression-r4";
     await writePrivateJson(PROGRESS_PATH, progress);
-    console.log(`Q5B reiniciada apos Q4I: ${affectedRuns.length} medicao(oes) trimestral(is) preservada(s); Q5A e matriz deterministica mantidas; custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
+    console.log(`Q5B reiniciada apos ${normalizedReference}: ${affectedRuns.length} medicao(oes) trimestral(is) preservada(s); Q5A e matriz deterministica mantidas; custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
     return;
   }
   const calibrationReason = `tentativas Q5A preservadas antes do reinicio completo apos aprovacao da correcao ${normalizedReference}`;
@@ -1437,7 +1439,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }
