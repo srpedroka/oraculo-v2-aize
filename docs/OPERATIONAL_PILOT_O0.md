@@ -2,14 +2,14 @@
 
 Data: 2026-07-18
 
-Ambiente: producao, somente leitura e backup manual
+Ambiente: producao, preflight e teste controlado
 
 Empresa: Gaam/Aize
-Estado do gate: **pausado**
+Estado do gate: **aprovado**
 
 ## Resumo executivo
 
-A producao responde e sua infraestrutura declarada esta coerente: 31 Edge Functions, 54 migrations, frontend HTTP 200, headers de seguranca e segredos fora do Git. Um backup manual pre-piloto foi criado, verificado no Storage interno e replicado externamente; seu evento de auditoria tambem ja recebeu snapshot incremental. O piloto funcional O1 ainda nao deve comecar porque o pacote de qualidade aprovado permanece fora de producao, a PR precisa concluir o CI e o webhook do WhatsApp nao recebe evento recente.
+A producao responde e sua infraestrutura declarada esta coerente: 31 Edge Functions, 54 migrations, frontend HTTP 200, headers de seguranca e segredos fora do Git. O pacote de qualidade foi mesclado na `main` e publicado pelo release protegido, o frontend correspondente foi publicado no Netlify e o backup pre-piloto permanece verificado no Storage interno e na replica externa. O teste real do WhatsApp confirmou entrada, fila, resposta unica e ausencia de loop. O gate O0 esta verde e o O1 pode comecar depois de briefing e autorizacao especifica do owner.
 
 Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste preflight.
 
@@ -23,8 +23,11 @@ Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste p
 - Migrations: 54 locais e 54 em producao.
 - Frontend: HTTP 200, CSP, cache e headers esperados.
 - Segredos: nenhum segredo detectado no Git pelo verificador de producao.
-- A branch de qualidade esta 54 commits a frente da `main`; as correcoes Q4/Q5 ainda nao foram publicadas em producao.
-- Ultimo CI observado na `main`: `Quality and build` verde, `Local Supabase integration` vermelho e `CI required` vermelho. A causa exata foi o primeiro caso de `quick-update-guard.test.ts`, que atingiu o timeout fixo em 30.002 ms; os outros dois casos do arquivo passaram. A branch alinha o timeout desses testes de worker a 60 s, sem mudar as assercoes de seguranca ou o runtime. A execucao anterior da `main` estava verde; a PR deve comprovar a correcao no ambiente local completo do CI.
+- A PR `#10` foi mesclada na `main` no commit `faf0c7a9e4e04c9db6e1a137d8618a13bbb379b2`.
+- O CI da `main` `29656419371` aprovou `Quality and build`, `Local Supabase integration` e `CI required`.
+- O release protegido `29656636664` publicou as dez Functions afetadas; nao havia migration nova.
+- O frontend da mesma arvore foi publicado no Netlify no deploy `6a5bcc85d538ad3035c0084c`. A verificacao final confirmou o asset `/assets/index-Bp6BRksl.js` e o smoke autenticado abriu Planos Trimestrais sem gravar dados.
+- A falha historica do `quick-update-guard.test.ts` foi resolvida pelo timeout de teste alinhado a 60 s, sem mudar as assercoes de seguranca ou o runtime.
 - A primeira execucao da PR `#10` aprovou `Quality and build` e encontrou uma divergencia real no fechamento mensal: banco `current=50%`, mas documento sem baseline/atual. O aplicador passa a capturar o valor anterior do objetivo antes da mutacao e canonicaliza baseline 40%, atingido/current 50% e meta 60%; o teste de integracao exige os tres campos.
 - A execucao seguinte acionou a trava de hash do runtime para `proposals.ts`. O baseline foi atualizado explicitamente para o SHA-256 da correcao, sem alterar casos, pesos, notas ou resultados Q5.
 
@@ -42,9 +45,11 @@ Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste p
 - Evolution/Evo Go: instancia `oraculo` conectada ao numero configurado.
 - URL esperada do webhook inclui o `orgId` correto.
 - Fila: zero pendentes; falhas na ultima hora: zero.
-- Ultimo evento recebido: 13/07/2026 15:30:30.
-- Ultimo envio confirmado: 13/07/2026 15:30:44.
-- Alertas ativos: webhook sem evento confirmado e nenhuma entrada recente. Um teste inbound real, autorizado no momento da acao, e necessario antes do O1.
+- O painel enviou a mensagem tecnica fixa ao owner em 18/07/2026 16:05:35, sem IA.
+- O owner autorizou o teste inbound; `oi teste O0` foi enviado pelo WhatsApp real ao Oraculo.
+- Evento autenticado recebido em 18/07/2026 16:07:55 e resposta confirmada em 18/07/2026 16:08:01.
+- A resposta apareceu uma unica vez. Depois de novo intervalo de observacao, nao houve duplicacao nem loop.
+- Estado final: `Operando`, webhook confirmado pelo trafego, zero pendencias, zero falhas em duas tentativas e nenhum alerta ativo.
 
 ### IA e baseline
 
@@ -65,12 +70,12 @@ O ciclo anterior foi encerrado em US$ 17,352811. O historico continua imutavel n
 - consumo estrategico inicial do ciclo: US$ 0;
 - compras, recargas, upgrades ou assinaturas: continuam exigindo autorizacao explicita separada imediatamente antes da cobranca.
 
-## Pendencias para aprovar O0
+## Gate O0 concluido
 
-1. Commitar e enviar o checkpoint O0, abrir PR para executar o CI completo da branch e corrigir qualquer falha real.
-2. Obter CI verde e revisar o diff de producao; merge e release continuam dependentes de autorizacao explicita do owner.
-3. Publicar o pacote aprovado somente pelo workflow protegido, depois da autorizacao do owner.
-4. Publicar `operational-health` corrigida: a branch agora espera 54 migrations e o teste deriva esse numero dos arquivos locais, enquanto a Function atual de producao ainda espera 49.
-5. Executar um teste inbound real do WhatsApp e confirmar evento, fila, outbox e resposta sem duplicacao.
+1. Checkpoint, PR e CI completo: concluido.
+2. Revisao, merge e release protegido: concluido com autorizacao explicita do owner.
+3. `operational-health` e demais Functions afetadas: publicadas.
+4. Frontend correspondente: publicado e verificado.
+5. Teste inbound real do WhatsApp: evento, fila, outbox, resposta unica e ausencia de loop confirmados.
 
-Somente depois dos cinco itens verdes o O1 pode criar um plano real pelo app.
+Os cinco itens estao verdes. O O1 pode criar um plano real pelo app depois de o owner aprovar seu briefing.
