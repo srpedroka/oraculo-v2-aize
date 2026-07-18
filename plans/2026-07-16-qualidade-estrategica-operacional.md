@@ -867,6 +867,14 @@ Este plano só termina quando:
 - Validacao: 466 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 512. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
 - Proxima execucao: `restart-clean-after-correction Q4AE`, matriz deterministica e Q5A-Q5D completas desde zero. Nova falha volta a correcao e ao smoke somente do caso afetado antes de outro reinicio integral.
 
+### Atualizacao de execucao: Q4AF
+
+- A regressao limpa apos Q4AE aprovou cinco medicoes Q5A e bloqueou `Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003` R2. Conducao 77,50 e Plano Anual 96,25: a conversa pediu novamente o bloco porque uma licao historica sobre limitar quatro projetos foi interpretada como contagem exata, enquanto a fixture somava cinco ao repetir o projeto do sistema.
+- A Q4AF reconhece quantidade exata somente em declaracao/lista explicita. A fixture anual agora tem `Objetivos (4)` e `Projetos (4)`, com o sistema aparecendo uma unica vez e preservando prazo, vinculo e aceite.
+- Primeiro smoke: Conducao 63,75, Plano 93,75, media 78,75, US$ 0,075416; revelou que o sistema ainda estava duplicado em objetivo e portfolio. Smoke final: Conducao 91,25, Plano 97,50, media 94,38, US$ 0,055542. Q4AF total US$ 0,130958; acumulado US$ 12,054798.
+- Validacao: 470 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 513. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+- Proxima execucao: `restart-clean-after-correction Q4AF`, matriz deterministica e Q5A-Q5D completas desde zero. Nova falha segue correcao e smoke somente do caso antes de outro reinicio integral.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

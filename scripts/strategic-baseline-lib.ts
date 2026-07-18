@@ -130,21 +130,25 @@ export function buildManagerTurns(item: ReferenceCase): string[] {
 
 function annualSupplement(item: ReferenceCase) {
   const specificObjective = item.riskId === "ANNUAL-ACTIVITY-AS-STRATEGY"
-    ? "Objetivo 3: reduzir o fechamento de 12 para 5 dias e elevar areas com dados padronizados de 30% para 90% ate 31/10/2027; fontes: relatorio mensal e log de uso; responsavel: PERSON_FIXTURE_MANAGER; estrategias: padronizar processo e governanca de dados. Projeto vinculado: implantar sistema de gestao ate 30/06/2027, com aceite por integracao validada e 90% das areas treinadas."
+    ? "Objetivo 3: reduzir o fechamento de 12 para 5 dias e elevar areas com dados padronizados de 30% para 90% ate 31/10/2027; fontes: relatorio mensal e log de uso; responsavel: PERSON_FIXTURE_MANAGER; estrategias: padronizar processo e governanca de dados."
     : item.riskId === "ANNUAL-REPEATED-GOAL"
       ? "Objetivo 3: elevar entregas no prazo de 81% para 95% ate 31/12/2027; fonte: relatorio de expedicao; responsavel: PERSON_FIXTURE_MANAGER; estrategias: planejar capacidade por gargalo e revisar fornecedores criticos mensalmente."
       : "Objetivo 3: elevar entregas no prazo de 82% para 94% ate 31/12/2027; fonte: relatorio de expedicao; responsavel: PERSON_FIXTURE_MANAGER; estrategias: planejar capacidade por gargalo e revisar fornecedores criticos.";
+  const projects = item.riskId === "ANNUAL-ACTIVITY-AS-STRATEGY"
+    ? "- Projetos (4): disciplina comercial ate 30/06/2027 ligado ao Objetivo 1; programa de margem ate 30/09/2027 ligado ao Objetivo 2; implantar sistema de gestao ate 30/06/2027 ligado ao Objetivo 3, com aceite por integracao validada e 90% das areas treinadas; placar gerencial ate 31/10/2027 ligado ao Objetivo 4. Todos possuem os mesmos responsaveis dos objetivos e criterio de aceite documentado."
+    : "- Projetos (4): disciplina comercial ate 30/06/2027 ligado ao Objetivo 1; programa de margem ate 30/09/2027 ligado ao Objetivo 2; capacidade por gargalo ate 31/08/2027 ligado ao Objetivo 3; placar gerencial ate 31/10/2027 ligado ao Objetivo 4. Todos possuem os mesmos responsaveis dos objetivos e criterio de aceite documentado.";
   return [
     "Dados concretos adicionais confirmados pelo gestor sintetico para completar o plano anual:",
     "- Perfil: empresa industrial B2B, receita anual atual de R$ 120 milhoes, margem operacional de 8% e capacidade de entrega limitada.",
     "- Proposito: simplificar operacoes criticas dos clientes. Visao: crescer com previsibilidade ate 2029. Valores: clareza, responsabilidade e melhoria continua.",
     "- SWOT: forcas equipe tecnica e carteira recorrente; fraquezas margem instavel e dados fragmentados; oportunidades padronizacao e expansao na carteira; ameacas gargalos de fornecedor e excesso de prioridades.",
     "- Tema 2027: crescer com previsibilidade e disciplina.",
+    "- Objetivos (4):",
     "- Objetivo 1: elevar receita anual de R$ 120 milhoes para R$ 132 milhoes ate 31/12/2027; fonte DRE mensal; responsavel PERSON_FIXTURE_OWNER; estrategias aumentar receita na base e disciplinar funil.",
     "- Objetivo 2: elevar margem operacional de 8% para 10% ate 31/12/2027; fonte DRE mensal; responsavel PERSON_FIXTURE_OWNER; estrategias revisar mix e reduzir perdas de processo.",
     `- ${specificObjective}`,
     "- Objetivo 4: elevar decisoes gerenciais com dados padronizados de 30% para 90% ate 31/10/2027; fonte auditoria mensal; responsavel PERSON_FIXTURE_MANAGER; estrategias padronizar indicadores e instituir reuniao de desempenho.",
-    "- Projetos: disciplina comercial ate 30/06/2027 ligado ao Objetivo 1; programa de margem ate 30/09/2027 ligado ao Objetivo 2; capacidade por gargalo ate 31/08/2027 ligado ao Objetivo 3; placar gerencial ate 31/10/2027 ligado ao Objetivo 4. Todos possuem os mesmos responsaveis dos objetivos e criterio de aceite documentado.",
+    projects,
     "- Riscos: adesao desigual e dependencia de fornecedores. Renuncias: adiar novo canal e reforma ampla da operacao. Rituais: revisao mensal, fechamento trimestral e revisao estrategica sob demanda.",
     "- Aprendizado historico: muitas prioridades simultaneas reduziram foco; a nova abordagem limita quatro objetivos e quatro projetos.",
   ].join("\n");

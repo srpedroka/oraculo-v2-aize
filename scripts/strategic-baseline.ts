@@ -1017,9 +1017,10 @@ async function restartCleanQ5AfterCorrection(correctionReference: string) {
     Q4AC: "2026-07-18.q5-clean-regression-r19-q4ac",
     Q4AD: "2026-07-18.q5-clean-regression-r20-q4ad",
     Q4AE: "2026-07-18.q5-clean-regression-r21-q4ae",
+    Q4AF: "2026-07-18.q5-clean-regression-r22-q4af",
   };
   const nextBaseline = cleanBaselineByCorrection[normalizedReference];
-  if (!nextBaseline) throw new Error("a retomada limpa atual exige a correcao Q4Z, Q4AA, Q4AB, Q4AC, Q4AD ou Q4AE aprovada");
+  if (!nextBaseline) throw new Error("a retomada limpa atual exige a correcao Q4Z, Q4AA, Q4AB, Q4AC, Q4AD, Q4AE ou Q4AF aprovada");
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.baselineVersion.includes("q5-clean-regression")) throw new Error("nao existe regressao geral limpa ativa para reiniciar");
@@ -1621,7 +1622,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA|Q4AB|Q4AC|Q4AD|Q4AE | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA|Q4AB|Q4AC|Q4AD|Q4AE|Q4AF | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

@@ -306,6 +306,28 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4AF somente a atividade anual R2 com contagem ambigua", () => {
+    const smoke = readFileSync("scripts/strategic-q4af-smoke.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003"');
+    expect(smoke).toContain('executeCase(item, "Q2A", 2');
+    expect(smoke).toContain('runLabel: "q4af"');
+    expect(smoke).toContain('ledgerLabel: "Q4AF"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
+  it("mantem o projeto do sistema uma unica vez no bloco anual de atividade", () => {
+    const item = fixture({
+      caseId: "Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003",
+      riskId: "ANNUAL-ACTIVITY-AS-STRATEGY",
+      sessionType: "strategic",
+    });
+    const supplement = buildManagerTurns(item)[2];
+
+    expect(supplement).toContain("Projetos (4):");
+    expect(supplement.match(/implantar sistema de gestao/g)).toHaveLength(1);
+    expect(supplement).toContain("aceite por integracao validada e 90% das areas treinadas");
+  });
+
   it("aceita periodo historico relativo sem exigir uma frase literal", () => {
     expect(hasGroundedRelativeHistoricalPeriod(["o plano anterior mediu atraso"])).toBe(true);
     expect(hasGroundedRelativeHistoricalPeriod(["no ciclo anterior a meta ficou abaixo"])).toBe(true);
@@ -493,6 +515,11 @@ describe("Q3 strategic baseline", () => {
   it("reinicia toda a regressao limpa depois da correcao Q4AE", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('Q4AE: "2026-07-18.q5-clean-regression-r21-q4ae"');
+  });
+
+  it("reinicia toda a regressao limpa depois da correcao Q4AF", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain('Q4AF: "2026-07-18.q5-clean-regression-r22-q4af"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

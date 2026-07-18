@@ -209,6 +209,14 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function explicitlyStatesFourStrategicItems(value: string, label: "objetivos" | "projetos") {
+  const phrase = `quatro\\s+${label}`;
+  return new RegExp(
+    `(?:^|\\n)\\s*(?:-\\s*)?(?:${label}\\s*\\(\\s*4\\s*\\)\\s*:|(?:tenho|temos|ha|há|sao|são|serao|serão|listei|inclui)[^\\n]{0,80}\\b${phrase}\\b|[^\\n]{0,80}\\b${phrase}\\b[^\\n]{0,30}\\b(?:estao|estão|foram|definidos|priorizados)\\b)`,
+    "i",
+  ).test(value);
+}
+
 function strategicProposalReasons(proposalValue: unknown, sessionPeriod: string, userMessage: string) {
   const proposal = asRecord(proposalValue);
   if (text(proposal.type) !== "save_strategic_plan") return [];
@@ -228,8 +236,8 @@ function strategicProposalReasons(proposalValue: unknown, sessionPeriod: string,
     objective.source,
     objective.owner,
   ].every((value) => text(value));
-  const requestedFourObjectives = /\bquatro\s+objetivos\b/i.test(userMessage);
-  const requestedFourProjects = /\bquatro\s+projetos\b/i.test(userMessage);
+  const requestedFourObjectives = explicitlyStatesFourStrategicItems(userMessage, "objetivos");
+  const requestedFourProjects = explicitlyStatesFourStrategicItems(userMessage, "projetos");
   if (!objectives.length || objectives.some((objective) => !objectiveIsVerifiable(objective))
     || (requestedFourObjectives && objectives.length !== 4)
     || (requestedFourProjects && projects.length !== 4)) {

@@ -124,6 +124,11 @@
       "date": "2026-07-18",
       "gate": "Q4AE",
       "reason": "O unico repair de uma proposta anual incompleta recebe o contrato completo dos objetivos/projetos, rele o bloco concreto existente e normaliza aliases e result a partir do target confirmado, sem pedir reenvio ou entrar em loop."
+    },
+    {
+      "date": "2026-07-18",
+      "gate": "Q4AF",
+      "reason": "Contagens anuais exatas so sao exigidas quando o gestor as declara ou lista explicitamente; uma licao historica nao vira regra oculta, e a fixture de atividade preserva quatro projetos coerentes incluindo o sistema."
     }
   ],
   "runtimeAssignments": [
@@ -159,7 +164,7 @@
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
     { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "73e553eb164fc2659e54c9d0608c7d7e34fab2dcaca33afa7db452289f53978a" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "254fd91b727d9bb54664b012493061b032089a61091c06e9c8df7cb54f29db61" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "9ed9c0f6dc9d5b93b77ceacfecb32ba1b4b1ed87c079befe752d9da0f19871db" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "bb581423d7d5ea2028bf55559d761d0973e9c6e6767c391fafdb157d69c9bac5" },
     { "path": "supabase/functions/_shared/quarterly-kpis.ts", "sha256": "891460d61b700f512f23fd4f26943e0d8dc34e2773f8d82c3cab57a63b108b60" },
     { "path": "supabase/functions/_shared/quarterly-actions.ts", "sha256": "5fc44ff140563b23fae00cc4aac02210dd6e9f5e75105fc0c71f9fc2c0476516" },

@@ -379,6 +379,49 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(recovered.reply)).toHaveLength(1);
   });
 
+  it("does not turn a historical lesson about four projects into a hidden portfolio count", () => {
+    const objective = {
+      title: "Elevar receita",
+      result: "R$ 132 milhoes",
+      current: "R$ 120 milhoes",
+      metric: "Receita anual",
+      target: "R$ 132 milhoes",
+      deadline: "2027-12-31",
+      source: "DRE",
+      owner: "Owner",
+    };
+    const proposal = {
+      type: "save_strategic_plan",
+      year: 2027,
+      objectives: Array.from({ length: 4 }, (_, index) => ({ ...objective, title: `${objective.title} ${index + 1}` })),
+      projects: Array.from({ length: 5 }, (_, index) => ({ name: `Projeto ${index + 1}` })),
+    };
+    const annualEnvelope = {
+      reply: "O plano anual está pronto. Confirma a gravação?",
+      proposal,
+      state_patch: {
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: [],
+          blocking_gap: null,
+          question_goal: "confirmar gravacao",
+          action_direction: "gravar plano",
+        },
+      },
+    };
+
+    expect(reasons(annualEnvelope, {
+      sessionType: "strategic",
+      sessionPeriod: "2027",
+      userMessage: "- Aprendizado: a nova abordagem limita quatro objetivos e quatro projetos.",
+    })).not.toContain("strategic_incomplete_proposal");
+    expect(reasons(annualEnvelope, {
+      sessionType: "strategic",
+      sessionPeriod: "2027",
+      userMessage: "- Projetos (4): disciplina comercial; programa de margem; sistema; placar.",
+    })).toContain("strategic_incomplete_proposal");
+  });
+
   it("challenges an annual activity and a weak target instead of using the generic fallback", () => {
     const reply = adaptiveFallbackReply(false, false, ["multiple_questions"], {
       sessionType: "strategic",
