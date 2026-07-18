@@ -50,4 +50,33 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("Meta: 10%");
     expect(whatsapp).toContain("Versão 1");
   });
+
+  it("renders repeated quarterly actions once as transversal execution", () => {
+    const action = {
+      description: "Publicar o padrão operacional",
+      owner: "PERSON_FIXTURE_A",
+      deadline: "2027-07-31",
+      completionCriterion: "Padrão aprovado e acessível",
+    };
+    const content = buildPlanDocumentPreview({
+      type: "save_quarterly_plan",
+      annualAlignment: { status: "linked", strategicObjectiveTitle: "Elevar confiabilidade" },
+      quarterlyObjectives: ["Prazo", "Retrabalho", "Capacidade"].map((title) => ({
+        title,
+        actions: [action],
+      })),
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      areaName: "Operações",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "quarterly",
+      period: "T3 2027",
+    }) as any;
+
+    expect(content.quarterly.acoes_transversais).toHaveLength(1);
+    expect(content.objetivos.every((objective: any) => objective.acoes.length === 0)).toBe(true);
+    const whatsapp = renderPlanForWhatsApp(content, { version: 1, origin: "session" });
+    expect(whatsapp.match(/Publicar o padrão operacional/g)).toHaveLength(1);
+    expect(whatsapp).toContain("Ações transversais");
+  });
 });

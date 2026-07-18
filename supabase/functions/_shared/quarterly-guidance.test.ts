@@ -98,6 +98,32 @@ describe("quarterly guidance", () => {
     expect(reasons(proposal)).toContain("quarterly_incomplete_actions");
   });
 
+  it("aceita ações transversais completas sem exigir cópias em cada objetivo", () => {
+    const proposal = completeProposal({
+      sharedActions: [{
+        description: "Publicar o padrão operacional",
+        owner: "Gestor Comercial",
+        deadline: "2027-07-31",
+        completionCriterion: "Padrão aprovado e acessível",
+      }],
+      quarterlyObjectives: [
+        completeObjective({ title: "Prazo", actions: [] }),
+        completeObjective({ title: "Retrabalho", actions: [] }),
+      ],
+    });
+
+    expect(reasons(proposal)).toEqual([]);
+  });
+
+  it("recusa ação transversal incompleta", () => {
+    const proposal = completeProposal({
+      sharedActions: [{ description: "Publicar o padrão" }],
+      quarterlyObjectives: [completeObjective({ actions: [] })],
+    });
+
+    expect(reasons(proposal)).toContain("quarterly_incomplete_actions");
+  });
+
   it("preserva uma cadência semanal explícita sem inventar rotina", () => {
     const withoutCadence = { reply: "Plano pronto. Confirma?", proposal: completeProposal({ cadence: "" }) };
     const normalized = preserveExplicitQuarterlyCadence(

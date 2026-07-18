@@ -1,3 +1,5 @@
+import { normalizeQuarterlySharedActions } from "./quarterly-actions.ts";
+
 type QuarterlyEnvelope = {
   reply?: unknown;
   proposal?: unknown;
@@ -18,7 +20,7 @@ export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL 
 - Quando houver objetivo anual aplicavel no contexto, vincule cada resultado trimestral a ele. Quando nao houver, continue no trimestre e registre annualAlignment={"status":"exception","rationale":"motivo confirmado pelo gestor"}; nunca invente um objetivo anual apenas para preencher o vinculo.
 - Forcas e gargalos sao proporcionais ao caso. Colete somente o diagnostico que muda uma escolha; nao exija listas fixas de tres itens.
 - Se o gestor trouxer uma atividade como objetivo (implantar CRM, contratar, criar processo), investigue o resultado que ela precisa produzir. A atividade fica em actions[]; o objetivo descreve a mudanca mensuravel.
-- Cada objetivo trimestral precisa preservar title, result, metric, current (baseline), target, source, deadline, owner, parentTitle e pelo menos uma action. Cada action preserva description, owner, deadline e completionCriterion.
+- Cada objetivo trimestral precisa preservar title, result, metric, current (baseline), target, source, deadline, owner e parentTitle. A execucao pode ficar em actions[] do objetivo ou em sharedActions[] quando a mesma acao move mais de um resultado; nunca repita uma acao transversal dentro de cada objetivo. Cada action preserva description, owner, deadline e completionCriterion.
 - Se baseline, indicador, fonte, prazo, dono ou criterio ainda nao existirem, nao monte proposal: pergunte somente a lacuna que torna o objetivo verificavel.
 - Se houver mais de tres prioridades, conduza a escolha de 1 a 3 resultados. Registre itens adiados em tradeOffs[]; nao os esconda como uma lista excessiva de acoes.
 - Preserve risks[], learningFocus[] e cadence quando forem informados. Cadencia e o ritmo de acompanhamento, nao uma nova burocracia.
@@ -27,7 +29,7 @@ export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL 
 - annualAlignment.status deve ser linked quando houver vinculo real, acompanhado do titulo ou id aplicavel; ou exception com justificativa explicita.
 
 Formato completo da proposal trimestral:
-{"type":"save_quarterly_plan","annualAlignment":{"status":"linked|exception","strategicObjectiveTitle":"","rationale":""},"linkedStrategicObjectiveIds":[],"areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"risks":[],"tradeOffs":[],"cadence":"","annualObjectives":[],"quarterlyObjectives":[{"title":"","result":"","type":"harvest|seed","metric":"","current":"","target":"","source":"","deadline":"YYYY-MM-DD","owner":"","period":"T3 2027","parentTitle":"","deliverables":[],"actions":[{"description":"","owner":"","deadline":"YYYY-MM-DD","completionCriterion":""}],"kpiLinks":[]}]}`;
+{"type":"save_quarterly_plan","annualAlignment":{"status":"linked|exception","strategicObjectiveTitle":"","rationale":""},"linkedStrategicObjectiveIds":[],"areaRole":{"mission":"","contribution":[]},"diagnosis":{"strengths":[],"weaknesses":[]},"learningFocus":[],"risks":[],"tradeOffs":[],"cadence":"","annualObjectives":[],"sharedActions":[{"description":"","owner":"","deadline":"YYYY-MM-DD","completionCriterion":""}],"quarterlyObjectives":[{"title":"","result":"","type":"harvest|seed","metric":"","current":"","target":"","source":"","deadline":"YYYY-MM-DD","owner":"","period":"T3 2027","parentTitle":"","deliverables":[],"actions":[{"description":"","owner":"","deadline":"YYYY-MM-DD","completionCriterion":""}],"kpiLinks":[]}]}`;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -101,7 +103,7 @@ function hasAnnualLink(proposal: Record<string, unknown>, alignment: Record<stri
 export function validateQuarterlyGuidanceEnvelope(input: QuarterlyValidationInput) {
   const reasons: string[] = [];
   const reply = text(input.envelope.reply);
-  const proposal = asRecord(input.envelope.proposal);
+  const proposal = asRecord(normalizeQuarterlySharedActions(input.envelope.proposal));
 
   if (ANNUAL_RITUAL_SWITCH_PATTERN.test(reply)) reasons.push("quarterly_annual_ritual_switch");
   if (!Object.keys(proposal).length) return reasons;
@@ -110,6 +112,7 @@ export function validateQuarterlyGuidanceEnvelope(input: QuarterlyValidationInpu
   const objectives = asArray(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre);
   const alignment = asRecord(proposal.annualAlignment ?? proposal.alinhamento_anual);
   const alignmentStatus = text(alignment.status).toLowerCase();
+  const sharedActions = asArray(proposal.sharedActions ?? proposal.acoesTransversais);
 
   if (!objectives.length) reasons.push("quarterly_missing_objectives");
   if (objectives.length > 3) reasons.push("quarterly_priority_overload");
@@ -134,8 +137,11 @@ export function validateQuarterlyGuidanceEnvelope(input: QuarterlyValidationInpu
     if (ACTIVITY_TITLE_PATTERN.test(title) && (!result || ACTIVITY_TITLE_PATTERN.test(result))) {
       reasons.push("quarterly_activity_as_objective");
     }
-    if (!actions.length || actions.some((action) => !actionIsComplete(action))) reasons.push("quarterly_incomplete_actions");
+    if ((!actions.length && !sharedActions.length) || actions.some((action) => !actionIsComplete(action))) {
+      reasons.push("quarterly_incomplete_actions");
+    }
   }
+  if (sharedActions.some((action) => !actionIsComplete(action))) reasons.push("quarterly_incomplete_actions");
 
   return [...new Set(reasons)];
 }

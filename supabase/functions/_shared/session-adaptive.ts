@@ -1,3 +1,5 @@
+import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
+
 type SessionEnvelope = {
   reply?: unknown;
   state_patch?: unknown;
@@ -788,12 +790,11 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
       const responsible = owner ? `, com ${owner} responsável` : "";
       return `${objectives.length > 1 ? `${index + 1}. ` : ""}${result}${measure}${proof}${due}${responsible}.`;
     });
-    const actionCount = objectives.reduce((sum, objective) =>
-      sum + (Array.isArray(objective.actions) ? objective.actions.length : 0), 0);
-    const actionDescriptions = objectives.flatMap((objective) =>
-      Array.isArray(objective.actions)
-        ? objective.actions.map(asRecord).map((action) => text(action.description)).filter(Boolean)
-        : []);
+    const actionEntries = uniqueQuarterlyActionEntries(value);
+    const actionCount = actionEntries.length;
+    const actionDescriptions = actionEntries
+      .map(({ action }) => text(action.description ?? action.descricao))
+      .filter(Boolean);
     return [
       "**Plano do trimestre**",
       ...objectiveLines,
@@ -958,9 +959,11 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
 
 export function normalizeProposalConfirmationEnvelope(envelope: SessionEnvelope, sessionType: string) {
   if (sessionType !== "quarterly" || text(asRecord(envelope.proposal).type) !== "save_quarterly_plan") return envelope;
+  const proposal = normalizeQuarterlySharedActions(envelope.proposal);
   return {
     ...envelope,
-    reply: proposalConfirmationReply(envelope.proposal, sessionType),
+    proposal,
+    reply: proposalConfirmationReply(proposal, sessionType),
   };
 }
 

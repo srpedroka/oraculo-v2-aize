@@ -59,6 +59,11 @@
       "date": "2026-07-18",
       "gate": "Q4R",
       "reason": "O unico retry de falha transitoria do provedor passa a ter uma janela real de ate quarenta segundos, mantendo falha fechada e nenhuma gravacao parcial."
+    },
+    {
+      "date": "2026-07-18",
+      "gate": "Q4S",
+      "reason": "Acoes materialmente identicas que atendem todos os resultados trimestrais passam a ser normalizadas como transversais, resumidas, gravadas e renderizadas uma unica vez."
     }
   ],
   "runtimeAssignments": [
@@ -94,16 +99,18 @@
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
     { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "6161e5eace74983e57acf5a0c72ffbe07fb26c44319944ed6508c8402edd0c0c" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "9f16f1b2fe3b247cff02704cdb0962ac58f41ea741957075ae4181589a9ad0c1" },
-    { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "1b348b14fb53fc78e353b2d3d8da0593e19a37be4085f9556d51e5630c37bdd0" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "86772f887806d13d8dd8b0aaaae0658eb65646953451a5272771f8cc3fb8f102" },
+    { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "b5ea59a16a51516dbf6a81e3057c281260094ef97d2aba659ce2db6f56e1a1b1" },
+    { "path": "supabase/functions/_shared/quarterly-actions.ts", "sha256": "5fc44ff140563b23fae00cc4aac02210dd6e9f5e75105fc0c71f9fc2c0476516" },
     { "path": "supabase/functions/_shared/session-runtime.ts", "sha256": "12995aaf4d99eb1db2713d2378ee852e422e4bd895b19a237b49144a6ce2d010" },
     { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "2e4b59d192cb8de6889aa1361f267f0d064a7f9b1a07b65514972a133a1b0e67" },
     { "path": "supabase/functions/_shared/session-imports.ts", "sha256": "d9ed3d6f0c0f8db62b8a9d029fdee77604b827d7aa348b5e69f2ff2322697820" },
     { "path": "supabase/functions/_shared/plan-context.ts", "sha256": "528db2c941e9191c0513344585d8a2dbb041ade91457d15452721001764ca46a" },
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "5bdb0f1c187ea236f2f3dd1b4e50741773aed4932e6dd2dbeaf738d09c4fbf2a" },
-    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "1b731d2f2d3536847230e9cc5cf64d955b4cabcf5cdbfe1e22157f480a2be548" },
-    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "1c269874bf6ce5a16bf88e20666365580d7cc14cb7ad3a3e4bc5596e04007434" },
+    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "2bbdd7a4eb4fe22a046393cb8db94b617409b22fb64a383c05141d2ac2201290" },
+    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "80f50199c519d1ad8bb65e0f127081fbb3935ed43c3d585d51be165d08171d9d" },
+    { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "5c8f9b7fe40323e4b40c578dafb41b363b755f83315132d70caaf1cdbc36f0da" },
     { "path": "supabase/functions/_shared/periods.ts", "sha256": "ff0b89f58abbd4929b4fae20eede319aebe1ee1b3632a10152574f3e33e98792" },
     { "path": "supabase/functions/_shared/monthly-guidance.ts", "sha256": "3b00499d0eed9ec737365559e4fc3478a7ee9f4e1033a25fb88e9cfb69f42d6d" }
   ]

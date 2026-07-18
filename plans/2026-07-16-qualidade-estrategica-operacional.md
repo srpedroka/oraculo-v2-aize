@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4R aprovada e Q5B r8 em retomada incremental**
+Status: **em execucao; Q4S aprovada e Q5B r8 em retomada incremental**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -850,3 +850,7 @@ Proxima fatia: **retomada incremental Q5B r8 apos Q4P**. Executar `resume-after-
 A **Q4R foi aprovada no staging** depois que prioridade R2 repetiu `AI_PROVIDER_TIMEOUT` no oficial e num recheck Q4Q sem mudanca. O unico retry transitorio ja existente agora tem janela real: ate 40 segundos por tentativa dentro de 90 segundos totais, ainda com uma unica repeticao e nenhuma gravacao parcial. O smoke isolado passou com Conducao 83,75, Plano Trimestral 96,25, media 90, dez checks verdes e cleanup completo. Q4Q custou US$ 0,028440 e Q4R US$ 0,040944; acumulado US$ 6,588187. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
 
 Proxima fatia: **retomada incremental Q5B r8 apos Q4R**. Preservar 10 aprovacoes Q5A e 11 Q5B, repetir somente prioridade R2 e continuar pelos quatro resultados trimestrais restantes. Manter fail-fast, smoke focado e regressao geral limpa somente ao final de Q5A-Q5D.
+
+A **Q4S foi aprovada no staging** depois que prioridade R2 deixou de ter timeout, mas repetiu duas acoes comuns dentro de cada um dos tres objetivos. Acoes com descricao, dono, prazo e criterio materialmente identicos em todos os resultados agora viram `sharedActions`: aparecem uma vez na confirmacao, uma vez no banco e uma vez no documento/app/WhatsApp. Acoes especificas permanecem no objetivo original. Nao houve migration. Smoke isolado: Conducao 92,50, Plano Trimestral 96,25, media 94,38, dez checks verdes e zero falha critica. Q4S custou US$ 0,040024; acumulado US$ 6,679758. Somente `oracle-session` foi publicada no staging; producao permanece intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4S**. Executar `resume-after-correction Q4S`, preservar as 21 aprovacoes existentes, repetir somente prioridade R2 e continuar pelos quatro resultados trimestrais ainda ausentes. Aplicar a mesma politica a qualquer novo defeito. Quando Q5A-Q5D passarem, executar uma unica regressao geral limpa repetindo todos os cenarios.

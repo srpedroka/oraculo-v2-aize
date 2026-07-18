@@ -567,3 +567,24 @@ O smoke Q4R repetiu somente `Q2B-QUARTERLY-PRIORITY-OVERLOAD-006` R2:
 Testes de orçamento provaram duas janelas completas e falha fechada sem tempo minimo; baseline, retry, catalogo, lint e build/bundle passaram. Somente `oracle-session` foi publicada no staging. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
 
 `resume-after-correction Q4R` deve arquivar somente prioridade R2 com erro e preservar 21 aprovacoes totais, sendo 10 Q5A e 11 Q5B. A fase repete essa rodada e, se passar, continua pelos quatro resultados trimestrais ainda ausentes.
+
+## Correcao Q4S: acoes transversais sem duplicacao
+
+A retomada apos Q4R removeu o timeout de prioridade R2, mas a medicao oficial bloqueou qualidade: o modelo copiou as mesmas duas acoes dentro dos tres objetivos. A confirmacao repetiu seis linhas e informou `Execucao: 6 acoes`, embora o gestor tivesse definido somente duas. O caso custou US$ 0,051547 e parou a Q5B por fail-fast.
+
+A Q4S introduz `sharedActions` no contrato trimestral. Quando descricao, dono, prazo e criterio sao identicos em todos os objetivos, o servidor normaliza a acao como transversal. Ela passa a ser contada, confirmada, gravada e renderizada uma unica vez; acoes apenas parecidas ou especificas continuam no objetivo original. Nao houve tabela ou migration nova.
+
+| Evidencia | Resultado |
+|---|---:|
+| Conducao | 92,50 |
+| Plano Trimestral | 96,25 |
+| Media conjunta | 94,38 |
+| Checks deterministas | 10/10 |
+| Falhas criticas | 0 |
+| Teste real de persistencia | 3 objetivos / 1 copia da acao fixture |
+| Custo Q4S | US$ 0,040024 |
+| Acumulado do plano | US$ 6,679758 |
+
+O resumo aprovado apresenta tres resultados, as duas acoes uma vez e `Execucao: 2 acoes`. O endpoint real de staging confirmou que banco e documento canonico nao duplicam. Foram aprovados 410 testes unitarios, catalogo 29/29, lint, build/bundle e secret scan em 486 arquivos. Somente `oracle-session` foi publicada no staging; producao permanece inalterada e o frontend sera publicado apenas no release autorizado do conjunto.
+
+`resume-after-correction Q4S` deve arquivar somente a medicao oficial bloqueada de prioridade R2, preservar 21 aprovacoes e repetir essa rodada. Depois, Q5B continua apenas pelos quatro resultados ausentes. A regressao geral limpa segue reservada para quando Q5A-Q5D estiverem integralmente verdes.

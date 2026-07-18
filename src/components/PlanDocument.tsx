@@ -59,6 +59,24 @@ function KeyValue({ label, value }: { label: string; value: unknown }) {
   );
 }
 
+function ActionList({ actions }: { actions: Record<string, unknown>[] }) {
+  if (!actions.length) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      {actions.map((action, index) => (
+        <div key={`${asText(action.codigo)}-${index}`} className="grid gap-2 border-t border-border px-4 py-3 first:border-t-0 md:grid-cols-[1fr_140px_140px]">
+          <div>
+            <p className="text-sm font-medium leading-6 text-text">{asText(action.codigo)} {asText(action.descricao, "Ação-chave")}</p>
+            {asText(action.criterio) ? <p className="text-xs leading-5 text-text-tertiary">Critério: {asText(action.criterio)}</p> : null}
+          </div>
+          <p className="text-xs leading-5 text-text-secondary">Dono: {asText(action.responsavel, "A definir")}</p>
+          <p className="text-xs leading-5 text-text-secondary">Prazo: {asText(action.prazo, "A definir")}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
   const actions = asArray<Record<string, unknown>>(objective.acoes);
   const deliverables = asArray<string>(objective.entregas);
@@ -98,18 +116,7 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
           </div>
         ) : null}
         {actions.length ? (
-          <div className="overflow-hidden rounded-xl border border-border">
-            {actions.map((action, index) => (
-              <div key={`${asText(action.codigo)}-${index}`} className="grid gap-2 border-t border-border px-4 py-3 first:border-t-0 md:grid-cols-[1fr_140px_140px]">
-                <div>
-                  <p className="text-sm font-medium leading-6 text-text">{asText(action.codigo)} {asText(action.descricao, "Ação-chave")}</p>
-                  {asText(action.criterio) ? <p className="text-xs leading-5 text-text-tertiary">Critério: {asText(action.criterio)}</p> : null}
-                </div>
-                <p className="text-xs leading-5 text-text-secondary">Dono: {asText(action.responsavel, "A definir")}</p>
-                <p className="text-xs leading-5 text-text-secondary">Prazo: {asText(action.prazo, "A definir")}</p>
-              </div>
-            ))}
-          </div>
+          <ActionList actions={actions} />
         ) : null}
         <KeyValue label="Evidência" value={objective.evidencia} />
         <KeyValue label="Decisão" value={objective.decisao} />
@@ -177,6 +184,7 @@ function QuarterlySection({ content }: { content: Record<string, unknown> }) {
   const role = asRecord(quarterly.papel_area);
   const diagnosis = asRecord(quarterly.diagnostico);
   const alignment = asRecord(quarterly.alinhamento_anual);
+  const sharedActions = asArray<Record<string, unknown>>(quarterly.acoes_transversais);
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <KeyValue label="Papel da área" value={role.missao} />
@@ -188,6 +196,12 @@ function QuarterlySection({ content }: { content: Record<string, unknown> }) {
       <KeyValue label="Riscos" value={asArray<string>(quarterly.riscos).join("; ")} />
       <KeyValue label="Escolhas e renúncias" value={asArray<string>(quarterly.trade_offs).join("; ")} />
       <KeyValue label="Acompanhamento" value={quarterly.cadencia} />
+      {sharedActions.length ? (
+        <div className="space-y-2 md:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Ações transversais</p>
+          <ActionList actions={sharedActions} />
+        </div>
+      ) : null}
     </div>
   );
 }

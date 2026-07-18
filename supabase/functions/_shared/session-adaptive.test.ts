@@ -951,6 +951,32 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
+  it("summarizes identical transversal actions once across quarterly objectives", () => {
+    const action = {
+      description: "publicar o padrão operacional",
+      owner: "Diego",
+      deadline: "2027-07-31",
+      completionCriterion: "padrão aprovado e acessível",
+    };
+    const normalized = normalizeProposalConfirmationEnvelope({
+      proposal: {
+        type: "save_quarterly_plan",
+        quarterlyObjectives: ["Prazo", "Retrabalho", "Capacidade"].map((result) => ({
+          result,
+          current: "60%",
+          target: "85%",
+          actions: [action],
+        })),
+      },
+    }, "quarterly");
+    const reply = String(normalized.reply);
+
+    expect((normalized.proposal as any).sharedActions).toEqual([action]);
+    expect(reply.match(/publicar o padrão operacional/g)).toHaveLength(1);
+    expect(reply).toContain("Execução: 1 ação");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
   it("blocks an annual activity and self-declared weak target when they are accepted without challenge", () => {
     const userMessage = "Quero fazer uma campanha e crescer só 2%, mas não sei se o problema é margem, volume ou previsibilidade.";
     const unchallenged = reasons({

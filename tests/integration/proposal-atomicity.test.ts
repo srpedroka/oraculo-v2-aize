@@ -346,6 +346,57 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     expect(await countObjectivesByTitle(annualTitle)).toBe(2);
   });
 
+  it("Q4S: grava uma ação transversal uma vez e preserva os três resultados", async () => {
+    const annualTitle = "Confiabilidade operacional anual Q4S";
+    const hierarchy = await seedAnnualHierarchy(org.areas.producaoId, annualTitle);
+    const actionDescription = "Publicar padrão transversal Q4S";
+    const sharedAction = {
+      description: actionDescription,
+      completionCriterion: "Padrão aprovado e acessível",
+      deadline: "2026-07-31",
+      owner: "Coordenação",
+    };
+    const proposal = quarterlyProposalWithoutRepeatedAnnualObjective(
+      annualTitle,
+      hierarchy.strategic.id,
+      "Prazo operacional Q4S",
+    );
+    proposal.quarterlyObjectives = ["Prazo operacional Q4S", "Retrabalho operacional Q4S", "Capacidade operacional Q4S"]
+      .map((title, index) => ({
+        ...proposal.quarterlyObjectives[0],
+        title,
+        result: title,
+        current: `${60 + index}%`,
+        target: `${80 + index}%`,
+        actions: [sharedAction],
+      }));
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: org.areas.producaoId,
+      user_id: org.owner.id,
+      type: "quarterly",
+      period: "T3 2026",
+      pending_proposal: proposal,
+    });
+
+    const { status, body } = await confirm(sessionId);
+    expect(status).toBe(200);
+    expect(body.reply).toContain("3 objetivo(s) e 1 ação(ões)-chave");
+    expect(await countActionsByDescription(actionDescription)).toBe(1);
+    for (const title of ["Prazo operacional Q4S", "Retrabalho operacional Q4S", "Capacidade operacional Q4S"]) {
+      expect(await countObjectivesByTitle(title)).toBe(1);
+    }
+
+    const { data: document, error: documentError } = await admin
+      .from("plan_documents")
+      .select("content")
+      .eq("session_id", sessionId)
+      .single();
+    if (documentError) throw documentError;
+    expect(document.content.quarterly.acoes_transversais).toHaveLength(1);
+    expect(document.content.objetivos.every((objective: any) => objective.acoes.length === 0)).toBe(true);
+  });
+
   it("Q4J: recusa o objetivo anual canônico quando ele pertence a outra área", async () => {
     const annualTitle = "Pai anual de outra área Q4J";
     const quarterlyTitle = "Trimestre não deve gravar Q4J";

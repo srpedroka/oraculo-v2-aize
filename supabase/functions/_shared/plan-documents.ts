@@ -1,3 +1,5 @@
+import { normalizeQuarterlySharedActions } from "./quarterly-actions.ts";
+
 type Client = any;
 
 type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
@@ -55,7 +57,7 @@ function compactLines(values: unknown[]) {
   return values.map((value) => asText(value)).filter(Boolean);
 }
 
-function normalizeActions(actions: unknown, objectiveNumber: number) {
+function normalizeActions(actions: unknown, objectiveNumber: number | string) {
   return asArray<any>(actions).map((action, index) => ({
     codigo: `${objectiveNumber}.${index + 1}`,
     descricao: asText(action.description ?? action.descricao, "Ação-chave"),
@@ -185,6 +187,7 @@ function buildStrategicContent(base: Record<string, unknown>, proposal: any) {
 }
 
 function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, period: string) {
+  proposal = normalizeQuarterlySharedActions(proposal);
   const areaRole = proposal.areaRole ?? proposal.papel_area ?? {};
   const diagnosis = proposal.diagnosis ?? proposal.diagnostico ?? {};
   const annualObjectives = asArray<any>(proposal.annualObjectives ?? proposal.objetivos_anuais);
@@ -195,6 +198,7 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
   const risks = firstFilledArray<string>(proposal.risks, proposal.riscos);
   const tradeOffs = firstFilledArray<string>(proposal.tradeOffs, proposal.trade_offs, proposal.renuncias);
   const cadence = asText(proposal.cadence ?? proposal.cadencia);
+  const sharedActions = normalizeActions(proposal.sharedActions ?? proposal.acoesTransversais, "T");
   const annualReference = annualException
     ? `Exceção confirmada: ${asText(annualAlignment.rationale ?? annualAlignment.justificativa)}`
     : asText(annualAlignment.strategicObjectiveTitle ?? annualObjectives[0]?.title ?? annualObjectives[0]?.titulo);
@@ -234,6 +238,7 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
       riscos: risks,
       trade_offs: tradeOffs,
       cadencia: cadence,
+      acoes_transversais: sharedActions,
     },
   };
 }

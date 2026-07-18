@@ -110,6 +110,8 @@ function quarterlyBlock(content: any) {
   if (asArray<string>(quarterly.riscos).length) lines.push(`Riscos: ${asArray<string>(quarterly.riscos).join("; ")}`);
   if (asArray<string>(quarterly.trade_offs).length) lines.push(`Escolhas e renúncias: ${asArray<string>(quarterly.trade_offs).join("; ")}`);
   if (asText(quarterly.cadencia)) lines.push(`Acompanhamento: ${asText(quarterly.cadencia)}`);
+  const sharedActions = asArray<any>(quarterly.acoes_transversais);
+  if (sharedActions.length) lines.push("Ações transversais:", ...sharedActions.map(actionLine));
   return lines.join("\n");
 }
 

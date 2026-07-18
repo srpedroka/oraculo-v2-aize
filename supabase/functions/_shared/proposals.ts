@@ -1,6 +1,7 @@
 import { createDocumentForProposal } from "./plan-documents.ts";
 import { validateMonthlyProposal } from "./monthly-guidance.ts";
 import { quarterPeriodForMonth } from "./periods.ts";
+import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
 import { assertImportedQuarterlyReferences } from "./untrusted-content.ts";
 
 type Client = any;
@@ -388,6 +389,7 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
 
 async function saveQuarterlyPlan(client: Client, session: any, proposal: any, userId: string) {
   if (!session.area_id) throw new Error("Plano trimestral exige uma área");
+  proposal = normalizeQuarterlySharedActions(proposal);
   await assertImportedQuarterlyReferences(client, session.org_id, proposal);
   const year = yearFromPeriod(session.period);
   const annualObjectives = [];
@@ -516,23 +518,26 @@ async function saveQuarterlyPlan(client: Client, session: any, proposal: any, us
     await applyProposedKpiLinks(client, session, inserted, objective, userId);
     quarterlyRows.push(inserted);
 
-    for (const action of asArray<any>(objective.actions ?? objective.acoes)) {
-      const { data, error } = await client
-        .from("key_actions")
-        .insert({
-          org_id: session.org_id,
-          objective_id: inserted.id,
-          description: asText(action.description ?? action.descricao, "Ação-chave"),
-          completion_criterion: asText(action.completionCriterion ?? action.completion_criterion ?? action.criterio),
-          deadline: cleanDate(action.deadline ?? action.prazo),
-          owner: asText(action.owner ?? action.responsavel),
-          status: "on_track",
-        })
-        .select("*")
-        .single();
-      if (error) throw error;
-      actionRows.push(data);
-    }
+  }
+
+  for (const { action, objectiveIndex } of uniqueQuarterlyActionEntries(proposal)) {
+    const objective = quarterlyRows[objectiveIndex] ?? quarterlyRows[0];
+    if (!objective) throw new Error("Plano trimestral exige objetivo para vincular ações");
+    const { data, error } = await client
+      .from("key_actions")
+      .insert({
+        org_id: session.org_id,
+        objective_id: objective.id,
+        description: asText(action.description ?? action.descricao, "Ação-chave"),
+        completion_criterion: asText(action.completionCriterion ?? action.completion_criterion ?? action.criterio),
+        deadline: cleanDate(action.deadline ?? action.prazo),
+        owner: asText(action.owner ?? action.responsavel),
+        status: "on_track",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    actionRows.push(data);
   }
 
   return `Plano trimestral gravado com ${quarterlyRows.length} objetivo(s) e ${actionRows.length} ação(ões)-chave.`;
