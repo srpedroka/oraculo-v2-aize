@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40. Na regressao limpa r22, Q5A esta 10/10, Q5B 16/16 e Q5C 8/8. A Q5D preserva 34 aprovacoes e repetira somente o fechamento mensal parcial R1 apos a Q4AN; depois segue pelas cinco medicoes ainda ausentes.
+Status: Q0-Q4 concluidas; a regressao limpa incremental r22 comprovou Q5A 10/10, Q5B 16/16, Q5C 8/8 e Q5D 6/6, total 40/40. Falta executar uma ultima grade integral desde zero para provar que todas as correcoes convivem sem depender de resultados preservados.
 
 ## Objetivo
 

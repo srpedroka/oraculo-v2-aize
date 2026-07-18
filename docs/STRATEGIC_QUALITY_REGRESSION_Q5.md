@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 8/8; Q5D em retomada apos Q4AN**
+Status: **regressao limpa incremental r22 em 40/40; regressao integral final desde zero ainda pendente**
 
 ## Objetivo
 
@@ -17,6 +17,12 @@ Repetir exatamente as 40 rodadas generativas e os nove casos deterministas da Q3
 - A matriz determinista terminou com oito `pass`, um `pending-human` de UX e zero `fail`.
 
 ## Resultado da tentativa
+
+### Fechamento Q5D e grade 40/40
+
+Depois da retomada Q4AN, o runner repetiu somente o fechamento mensal parcial R1 e seguiu pelas cinco medicoes ausentes. Fechamento mensal R1/R2, fechamento trimestral R1/R2 e Revisao Estrategica R1/R2 passaram, sem erro tecnico, falha critica, check reprovado ou residuo. Medias Q5D: Conducao 97,92, Revisao/Fechamento 94,79 e Saida Derivada 96,04. Geracao US$ 0,055537; judge US$ 0,094042; total Q5D US$ 0,149580.
+
+A grade incremental completa ficou em 40/40, media conjunta 96,64. Medias por rubrica: Plano Anual 98, Plano Trimestral 95,55, Plano Mensal 99,38, Revisao/Fechamento 94,79, Conducao 95,34 e Saida Derivada 96,77. O custo das 40 medicoes oficiais foi US$ 1,611006; o acumulado, incluindo tentativas e correcoes, chegou a US$ 14,318562. O gate permanece pendente ate uma regressao integral final desde zero, seguida da comparacao automatica e revisao humana cega.
 
 ### Q5D e Q4AN
 

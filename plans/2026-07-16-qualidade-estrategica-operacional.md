@@ -996,3 +996,9 @@ A repeticao oficial do gestor mensal experiente R2 marcou 100 em Conducao, Plano
 A Q5D bloqueou no primeiro fechamento mensal parcial: o progresso atualizado de 50% precisava ser salvo no objetivo, mas o documento o chamava de baseline e perdia o ponto de partida de 40%. A Q4AN separa estado operacional e leitura executiva: `current=50%` continua sendo gravado, enquanto o contrato canonico preserva baseline 40%, atingido 50%, meta 60%, veredito parcial, status operacional, metrica, responsavel, prazo e fonte.
 
 O smoke exato passou com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 85 e media 92,92. A tentativa bloqueada custou US$ 0,033633; o smoke custou US$ 0,028937; acumulado US$ 14,168982. Proximo passo: preservar as 34 aprovacoes, arquivar somente esse bloqueio e repetir o R1; se verde, executar apenas as cinco medicoes Q5D restantes. A regressao geral completa continua reservada para quando Q5D estiver 6/6.
+
+## Atualizacao 2026-07-18 - Q5 incremental completa 40/40
+
+A retomada Q4AN repetiu somente o fechamento mensal parcial R1 e concluiu todas as seis medicoes Q5D. Medias da fase: Conducao 97,92, Revisao/Fechamento 94,79 e Saida Derivada 96,04; custo US$ 0,149580. A grade completa ficou 40/40, media conjunta 96,64 e zero erro, falha critica ou check reprovado. As 40 medicoes oficiais custaram US$ 1,611006; o acumulado do plano chegou a US$ 14,318562.
+
+Proximo passo: arquivar a grade incremental aprovada, iniciar uma regressao integral final desde zero, rodar a matriz deterministica e repetir Q5A-Q5D inteiras. Essa rodada e deliberadamente redundante: comprova que as correcoes acumuladas passam juntas sem aproveitar aprovacao anterior. Fail-fast continua ativo; qualquer nova falha interrompe e volta ao ciclo de correcao focada.
