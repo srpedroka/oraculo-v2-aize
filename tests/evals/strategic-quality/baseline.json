@@ -227,7 +227,7 @@
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "308c34138e9d0ec74b42ce6b90bfa13f2a75233e9df4d4918a77770608da0896" },
     { "path": "supabase/functions/_shared/model-structured-output.ts", "sha256": "6bea8c60171081ec8e5d6e770a4ede02c0cdc2b3caa8a00a0165440b809ac6e2" },
-    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "2f2bc94b0d5f614cdafc3e9eeb41bc474e51ca6faa86ce6b241c851fc2d45279" },
+    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "8d9639a34c0f1cb4c91fac040004d6ff5b18159a846c5044cfbb73572c62caa7" },
     { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "be0283059e765c71c4dbb49cd0534465e28dbb13e5baa3f21bc1dd817a14389c" },
     { "path": "supabase/functions/_shared/risk-normalization.ts", "sha256": "2dc10a4e8306653f06e049b0ec9e1283ee94dd999d7b419f4fc00734d09628b5" },
     { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "a3b066c89e7391a84002cea3f053795dba1107fac043aff0906996303e7d296a" },
