@@ -21,6 +21,7 @@ type AdaptiveMetadata = {
 type ValidationInput = {
   envelope: SessionEnvelope;
   sessionType?: string;
+  sessionPeriod?: string;
   currentPhase: string;
   phases: string[];
   sessionState?: unknown;
@@ -167,6 +168,8 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   strategic_growth_choice_incomplete: "uma aspiracao vaga de crescimento nao recebeu as escolhas de receita, margem e capacidade",
   strategic_growth_tension_unchallenged: "a tensao entre receita, margem e capacidade virou apenas outro menu, sem explicitar a renuncia",
   strategic_final_tension_missing: "a sintese anual ignorou que o portfolio ja pressiona uma capacidade explicitamente limitada",
+  strategic_incomplete_proposal: "a proposta anual nao possui objetivos verificaveis nem o portfolio concreto informado pelo gestor",
+  strategic_wrong_year: "o ano da proposta anual diverge do periodo da sessao",
 };
 
 const DETERMINISTIC_PROPOSAL_REPAIR_REASONS = new Set([
@@ -202,6 +205,35 @@ export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigato
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function strategicProposalReasons(proposalValue: unknown, sessionPeriod: string, userMessage: string) {
+  const proposal = asRecord(proposalValue);
+  if (text(proposal.type) !== "save_strategic_plan") return [];
+  const reasons: string[] = [];
+  const expectedYear = text(sessionPeriod).match(/\b20\d{2}\b/)?.[0] ?? "";
+  const proposalYear = text(proposal.year);
+  if (expectedYear && proposalYear !== expectedYear) reasons.push("strategic_wrong_year");
+  const objectives = Array.isArray(proposal.objectives) ? proposal.objectives.map(asRecord) : [];
+  const projects = Array.isArray(proposal.projects) ? proposal.projects.map(asRecord) : [];
+  const objectiveIsVerifiable = (objective: Record<string, unknown>) => [
+    objective.title,
+    objective.result,
+    objective.current,
+    objective.metric,
+    objective.target,
+    objective.deadline,
+    objective.source,
+    objective.owner,
+  ].every((value) => text(value));
+  const requestedFourObjectives = /\bquatro\s+objetivos\b/i.test(userMessage);
+  const requestedFourProjects = /\bquatro\s+projetos\b/i.test(userMessage);
+  if (!objectives.length || objectives.some((objective) => !objectiveIsVerifiable(objective))
+    || (requestedFourObjectives && objectives.length !== 4)
+    || (requestedFourProjects && projects.length !== 4)) {
+    reasons.push("strategic_incomplete_proposal");
+  }
+  return reasons;
 }
 
 function text(value: unknown) {
@@ -457,6 +489,9 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
   if (!hasProposal && !paused && regularTurnSentenceCount(reply) > 4) reasons.push("verbose_regular_turn");
   if (TECHNICAL_STATE_PATTERN.test(reply)) reasons.push("technical_state_leak");
   if (input.sessionType === "strategic") {
+    if (hasProposal && text(input.sessionPeriod)) {
+      reasons.push(...strategicProposalReasons(input.envelope.proposal, text(input.sessionPeriod), input.userMessage));
+    }
     if (STRATEGIC_ACTIVITY_PATTERN.test(input.userMessage) && !STRATEGIC_ACTIVITY_CHALLENGE_PATTERN.test(reply)) {
       reasons.push("strategic_activity_unchallenged");
     }
@@ -681,6 +716,8 @@ export function recoverAdaptiveEnvelopeAfterRepairFailure(input: {
   const envelope = input.envelope ?? {};
   const proposalIsPremature = input.reasons.includes("proposal_before_ready")
     || input.reasons.includes("ready_with_blocking_gap")
+    || input.reasons.includes("strategic_incomplete_proposal")
+    || input.reasons.includes("strategic_wrong_year")
     || input.reasons.some((reason) => reason.startsWith("quarterly_") || reason.startsWith("monthly_"));
   const proposal = proposalIsPremature ? null : envelope.proposal;
   const hasProposal = Boolean(proposal);
@@ -1087,6 +1124,9 @@ export function adaptiveFallbackReply(
   if (paused) return "Tudo bem. A sessão fica salva e a gente retoma daqui quando você quiser.";
   if (hasProposal && text(context.sessionType) === "strategic" && reasons.includes("strategic_final_tension_missing")) {
     return strategicTensionConfirmationReply(context.proposal);
+  }
+  if (reasons.includes("strategic_incomplete_proposal") || reasons.includes("strategic_wrong_year")) {
+    return "Você descreveu a estrutura, mas os valores concretos dos objetivos e projetos ainda não vieram; sem eles eu não vou montar um plano vazio nem trocar o ano. Pode enviar esse bloco completo em uma mensagem?";
   }
   const naturalized = naturalizeRejectedReply(
     text(context.rejectedReply),

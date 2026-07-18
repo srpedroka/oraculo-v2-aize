@@ -815,6 +815,17 @@ Este plano só termina quando:
 - documentação, handoff, commit, push e CI estiverem verdes;
 - o owner tomar decisão explícita sobre rollout.
 
+### Atualizacao de execucao: Q5 incremental, regressao limpa e Q4Z
+
+- A rodada incremental Q5A-Q5D terminou com 40/40 medicoes generativas verdes.
+- A primeira regressao geral limpa passou a matriz deterministica 8/8 e repetiu oito medicoes anuais antes de bloquear no gestor anual experiente R1.
+- A causa foi uma proposta anual vazia e no ano errado diante de uma mensagem que anunciava, mas nao fornecia, quatro objetivos e quatro projetos.
+- A Q4Z exige ano correto e objetivos verificaveis; sem o bloco concreto, mantem a sessao aberta e nao gera proposta nem gravacao.
+- O smoke focal Q4Z passou com Conducao 90, Plano Anual 100, Saida Derivada 100 e media 96,67.
+- Custo Q4Z US$ 0,057392; acumulado do plano US$ 8,412568 de US$ 20.
+- Proxima execucao: arquivar a tentativa parcial, zerar a grade e repetir deterministas + Q5A + Q5B + Q5C + Q5D integralmente.
+- Regra permanente: nova falha interrompe a grade; corrige-se e testa-se somente o afetado; depois toda a regressao limpa recomeca. A Q5 so encerra com todos os cenarios aprovados na mesma rodada limpa.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

@@ -964,6 +964,86 @@ async function resumeQ5AfterCorrection(correctionReference: string) {
   console.log(`${targetLabel} pronta para retomada incremental apos ${normalizedReference}: ${failedRuns.length} medicao(oes) bloqueada(s) arquivada(s); ${progress.runs.length} medicao(oes) aprovada(s) preservada(s); custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
 }
 
+async function startCleanQ5Regression() {
+  if (EVALUATION_COHORT !== "q5") throw new Error("start-clean-regression e exclusivo da regressao Q5");
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  const { blocks } = await loadCatalog();
+  const expectedRuns = blocks
+    .filter((block) => ["Q2A", "Q2B", "Q2C", "Q2D"].includes(block.phase))
+    .flatMap((block) => block.cases.filter(isGenerativeCase))
+    .length * 2;
+  const uniqueRuns = new Set(progress.runs.map(baselineRunKey));
+  const blockedRuns = progress.runs.filter((run) => phaseRunStopReason(run));
+  if (progress.runs.length !== expectedRuns || uniqueRuns.size !== expectedRuns || blockedRuns.length) {
+    throw new Error(`regressao limpa exige ${expectedRuns} medicoes completas, unicas e sem bloqueio; atual: ${progress.runs.length}, unicas: ${uniqueRuns.size}, bloqueadas: ${blockedRuns.length}`);
+  }
+
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = "rodada incremental Q5 integralmente aprovada antes da regressao geral limpa";
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: "Q5-CLEAN-REGRESSION",
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: progress.runs.length,
+      archivedDeterministicCount: progress.deterministic.length,
+    },
+  ];
+  const previousRunCostUsd = progress.runs.reduce((sum, run) => sum + run.generationCostUsd + run.judgeCostUsd, 0);
+  progress.runs = [];
+  progress.deterministic = [];
+  progress.baselineVersion = "2026-07-18.q5-clean-regression-r15";
+  progress.startedAt = archivedAt;
+  progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Regressao geral limpa aberta: ${expectedRuns} medicoes anteriores preservadas; matriz deterministica zerada; custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}; referencia de custo US$ ${previousRunCostUsd.toFixed(6)}.`);
+}
+
+async function restartCleanQ5AfterCorrection(correctionReference: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("restart-clean-after-correction e exclusivo da regressao Q5");
+  const normalizedReference = correctionReference.toUpperCase();
+  if (normalizedReference !== "Q4Z") throw new Error("a retomada limpa atual exige a correcao Q4Z aprovada");
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  if (!progress.baselineVersion.includes("q5-clean-regression")) throw new Error("nao existe regressao geral limpa ativa para reiniciar");
+  const failedRuns = progress.runs.filter((run) => phaseRunStopReason(run));
+  if (!progress.runs.length || !failedRuns.length) throw new Error("a regressao limpa nao possui medicao bloqueada para arquivar");
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = `tentativa de regressao geral limpa interrompida antes da correcao ${normalizedReference}`;
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: normalizedReference,
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: progress.runs.length,
+      archivedDeterministicCount: progress.deterministic.length,
+    },
+  ];
+  const archivedRunCount = progress.runs.length;
+  progress.runs = [];
+  progress.deterministic = [];
+  progress.baselineVersion = "2026-07-18.q5-clean-regression-r16-q4z";
+  progress.startedAt = archivedAt;
+  progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Regressao geral limpa reiniciada apos ${normalizedReference}: ${archivedRunCount} medicoes da tentativa interrompida preservadas; grade ativa zerada; custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}.`);
+}
+
 async function cleanupStaleFixtures() {
   assertEvaluationEnvironment(process.env);
   const admin = serviceClient();
@@ -1521,6 +1601,8 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "archive-errors") await archiveExecutionErrors();
   else if (command === "restart-after-correction" && value) await restartQ5AfterCorrection(value);
   else if (command === "resume-after-correction" && value) await resumeQ5AfterCorrection(value);
+  else if (command === "start-clean-regression") await startCleanQ5Regression();
+  else if (command === "restart-clean-after-correction" && value) await restartCleanQ5AfterCorrection(value);
   else if (command === "cleanup-stale") await cleanupStaleFixtures();
   else if (command === "deterministic") await runDeterministicBaseline();
   else if (command === "human-packet") await writeHumanReviewPacket();
@@ -1530,7 +1612,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

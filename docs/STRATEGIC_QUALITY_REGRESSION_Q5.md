@@ -711,3 +711,25 @@ A Q4Y mantem o ritual enxuto: o gestor fornece os ajustes em bloco, recebe um re
 | Deploy | somente `oracle-session` no staging; sem migration ou frontend |
 
 A validacao passou 440 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 505 arquivos. `resume-after-correction Q4Y` deve arquivar somente revisao estrategica R1 bloqueada e preservar as 38 aprovacoes. `phase Q5D` repete essa rodada e continua apenas por R2. Quando as duas passarem, Q5A-Q5D estarao verdes e o proximo passo sera a regressao geral limpa de todos os cenarios, conforme decisao do owner.
+
+## Q5 incremental completa e correcao Q4Z na regressao limpa
+
+A retomada Q4Y aprovou Revisao Estrategica R1/R2 e encerrou a rodada incremental Q5 com 40/40 medicoes verdes: Q5A 10, Q5B 16, Q5C 8 e Q5D 6. O custo acumulado chegou a US$ 7,952232. A regressao geral limpa foi entao aberta, zerando a grade ativa e preservando as medicoes anteriores somente como auditoria.
+
+A matriz deterministica passou 8/8. Na Q5A, oito medicoes anuais passaram novamente; o gestor anual experiente R1 bloqueou antes de R2. Uma mensagem generica dizia que quatro objetivos e quatro projetos estavam completos, mas nao continha seus valores. O modelo tentou propor um plano 2026 dentro da sessao 2027, com zero objetivos e zero projetos. O fail-fast interrompeu a regressao, preservando custo e evidencias.
+
+A Q4Z valida server-side toda proposta anual: o ano precisa coincidir com a sessao, os objetivos precisam conter resultado, atual, metrica, alvo, prazo, fonte e responsavel, e contagens explicitamente informadas precisam ser respeitadas. Se o bloco concreto nao veio, a proposta e removida, nada e gravado e o Oraculo pede os valores em uma unica mensagem, sem reiniciar a entrevista.
+
+| Evidencia | Resultado |
+|---|---:|
+| Q5 incremental | 40/40 verdes |
+| Primeira regressao limpa | deterministica 8/8; 8 anuais verdes; bloqueio no 9o |
+| Conducao Q4Z | 90,00 |
+| Plano Anual Q4Z | 100,00 |
+| Saida Derivada Q4Z | 100,00 |
+| Media conjunta | 96,67 |
+| Custo Q4Z | US$ 0,057392 |
+| Acumulado | US$ 8,412568 / US$ 20 |
+| Deploy | somente `oracle-session` no staging; sem migration ou frontend |
+
+A validacao passou 444 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 506 arquivos. O ciclo aprovado pelo owner agora e estrito: arquivar a tentativa parcial com `restart-clean-after-correction Q4Z`, zerar novamente deterministas e medicoes, repetir Q5A-Q5D inteiras e parar em qualquer nova falha. Depois de uma correcao, roda-se somente seu smoke focal; uma nova regressao integral comeca do zero. Producao permanece inalterada.

@@ -378,6 +378,7 @@ export async function processPlanningMessage(
     const preparedEnvelope = deferUnchallengedQuarterlyProposal({
       envelope,
       sessionType: session.type,
+      sessionPeriod: session.period,
       currentPhase: session.phase,
       sessionState: session.state,
       conversationText,

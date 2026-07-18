@@ -329,6 +329,54 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(review)).toHaveLength(1);
   });
 
+  it("rejects an empty annual proposal with the wrong year and asks for the concrete block", () => {
+    const envelope = {
+      reply: "O plano anual ficou pronto. Posso gravar?",
+      state_patch: {
+        tema: "crescer com previsibilidade",
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: ["tema"],
+          blocking_gap: null,
+          question_goal: "confirmar gravacao",
+          action_direction: "gravar plano",
+        },
+      },
+      proposal: {
+        type: "save_strategic_plan",
+        year: 2026,
+        objectives: [],
+        projects: [],
+      },
+    };
+    const reasons = validateAdaptiveEnvelope({
+      envelope,
+      sessionType: "strategic",
+      sessionPeriod: "2027",
+      currentPhase: "sintese",
+      phases: ["abertura", "sintese"],
+      previousOracleReply: "Pode mandar o bloco completo?",
+      userMessage: "Quatro objetivos e quatro projetos estao definidos.",
+      sessionState: {},
+    });
+    const recovered = recoverAdaptiveEnvelopeAfterRepairFailure({
+      envelope,
+      reasons,
+      sessionType: "strategic",
+      currentPhase: "sintese",
+      phases: ["abertura", "sintese"],
+      userMessage: "Quatro objetivos e quatro projetos estao definidos.",
+      sessionState: {},
+    });
+
+    expect(reasons).toContain("strategic_wrong_year");
+    expect(reasons).toContain("strategic_incomplete_proposal");
+    expect(recovered.proposal).toBeNull();
+    expect(recovered.reply).toContain("valores concretos");
+    expect(recovered.reply).toContain("não vou montar um plano vazio");
+    expect(visibleQuestions(recovered.reply)).toHaveLength(1);
+  });
+
   it("challenges an annual activity and a weak target instead of using the generic fallback", () => {
     const reply = adaptiveFallbackReply(false, false, ["multiple_questions"], {
       sessionType: "strategic",

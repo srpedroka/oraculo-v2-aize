@@ -249,6 +249,17 @@ describe("Q3 strategic baseline", () => {
     expect(runner).toContain('targetPhase === "Q2D" ? "Q5D"');
   });
 
+  it("repete na Q4Z somente o owner anual experiente da regressao limpa", () => {
+    const smoke = readFileSync("scripts/strategic-q4z-smoke.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2A-ANNUAL-EXPERIENCED-OWNER-005"');
+    expect(smoke).toContain('executeCase(item, "Q2A", 1');
+    expect(smoke).toContain('runLabel: "q4z"');
+    expect(smoke).toContain('ledgerLabel: "Q4Z"');
+    expect(smoke).toContain("objectives.length !== 4");
+    expect(smoke).toContain("projects.length !== 4");
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("repete na Q4O somente a segunda rodada da area equivalente com erro de envelope", () => {
     const source = readFileSync("scripts/strategic-q4o-smoke.ts", "utf8");
     expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-EQUIVALENT-AREA-003"');
@@ -381,6 +392,29 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('["Q4U", "Q4V"].includes(normalizedReference)');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
+  });
+
+  it("abre a regressao geral limpa somente depois de todas as medicoes verdes", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain("async function startCleanQ5Regression()");
+    expect(source).toContain('correctionReference: "Q5-CLEAN-REGRESSION"');
+    expect(source).toContain('progress.baselineVersion = "2026-07-18.q5-clean-regression-r15"');
+    expect(source).toContain("progress.runs.length !== expectedRuns");
+    expect(source).toContain("progress.runs.map(baselineRunKey)");
+    expect(source).toContain("uniqueRuns.size !== expectedRuns");
+    expect(source).toContain("blockedRuns.length");
+    expect(source).toContain("progress.runs = []");
+    expect(source).toContain("progress.deterministic = []");
+    expect(source).toContain('command === "start-clean-regression"');
+  });
+
+  it("reinicia toda a regressao limpa depois da correcao Q4Z", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain("async function restartCleanQ5AfterCorrection(correctionReference: string)");
+    expect(source).toContain('normalizedReference !== "Q4Z"');
+    expect(source).toContain('progress.baselineVersion.includes("q5-clean-regression")');
+    expect(source).toContain('progress.baselineVersion = "2026-07-18.q5-clean-regression-r16-q4z"');
+    expect(source).toContain('command === "restart-clean-after-correction"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {
