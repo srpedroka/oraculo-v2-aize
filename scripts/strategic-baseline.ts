@@ -891,8 +891,8 @@ async function restartQ5AfterCorrection(correctionReference: string) {
 async function resumeQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("resume-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (!(["Q4N", "Q4O", "Q4P"] as string[]).includes(normalizedReference)) {
-    throw new Error("retomada incremental Q5 exige uma correcao aprovada (Q4N, Q4O ou Q4P)");
+  if (!(["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R"] as string[]).includes(normalizedReference)) {
+    throw new Error("retomada incremental Q5 exige uma correcao ou recheck aprovado (Q4N a Q4R)");
   }
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
@@ -925,11 +925,15 @@ async function resumeQ5AfterCorrection(correctionReference: string) {
   }
   const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath));
   progress.runs = progress.runs.filter((run) => !failedReportPaths.has(run.reportPath));
-  progress.baselineVersion = normalizedReference === "Q4P"
-    ? "2026-07-18.q5-regression-r8-incremental-q4p"
-    : normalizedReference === "Q4O"
-      ? "2026-07-18.q5-regression-r8-incremental-q4o"
-      : "2026-07-17.q5-regression-r8-incremental-q4n";
+  progress.baselineVersion = normalizedReference === "Q4R"
+    ? "2026-07-18.q5-regression-r8-incremental-q4r"
+    : normalizedReference === "Q4Q"
+      ? "2026-07-18.q5-regression-r8-incremental-q4q"
+      : normalizedReference === "Q4P"
+        ? "2026-07-18.q5-regression-r8-incremental-q4p"
+        : normalizedReference === "Q4O"
+          ? "2026-07-18.q5-regression-r8-incremental-q4o"
+          : "2026-07-17.q5-regression-r8-incremental-q4n";
   await writePrivateJson(PROGRESS_PATH, progress);
   console.log(`Q5B pronta para retomada incremental apos ${normalizedReference}: ${failedRuns.length} medicao(oes) bloqueada(s) arquivada(s); ${progress.runs.length} medicao(oes) aprovada(s) preservada(s); custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
 }
@@ -1500,7 +1504,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

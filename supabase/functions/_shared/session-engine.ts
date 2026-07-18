@@ -19,7 +19,8 @@ import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quar
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
-import { AiProviderError, createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
+import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
+import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-timeout.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
@@ -316,17 +317,7 @@ export async function processPlanningMessage(
 
   const modelMessages = conversationMessagesForModel(history);
   const transientRetryBudget = createTransientAiRetryBudget(1);
-  const planningRequestDeadline = Date.now() + 52_000;
-  const planningModelTimeout = () => {
-    const availableMs = planningRequestDeadline - Date.now() - 4_000;
-    if (availableMs < 5_000) {
-      throw new AiProviderError(
-        "AI_PROVIDER_TIMEOUT",
-        "A condução excedeu o tempo seguro desta resposta. Nenhum plano foi alterado; tente novamente.",
-      );
-    }
-    return Math.min(40_000, availableMs);
-  };
+  const planningRequestDeadline = Date.now() + PLANNING_REQUEST_DEADLINE_MS;
   const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
     const output = await withTransientAiRetry(() => callModelForFunction(
       client,
@@ -335,7 +326,7 @@ export async function processPlanningMessage(
       aiRoute,
       prompt,
       modelMessages,
-      { ...aiRoute.limits, timeoutMs: planningModelTimeout() },
+      { ...aiRoute.limits, timeoutMs: planningModelTimeout(planningRequestDeadline) },
       { userId: params.userId },
     ), transientRetryBudget);
     await recordAiUsage({

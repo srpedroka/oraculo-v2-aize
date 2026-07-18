@@ -227,6 +227,30 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4Q somente a segunda rodada de excesso de prioridades apos timeout", () => {
+    const source = readFileSync("scripts/strategic-q4q-smoke.ts", "utf8");
+    expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-PRIORITY-OVERLOAD-006"');
+    expect(source).toContain('executeCase(item, "Q2B", 2');
+    expect(source).toContain('runLabel: "q4q"');
+    expect(source).toContain('ledgerLabel: "Q4Q"');
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
+  it("repete na Q4R somente a segunda rodada de excesso de prioridades com retry util", () => {
+    const source = readFileSync("scripts/strategic-q4r-smoke.ts", "utf8");
+    expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-PRIORITY-OVERLOAD-006"');
+    expect(source).toContain('executeCase(item, "Q2B", 2');
+    expect(source).toContain('runLabel: "q4r"');
+    expect(source).toContain('ledgerLabel: "Q4R"');
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"]');
@@ -248,7 +272,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -257,6 +281,8 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('"2026-07-17.q5-regression-r8-incremental-q4n"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4o"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4p"');
+    expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4q"');
+    expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4r"');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
   });

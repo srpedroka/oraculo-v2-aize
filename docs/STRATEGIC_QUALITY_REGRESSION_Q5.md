@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q5B r8 com 8 aprovacoes; Q4P aprovada e retomada incremental liberada**
+Status: **Q5A preservada; Q5B r8 com 11 aprovacoes; Q4R aprovada e retomada incremental liberada**
 
 ## Objetivo
 
@@ -535,3 +535,35 @@ A Q4P corrige somente essa conducao. Uma meta percentual de produtividade sem me
 A transcricao aprovada perguntou primeiro qual indicador representa produtividade. No turno seguinte, apresentou exatamente `unidades por hora` e `pedidos concluidos por pessoa`; somente depois da escolha preservou baseline 12, alvo 14,4 e fonte ERP. Houve uma confirmacao, banco/documento coerentes e cleanup completo. Testes focados, catalogo 29/29, lint e build/bundle passaram. Somente `oracle-session` foi publicada no staging; producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
 
 `resume-after-correction Q4P` arquiva apenas a medicao bloqueada de meta sem baseline e preserva 18 aprovacoes oficiais no total, sendo 10 Q5A e 8 Q5B. A fase deve repetir primeiro somente esse caso e continuar pelos sete resultados trimestrais ainda ausentes. A politica permanece fail-fast e incremental ate Q5A-Q5D ficarem verdes; somente depois sera feita a regressao geral limpa.
+
+## Retomada Q5B, recheck Q4Q e correcao Q4R
+
+A retomada Q5B apos Q4P aprovou as duas rodadas de meta sem baseline e a primeira de excesso de prioridades. A segunda rodada de prioridades encerrou em `AI_PROVIDER_TIMEOUT` antes de proposta ou judge:
+
+| Caso | Rodada | Resultado | Custo |
+|---|---:|---|---:|
+| Meta sem baseline | 1 | aprovada | US$ 0,051856 |
+| Meta sem baseline | 2 | aprovada | US$ 0,053480 |
+| Excesso de prioridades | 1 | aprovada | US$ 0,039824 |
+| Excesso de prioridades | 2 | erro tecnico | US$ 0,028761 |
+
+O R1 do mesmo caso havia passado com Conducao 93,75, Plano Trimestral 92,50 e media 93,13. Por isso, antes de alterar runtime, a Q4Q repetiu somente R2 sem mudanca de codigo. O mesmo timeout reapareceu, custou US$ 0,028440 e provou que a segunda chance do provedor nao possuia tempo util: o request tinha 52 segundos no total, a primeira tentativa podia consumir 40 e o retry recebia menos que o minimo seguro.
+
+A Q4R manteve cada tentativa em no maximo 40 segundos e ampliou apenas a janela total para 90 segundos. Assim, a unica repeticao transitoria ja existente pode receber ate 40 segundos reais; duas falhas ainda encerram sem mutacao e com mensagem segura. O cliente do laboratorio passou a aguardar 105 segundos para observar a resposta da Function. Perguntas, regras de plano, quantidade de retries, banco, confirmacao e permissao nao mudaram.
+
+O smoke Q4R repetiu somente `Q2B-QUARTERLY-PRIORITY-OVERLOAD-006` R2:
+
+| Evidencia | Resultado |
+|---|---:|
+| Conducao | 83,75 |
+| Plano Trimestral | 96,25 |
+| Media conjunta | 90,00 |
+| Checks deterministas | 10/10 |
+| Falhas criticas | 0 |
+| Custo Q4Q bloqueada | US$ 0,028440 |
+| Custo Q4R aprovada | US$ 0,040944 |
+| Acumulado do plano | US$ 6,588187 |
+
+Testes de orçamento provaram duas janelas completas e falha fechada sem tempo minimo; baseline, retry, catalogo, lint e build/bundle passaram. Somente `oracle-session` foi publicada no staging. Producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
+
+`resume-after-correction Q4R` deve arquivar somente prioridade R2 com erro e preservar 21 aprovacoes totais, sendo 10 Q5A e 11 Q5B. A fase repete essa rodada e, se passar, continua pelos quatro resultados trimestrais ainda ausentes.

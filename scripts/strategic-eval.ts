@@ -30,6 +30,7 @@ const BASELINE_PATH = resolve("tests/evals/strategic-quality/baseline.json");
 const PLANNING_CALL_RESERVE_USD = 0.15;
 const JUDGE_CALL_RESERVE_USD = 0.1;
 const JUDGE_TIMEOUT_MS = 180_000;
+const FUNCTION_TIMEOUT_MS = 105_000;
 
 export interface TranscriptMessage {
   sequence: number;
@@ -134,7 +135,7 @@ export async function callFunction(
   const url = String(process.env.SUPABASE_STAGING_URL);
   const anonKey = String(process.env.SUPABASE_STAGING_ANON_KEY);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000);
+  const timeout = setTimeout(() => controller.abort(), FUNCTION_TIMEOUT_MS);
   try {
     const response = await fetch(`${url}/functions/v1/${slug}`, {
       method: "POST",

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4P aprovada e Q5B r8 em retomada incremental**
+Status: **em execucao; Q4R aprovada e Q5B r8 em retomada incremental**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -846,3 +846,7 @@ Proxima fatia: **retomada incremental Q5B r8 apos Q4O**. Executar `resume-after-
 A **Q4P foi aprovada no staging** depois que a Q5B chegou a oito aprovacoes e bloqueou na conducao de uma meta percentual de produtividade sem baseline. O Oraculo agora define primeiro a medida e, quando existem duas fontes candidatas, cita as duas e pede a escolha sem inventar numero. O smoke isolado passou com Conducao 100, Plano Trimestral 93,75, media 96,88, dez checks verdes, uma confirmacao e cleanup completo. Q4P custou US$ 0,052941; acumulado US$ 6,344882. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
 
 Proxima fatia: **retomada incremental Q5B r8 apos Q4P**. Executar `resume-after-correction Q4P`, preservando 10 aprovacoes Q5A e 8 Q5B, e repetir somente meta sem baseline R1 antes dos sete resultados trimestrais ainda ausentes. Novos problemas seguem correcao + smoke isolado + retomada incremental. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.
+
+A **Q4R foi aprovada no staging** depois que prioridade R2 repetiu `AI_PROVIDER_TIMEOUT` no oficial e num recheck Q4Q sem mudanca. O unico retry transitorio ja existente agora tem janela real: ate 40 segundos por tentativa dentro de 90 segundos totais, ainda com uma unica repeticao e nenhuma gravacao parcial. O smoke isolado passou com Conducao 83,75, Plano Trimestral 96,25, media 90, dez checks verdes e cleanup completo. Q4Q custou US$ 0,028440 e Q4R US$ 0,040944; acumulado US$ 6,588187. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4R**. Preservar 10 aprovacoes Q5A e 11 Q5B, repetir somente prioridade R2 e continuar pelos quatro resultados trimestrais restantes. Manter fail-fast, smoke focado e regressao geral limpa somente ao final de Q5A-Q5D.
