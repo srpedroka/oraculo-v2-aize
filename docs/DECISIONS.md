@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Desafio trimestral proporcional a prontidao
+
+Decisao: exigir um desafio curto somente quando um bloco trimestral ainda nao testou a decisao. Se o gestor ja informou resultado verificavel, acoes, risco, mitigacao e foco de aprendizado, a sessao segue para sintese e uma unica confirmacao. Se os dados suficientes chegam antes do bloco suplementar da fixture, o fechamento antecipado tambem e valido desde que proposta, banco e saidas passem os contratos.
+
+Motivo: a Q5B mostrou Plano Trimestral e Saida Derivada com nota 100, mas Conducao 75 porque o Oraculo pediu evidencia intermediaria depois de o gestor ja ter refletido sobre risco e aprendizado. A protecao contra planos superficiais estava correta, mas sua aplicacao indiscriminada transformava qualidade em burocracia.
+
+Consequencias: nao ha nova tela, campo, tabela ou confirmacao. Gestores que trazem pouca informacao continuam recebendo diagnostico e desafio; gestores experientes avancam mais rapido. O guard server-side recusa pergunta adicional no bloco ja testado e orienta um unico reparo interno, sem permitir gravacao antes da confirmacao.
+
 ## 2026-07-18 - Modelo sugere conteúdo; servidor possui o contrato da sessão
 
 Decisão: usar JSON Schema nas respostas de planejamento e do judge, mantendo no servidor a autoridade sobre escopo, período, prontidão adaptativa e confirmação. xAI usa schema estrito; OpenAI usa o mesmo schema sem `strict` para acomodar os objetos internos variáveis e continua sujeito à validação fail-closed. No laboratório, `COND-SCOPE-001` passa a receber nota efetiva do check `DET-SESSION-SCOPE-001`; critérios sem prova objetiva continuam com o judge.

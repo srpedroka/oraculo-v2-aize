@@ -880,7 +880,7 @@ describe("adaptive planning session guard Q4A", () => {
       "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
       "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
       "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
-      "- Risco: baixa adesao. Mitigacao: acompanhamento semanal. Foco de aprendizado: validar a padronizacao.",
+      "- Risco: baixa adesao.",
     ].join("\n");
     const readyEnvelope = {
       reply: "O plano trimestral ficou pronto. Posso gravar?",
@@ -927,7 +927,7 @@ describe("adaptive planning session guard Q4A", () => {
       "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
       "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
       "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
-      "- Risco: baixa adesao. Mitigacao: acompanhamento semanal. Foco de aprendizado: validar a padronizacao.",
+      "- Risco: baixa adesao.",
     ].join("\n");
     const readyEnvelope = {
       reply: "O plano trimestral ficou pronto. Posso gravar?",
@@ -971,6 +971,60 @@ describe("adaptive planning session guard Q4A", () => {
     expect(prepared.reply).toContain("evidência intermediária");
     expect(visibleQuestions(String(prepared.reply))).toHaveLength(1);
     expect(preparedReasons).toEqual([]);
+  });
+
+  it("closes a complete quarterly block already tested by risk, mitigation and learning", () => {
+    const userMessage = [
+      "Dados concretos adicionais confirmados pelo gestor sintetico para fechar o plano trimestral:",
+      "- Resultado principal confirmado: elevar oportunidades com proxima acao registrada de 40% para 85% ate 30/09/2027, fonte relatorio semanal do funil.",
+      "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
+      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
+      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
+      "- Risco: baixa adesao. Mitigacao: acompanhamento semanal. Foco de aprendizado: validar se a padronizacao melhora o indicador sem aumentar carga da equipe.",
+    ].join("\n");
+    const proposal = { type: "save_quarterly_plan", quarterlyObjectives: [{ result: "Elevar oportunidades" }] };
+    const readyEnvelope = {
+      reply: "O plano trimestral ficou pronto. Posso gravar?",
+      proposal,
+      state_patch: {},
+      next_phase: "sintese",
+    };
+    const prepared = deferUnchallengedQuarterlyProposal({
+      envelope: readyEnvelope,
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      sessionState: {},
+      conversationText: "",
+      userMessage,
+    });
+    const blocked = validateAdaptiveEnvelope({
+      envelope: {
+        reply: "Qual evidência intermediária vai mostrar que as ações mudam o resultado?",
+        state_patch: {
+          _adaptive: {
+            readiness: "partial",
+            confirmed_facts: [],
+            blocking_gap: "evidencia intermediaria",
+            question_goal: "testar a meta",
+            action_direction: "validar a abordagem",
+          },
+        },
+        next_phase: "diagnostico",
+      },
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: {},
+      conversationText: "",
+      previousOracleReply: "O que a equipe precisa aprender para sustentar esse resultado?",
+      userMessage,
+    });
+    const directive = buildAdaptiveRepairDirective(blocked, "Qual evidência intermediária vai mostrar que as ações mudam o resultado?");
+
+    expect(prepared).toBe(readyEnvelope);
+    expect(blocked).toContain("quarterly_complete_block_overquestioned");
+    expect(directive).toContain("risco, mitigacao e aprendizado");
+    expect(directive).toContain("nao exija evidencia intermediaria");
   });
 
   it("keeps a quarterly proposal after the strategic challenge already happened", () => {

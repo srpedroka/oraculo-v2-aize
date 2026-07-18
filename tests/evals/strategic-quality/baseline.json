@@ -139,6 +139,11 @@
       "date": "2026-07-18",
       "gate": "Q4AH",
       "reason": "Geracao e judge passam a usar JSON Schema no provedor; escopo, prontidao interna e confirmacao sao normalizados pelo servidor; a nota objetiva de escopo vem do check deterministico e registra sua fonte no relatorio."
+    },
+    {
+      "date": "2026-07-18",
+      "gate": "Q4AI",
+      "reason": "Um bloco trimestral completo que ja informa risco, mitigacao e foco de aprendizado segue direto para sintese e confirmacao unica; o desafio adicional permanece apenas quando a decisao ainda nao foi testada."
     }
   ],
   "runtimeAssignments": [
@@ -176,7 +181,7 @@
     { "path": "supabase/functions/_shared/session-output-schema.ts", "sha256": "dd64b089c64d504e7a1cee6050e4eccc11c11c8fae2441021796044da19a1927" },
     { "path": "supabase/functions/_shared/session-canonical-envelope.ts", "sha256": "7311ef113b53fc9538ea7db3a49b9fae27864d28e9c76247ee4dd60f22279af7" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "cffac0688e74d468086dc429c1fdc1ecd575a434cdf2b2a859de2125b4fb06ee" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "f91c93d67b40275f62711a9e647d6f8d67170a150bf295aea606f44ce58b7c99" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "bb581423d7d5ea2028bf55559d761d0973e9c6e6767c391fafdb157d69c9bac5" },
     { "path": "supabase/functions/_shared/quarterly-kpis.ts", "sha256": "891460d61b700f512f23fd4f26943e0d8dc34e2773f8d82c3cab57a63b108b60" },
     { "path": "supabase/functions/_shared/quarterly-actions.ts", "sha256": "5fc44ff140563b23fae00cc4aac02210dd6e9f5e75105fc0c71f9fc2c0476516" },

@@ -142,6 +142,7 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_confirmed_kpi_link_missing: "o gestor confirmou o vinculo de KPI como hipotese, mas a proposta nao preservou a chave real do indicador",
   quarterly_invalid_kpi_link: "o vinculo de KPI nao usou uma chave existente e permitida do Dashboard",
   quarterly_complete_block_unchallenged: "um bloco trimestral quase completo virou proposta antes de um desafio curto e contextual sobre meta, capacidade, risco, evidencia ou consistencia das acoes",
+  quarterly_complete_block_overquestioned: "o bloco trimestral ja trouxe risco, mitigacao e aprendizado; monte a proposta agora sem abrir outra pergunta de conteudo",
   quarterly_proceed_after_challenge_without_proposal: "o bloco trimestral ja foi desafiado e o gestor decidiu seguir; monte agora a proposta completa sem repetir a escolha nem abrir outra pergunta",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
   monthly_wrong_proposal_type: "a proposta nao e do tipo mensal esperado",
@@ -202,6 +203,7 @@ export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigato
 - Se a resposta for vaga, reconheca o que foi dito e ofereca 2 ou 3 possibilidades curtas dentro de UMA pergunta neutra. Nao escolha pela pessoa.
 - Se a resposta for parcial, faca somente a pergunta da lacuna bloqueante. Cite o fato que motivou a pergunta e a decisao ou acao que ela destrava.
 - Se a resposta estiver pronta, monte a proposal na mesma resposta e peça UMA unica confirmacao. Nao pergunte se a pessoa quer resumo, proposta ou proxima etapa.
+- No trimestral, um bloco completo que ja informa risco, mitigacao e foco de aprendizado esta pronto: nao exija outra evidencia intermediaria nem uma nova rodada de desafio.
 - Nunca repita semanticamente a ultima pergunta do Oraculo. Nunca exponha nomes de fase, _adaptive, base_confirmada, state_patch, next_phase ou a palavra tecnica proposal.
 - Nao use "Entendi: voce quer..." nem outro bordao seguido de parafrase. Reconheca apenas quando isso acrescentar algo e varie a entrada; muitas vezes, va direto ao ponto.
 - Fora de resumos finais, reply deve ter de 1 a 3 frases, em tom casual, tranquilo e objetivo. Listas servem apenas para opcoes de decisao. Toda pergunta precisa aproximar resultado, escolha, meta ou proxima acao executavel.`;
@@ -347,6 +349,13 @@ function looksLikeCompleteQuarterlyBlock(value: string) {
   return signals >= 6;
 }
 
+function quarterlyBlockAlreadyStressTested(value: string) {
+  return looksLikeCompleteQuarterlyBlock(value)
+    && /\brisco\b/i.test(value)
+    && /\bmitiga[cç][aã]o\b/i.test(value)
+    && /\bfoco de aprendizado\b|\baprendizado\b/i.test(value);
+}
+
 function quarterlyCompleteBlockChallengeReply(userMessage: string) {
   const range = userMessage.match(/\bde\s+(\d+(?:[.,]\d+)?\s*%)\s+para\s+(\d+(?:[.,]\d+)?\s*%)/i);
   const measure = range ? ` de ${range[1]} para ${range[2]}` : "";
@@ -410,6 +419,7 @@ export function deferUnchallengedQuarterlyProposal(input: {
   if (input.sessionType !== "quarterly"
     || !input.envelope.proposal
     || !looksLikeCompleteQuarterlyBlock(input.userMessage)
+    || quarterlyBlockAlreadyStressTested(input.userMessage)
     || hasQuarterlyStrategicChallenge(text(input.conversationText))) {
     return input.envelope;
   }
@@ -744,8 +754,14 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
     }
     if (hasProposal
       && looksLikeCompleteQuarterlyBlock(input.userMessage)
+      && !quarterlyBlockAlreadyStressTested(input.userMessage)
       && !hasQuarterlyStrategicChallenge(text(input.conversationText))) {
       reasons.push("quarterly_complete_block_unchallenged");
+    }
+    if (!hasProposal
+      && !paused
+      && quarterlyBlockAlreadyStressTested(input.userMessage)) {
+      reasons.push("quarterly_complete_block_overquestioned");
     }
     if (!hasProposal
       && hasQuarterlyStrategicChallenge(text(input.conversationText))
@@ -783,6 +799,9 @@ export function buildAdaptiveRepairDirective(reasons: string[], rejectedReply: s
   const quarterlyProceedInstruction = reasons.includes("quarterly_proceed_after_challenge_without_proposal")
     ? "\nO bloco trimestral completo e a checagem estrategica ja foram concluídos. A decisao de seguir sem evidencia adicional e consciente. Gere agora a proposal save_quarterly_plan completa e termine com uma unica confirmacao; nao faca outra pergunta de conteudo."
     : "";
+  const quarterlyReadyInstruction = reasons.includes("quarterly_complete_block_overquestioned")
+    ? "\nO bloco trimestral ja esta completo e ja testa risco, mitigacao e aprendizado. Gere agora a proposal save_quarterly_plan completa e termine com uma unica confirmacao; nao exija evidencia intermediaria nem faca outra pergunta de conteudo."
+    : "";
   const strategicProposalInstruction = reasons.includes("strategic_incomplete_proposal")
     ? "\nA proposta anual saiu incompleta. Releia o bloco concreto ja presente na conversa e reconstrua save_strategic_plan agora. Cada objetivo exige title, type, result, current, metric, target, deadline, source, strategies, owner e period; cada projeto exige name, owner, deadline e linkedObjectiveTitle. Se target ja estiver confirmado, result pode repetir esse mesmo alvo. Nao peca ao gestor para reenviar dados que ja aparecem no historico."
     : "";
@@ -792,7 +811,7 @@ ${labels}
 
 Trecho recusado: ${text(rejectedReply).replace(/\s+/g, " ").slice(0, 900) || "envelope invalido"}
 
-Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}${strategicProposalInstruction}`;
+Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}${quarterlyReadyInstruction}${strategicProposalInstruction}`;
 }
 
 export function safeAdaptiveNextPhase(currentPhase: string, requestedPhase: unknown, phases: string[], reasons: string[]) {

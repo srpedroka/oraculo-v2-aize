@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q4AH e A/B aprovados no staging; regressão limpa r22 preserva 18 aprovações e está pronta para retomar Q5B**
+Status: **Q4AI aprovada no staging; regressao r22 preserva Q5A 10/10 e Q5B 15/16, pronta para repetir somente gestor experiente R2**
 
 ## Objetivo
 
@@ -820,3 +820,11 @@ Antes de repetir o caso, o motor foi endurecido estruturalmente. xAI recebe JSON
 O smoke Q4AH passou no staging com 3 chamadas, zero reparo estrutural, Condução 100, Plano Trimestral 97,50, custo US$ 0,032404 e cleanup completo. `resume-after-correction Q4AH` arquivou somente a medição antiga e preservou as 18 aprovações.
 
 O A/B cego também passou nos dois modelos. Grok 4.3 obteve Condução 92,50, Plano 95, 4 chamadas, 1 reparo semântico e custo total US$ 0,038189. Grok 4.5 obteve 93,75, 97,50, 4 chamadas, 1 reparo e US$ 0,057875. O total do A/B foi US$ 0,096064; acumulado US$ 13,234564. Como a amostra é única, os judges foram cruzados e a diferença de qualidade é pequena, Grok 4.3 permanece como condutor. O próximo passo é `phase Q5B`, repetindo somente o caso trimestral bloqueado e seguindo pelos sete resultados ausentes.
+
+## Q4AI: gestor experiente sem pergunta burocratica
+
+A retomada Q5B aprovou sete das oito medicoes restantes e bloqueou somente `Q2B-QUARTERLY-EXPERIENCED-MANAGER-008` R2. Todos os checks passaram, Plano Trimestral e Saida Derivada ficaram em 100, mas a Conducao marcou 75 porque, depois de receber risco, mitigacao e aprendizado, o Oraculo ainda pediu uma evidencia intermediaria. A repeticao R1 havia passado com um desafio melhor, mostrando que o problema era a regra de encerramento e nao a capacidade do modelo.
+
+A Q4AI torna o desafio proporcional: bloco completo e ja testado segue para sintese; bloco superficial ainda recebe uma pergunta curta. No smoke R2, o Oraculo fez uma pergunta sobre o gargalo e fechou assim que objetivo, acoes, risco e cadencia ficaram suficientes. Foram 2 chamadas, zero reparo, uma confirmacao, Conducao 92,50, Plano Trimestral 100, Saida Derivada 100 e cleanup completo. O script inicialmente exigiu um terceiro bloco literal, apesar do fechamento antecipado aprovado; o mesmo relatorio foi revalidado a custo zero com o contrato corrigido.
+
+Q4AI custou US$ 0,013438 de geracao e US$ 0,016262 de judge, total US$ 0,029699. O acumulado chegou a US$ 13,571522. O proximo passo e `resume-after-correction Q4AI`, preservando 25 aprovacoes e repetindo somente a medicao bloqueada antes de encerrar Q5B.

@@ -324,6 +324,21 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4AI somente o gestor trimestral experiente R2 e retoma a Q5B", () => {
+    const smoke = readFileSync("scripts/strategic-q4ai-smoke.ts", "utf8");
+    const runner = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2B-QUARTERLY-EXPERIENCED-MANAGER-008"');
+    expect(smoke).toContain('executeCase(item, "Q2B", 2');
+    expect(smoke).toContain('runLabel: "q4ai"');
+    expect(smoke).toContain('ledgerLabel: "Q4AI"');
+    expect(smoke).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(smoke).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(smoke).not.toContain("strategic-q5-progress.json");
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+    expect(runner).toContain('normalizedReference === "Q4AI"');
+    expect(runner).toContain("incremental-q4ai");
+  });
+
   it("mantem o caso de produtividade no escopo industrial declarado pela fixture", () => {
     const block = JSON.parse(readFileSync("tests/evals/strategic-quality/cases/q2b-quarterly.json", "utf8"));
     const item = block.cases.find((candidate: ReferenceCase) => candidate.caseId === "Q2B-QUARTERLY-MISSING-BASELINE-005");
@@ -462,7 +477,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH", "Q4AI"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");

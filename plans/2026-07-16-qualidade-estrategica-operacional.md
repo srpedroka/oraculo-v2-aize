@@ -875,6 +875,15 @@ Este plano só termina quando:
 - Validacao: 470 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 513. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
 - Proxima execucao: `restart-clean-after-correction Q4AF`, matriz deterministica e Q5A-Q5D completas desde zero. Nova falha segue correcao e smoke somente do caso antes de outro reinicio integral.
 
+### Atualizacao de execucao: Q4AI
+
+- A regressao r22 preservou Q5A 10/10 e chegou a Q5B 15/16 antes de bloquear apenas o gestor trimestral experiente R2.
+- Plano Trimestral e Saida Derivada ficaram em 100; a Conducao caiu para 75 porque uma evidencia intermediaria foi perguntada depois de risco, mitigacao e aprendizado ja estarem confirmados.
+- A regra agora distingue bloco superficial de bloco ja testado. O primeiro ainda recebe um desafio curto; o segundo segue para sintese e confirmacao unica.
+- Smoke R2: Conducao 92,50, Plano Trimestral 100, Saida Derivada 100, duas chamadas, zero reparo, cleanup completo e custo US$ 0,029699.
+- Acumulado US$ 13,571522. Producao, frontend e migrations permanecem inalterados; somente `oracle-session` staging mudou.
+- Proxima execucao: arquivar somente a medicao bloqueada com `resume-after-correction Q4AI` e repetir apenas o gestor experiente R2. A regressao geral limpa continua reservada para depois de Q5A-Q5D verdes.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text
