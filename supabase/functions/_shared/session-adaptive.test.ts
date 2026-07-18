@@ -1224,6 +1224,22 @@ describe("adaptive planning session guard Q4A", () => {
     expect(challenged).not.toContain("strategic_weak_target_unchallenged");
   });
 
+  it("challenges system implementation as an annual means instead of accepting a generic field menu", () => {
+    const userMessage = "O principal objetivo anual e implantar um novo sistema de gestao.";
+    const unchallenged = reasons({
+      reply: "O que destrava o avanço agora: fechar o resultado, o prazo, o responsável ou a primeira ação?",
+    }, { sessionType: "strategic", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, unchallenged, {
+      sessionType: "strategic",
+      userMessage,
+    });
+
+    expect(unchallenged).toContain("strategic_activity_unchallenged");
+    expect(unchallenged).toContain("strategic_generic_decision_question");
+    expect(fallback).toContain("descreve o meio");
+    expect(fallback).toContain("resultado empresarial");
+  });
+
   it("blocks a jump to generic drivers after the manager already explains the cause", () => {
     const userMessage = "A margem caiu de 12% para 7% porque os descontos aumentaram e o mix piorou.";
     expect(reasons({

@@ -34,8 +34,9 @@ const TECHNICAL_STATE_PATTERN = /\b(?:base_confirmada|state_patch|next_phase|pen
 const MECHANICAL_ACKNOWLEDGEMENT_PATTERN = /^(?:entendi|perfeito|[oó]timo|boa)[.!,:-]?\s+(?:voc[eê]\s+(?:quer|disse|trouxe)|que\s+)/i;
 const BARE_QUESTION_PATTERN = /^(?:qual|quem|quando|como|onde|quanto|o que|existe|h[aá])\b/i;
 const ACKNOWLEDGEMENT_PATTERN = /^(entendi|perfeito|[oó]timo|boa|certo|fechado)\b/i;
-const STRATEGIC_ACTIVITY_PATTERN = /\b(?:fazer|criar|lan[cç]ar|executar|realizar)\s+(?:um|uma)?\s*(?:campanha|reuni[aã]o|treinamento|evento|pesquisa|relat[oó]rio|projeto)\b/i;
-const STRATEGIC_ACTIVITY_CHALLENGE_PATTERN = /\b(?:meio|atividade|resultado|mudan[cç]a|efeito|impacto)\b/i;
+const STRATEGIC_ACTIVITY_PATTERN = /\b(?:fazer|criar|lan[cç]ar|executar|realizar|implantar|implementar|instalar|adotar|trocar|contratar)\s+(?:(?:um|uma|o|a)\s+)?(?:(?:novo|nova)\s+)?(?:campanha|reuni[aã]o|treinamento|evento|pesquisa|relat[oó]rio|projeto|sistema|software|erp|crm|ferramenta|plataforma)\b/i;
+const STRATEGIC_ACTIVITY_CAPTURE_PATTERN = /\b((?:fazer|criar|lan[cç]ar|executar|realizar|implantar|implementar|instalar|adotar|trocar|contratar)\s+(?:(?:um|uma|o|a)\s+)?(?:(?:novo|nova)\s+)?(?:campanha|reuni[aã]o|treinamento|evento|pesquisa|relat[oó]rio|projeto|sistema|software|erp|crm|ferramenta|plataforma)[^,.!?]{0,60})/i;
+const STRATEGIC_ACTIVITY_CHALLENGE_PATTERN = /\b(?:meio|atividade)\b|\b(?:qual|que)\s+(?:resultado|mudan[cç]a|efeito|impacto)\b|\b(?:precisa|deve|vai)\s+(?:produzir|gerar|mudar|melhorar)\b|\b(?:resultado|efeito|impacto)\s+(?:empresarial|concreto|mensur[aá]vel)\b/i;
 const STRATEGIC_WEAK_TARGET_CUE_PATTERN = /\b(?:s[oó]|apenas)\s+(?:crescer\s+)?\d+(?:[.,]\d+)?\s*%|\bcrescer\s+(?:s[oó]|apenas)\s+\d+(?:[.,]\d+)?\s*%/i;
 const STRATEGIC_TARGET_CHALLENGE_PATTERN = /\b(?:meta|alvo|ambicios[oa]|suficiente|fraca|pequena)\b|\d+(?:[.,]\d+)?\s*%[^.!?]{0,80}\b(?:resolve|provar|suficiente|relevante)\b/i;
 const STRATEGIC_CAUSAL_DIAGNOSIS_PATTERN = /\b(?:caiu|queda|reduziu|piorou|diminuiu)\b[\s\S]{0,220}\b(?:porque|por causa|devido)\b/i;
@@ -1130,7 +1131,7 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
       }
     }
     const activity = userMessage.match(/["'“”]([^"'“”]{4,100})["'“”]/)?.[1]
-      ?? userMessage.match(/\b((?:fazer|criar|lan[cç]ar|executar|realizar)\s+(?:um|uma)?\s*[^,.!?]{3,80})/i)?.[1];
+      ?? userMessage.match(STRATEGIC_ACTIVITY_CAPTURE_PATTERN)?.[1];
     const target = userMessage.match(/\b\d+(?:[.,]\d+)?\s*%/i)?.[0];
     const optionNames = ["margem", "receita", "volume", "previsibilidade", "conversão", "conversao"]
       .filter((option, index, values) => values.indexOf(option) === index && new RegExp(`\\b${option}\\b`, "i").test(userMessage));

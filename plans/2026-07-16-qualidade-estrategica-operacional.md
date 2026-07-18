@@ -843,6 +843,14 @@ Este plano só termina quando:
 - O falso negativo do harness sobre `plano anterior` foi corrigido e revalidado sem nova chamada paga. Validacao: 454 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 509.
 - Proxima execucao: `restart-clean-after-correction Q4AB`, deterministica e Q5A-Q5D completas desde zero.
 
+### Atualizacao de execucao: Q4AC
+
+- A regressao limpa apos Q4AB passou a matriz deterministica e quatro medicoes Q5A antes de atividade anual R1 bloquear com Conducao 71,25 e Plano Anual 100.
+- A Q4AC reconhece implantacao de sistemas, softwares, ERPs, CRMs, ferramentas e plataformas como meios e exige uma pergunta real sobre mudanca empresarial, nao um menu generico de campos.
+- Smoke focado: Conducao 100, Plano Anual 100, media 100; US$ 0,057000; acumulado US$ 10,209470.
+- Validacao: 457 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 510. Somente `oracle-session` mudou no staging.
+- Proxima execucao: `restart-clean-after-correction Q4AC`, deterministica e Q5A-Q5D completas desde zero.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

@@ -767,3 +767,20 @@ A Q4AB normaliza somente `historicalLessons` de `save_strategic_plan`. Anos real
 | Validacao local | 454 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 509 arquivos |
 
 Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AB`, seguido de deterministas e Q5A-Q5D integralmente desde zero. Producao permanece inalterada.
+
+## Correcao Q4AC: atividade anual reenquadrada como meio
+
+A regressao limpa apos Q4AB passou a matriz deterministica e quatro medicoes Q5A. Em `Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003` R1, o gestor abriu com `implantar um novo sistema de gestao`. A resposta ofereceu o menu generico `resultado, prazo, responsavel ou primeira acao`, sem perguntar que mudanca empresarial justificaria o sistema. O plano final ainda ficou correto e recebeu 100, mas a Conducao marcou 71,25; fail-fast interrompeu antes de R2.
+
+A Q4AC amplia o reconhecimento anual de atividades para sistemas, softwares, ERPs, CRMs, ferramentas e plataformas. A regra de desafio tambem ficou mais precisa: a palavra isolada `resultado` nao basta; a resposta precisa nomear o meio/atividade ou perguntar qual resultado, efeito, impacto ou mudanca deve ser produzido. O fallback compartilha o mesmo reconhecimento e conduz para resultado empresarial em vez de campos operacionais.
+
+| Medida | Resultado |
+| --- | --- |
+| Grade limpa antes do bloqueio | matriz deterministica verde; Q5A 4 verdes |
+| Rodada bloqueada | Conducao 71,25; Plano Anual 100; media 85,63 |
+| Smoke Q4AC | Conducao 100; Plano Anual 100; media 100 |
+| Custo Q4AC | US$ 0,057000 |
+| Acumulado do plano | US$ 10,209470 de US$ 20 |
+| Validacao local | 457 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 510 arquivos |
+
+Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AC`, seguido da matriz deterministica e de Q5A-Q5D completas desde zero. Producao permanece inalterada.
