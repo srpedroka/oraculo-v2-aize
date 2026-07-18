@@ -56,6 +56,7 @@ import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMe
 import {
   ADAPTIVE_SESSION_RULES,
   acknowledgeEquivalentQuarterlyArea,
+  challengeQuarterlyPriorityOverload,
   buildAdaptiveRepairDirective,
   deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
@@ -375,8 +376,16 @@ export async function processPlanningMessage(
       });
     }
     if (session.type !== "quarterly") return envelope;
-    const preparedEnvelope = deferUnchallengedQuarterlyProposal({
+    const priorityEnvelope = challengeQuarterlyPriorityOverload({
       envelope,
+      sessionType: session.type,
+      currentPhase: session.phase,
+      sessionState: session.state,
+      userMessage: params.message,
+      planContext: context,
+    });
+    const preparedEnvelope = deferUnchallengedQuarterlyProposal({
+      envelope: priorityEnvelope,
       sessionType: session.type,
       sessionPeriod: session.period,
       currentPhase: session.phase,

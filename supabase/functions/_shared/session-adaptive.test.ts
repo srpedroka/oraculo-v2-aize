@@ -4,6 +4,7 @@ import {
   acknowledgeEquivalentQuarterlyArea,
   adaptiveFallbackReply,
   buildAdaptiveRepairDirective,
+  challengeQuarterlyPriorityOverload,
   deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
   latestOracleReply,
@@ -605,6 +606,36 @@ describe("adaptive planning session guard Q4A", () => {
     expect(reply).toContain("mais prioridades do que capacidade");
     expect(reply).toContain("objetivo anual");
     expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("challenges an overloaded quarterly portfolio with the relevant history", () => {
+    const prepared = challengeQuarterlyPriorityOverload({
+      envelope: envelope({ reply: "O que destrava o avanço agora?" }),
+      sessionType: "quarterly",
+      currentPhase: "abertura",
+      sessionState: {},
+      userMessage: "Tenho oito objetivos igualmente importantes para Operacoes neste trimestre.",
+      planContext: "No trimestre anterior, seis prioridades dividiram a equipe e apenas uma foi concluida.",
+    });
+    const blocked = validateAdaptiveEnvelope({
+      envelope: prepared,
+      sessionType: "quarterly",
+      currentPhase: "abertura",
+      phases,
+      sessionState: {},
+      conversationText: "",
+      previousOracleReply: "Neste trimestre, qual mudança faria diferença?",
+      userMessage: "Tenho oito objetivos igualmente importantes para Operacoes neste trimestre.",
+    });
+
+    expect(prepared.reply).toContain("Oito objetivos igualmente importantes não cabem");
+    expect(prepared.reply).toContain("seis prioridades dividiram a equipe");
+    expect(prepared.reply).toContain("só uma foi concluída");
+    expect(prepared.reply).toContain("no máximo três resultados");
+    expect(prepared.reply).toContain("backlog");
+    expect(visibleQuestions(String(prepared.reply))).toHaveLength(1);
+    expect(prepared.proposal).toBeNull();
+    expect(blocked).toEqual([]);
   });
 
   it("turns a vague quarterly improvement into a business diagnosis", () => {

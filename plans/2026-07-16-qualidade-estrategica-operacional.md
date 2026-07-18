@@ -826,6 +826,15 @@ Este plano só termina quando:
 - Proxima execucao: arquivar a tentativa parcial, zerar a grade e repetir deterministas + Q5A + Q5B + Q5C + Q5D integralmente.
 - Regra permanente: nova falha interrompe a grade; corrige-se e testa-se somente o afetado; depois toda a regressao limpa recomeca. A Q5 so encerra com todos os cenarios aprovados na mesma rodada limpa.
 
+### Atualizacao de execucao: Q4AA
+
+- A regressao limpa apos Q4Z passou deterministas, Q5A 10/10 e dez medicoes Q5B antes de bloquear na confirmacao da prioridade trimestral R1.
+- O modelo confundiu o id do objetivo anual da area com o id estrategico; a barreira de isolamento recusou a gravacao e o fail-fast funcionou.
+- Q4AA rotula os IDs e converte somente o objetivo anual ativo da mesma empresa e area para seu pai estrategico. Referencias externas continuam bloqueadas.
+- O primeiro smoke ficou tecnicamente verde, mas revelou conducao generica. O confronto agora usa a memoria de excesso, limita a tres resultados e pede o backlog em uma unica pergunta.
+- Smoke final: Conducao 100, Plano Trimestral 97,50, media 98,75; US$ 0,035514. Duas tentativas Q4AA: US$ 0,076966. Acumulado: US$ 9,532934.
+- Proxima execucao: `restart-clean-after-correction Q4AA`, deterministica e Q5A-Q5D completas desde zero.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

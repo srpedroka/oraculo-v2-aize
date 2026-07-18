@@ -260,6 +260,15 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4AA somente a prioridade trimestral que falhou ao vincular", () => {
+    const smoke = readFileSync("scripts/strategic-q4aa-smoke.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2B-QUARTERLY-PRIORITY-OVERLOAD-006"');
+    expect(smoke).toContain('executeCase(item, "Q2B", 1');
+    expect(smoke).toContain('runLabel: "q4aa"');
+    expect(smoke).toContain('ledgerLabel: "Q4AA"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("repete na Q4O somente a segunda rodada da area equivalente com erro de envelope", () => {
     const source = readFileSync("scripts/strategic-q4o-smoke.ts", "utf8");
     expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-EQUIVALENT-AREA-003"');
@@ -411,10 +420,16 @@ describe("Q3 strategic baseline", () => {
   it("reinicia toda a regressao limpa depois da correcao Q4Z", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain("async function restartCleanQ5AfterCorrection(correctionReference: string)");
-    expect(source).toContain('normalizedReference !== "Q4Z"');
+    expect(source).toContain('Q4Z: "2026-07-18.q5-clean-regression-r16-q4z"');
     expect(source).toContain('progress.baselineVersion.includes("q5-clean-regression")');
-    expect(source).toContain('progress.baselineVersion = "2026-07-18.q5-clean-regression-r16-q4z"');
+    expect(source).toContain("progress.baselineVersion = nextBaseline");
     expect(source).toContain('command === "restart-clean-after-correction"');
+  });
+
+  it("reinicia toda a regressao limpa depois da correcao Q4AA", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain('Q4AA: "2026-07-18.q5-clean-regression-r17-q4aa"');
+    expect(source).toContain("progress.baselineVersion = nextBaseline");
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

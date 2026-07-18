@@ -257,6 +257,46 @@ export function proposalMatchesCanonicalAnnualParent(proposal: any, objective: a
   ].some((value) => normalizedObjectiveTitle(value) === parentTitle);
 }
 
+export async function canonicalizeQuarterlyStrategicReferences(client: Client, session: any, proposal: any) {
+  const linkedIds = asArray<string>(
+    proposal.linkedStrategicObjectiveIds ?? proposal.linked_strategic_objective_ids,
+  ).map(asText).filter(Boolean);
+  const annualObjectives = asArray<any>(proposal.annualObjectives);
+  const annualLinkedIds = annualObjectives
+    .map((objective) => asText(objective.linkedStrategicObjectiveId ?? objective.linked_strategic_objective_id))
+    .filter(Boolean);
+  const requestedIds = Array.from(new Set([...linkedIds, ...annualLinkedIds]));
+  if (!requestedIds.length) return proposal;
+
+  const { data, error } = await client
+    .from("objectives")
+    .select("id, level, parent_id, area_id")
+    .eq("org_id", session.org_id)
+    .is("archived_at", null)
+    .in("id", requestedIds);
+  if (error) throw error;
+
+  const references = new Map((data ?? []).map((objective: any) => [asText(objective.id), objective]));
+  const canonicalId = (objectiveId: string) => {
+    const reference = references.get(objectiveId);
+    if (reference?.level === "area_annual"
+      && asText(reference.area_id) === asText(session.area_id)
+      && asText(reference.parent_id)) {
+      return asText(reference.parent_id);
+    }
+    return objectiveId;
+  };
+
+  return {
+    ...proposal,
+    linkedStrategicObjectiveIds: Array.from(new Set(linkedIds.map(canonicalId))),
+    annualObjectives: annualObjectives.map((objective) => {
+      const linkedId = asText(objective.linkedStrategicObjectiveId ?? objective.linked_strategic_objective_id);
+      return linkedId ? { ...objective, linkedStrategicObjectiveId: canonicalId(linkedId) } : objective;
+    }),
+  };
+}
+
 async function findCanonicalAreaAnnualParent(client: Client, session: any, year: number, existingAreaPlan: any) {
   const objectiveId = asText(existingAreaPlan?.main_annual_objective_id);
   if (!objectiveId || !session.area_id) return null;
@@ -392,6 +432,7 @@ async function saveStrategicPlan(client: Client, session: any, proposal: any, us
 async function saveQuarterlyPlan(client: Client, session: any, proposal: any, userId: string) {
   if (!session.area_id) throw new Error("Plano trimestral exige uma área");
   proposal = normalizeQuarterlyKpiLinks(normalizeQuarterlySharedActions(proposal));
+  proposal = await canonicalizeQuarterlyStrategicReferences(client, session, proposal);
   await assertImportedQuarterlyReferences(client, session.org_id, proposal);
   const year = yearFromPeriod(session.period);
   const annualObjectives = [];

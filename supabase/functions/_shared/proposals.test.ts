@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { proposalMatchesCanonicalAnnualParent } from "./proposals.ts";
+import { describe, expect, it, vi } from "vitest";
+import { canonicalizeQuarterlyStrategicReferences, proposalMatchesCanonicalAnnualParent } from "./proposals.ts";
 
 const parent = {
   id: "area-annual-id",
@@ -32,5 +32,46 @@ describe("canonical quarterly annual parent", () => {
       parentTitle: "Reduzir custos",
     }, parent)).toBe(false);
     expect(proposalMatchesCanonicalAnnualParent({}, {}, null)).toBe(false);
+  });
+
+  it("maps an area annual id to its same-area strategic parent before confirmation", async () => {
+    const areaAnnualId = "11111111-1111-4111-8111-111111111111";
+    const strategicId = "22222222-2222-4222-8222-222222222222";
+    const inMock = vi.fn(async () => ({
+      data: [{ id: areaAnnualId, level: "area_annual", area_id: "area-a", parent_id: strategicId }],
+      error: null,
+    }));
+    const chain: any = { select: () => chain, eq: () => chain, is: () => chain, in: inMock };
+    const client = { from: vi.fn(() => chain) };
+
+    const normalized = await canonicalizeQuarterlyStrategicReferences(client, {
+      org_id: "org-a",
+      area_id: "area-a",
+    }, {
+      type: "save_quarterly_plan",
+      linkedStrategicObjectiveIds: [areaAnnualId],
+      annualObjectives: [{ title: "Objetivo da area", linkedStrategicObjectiveId: areaAnnualId }],
+    });
+
+    expect(normalized.linkedStrategicObjectiveIds).toEqual([strategicId]);
+    expect(normalized.annualObjectives[0].linkedStrategicObjectiveId).toBe(strategicId);
+    expect(inMock).toHaveBeenCalledWith("id", [areaAnnualId]);
+  });
+
+  it("does not translate a same-org annual id from another area", async () => {
+    const areaAnnualId = "11111111-1111-4111-8111-111111111111";
+    const inMock = vi.fn(async () => ({
+      data: [{ id: areaAnnualId, level: "area_annual", area_id: "area-b", parent_id: "strategic-id" }],
+      error: null,
+    }));
+    const chain: any = { select: () => chain, eq: () => chain, is: () => chain, in: inMock };
+    const client = { from: vi.fn(() => chain) };
+
+    const normalized = await canonicalizeQuarterlyStrategicReferences(client, {
+      org_id: "org-a",
+      area_id: "area-a",
+    }, { linkedStrategicObjectiveIds: [areaAnnualId] });
+
+    expect(normalized.linkedStrategicObjectiveIds).toEqual([areaAnnualId]);
   });
 });

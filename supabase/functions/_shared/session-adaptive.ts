@@ -80,6 +80,7 @@ const QUARTERLY_DISCOUNT_QUALITY_PATTERN = /\breduzir\s+(?:o\s+)?desconto\s+m[e�
 const QUARTERLY_KPI_HYPOTHESIS_CONTEXT_PATTERN = /\bDashboard\b[\s\S]{0,320}\bMargem operacional\b[\s\S]{0,320}\bhip[oó]tese\b[\s\S]{0,320}\b(?:escolher|vincular)\b/i;
 const QUARTERLY_KPI_HYPOTHESIS_REPLY_PATTERN = /\bhip[oó]tese\b[\s\S]{0,280}\bMargem operacional\b|\bMargem operacional\b[\s\S]{0,280}\bhip[oó]tese\b/i;
 const QUARTERLY_KPI_CHOICE_REPLY_PATTERN = /\b(?:quer|deseja|prefere|escolhe|confirma)\b[\s\S]{0,180}\bvincul|\bvincul[ao]\b[\s\S]{0,180}\b(?:quer|deseja|prefere|escolhe|confirma)\b/i;
+const QUARTERLY_OBJECTIVE_OVERLOAD_PATTERN = /\b(?:tenho|temos|existem|listei)\b[\s\S]{0,100}\b(quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+objetivos?\b[\s\S]{0,100}\b(?:iguais|igualmente|importantes|prioridade)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -417,6 +418,74 @@ export function deferUnchallengedQuarterlyProposal(input: {
         blocking_gap: "evidencia intermediaria ou decisao consciente de seguir",
         question_goal: "testar a consistencia da meta e das acoes",
         action_direction: "validar a abordagem antes da sintese",
+      },
+    },
+    next_phase: input.currentPhase,
+  };
+}
+
+const COUNT_WORDS: Record<string, number> = {
+  uma: 1,
+  um: 1,
+  duas: 2,
+  dois: 2,
+  tres: 3,
+  três: 3,
+  quatro: 4,
+  cinco: 5,
+  seis: 6,
+  sete: 7,
+  oito: 8,
+  nove: 9,
+  dez: 10,
+};
+
+function countValue(value: string) {
+  const normalized = value.toLowerCase();
+  return COUNT_WORDS[normalized] ?? Number(normalized);
+}
+
+function quarterlyPriorityHistory(planContext: string) {
+  const match = planContext.match(/\b(quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+prioridades\b[\s\S]{0,140}\b(?:apenas|s[oó])\s+(uma|um|duas|dois|tr[eê]s|\d+)\b[\s\S]{0,80}\bconclu/i);
+  if (!match) return "";
+  return `No histórico, ${match[1].toLowerCase()} prioridades dividiram a equipe e só ${match[2].toLowerCase()} foi concluída.`;
+}
+
+export function challengeQuarterlyPriorityOverload(input: {
+  envelope: SessionEnvelope;
+  sessionType: string;
+  currentPhase: string;
+  sessionState?: unknown;
+  userMessage: string;
+  planContext: string;
+}) {
+  const match = input.userMessage.match(QUARTERLY_OBJECTIVE_OVERLOAD_PATTERN);
+  const requestedCount = match ? countValue(match[1]) : 0;
+  if (input.sessionType !== "quarterly" || !Number.isFinite(requestedCount) || requestedCount <= 3) {
+    return input.envelope;
+  }
+
+  const statePatch = {
+    ...asRecord(input.envelope.state_patch),
+    priority_overload: { requested_count: requestedCount, maximum_results: 3 },
+  };
+  return {
+    ...input.envelope,
+    reply: [
+      `${match![1][0].toUpperCase()}${match![1].slice(1).toLowerCase()} objetivos igualmente importantes não cabem no mesmo trimestre.`,
+      quarterlyPriorityHistory(input.planContext),
+      "Vamos limitar a no máximo três resultados. Quais têm maior impacto no objetivo anual e quais ficam no backlog?",
+    ].filter(Boolean).join(" "),
+    proposal: null,
+    done: false,
+    state_patch: {
+      ...statePatch,
+      _adaptive: {
+        readiness: "partial",
+        confirmed_facts: verifiedStateKeys(input.sessionState, statePatch),
+        blocking_gap: "escolher ate tres resultados e explicitar o backlog",
+        question_goal: "priorizar o portfolio trimestral dentro da capacidade",
+        action_direction: "concentrar capacidade nos resultados de maior impacto",
       },
     },
     next_phase: input.currentPhase,

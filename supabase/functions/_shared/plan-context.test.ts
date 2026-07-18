@@ -51,6 +51,19 @@ describe("memória estratégica no contexto", () => {
     expect(line).toContain("prazo: 2026-12-31");
   });
 
+  it("distingue o id anual da area do id estrategico vinculado", () => {
+    const line = objectiveLine({
+      id: "area-annual-id",
+      parent_id: "strategic-id",
+      level: "area_annual",
+      title: "Elevar confiabilidade",
+      status: "on_track",
+    });
+
+    expect(line).toContain("id do objetivo anual da área: area-annual-id");
+    expect(line).toContain("id estratégico vinculado: strategic-id");
+  });
+
   it("usa o trimestre do mês solicitado em vez do trimestre do relógio", () => {
     expect(planContextPeriods("monthly", "Mai 2027", new Date(2026, 6, 16))).toEqual({
       quarterLabels: ["T2 2027", "Q2 2027"],

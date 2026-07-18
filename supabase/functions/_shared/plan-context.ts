@@ -116,8 +116,12 @@ function typeLabel(type: unknown) {
 }
 
 export function objectiveLine(objective: any) {
+  const objectiveIdLabel = objective.level === "area_annual" ? "id do objetivo anual da área" : "id";
   const details = [
-    objective.id ? `id: ${objective.id}` : "",
+    objective.id ? `${objectiveIdLabel}: ${objective.id}` : "",
+    objective.level === "area_annual" && objective.parent_id
+      ? `id estratégico vinculado: ${objective.parent_id}`
+      : "",
     `${levelLabel(objective.level)}`,
     `${typeLabel(objective.type)}`,
     objective.period ? `período: ${objective.period}` : "",

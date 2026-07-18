@@ -733,3 +733,21 @@ A Q4Z valida server-side toda proposta anual: o ano precisa coincidir com a sess
 | Deploy | somente `oracle-session` no staging; sem migration ou frontend |
 
 A validacao passou 444 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 506 arquivos. O ciclo aprovado pelo owner agora e estrito: arquivar a tentativa parcial com `restart-clean-after-correction Q4Z`, zerar novamente deterministas e medicoes, repetir Q5A-Q5D inteiras e parar em qualquer nova falha. Depois de uma correcao, roda-se somente seu smoke focal; uma nova regressao integral comeca do zero. Producao permanece inalterada.
+
+## Correcao Q4AA: vinculo trimestral canonico e confronto de prioridades
+
+A regressao limpa reiniciada apos Q4Z passou novamente a matriz deterministica e toda a Q5A, 10/10. Na Q5B, as dez primeiras medicoes passaram. `Q2B-QUARTERLY-PRIORITY-OVERLOAD-006` R1 produziu uma conversa e um plano fortes, mas a confirmacao falhou: o modelo usou o ID do objetivo anual da area no campo reservado ao objetivo estrategico. O servidor recusou corretamente a referencia, o fail-fast impediu R2 e os casos seguintes e o cleanup removeu a empresa descartavel. A rodada bloqueada custou US$ 0,040720.
+
+A Q4AA separa semanticamente os IDs no contexto e resolve a referencia antes da gravacao. A conversao exige que o registro seja um objetivo anual ativo da mesma empresa e area e usa apenas seu pai estrategico; referencias externas, de outra area ou de outro nivel continuam bloqueadas pela validacao existente. O primeiro smoke comprovou a integridade tecnica, mas bloqueou qualidade porque a abertura generica ignorou o excesso e a memoria. A conducao passou entao a confrontar deterministicamente oito objetivos, recuperar o historico de seis prioridades com uma concluida, limitar o trimestre a tres resultados e pedir a escolha do que entra e do que vai ao backlog.
+
+| Evidencia | Resultado |
+|---|---:|
+| Grade limpa preservada antes do bloqueio | Q5A 10/10; Q5B 10 verdes |
+| Primeiro smoke Q4AA | tecnico verde; Conducao 63,75; Plano 97,50; US$ 0,041452 |
+| Smoke Q4AA final | Conducao 100; Plano Trimestral 97,50; media 98,75 |
+| Custo do smoke final | US$ 0,035514 |
+| Custo das duas tentativas Q4AA | US$ 0,076966 |
+| Acumulado | US$ 9,532934 / US$ 20 |
+| Deploy | somente `oracle-session` no staging; sem migration ou frontend |
+
+A validacao final passou 450 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 507 arquivos. O proximo passo e `restart-clean-after-correction Q4AA`: arquivar toda a grade parcial, zerar deterministas e medicoes e repetir Q5A-Q5D integralmente. Em nova falha, aplica-se novamente smoke focal e novo reinicio completo. Producao permanece inalterada.

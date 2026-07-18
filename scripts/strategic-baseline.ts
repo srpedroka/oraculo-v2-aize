@@ -1010,7 +1010,12 @@ async function startCleanQ5Regression() {
 async function restartCleanQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("restart-clean-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (normalizedReference !== "Q4Z") throw new Error("a retomada limpa atual exige a correcao Q4Z aprovada");
+  const cleanBaselineByCorrection: Record<string, string> = {
+    Q4Z: "2026-07-18.q5-clean-regression-r16-q4z",
+    Q4AA: "2026-07-18.q5-clean-regression-r17-q4aa",
+  };
+  const nextBaseline = cleanBaselineByCorrection[normalizedReference];
+  if (!nextBaseline) throw new Error("a retomada limpa atual exige a correcao Q4Z ou Q4AA aprovada");
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.baselineVersion.includes("q5-clean-regression")) throw new Error("nao existe regressao geral limpa ativa para reiniciar");
@@ -1037,7 +1042,7 @@ async function restartCleanQ5AfterCorrection(correctionReference: string) {
   const archivedRunCount = progress.runs.length;
   progress.runs = [];
   progress.deterministic = [];
-  progress.baselineVersion = "2026-07-18.q5-clean-regression-r16-q4z";
+  progress.baselineVersion = nextBaseline;
   progress.startedAt = archivedAt;
   progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
   await writePrivateJson(PROGRESS_PATH, progress);
@@ -1612,7 +1617,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }
