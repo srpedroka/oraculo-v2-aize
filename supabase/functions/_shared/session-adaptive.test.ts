@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADAPTIVE_SESSION_RULES,
+  acknowledgeEquivalentQuarterlyArea,
   adaptiveFallbackReply,
   buildAdaptiveRepairDirective,
   deferUnchallengedQuarterlyProposal,
@@ -8,6 +9,7 @@ import {
   latestOracleReply,
   normalizeProposalConfirmationEnvelope,
   normalizeReadyProposalEnvelope,
+  recoverAdaptiveEnvelopeAfterRepairFailure,
   repeatsPreviousQuestion,
   safeAdaptiveNextPhase,
   validateAdaptiveEnvelope,
@@ -776,6 +778,93 @@ describe("adaptive planning session guard Q4A", () => {
 
     expect(prepared).toBe(readyEnvelope);
     expect(prepared.proposal).toEqual({ type: "save_quarterly_plan" });
+  });
+
+  it("keeps the session open with a safe question when the repair envelope is invalid", () => {
+    const recovered = recoverAdaptiveEnvelopeAfterRepairFailure({
+      envelope: null,
+      reasons: ["invalid_json_envelope"],
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      phases,
+      userMessage: "Continue com a proxima pergunta realmente necessaria.",
+      sessionState: { resultado: "Elevar entregas no prazo" },
+    });
+    const recoveredReasons = validateAdaptiveEnvelope({
+      envelope: recovered,
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: { resultado: "Elevar entregas no prazo" },
+      conversationText: "",
+      previousOracleReply: "",
+      userMessage: "Continue com a proxima pergunta realmente necessaria.",
+    });
+
+    expect(recovered.proposal).toBeUndefined();
+    expect(recovered.done).toBe(false);
+    expect(recovered.next_phase).toBe("diagnostico");
+    expect(recovered.reply).not.toMatch(/erro|tente novamente/i);
+    expect(visibleQuestions(String(recovered.reply))).toHaveLength(1);
+    expect(recoveredReasons).toEqual([]);
+  });
+
+  it("requires the quarterly proposal after the manager chooses to proceed past the challenge", () => {
+    const conversationText = "oracle: A meta de 82% para 92% esta clara. Qual evidencia intermediaria vai mostrar, antes do fechamento, que as acoes mudam o resultado?";
+    const userMessage = "Considere tudo o que ja foi confirmado e apresente agora a proposta final para uma unica confirmacao.";
+    const blocked = reasons({
+      reply: "Você prefere definir a evidência intermediária ou seguir sem ela?",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: [],
+          blocking_gap: "evidencia",
+          question_goal: "definir evidencia",
+          action_direction: "validar abordagem",
+        },
+      },
+    }, { sessionType: "quarterly", conversationText, userMessage });
+    const accepted = reasons({
+      reply: "O plano ficou pronto. Posso gravar?",
+      proposal: { type: "save_quarterly_plan" },
+      state_patch: {
+        _adaptive: {
+          readiness: "ready",
+          confirmed_facts: [],
+          blocking_gap: null,
+          question_goal: "confirmar gravacao",
+          action_direction: "gravar plano",
+        },
+      },
+      next_phase: "sintese",
+    }, { sessionType: "quarterly", conversationText, userMessage });
+    const directive = buildAdaptiveRepairDirective(blocked, "Você prefere seguir sem evidência?");
+
+    expect(blocked).toContain("quarterly_proceed_after_challenge_without_proposal");
+    expect(accepted).not.toContain("quarterly_proceed_after_challenge_without_proposal");
+    expect(directive).toContain("decisao de seguir sem evidencia adicional e consciente");
+    expect(directive).toContain("save_quarterly_plan");
+  });
+
+  it("acknowledges the unique Industrial and Producao equivalence without adding a question", () => {
+    const prepared = acknowledgeEquivalentQuarterlyArea({
+      envelope: {
+        reply: "Qual mudança faria mais diferença neste T3?",
+        state_patch: {},
+        next_phase: "abertura",
+      },
+      sessionType: "quarterly",
+      userMessage: "Quero planejar o trimestre da Industrial.",
+      planContext: [
+        "MEMÓRIA ESTRATÉGICA (planos passados — referência):",
+        "Plano anterior identificado como Industrial pertence a esta area.",
+        "ÁREA EM FOCO: Produção (coordenador: Diego)",
+      ].join("\n"),
+    });
+
+    expect(prepared.reply).toContain("Industrial corresponde à área Produção cadastrada");
+    expect(prepared.reply).toContain("histórico equivalente dessa área permanece como referência");
+    expect(visibleQuestions(String(prepared.reply))).toHaveLength(1);
   });
 
   it("builds a useful single-confirmation summary for a quarterly proposal", () => {

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q5B r8 pausada por timeout e Q4N pendente**
+Status: **em execucao; Q4O aprovada e Q5B r8 em retomada incremental**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -839,6 +839,6 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-A **Q4N foi aprovada no staging**. O servidor agora adia deterministicamente a proposta de um bloco trimestral completo, mantem a sessao aberta e mostra o desafio estrategico sem uma segunda chamada ao provedor naquela resposta. O smoke isolado CRM R2 passou com Conducao 93,75, Plano Trimestral 95, media 94,38, dez checks verdes, zero falha critica, uma confirmacao e zero reparo pelo motivo `quarterly_complete_block_unchallenged`. Custo Q4N US$ 0,054171; acumulado US$ 5,772584. Validacao local: 393 unitarios, 29 casos do catalogo, lint, build/bundle e secret scan em 477 arquivos. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+A **Q4O foi aprovada no staging** depois que a retomada Q5B confirmou CRM R2 e area equivalente R1, mas encontrou um envelope de reparo invalido em area equivalente R2. O runtime agora recupera esse defeito sem terceira chamada: preserva fatos canonicos, mantem a sessao aberta, impede proposta insegura e segue com uma pergunta. A rodada final tambem reconhece explicitamente que `Industrial` corresponde a unica area `Producao` e que seu historico segue como referencia. Smoke final: Conducao 91,25, Plano Trimestral 95, media 93,13, dez checks verdes, zero falha critica e cleanup completo. As tres tentativas Q4O custaram US$ 0,170760; acumulado US$ 6,070176. Validacao local: 397 unitarios, 29 casos do catalogo, lint, build/bundle e secret scan em 478 arquivos. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
 
-Proxima fatia: **retomada incremental Q5B r8 apos Q4N**. Primeiro executar `resume-after-correction Q4N`, que arquiva apenas o CRM R2 com erro tecnico e preserva as tres medicoes aprovadas. Depois executar `phase Q5B`: o runner repete a combinacao ausente, ignora automaticamente as aprovadas e continua com fail-fast. Nao iniciar Q5C/Q5D/Q6/Mapa B sem novo briefing. Quando todas as fases Q5A-Q5D e os gates finais passarem, executar uma regressao geral limpa com todos os cenarios para a prova final; antes disso, nao repetir resultados aprovados sem necessidade.
+Proxima fatia: **retomada incremental Q5B r8 apos Q4O**. Executar `resume-after-correction Q4O`, que arquiva apenas area equivalente R2 com erro tecnico e preserva as cinco medicoes aprovadas. Depois executar `phase Q5B`: o runner repete a combinacao ausente, ignora automaticamente as aprovadas e continua com fail-fast. Em diante, corrigir cada problema, repetir somente seu cenario e preservar os verdes. Quando todas as fases Q5A-Q5D passarem, executar uma regressao geral limpa com todos os cenarios para a prova final.

@@ -67,6 +67,7 @@ const QUARTERLY_REPEATED_FACTS_PATTERN = /\b(?:ciclos?|trimestres?|per[ií]odos?
 const QUARTERLY_BASELINE_REINTERVIEW_PATTERN = /\b(?:qual|definir|confirma(?:r|e))\b[\s\S]{0,140}\b(?:indicador|baseline|linha de base|valor atual)\b/i;
 const QUARTERLY_REPEATED_GOAL_MALFORMED_ECHO_PATTERN = /\bmanter\s+(?:reduzir|aumentar|elevar|diminuir)\b/i;
 const QUARTERLY_STRATEGIC_CHALLENGE_PATTERN = /\b(?:meta|alvo)\b[\s\S]{0,160}\b(?:suficiente|ambicios[oa]|realista|sustent[aá]vel|resolve)\b|\b(?:capacidade|sobrecarga|comporta|cabem|cabe)\b|\b(?:evid[eê]ncia intermedi[aá]ria|sinal antecipado|antes do fechamento|provar que)\b|\b(?:o que|qual)\b[\s\S]{0,100}\b(?:impedir|comprometer|risco|mudar o resultado)\b/i;
+const QUARTERLY_PROCEED_AFTER_CHALLENGE_PATTERN = /\b(?:continue|continuar|prossiga|prosseguir|pode seguir|siga|seguir sem|considere tudo|apresente (?:agora )?(?:a )?(?:s[ií]ntese|proposta)|feche (?:a )?(?:s[ií]ntese|proposta))\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -121,6 +122,7 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_repeated_goal_memory_omitted: "os ciclos anteriores foram confirmados, mas a resposta nao reconheceu a trajetoria antes de avancar",
   quarterly_repeated_goal_malformed_echo: "a meta recorrente foi repetida com uma frase truncada ou pouco natural",
   quarterly_complete_block_unchallenged: "um bloco trimestral quase completo virou proposta antes de um desafio curto e contextual sobre meta, capacidade, risco, evidencia ou consistencia das acoes",
+  quarterly_proceed_after_challenge_without_proposal: "o bloco trimestral ja foi desafiado e o gestor decidiu seguir; monte agora a proposta completa sem repetir a escolha nem abrir outra pergunta",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
   monthly_wrong_proposal_type: "a proposta nao e do tipo mensal esperado",
   monthly_missing_objectives: "a proposta mensal nao possui resultado priorizado",
@@ -373,6 +375,37 @@ export function deferUnchallengedQuarterlyProposal(input: {
   };
 }
 
+export function acknowledgeEquivalentQuarterlyArea(input: {
+  envelope: SessionEnvelope;
+  sessionType: string;
+  userMessage: string;
+  planContext: string;
+}) {
+  const normalizedContext = normalizeForComparison(input.planContext);
+  if (input.sessionType !== "quarterly"
+    || !/\bindustrial\b/i.test(input.userMessage)
+    || !normalizedContext.includes("area em foco producao")) {
+    return input.envelope;
+  }
+
+  const reply = text(input.envelope.reply);
+  const normalizedReply = normalizeForComparison(reply);
+  const acknowledgements = [
+    normalizedReply.includes("industrial") && normalizedReply.includes("producao")
+      ? ""
+      : "Industrial corresponde à área Produção cadastrada",
+    normalizedContext.includes("memoria estrategica") && !/\b(?:hist[oó]rico|plano anterior|mem[oó]ria)\b/i.test(reply)
+      ? "o histórico equivalente dessa área permanece como referência"
+      : "",
+  ].filter(Boolean);
+  if (!acknowledgements.length) return input.envelope;
+
+  return {
+    ...input.envelope,
+    reply: `${acknowledgements.join(", e ")}. ${reply}`.trim(),
+  };
+}
+
 export function validateAdaptiveEnvelope(input: ValidationInput) {
   const reasons: string[] = [];
   const reply = text(input.envelope.reply);
@@ -496,6 +529,11 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
       && !hasQuarterlyStrategicChallenge(text(input.conversationText))) {
       reasons.push("quarterly_complete_block_unchallenged");
     }
+    if (!hasProposal
+      && hasQuarterlyStrategicChallenge(text(input.conversationText))
+      && QUARTERLY_PROCEED_AFTER_CHALLENGE_PATTERN.test(input.userMessage)) {
+      reasons.push("quarterly_proceed_after_challenge_without_proposal");
+    }
   }
 
   const currentIndex = input.phases.indexOf(input.currentPhase);
@@ -524,13 +562,16 @@ export function latestOracleReply(messages: Array<{ author?: unknown; text?: unk
 
 export function buildAdaptiveRepairDirective(reasons: string[], rejectedReply: string) {
   const labels = reasons.map((reason) => `- ${REPAIR_REASON_LABELS[reason] ?? reason}`).join("\n");
+  const quarterlyProceedInstruction = reasons.includes("quarterly_proceed_after_challenge_without_proposal")
+    ? "\nO bloco trimestral completo e a checagem estrategica ja foram concluídos. A decisao de seguir sem evidencia adicional e consciente. Gere agora a proposal save_quarterly_plan completa e termine com uma unica confirmacao; nao faca outra pergunta de conteudo."
+    : "";
   return `CORRECAO INTERNA OBRIGATORIA:
 A resposta anterior foi recusada antes de chegar ao gestor:
 ${labels}
 
 Trecho recusado: ${text(rejectedReply).replace(/\s+/g, " ").slice(0, 900) || "envelope invalido"}
 
-Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.`;
+Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}`;
 }
 
 export function safeAdaptiveNextPhase(currentPhase: string, requestedPhase: unknown, phases: string[], reasons: string[]) {
@@ -584,6 +625,48 @@ export function normalizeReadyProposalEnvelope(input: {
     next_phase: safeAdaptiveNextPhase(
       input.currentPhase,
       input.envelope.next_phase,
+      input.phases,
+      input.reasons,
+    ),
+  };
+}
+
+export function recoverAdaptiveEnvelopeAfterRepairFailure(input: {
+  envelope?: SessionEnvelope | null;
+  reasons: string[];
+  sessionType: string;
+  currentPhase: string;
+  phases: string[];
+  userMessage: string;
+  sessionState?: unknown;
+}) {
+  const envelope = input.envelope ?? {};
+  const proposalIsPremature = input.reasons.includes("proposal_before_ready")
+    || input.reasons.includes("ready_with_blocking_gap")
+    || input.reasons.some((reason) => reason.startsWith("quarterly_") || reason.startsWith("monthly_"));
+  const proposal = proposalIsPremature ? null : envelope.proposal;
+  const hasProposal = Boolean(proposal);
+  const paused = isPause(envelope.state_patch);
+  return {
+    ...envelope,
+    proposal,
+    done: hasProposal ? envelope.done : false,
+    reply: adaptiveFallbackReply(hasProposal, paused, input.reasons, {
+      rejectedReply: envelope.reply,
+      userMessage: input.userMessage,
+      proposal,
+      sessionType: input.sessionType,
+    }),
+    state_patch: ensureAdaptiveStatePatch(
+      envelope.state_patch,
+      input.userMessage,
+      hasProposal,
+      true,
+      input.sessionState,
+    ),
+    next_phase: safeAdaptiveNextPhase(
+      input.currentPhase,
+      envelope.next_phase,
       input.phases,
       input.reasons,
     ),

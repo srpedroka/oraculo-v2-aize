@@ -52,14 +52,14 @@ import {
 import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMergeState } from "./session-runtime.ts";
 import {
   ADAPTIVE_SESSION_RULES,
-  adaptiveFallbackReply,
+  acknowledgeEquivalentQuarterlyArea,
   buildAdaptiveRepairDirective,
   deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeReadyProposalEnvelope,
   normalizeProposalConfirmationEnvelope,
-  safeAdaptiveNextPhase,
+  recoverAdaptiveEnvelopeAfterRepairFailure,
   validateAdaptiveEnvelope,
 } from "./session-adaptive.ts";
 
@@ -379,8 +379,14 @@ export async function processPlanningMessage(
       conversationText,
       userMessage: params.message,
     });
+    const scopedEnvelope = acknowledgeEquivalentQuarterlyArea({
+      envelope: preparedEnvelope,
+      sessionType: session.type,
+      userMessage: params.message,
+      planContext: context,
+    });
     return normalizeProposalConfirmationEnvelope(
-      preserveExplicitQuarterlyCadence(preparedEnvelope, conversationText),
+      preserveExplicitQuarterlyCadence(scopedEnvelope, conversationText),
       session.type,
     );
   };
@@ -400,6 +406,15 @@ export async function processPlanningMessage(
       ? validateMonthlyGuidanceEnvelope({ envelope, sessionPeriod: session.period, userMessage: params.message })
       : []),
   ].filter((reason, index, values) => values.indexOf(reason) === index);
+  const recoverEnvelope = (envelope: any, reasons: string[]) => recoverAdaptiveEnvelopeAfterRepairFailure({
+    envelope,
+    reasons,
+    sessionType: session.type,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+    userMessage: params.message,
+    sessionState: session.state,
+  });
   let result = await callPlanningModel(systemPrompt, 1);
   let parsed: any = null;
   let repairReasons: string[] = [];
@@ -425,34 +440,17 @@ export async function processPlanningMessage(
   }
 
   if (repairReasons.length) {
+    const rejectedEnvelope = parsed;
     const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
     result = await callPlanningModel(repairPrompt, 2, repairReasons);
     try {
       parsed = normalizeEnvelope(parseEnvelope(result.text));
     } catch {
-      throw new Error("A IA não conseguiu estruturar a condução com segurança. Nenhum plano foi alterado; tente novamente.");
+      parsed = recoverEnvelope(rejectedEnvelope, repairReasons);
     }
     const remainingReasons = validateEnvelope(parsed);
     if (remainingReasons.length) {
-      const proposalIsPremature = remainingReasons.includes("proposal_before_ready")
-        || remainingReasons.includes("ready_with_blocking_gap")
-        || remainingReasons.some((reason) => reason.startsWith("quarterly_") || reason.startsWith("monthly_"));
-      if (proposalIsPremature) parsed.proposal = null;
-      const hasProposal = Boolean(parsed?.proposal);
-      const paused = parsed?.state_patch?.pausa_solicitada === true;
-      parsed.reply = adaptiveFallbackReply(hasProposal, paused, remainingReasons, {
-        rejectedReply: parsed?.reply,
-        userMessage: params.message,
-        proposal: parsed?.proposal,
-        sessionType: session.type,
-      });
-      parsed.state_patch = ensureAdaptiveStatePatch(parsed?.state_patch, params.message, hasProposal, true, session.state);
-      parsed.next_phase = safeAdaptiveNextPhase(
-        session.phase,
-        parsed?.next_phase,
-        CONDUCTORS[session.type].phases,
-        remainingReasons,
-      );
+      parsed = recoverEnvelope(parsed, remainingReasons);
     }
   }
 

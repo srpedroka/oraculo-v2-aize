@@ -203,6 +203,18 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4O somente a segunda rodada da area equivalente com erro de envelope", () => {
+    const source = readFileSync("scripts/strategic-q4o-smoke.ts", "utf8");
+    expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-EQUIVALENT-AREA-003"');
+    expect(source).toContain('executeCase(item, "Q2B", 2');
+    expect(source).toContain('runLabel: "q4o"');
+    expect(source).toContain('ledgerLabel: "Q4O"');
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"]');
@@ -224,10 +236,11 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 apos Q4N arquivando somente o erro tecnico e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('normalizedReference !== "Q4N"');
+    expect(source).toContain('["Q4N", "Q4O"]');
     expect(source).toContain('run.phase === "Q2B" && run.status === "execution-error"');
     expect(source).toContain("...failedRuns.map((run) => ({ ...run, calibrationReason, archivedAt }))");
-    expect(source).toContain('progress.baselineVersion = "2026-07-17.q5-regression-r8-incremental-q4n"');
+    expect(source).toContain('"2026-07-17.q5-regression-r8-incremental-q4n"');
+    expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4o"');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
   });

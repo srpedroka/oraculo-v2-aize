@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q5B r8 pausada na quarta medicao; correcao tecnica Q4N pendente**
+Status: **Q5A preservada; Q5B r8 com 5 aprovacoes; Q4O aprovada e retomada incremental liberada**
 
 ## Objetivo
 
@@ -473,3 +473,34 @@ O smoke repetiu apenas `Q2B-QUARTERLY-ACTIVITY-OBJECTIVE-002` R2. O CRM foi reen
 O relatorio registrou seis chamadas de planejamento ao longo dos quatro turnos do gestor. Duas foram reparos adaptativos de outros motivos, preservados pelo contrato geral; nenhuma decorreu do bloco trimestral completo e nenhuma disputou o timeout da pergunta Q4N. Empresa, usuario e chave descartaveis foram removidos, e o preflight final confirmou staging sem residuos.
 
 A retomada seguinte sera incremental. O comando `resume-after-correction Q4N` arquiva somente a medicao tecnica CRM R2 com erro, mantem as tres medicoes aprovadas da Q5B r8 e deixa o runner repetir a combinacao ausente antes de continuar os casos ainda nao executados. Depois que Q5A-Q5D e os gates finais estiverem aprovados, sera feita uma regressao geral limpa com todos os cenarios; ate la, resultados aprovados nao serao repetidos sem necessidade.
+
+## Retomada Q5B r8 e correcao Q4O
+
+Depois da Q4N, a retomada incremental preservou as tres aprovacoes anteriores e repetiu apenas CRM R2. Essa medicao passou, assim como a primeira rodada de area equivalente. A segunda rodada de area equivalente terminou em erro tecnico e ativou o fail-fast antes do proximo caso:
+
+| Caso | Rodada | Conducao | Plano Trimestral | Resultado | Custo |
+|---|---:|---:|---:|---|---:|
+| CRM como atividade | 2 | 92,50 | 95,00 | aprovada | US$ 0,047453 |
+| Area equivalente | 1 | 81,25 | 97,50 | aprovada | US$ 0,038378 |
+| Area equivalente | 2 | - | - | erro tecnico | US$ 0,041001 |
+
+O erro ocorreu quando o segundo envelope de reparo da IA continuou invalido. O runtime encerrava a sessao com `400/INTERNAL_ERROR`, embora pudesse manter com seguranca o estado canonico e uma unica pergunta sem gravar. A Q4O passou a recuperar esse caso localmente: conserva os fatos confiaveis, mantem `done=false`, remove proposta prematura e devolve uma pergunta segura, sem terceira chamada ao provedor.
+
+O primeiro smoke Q4O comprovou a recuperacao tecnica, mas bloqueou qualidade porque o fallback encerrou a conversa sem proposta. O segundo chegou ao plano com notas fortes, porem citou pouco a equivalencia `Industrial`/`Producao` e a memoria historica. A rodada final adicionou esse reconhecimento de forma deterministica e passou:
+
+| Rodada Q4O | Conducao | Plano Trimestral | Media | Resultado | Custo |
+|---|---:|---:|---:|---|---:|
+| Smoke 1 | 22,50 | 0,00 | 11,25 | bloqueada | US$ 0,065521 |
+| Smoke 2 | 75,00 | 93,75 | 84,38 | bloqueada | US$ 0,048270 |
+| Smoke final | 91,25 | 95,00 | 93,13 | aprovada | US$ 0,056969 |
+
+Na rodada final, os dez checks deterministas passaram, sem falha critica, gravacao prematura, confirmacao repetida, divergencia ou residuo. Empresa, usuario e chave descartaveis foram removidos. A validacao local passou 397 unitarios, 29 casos do catalogo, lint, build/bundle e secret scan em 478 arquivos. Somente `oracle-session` foi atualizada no staging; producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
+
+| Item | Valor |
+|---|---:|
+| Custo incremental Q5B antes da Q4O | US$ 0,126832 |
+| Custo total Q4O | US$ 0,170760 |
+| Acumulado do plano | US$ 6,070176 |
+| Limite autorizado | US$ 20,00 |
+
+A proxima retomada executa `resume-after-correction Q4O`, arquiva somente a medicao de area equivalente R2 com erro e preserva as cinco aprovacoes Q5B r8. `phase Q5B` repete primeiro essa combinacao e continua apenas pelos casos ainda ausentes. Em qualquer novo bloqueio, o ciclo permanece: corrigir, testar somente o caso afetado e retomar incrementalmente. A regressao geral limpa, repetindo todos os cenarios, sera executada uma unica vez depois que Q5A-Q5D estiverem integralmente verdes.
