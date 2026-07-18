@@ -652,3 +652,23 @@ A primeira medicao Q4V comprovou Plano Mensal 96,25, mas bloqueou Conducao 56,25
 | Deploy | somente `oracle-session` no staging; sem migration ou frontend |
 
 `resume-after-correction Q4V` arquiva somente a capacidade mensal R1 bloqueada e preserva as 30 aprovacoes. `phase Q5C` repete essa rodada e, se passar, executa apenas capacidade R2 e as duas rodadas mensais ainda ausentes. A mesma politica vale para novos defeitos. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.
+
+## Q5C completa e correcao Q4W: fechamento mensal parcial
+
+A retomada Q4V repetiu somente capacidade R1 e continuou pelos tres resultados ausentes; todos passaram. A Q5C terminou com 8/8 medicoes oficiais verdes. O primeiro caso Q5D, fechamento mensal parcial R1, atualizou e gravou corretamente, mas fez uma pergunta generica depois de ja conhecer duas acoes concluidas, uma pendencia de fornecedor, aprendizado e confianca. A saida derivada perdeu a meta e o aprendizado estruturados e renderizou a pendencia como `[object Object]`. O fail-fast impediu R2 e os demais casos.
+
+A Q4W absorve os fatos completos e pergunta somente o novo prazo da integracao. O veredito cita 50% contra meta 60% e nao marca a pendencia como concluida. A normalizacao da proposta preserva `current`, `target`, aprendizado e proximo periodo. Documento canonico, tela e WhatsApp formatam decisao, motivo e prazo e exibem confianca, bloqueio e compromisso seguinte.
+
+| Evidencia | Resultado |
+|---|---:|
+| Q5 preservada | 34 aprovacoes: Q5A 10, Q5B 16, Q5C 8 |
+| Conducao Q4W | 97,50 |
+| Revisao/Fechamento Q4W | 100,00 |
+| Saida Derivada Q4W | 81,25 |
+| Media conjunta | 92,92 |
+| Teste real | confirmacao, objetivo, 3 acoes, evidencia, check-in, documento e cleanup |
+| Custo Q4W | US$ 0,032662 |
+| Acumulado | US$ 7,653772 / US$ 20 |
+| Deploy | somente `oracle-session` no staging; sem migration ou frontend |
+
+`resume-after-correction Q4W` deve arquivar somente o fechamento mensal parcial R1 bloqueado e preservar as 34 aprovacoes. `phase Q5D` repete primeiro esse caso e continua apenas pelas cinco medicoes generativas ausentes. Em nova falha, o ciclo permanece correcao + smoke isolado + retomada incremental. A regressao geral limpa repetindo todos os cenarios sera executada uma unica vez quando Q5A-Q5D estiverem integralmente verdes.

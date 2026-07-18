@@ -23,6 +23,7 @@ import { parseJsonObject } from "./json.ts";
 import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
 import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-timeout.ts";
 import { callModelForFunction } from "./call-for-function.ts";
+import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
 import { applyProposal } from "./proposals.ts";
@@ -364,6 +365,14 @@ export async function processPlanningMessage(
     .join("\n");
   const normalizeEnvelope = (envelope: any) => {
     if (session.type === "monthly") return normalizeProposalConfirmationEnvelope(envelope, session.type);
+    if (session.type === "month_close" || session.type === "quarter_close") {
+      return normalizeCloseQualityEnvelope({
+        envelope,
+        sessionType: session.type,
+        period: session.period,
+        conversationText,
+      });
+    }
     if (session.type !== "quarterly") return envelope;
     const preparedEnvelope = deferUnchallengedQuarterlyProposal({
       envelope,
@@ -409,16 +418,17 @@ export async function processPlanningMessage(
     userMessage: params.message,
     sessionState: session.state,
   });
-  const deterministicMonthlyEnvelope = await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
-    ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context);
+  const deterministicPlanningEnvelope = await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
+    ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context)
+    ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText);
   let result: { text: string; [key: string]: unknown } = { text: "" };
   let parsed: any = null;
   let repairReasons: string[] = [];
-  if (deterministicMonthlyEnvelope) {
-    parsed = normalizeEnvelope(deterministicMonthlyEnvelope);
+  if (deterministicPlanningEnvelope) {
+    parsed = normalizeEnvelope(deterministicPlanningEnvelope);
     repairReasons = validateEnvelope(parsed);
   }
-  if (!deterministicMonthlyEnvelope || repairReasons.length) {
+  if (!deterministicPlanningEnvelope || repairReasons.length) {
     result = await callPlanningModel(systemPrompt, 1);
     try {
       parsed = normalizeEnvelope(parseEnvelope(result.text));

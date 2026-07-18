@@ -200,6 +200,12 @@ export function renderPlanForWhatsApp(content: any, document: { version?: unknow
       const items = asArray<string>(value).filter(Boolean);
       if (items.length) closing.push(`${label}: ${items.join("; ")}`);
     }
+    const pulse = asRecord(close.pulso_gestao);
+    if (asText(pulse.confianca)) closing.push(`Confiança: ${asText(pulse.confianca)}`);
+    if (asText(pulse.motivo_confianca)) closing.push(`Motivo da confiança: ${asText(pulse.motivo_confianca)}`);
+    if (asText(pulse.bloqueio)) closing.push(`Bloqueio: ${asText(pulse.bloqueio)}`);
+    if (asText(pulse.decisao_necessaria)) closing.push(`Decisão necessária: ${asText(pulse.decisao_necessaria)}`);
+    if (asText(pulse.proximo_compromisso)) closing.push(`Próximo compromisso: ${asText(pulse.proximo_compromisso)}`);
     if (asText(close.proximo_periodo)) closing.push(`Próximo período: ${asText(close.proximo_periodo)}`);
   }
   if (asText(content?.frase_de_foco)) {

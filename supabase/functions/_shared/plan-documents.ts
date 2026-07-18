@@ -334,12 +334,33 @@ function buildMonthlyContent(base: Record<string, unknown>, proposal: any, perio
 function buildCloseContent(base: Record<string, unknown>, proposal: any, period: string, documentType: PlanDocumentType) {
   const reviews = asArray<any>(proposal.reviews ?? proposal.revisao ?? proposal.revisao_tri);
   const completionRate = proposal.completionRate ?? proposal.completion_rate ?? null;
-  const learning = firstFilledArray<string>(proposal.learnings, proposal.aprendizados, proposal.learningBalance, proposal.learning_balance);
-  const pendencies = firstFilledArray<string>(
-    proposal.pendencies,
-    proposal.pendencias,
-    reviews.filter((review) => asText(review.decision ?? review.decisao)).map((review) => `${asText(review.title ?? review.titulo ?? review.objectiveTitle)}: ${asText(review.decision ?? review.decisao)}`),
+  const learning = firstFilledArray<string>(
+    proposal.learnings,
+    proposal.aprendizados,
+    proposal.learningBalance,
+    proposal.learning_balance,
+    reviews.map((review) => review.learning ?? review.aprendizado),
   );
+  const decisionLabels: Record<string, string> = { roll: "rolar", renegotiate: "renegociar", cut: "cortar" };
+  const structuredPendencies = asArray<any>(proposal.pendencies ?? proposal.pendencias);
+  const pendencies = structuredPendencies.length
+    ? structuredPendencies.map((pendency) => {
+      if (typeof pendency === "string") return pendency;
+      const decision = asText(pendency.decision ?? pendency.decisao).toLowerCase();
+      const subject = asText(pendency.newScope ?? pendency.new_scope) || (asText(pendency.kind) === "objective" ? "Objetivo pendente" : "Ação pendente");
+      const details = [
+        decisionLabels[decision] ?? decision,
+        asText(pendency.reason ?? pendency.motivo) ? `motivo: ${asText(pendency.reason ?? pendency.motivo)}` : "",
+        asText(pendency.newDeadline ?? pendency.new_deadline) ? `novo prazo: ${asText(pendency.newDeadline ?? pendency.new_deadline)}` : "",
+      ].filter(Boolean).join("; ");
+      return `${subject}: ${details}`;
+    }).filter(Boolean)
+    : reviews.filter((review) => asText(review.decision ?? review.decisao)).map((review) => `${asText(review.title ?? review.titulo ?? review.objectiveTitle)}: ${asText(review.decision ?? review.decisao)}`);
+  const managementPulse = proposal.managementPulse ?? proposal.management_pulse ?? {};
+  const decisions = structuredPendencies.map((pendency) => {
+    const decision = asText(pendency.decision ?? pendency.decisao).toLowerCase();
+    return decisionLabels[decision] ?? decision;
+  }).filter(Boolean);
 
   return {
     ...base,
@@ -356,8 +377,15 @@ function buildCloseContent(base: Record<string, unknown>, proposal: any, period:
       percentual: completionRate,
       aprendizados: learning,
       pendencias: pendencies,
-      decisoes: reviews.map((review) => asText(review.decision ?? review.decisao)).filter(Boolean),
+      decisoes: decisions.length ? decisions : reviews.map((review) => asText(review.decision ?? review.decisao)).filter(Boolean),
       proximo_periodo: asText(proposal.nextPeriod ?? proposal.next_period),
+      pulso_gestao: {
+        confianca: asText(managementPulse.confidence ?? managementPulse.confianca),
+        motivo_confianca: asText(managementPulse.confidenceReason ?? managementPulse.confidence_reason ?? managementPulse.motivo_confianca),
+        bloqueio: asText(managementPulse.blocker ?? managementPulse.bloqueio),
+        decisao_necessaria: asText(managementPulse.decisionNeeded ?? managementPulse.decision_needed ?? managementPulse.decisao_necessaria),
+        proximo_compromisso: asText(managementPulse.nextCommitment ?? managementPulse.next_commitment ?? managementPulse.proximo_compromisso),
+      },
     },
   };
 }

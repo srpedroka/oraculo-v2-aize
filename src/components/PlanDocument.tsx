@@ -369,6 +369,7 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
     );
   }
   if (Object.keys(closing).length) {
+    const managementPulse = asRecord(closing.pulso_gestao);
     addSection(
       "closing",
       "Fechamento",
@@ -379,6 +380,11 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
         <KeyValue label="Pendências" value={asArray<string>(closing.pendencias).join("; ")} />
         <KeyValue label="Decisões" value={asArray<string>(closing.decisoes).join("; ")} />
         <KeyValue label="Próximo período" value={closing.proximo_periodo} />
+        <KeyValue label="Confiança" value={managementPulse.confianca} />
+        <KeyValue label="Motivo da confiança" value={managementPulse.motivo_confianca} />
+        <KeyValue label="Bloqueio" value={managementPulse.bloqueio} />
+        <KeyValue label="Decisão necessária" value={managementPulse.decisao_necessaria} />
+        <KeyValue label="Próximo compromisso" value={managementPulse.proximo_compromisso} />
       </div>,
     );
   }

@@ -123,4 +123,38 @@ describe("canonical plan document preview", () => {
     expect(content.monthly.confianca).toBe("amarela");
     expect(content.monthly.proximo_compromisso).toContain("aceite registrado");
   });
+
+  it("renders a structured partial close without object coercion", () => {
+    const content = buildPlanDocumentPreview({
+      type: "month_close",
+      period: "Jun 2027",
+      nextPeriod: "Jul 2027",
+      completionRate: 50,
+      reviews: [{
+        title: "Qualidade do funil",
+        result: "Atingido 50% contra meta 60%",
+        current: "50%",
+        target: "60%",
+        learning: "Envolver o fornecedor no início",
+      }],
+      pendencies: [{ kind: "action", decision: "renegotiate", reason: "dependência externa", newDeadline: "2027-07-20" }],
+      managementPulse: { confidence: "yellow", blocker: "dependência externa", nextCommitment: "Validar cronograma em 2027-07-05" },
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      areaName: "Comercial",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "month_close",
+      period: "Jun 2027",
+    }) as any;
+
+    expect(content.objetivos[0]).toMatchObject({ atual: "50%", meta: "60%" });
+    expect(content.fechamento.aprendizados).toEqual(["Envolver o fornecedor no início"]);
+    expect(content.fechamento.pendencias[0]).toContain("renegociar");
+    expect(content.fechamento.pendencias[0]).not.toContain("[object Object]");
+    expect(content.fechamento.pulso_gestao).toMatchObject({ confianca: "yellow", bloqueio: "dependência externa" });
+    const whatsapp = renderPlanForWhatsApp(content);
+    expect(whatsapp).toContain("Meta: 60%");
+    expect(whatsapp).toContain("Confiança: yellow");
+    expect(whatsapp).not.toContain("[object Object]");
+  });
 });

@@ -63,12 +63,15 @@ describe("renderização canônica para WhatsApp", () => {
         pendencias: ["Concluir migração"],
         decisoes: ["Rolar para julho"],
         proximo_periodo: "Jul 2027",
+        pulso_gestao: { confianca: "yellow", bloqueio: "Fornecedor", proximo_compromisso: "Validar cronograma" },
       },
     });
 
     expect(rendered).toContain("Aprendizados: Treinar por equipe");
     expect(rendered).toContain("Pendências: Concluir migração");
     expect(rendered).toContain("Decisões: Rolar para julho");
+    expect(rendered).toContain("Confiança: yellow");
+    expect(rendered).toContain("Bloqueio: Fornecedor");
     expect(rendered).toContain("Próximo período: Jul 2027");
   });
 

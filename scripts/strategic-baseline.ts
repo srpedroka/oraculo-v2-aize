@@ -897,13 +897,17 @@ async function restartQ5AfterCorrection(correctionReference: string) {
 async function resumeQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("resume-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (!(["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V"] as string[]).includes(normalizedReference)) {
-    throw new Error("retomada incremental Q5 exige uma correcao ou recheck aprovado (Q4N a Q4V)");
+  if (!(["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W"] as string[]).includes(normalizedReference)) {
+    throw new Error("retomada incremental Q5 exige uma correcao ou recheck aprovado (Q4N a Q4W)");
   }
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
-  const targetPhase = ["Q4U", "Q4V"].includes(normalizedReference) ? "Q2C" : "Q2B";
-  const targetLabel = targetPhase === "Q2C" ? "Q5C" : "Q5B";
+  const targetPhase = normalizedReference === "Q4W"
+    ? "Q2D"
+    : ["Q4U", "Q4V"].includes(normalizedReference)
+      ? "Q2C"
+      : "Q2B";
+  const targetLabel = targetPhase === "Q2D" ? "Q5D" : targetPhase === "Q2C" ? "Q5C" : "Q5B";
   const failedRuns = progress.runs.filter((run) => run.phase === targetPhase && (
     run.status === "execution-error" || run.qualityStatus === "blocked"
   ));
@@ -933,8 +937,10 @@ async function resumeQ5AfterCorrection(correctionReference: string) {
   }
   const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath));
   progress.runs = progress.runs.filter((run) => !failedReportPaths.has(run.reportPath));
-  progress.baselineVersion = normalizedReference === "Q4V"
-    ? "2026-07-18.q5-regression-r11-incremental-q4v"
+  progress.baselineVersion = normalizedReference === "Q4W"
+    ? "2026-07-18.q5-regression-r12-incremental-q4w"
+    : normalizedReference === "Q4V"
+      ? "2026-07-18.q5-regression-r11-incremental-q4v"
     : normalizedReference === "Q4U"
       ? "2026-07-18.q5-regression-r10-incremental-q4u"
     : normalizedReference === "Q4T"
@@ -1520,7 +1526,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

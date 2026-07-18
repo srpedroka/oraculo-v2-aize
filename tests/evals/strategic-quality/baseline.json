@@ -79,6 +79,11 @@
       "date": "2026-07-18",
       "gate": "Q4V",
       "reason": "Blocos mensais completos com capacidade explicita passam por extracao deterministica estrita, vinculo trimestral unico e seguro, cinco acoes verificaveis, backlog, bloqueio, confianca e uma unica confirmacao, sem loop de reparo da IA."
+    },
+    {
+      "date": "2026-07-18",
+      "gate": "Q4W",
+      "reason": "Fechamentos mensais parciais absorvem resultado, meta, acoes, aprendizado e confianca antes de perguntar somente pela decisao faltante; documento, tela e WhatsApp preservam pendencias estruturadas sem coercao de objeto."
     }
   ],
   "runtimeAssignments": [
@@ -112,7 +117,7 @@
     { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "cd022bf931067cf969c444ee4607db2d1845b11292f2f7e6d3af968043a89f49" },
     { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "93dac956ea9d6c2bc25f8627a7fd0d3d56dbfc5723481679b5334761443b4e3b" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
-    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "9772f8ca97abbe5fcc4aefd5bba5fb2087e1d69db7ec833a8d32a79f1359756e" },
+    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "bfde9d6fd887c6579d3c3e1814ed6ccec41ed2f32afe1df644abec1f6c7e63cd" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
     { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "76c87dec4574f1e9d7b417ccae7d59adb4271e2556d00030179c578a8b744533" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "bb581423d7d5ea2028bf55559d761d0973e9c6e6767c391fafdb157d69c9bac5" },
@@ -125,8 +130,9 @@
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "5bdb0f1c187ea236f2f3dd1b4e50741773aed4932e6dd2dbeaf738d09c4fbf2a" },
     { "path": "supabase/functions/_shared/proposals.ts", "sha256": "174f375bf14eae5bb05eb3ac4cac7e8db97e8b9e205d2c14f3acc755524d0904" },
-    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "57e8a05aeb25749b7f8dfc3b016d6eae74a968de674ea2ea431108356953ba03" },
-    { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "ed81b24b342640cd1044dd1055ab468e6fa882c3800e7dfdc20cd958a214c570" },
+    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "65773c1ccdac4f71b9d9004e1212665c43889c9ff182248ff44a1ccc0340968e" },
+    { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "f8aa6d8beb2dc9672cc557b941a1a4838012c4868150cd9d50bbff96c423beec" },
+    { "path": "supabase/functions/_shared/close-quality.ts", "sha256": "fff71689b2921c847229883ddf9d957a6329129d59687335cc9c7ea647151c85" },
     { "path": "supabase/functions/_shared/periods.ts", "sha256": "ff0b89f58abbd4929b4fae20eede319aebe1ee1b3632a10152574f3e33e98792" },
     { "path": "supabase/functions/_shared/monthly-guidance.ts", "sha256": "03d7d8628da88a7909221598b8b587ceb60a7ff0ced24590ecc09b9b5c84f403" },
     { "path": "supabase/functions/_shared/monthly-continuity.ts", "sha256": "17156ee1844ae314a213ee7dda2db7e36163b9284d4f0dbba5562f6461cb6cf3" },
