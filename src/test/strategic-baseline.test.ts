@@ -250,7 +250,10 @@ describe("Q3 strategic baseline", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('["Q4N", "Q4O", "Q4P"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
-    expect(source).toContain("...failedRuns.map((run) => ({ ...run, calibrationReason, archivedAt }))");
+    expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
+    expect(source).toContain("!failedReportPaths.has(run.reportPath)");
+    expect(source).toContain("!archivedReportPaths.has(run.reportPath)");
+    expect(source).toContain(".map((run) => ({ ...run, calibrationReason, archivedAt }))");
     expect(source).toContain('"2026-07-17.q5-regression-r8-incremental-q4n"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4o"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4p"');

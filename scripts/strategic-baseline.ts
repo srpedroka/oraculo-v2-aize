@@ -902,23 +902,29 @@ async function resumeQ5AfterCorrection(correctionReference: string) {
   if (!failedRuns.length) throw new Error(`Q5B nao possui medicao bloqueada para retomar apos ${normalizedReference}`);
   const archivedAt = new Date().toISOString();
   const calibrationReason = `medicao Q5B bloqueada preservada antes da retomada incremental apos aprovacao da correcao ${normalizedReference}`;
+  const archivedReportPaths = new Set((progress.calibrationRuns ?? []).map((run) => run.reportPath));
   progress.calibrationRuns = [
     ...(progress.calibrationRuns ?? []),
-    ...failedRuns.map((run) => ({ ...run, calibrationReason, archivedAt })),
+    ...failedRuns
+      .filter((run) => !archivedReportPaths.has(run.reportPath))
+      .map((run) => ({ ...run, calibrationReason, archivedAt })),
   ];
-  progress.restarts = [
-    ...(progress.restarts ?? []),
-    {
-      correctionReference: normalizedReference,
-      archivedAt,
-      previousBaselineVersion: progress.baselineVersion,
-      previousStartedAt: progress.startedAt,
-      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
-      archivedRunCount: failedRuns.length,
-      archivedDeterministicCount: 0,
-    },
-  ];
-  progress.runs = progress.runs.filter((run) => !(run.phase === "Q2B" && run.status === "execution-error"));
+  if (!(progress.restarts ?? []).some((restart) => restart.correctionReference === normalizedReference)) {
+    progress.restarts = [
+      ...(progress.restarts ?? []),
+      {
+        correctionReference: normalizedReference,
+        archivedAt,
+        previousBaselineVersion: progress.baselineVersion,
+        previousStartedAt: progress.startedAt,
+        previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+        archivedRunCount: failedRuns.length,
+        archivedDeterministicCount: 0,
+      },
+    ];
+  }
+  const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath));
+  progress.runs = progress.runs.filter((run) => !failedReportPaths.has(run.reportPath));
   progress.baselineVersion = normalizedReference === "Q4P"
     ? "2026-07-18.q5-regression-r8-incremental-q4p"
     : normalizedReference === "Q4O"
