@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { canonicalizeQuarterlyStrategicReferences, proposalMatchesCanonicalAnnualParent } from "./proposals.ts";
+import {
+  canonicalizeCloseReview,
+  canonicalizeQuarterlyStrategicReferences,
+  proposalMatchesCanonicalAnnualParent,
+} from "./proposals.ts";
 
 const parent = {
   id: "area-annual-id",
@@ -73,5 +77,30 @@ describe("canonical quarterly annual parent", () => {
     }, { linkedStrategicObjectiveIds: [areaAnnualId] });
 
     expect(normalized.linkedStrategicObjectiveIds).toEqual([areaAnnualId]);
+  });
+});
+
+describe("canonical close review", () => {
+  it("preserves the stored baseline while promoting the achieved value to current", () => {
+    expect(canonicalizeCloseReview({
+      current: "50%",
+      target: "60%",
+    }, {
+      current: "40%",
+      target: "60%",
+      metric: "Oportunidades com proxima acao",
+      owner: "PERSON_FIXTURE_MANAGER",
+      deadline: "2027-06-30",
+      evidence_plan: "Relatorio semanal",
+    })).toMatchObject({
+      baseline: "40%",
+      achieved: "50%",
+      current: "50%",
+      target: "60%",
+      metric: "Oportunidades com proxima acao",
+      owner: "PERSON_FIXTURE_MANAGER",
+      deadline: "2027-06-30",
+      source: "Relatorio semanal",
+    });
   });
 });

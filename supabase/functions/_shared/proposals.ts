@@ -66,6 +66,24 @@ function defaultProgressForStatus(status: CloseStatus) {
   return 0;
 }
 
+export function canonicalizeCloseReview(review: any, objective: any) {
+  const achieved = asText(
+    review.achieved ?? review.atingido ?? review.current ?? review.valor_atual,
+    asText(objective.current),
+  );
+  return {
+    ...review,
+    baseline: asText(review.baseline ?? review.linha_partida, asText(objective.current)),
+    achieved,
+    current: achieved,
+    target: asText(review.target ?? review.meta, asText(objective.target)),
+    metric: asText(review.metric ?? review.indicador, asText(objective.metric)),
+    owner: asText(review.owner ?? review.responsavel, asText(objective.owner)),
+    deadline: asText(review.deadline ?? review.prazo, asText(objective.deadline)),
+    source: asText(review.source ?? review.fonte, asText(objective.evidence_plan)),
+  };
+}
+
 function snapshotStrategicObjective(objective: any) {
   return {
     id: objective.id,
@@ -700,11 +718,13 @@ async function applyCloseReviews(client: Client, session: any, proposal: any, us
     const objective = await findObjectiveById(client, session, review.objectiveId ?? review.objective_id, level);
     if (!objective) continue;
 
+    Object.assign(review, canonicalizeCloseReview(review, objective));
+
     const status = asCloseStatus(review.statusFinal ?? review.status_final ?? review.status);
     const progress = clampProgress(review.progressFinal ?? review.progress_final ?? review.progress, defaultProgressForStatus(status));
     const { error: objectiveError } = await client
       .from("objectives")
-      .update({ status, progress, current: asText(review.current ?? review.valor_atual, objective.current ?? "") || objective.current })
+      .update({ status, progress, current: asText(review.current, objective.current ?? "") || objective.current })
       .eq("id", objective.id)
       .eq("org_id", session.org_id);
     if (objectiveError) throw objectiveError;

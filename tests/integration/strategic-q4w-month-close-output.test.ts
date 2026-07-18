@@ -144,7 +144,7 @@ d("Q4W - fechamento mensal parcial e saída canônica", () => {
     expect((checkInResult.data?.details as any).managementPulse).toMatchObject({ confidence: "yellow", blocker: "dependência externa do fornecedor" });
 
     const content = documentResult.data?.content as any;
-    expect(content.objetivos[0]).toMatchObject({ atual: "50%", meta: "60%" });
+    expect(content.objetivos[0]).toMatchObject({ atual: "40%", atingido: "50%", meta: "60%" });
     expect(content.fechamento.aprendizados).toEqual(["Envolver o fornecedor no início do próximo ciclo"]);
     expect(content.fechamento.pendencias[0]).toContain("renegociar");
     expect(content.fechamento.pendencias[0]).toContain("novo prazo: 2027-07-20");

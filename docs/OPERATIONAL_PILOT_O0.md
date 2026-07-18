@@ -25,6 +25,7 @@ Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste p
 - Segredos: nenhum segredo detectado no Git pelo verificador de producao.
 - A branch de qualidade esta 54 commits a frente da `main`; as correcoes Q4/Q5 ainda nao foram publicadas em producao.
 - Ultimo CI observado na `main`: `Quality and build` verde, `Local Supabase integration` vermelho e `CI required` vermelho. A causa exata foi o primeiro caso de `quick-update-guard.test.ts`, que atingiu o timeout fixo em 30.002 ms; os outros dois casos do arquivo passaram. A branch alinha o timeout desses testes de worker a 60 s, sem mudar as assercoes de seguranca ou o runtime. A execucao anterior da `main` estava verde; a PR deve comprovar a correcao no ambiente local completo do CI.
+- A primeira execucao da PR `#10` aprovou `Quality and build` e encontrou uma divergencia real no fechamento mensal: banco `current=50%`, mas documento sem baseline/atual. O aplicador passa a capturar o valor anterior do objetivo antes da mutacao e canonicaliza baseline 40%, atingido/current 50% e meta 60%; o teste de integracao exige os tres campos.
 
 ### Recuperacao
 
