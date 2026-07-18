@@ -57,6 +57,7 @@ Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste p
 - xAI: chave armazenada e mascarada; diario e background em Grok 4.3.
 - Grok 4.5 permanece disponivel no catalogo, sem troca automatica de modelo.
 - Probe manual do Grok 4.3 aprovado em 18/07/2026 15:00:07. O probe usa um ping e no maximo um token de saida; custo estimado inferior a US$ 0,0001 e nao registrado no ledger estrategico.
+- O inbound real O0 registrou uma chamada Grok 4.3 de bastidores em 18/07/2026 16:08:00: 841 tokens e custo estimado de US$ 0,001535.
 - Uso mensal exibido no app: 192 chamadas e US$ 2,86; politica da empresa em observacao, sem bloqueio automatico.
 - Baseline recuperavel: 646 registros no backup, 30 historicos disponiveis para resgate e 5 objetivos de Evolucao ativos. A tela de Documentos mostrou pelo menos 30 itens na primeira pagina; a contagem completa permanece coberta pelo pacote, nao foi inferida pela paginacao.
 
@@ -67,7 +68,7 @@ O ciclo anterior foi encerrado em US$ 17,352811. O historico continua imutavel n
 - limite autorizado de consumo: US$ 20;
 - aviso: US$ 15 de gasto novo;
 - parada preventiva: US$ 19 de gasto novo;
-- consumo estrategico inicial do ciclo: US$ 0;
+- consumo medido do novo ciclo: US$ 0,001535; o probe anterior inferior a US$ 0,0001 permanece fora do ledger estrategico;
 - compras, recargas, upgrades ou assinaturas: continuam exigindo autorizacao explicita separada imediatamente antes da cobranca.
 
 ## Gate O0 concluido
