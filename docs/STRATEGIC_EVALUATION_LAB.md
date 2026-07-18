@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40 e a regressao limpa r22 preserva 25 aprovacoes. Q4AK passou no staging; falta repetir somente o gestor trimestral experiente R2 para encerrar Q5B.
+Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40. Na regressao limpa r22, Q5A esta 10/10 e Q5B 16/16; a proxima fase e Q5C mensal.
 
 ## Objetivo
 

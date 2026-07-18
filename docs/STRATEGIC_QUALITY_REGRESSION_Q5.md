@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q4AK aprovada no staging; regressao r22 preserva Q5A 10/10 e Q5B 15/16, pronta para repetir somente gestor experiente R2**
+Status: **regressao limpa r22 com Q5A 10/10 e Q5B 16/16; proxima fase Q5C mensal**
 
 ## Objetivo
 
@@ -848,3 +848,9 @@ A Q4AK move a autoridade do vinculo para o servidor. Confirmacao direta com o no
 O smoke R2 passou com Conducao 92,50, Plano Trimestral 100, Saida Derivada 100, media 97,50, zero KPI nao escolhido e cleanup completo. Custou US$ 0,036364; acumulado US$ 13,713619. Validacao local: 494 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 528 arquivos. Somente `oracle-session` mudou no staging; producao permanece inalterada.
 
 O proximo passo e `resume-after-correction Q4AK`, preservando as 25 aprovacoes e repetindo somente gestor experiente R2. Se passar, Q5B fecha 16/16 e a regressao limpa segue para Q5C.
+
+## Fechamento Q5B r22
+
+`resume-after-correction Q4AK` arquivou apenas a medicao bloqueada e preservou 25 aprovacoes. `phase Q5B` reconheceu as quinze medicoes trimestrais ja verdes e executou somente o gestor experiente R2. A rodada oficial passou com Conducao 96,25, Plano Trimestral 100 e Saida Derivada 100, zero falha critica, zero check reprovado e cleanup completo.
+
+Q5B terminou 16/16. A repeticao custou US$ 0,020788 de geracao e US$ 0,017310 de judge, total US$ 0,038097. O custo oficial da Q5B e US$ 0,712738 e o acumulado do plano chegou a US$ 13,751716. A proxima fase e Q5C, com oito medicoes mensais; aprovadas continuam preservadas e qualquer novo bloqueio recebe correcao e repeticao apenas do caso afetado.

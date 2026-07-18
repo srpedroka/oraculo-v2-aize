@@ -900,6 +900,13 @@ Este plano só termina quando:
 - Validacao: 494 unitarios, catalogo 29/29, lint, build/bundle e secret scan 528. Somente `oracle-session` mudou no staging; producao, frontend e migrations seguem intactos.
 - Proxima execucao: `resume-after-correction Q4AK` e `phase Q5B`, repetindo somente gestor experiente R2. Depois de Q5B 16/16, seguir para Q5C; repetir todos os cenarios juntos apenas quando Q5A-Q5D estiverem verdes.
 
+### Atualizacao de execucao: Q5B r22 concluida
+
+- A retomada Q4AK preservou quinze aprovacoes trimestrais e repetiu somente gestor experiente R2.
+- Rodada oficial final: Conducao 96,25, Plano Trimestral 100, Saida Derivada 100, zero falha critica/check/residuo e custo US$ 0,038097.
+- Q5B terminou 16/16; custo oficial US$ 0,712738; acumulado do plano US$ 13,751716.
+- Proxima fase: Q5C com oito medicoes de plano mensal. Manter fail-fast, corrigir e repetir somente o caso afetado; regressao geral completa apenas depois de Q5A-Q5D verdes.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text
