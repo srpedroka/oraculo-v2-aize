@@ -85,4 +85,40 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("Ações transversais");
     expect(whatsapp).toContain("KPIs vinculados: Margem operacional");
   });
+
+  it("keeps inherited monthly continuity in the canonical document", () => {
+    const content = buildPlanDocumentPreview({
+      type: "save_monthly_plan",
+      quarterlyAlignment: { status: "linked", quarterlyObjectiveTitle: "Qualidade do funil" },
+      pendingDecisions: [{ item: "integração do CRM", origin: "Jun 2027", reason: "dependência do fornecedor", decision: "roll" }],
+      objectives: [{
+        title: "integração do CRM",
+        result: "integração do CRM",
+        metric: "oportunidades com próxima ação",
+        current: "40%",
+        target: "55%",
+        source: "relatório semanal",
+        deadline: "2027-07-31",
+        owner: "PERSON_FIXTURE_A",
+        actions: [{
+          description: "Rolar a integração do CRM",
+          owner: "PERSON_FIXTURE_A",
+          deadline: "2027-07-20",
+          completionCriterion: "integração validada e aceite registrado",
+        }],
+      }],
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      areaName: "Comercial",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "monthly",
+      period: "Jul 2027",
+    }) as any;
+
+    expect(content.objetivos[0].resultado).toBe("Elevar oportunidades com próxima ação de 40% para 55%");
+    expect(content.monthly.decisoes_pendentes[0]).toMatchObject({ origem: "Jun 2027", decisao: "roll" });
+    expect(content.monthly.bloqueios).toEqual(["Dependência do fornecedor"]);
+    expect(content.monthly.cadencia).toContain("2027-07-20");
+    expect(content.monthly.proximo_compromisso).toContain("aceite registrado");
+  });
 });

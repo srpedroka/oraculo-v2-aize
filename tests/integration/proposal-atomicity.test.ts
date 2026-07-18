@@ -467,6 +467,74 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     });
   });
 
+  it("Q4U: preserva a pendência herdada e grava o resultado mensal mensurável", async () => {
+    const parent = await seedQuarterlyParent(org.areas.comercialId, "Qualidade do funil Q4U");
+    const proposal = monthlyProposal("Integração do CRM Q4U", "Rolar a integração do CRM Q4U", parent);
+    proposal.objectives[0].title = "integração do CRM";
+    proposal.objectives[0].result = "integração do CRM";
+    proposal.objectives[0].metric = "oportunidades com próxima ação";
+    proposal.objectives[0].current = "40%";
+    proposal.objectives[0].target = "55%";
+    proposal.objectives[0].actions[0].deadline = "2026-07-20";
+    proposal.objectives[0].actions[0].completionCriterion = "Integração validada e aceite registrado";
+    Object.assign(proposal, {
+      pendingDecisions: [{
+        item: "integração do CRM",
+        origin: "Jun 2026",
+        reason: "dependência do fornecedor",
+        decision: "roll",
+      }],
+      blockers: [],
+      cadence: "",
+      nextCommitment: "",
+    });
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: org.areas.comercialId,
+      user_id: org.owner.id,
+      type: "monthly",
+      period: "2026-07",
+      pending_proposal: proposal,
+    });
+
+    const { status } = await confirm(sessionId);
+    expect(status).toBe(200);
+    const { data: objective, error: objectiveError } = await admin
+      .from("objectives")
+      .select("id,title,result")
+      .eq("org_id", org.orgId)
+      .eq("period", "2026-07")
+      .eq("result", "Elevar oportunidades com próxima ação de 40% para 55%")
+      .single();
+    if (objectiveError) throw objectiveError;
+    expect(objective.title).toBe("Elevar oportunidades com próxima ação");
+    const { data: actions, error: actionsError } = await admin
+      .from("key_actions")
+      .select("description,deadline,completion_criterion")
+      .eq("objective_id", objective.id);
+    if (actionsError) throw actionsError;
+    expect(actions).toEqual([{
+      description: "Rolar a integração do CRM Q4U",
+      deadline: "2026-07-20",
+      completion_criterion: "Integração validada e aceite registrado",
+    }]);
+
+    const { data: document, error: documentError } = await admin
+      .from("plan_documents")
+      .select("content")
+      .eq("session_id", sessionId)
+      .single();
+    if (documentError) throw documentError;
+    expect(document.content.monthly.decisoes_pendentes[0]).toMatchObject({
+      origem: "Jun 2026",
+      motivo: "dependência do fornecedor",
+      decisao: "roll",
+    });
+    expect(document.content.monthly.bloqueios).toEqual(["Dependência do fornecedor"]);
+    expect(document.content.monthly.cadencia).toContain("2026-07-20");
+    expect(document.content.monthly.proximo_compromisso).toContain("aceite registrado");
+  });
+
   it("Q4J: recusa o objetivo anual canônico quando ele pertence a outra área", async () => {
     const annualTitle = "Pai anual de outra área Q4J";
     const quarterlyTitle = "Trimestre não deve gravar Q4J";

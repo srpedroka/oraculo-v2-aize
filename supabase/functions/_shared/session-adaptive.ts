@@ -1,5 +1,6 @@
 import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
 import { normalizeQuarterlyKpiLinks, quarterlyKpiLabel, quarterlyKpiLinks } from "./quarterly-kpis.ts";
+import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
 
 type SessionEnvelope = {
   reply?: unknown;
@@ -782,12 +783,35 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
     if (adjustments.length > 0) return `A revisão reúne ${adjustments.length} ajustes no plano atual. Posso aplicar?`;
   }
   if (type === "save_monthly_plan") {
-    const objectives = Array.isArray(value.objectives) ? value.objectives.map(asRecord) : [];
+    const normalized = asRecord(normalizeMonthlyContinuity(value));
+    const objectives = Array.isArray(normalized.objectives) ? normalized.objectives.map(asRecord) : [];
     const first = objectives[0] ?? {};
     const result = text(first.result) || text(first.title);
     if (result) {
       const suffix = objectives.length > 1 ? ` e mais ${objectives.length - 1} resultado${objectives.length > 2 ? "s" : ""}` : "";
-      return `O mês fica focado em “${result}”${suffix}. Posso gravar?`;
+      const pending = Array.isArray(normalized.pendingDecisions) ? normalized.pendingDecisions.map(asRecord)[0] : {};
+      const action = Array.isArray(first.actions) ? first.actions.map(asRecord)[0] ?? {} : {};
+      const decisionLabels: Record<string, string> = {
+        roll: "rolar",
+        renegotiate: "renegociar",
+        cut: "cortar",
+        backlog: "enviar ao backlog",
+      };
+      const decision = decisionLabels[text(pending.decision ?? pending.decisao).toLowerCase()] ?? text(pending.decision ?? pending.decisao);
+      const pendingSummary = text(pending.item ?? pending.pendencia)
+        ? `Pendência herdada: ${text(pending.item ?? pending.pendencia)}, de ${text(pending.origin ?? pending.origem)}, decisão de ${decision} por ${text(pending.reason ?? pending.motivo)}.`
+        : "";
+      const deadline = text(action.deadline ?? action.prazo);
+      const criterion = text(action.completionCriterion ?? action.completion_criterion ?? action.criterio);
+      return [
+        "**Plano do mês**",
+        `Resultado: ${result}${suffix}.`,
+        pendingSummary,
+        deadline || criterion ? `Novo prazo e aceite: ${deadline}${criterion ? `; ${criterion}` : ""}.` : "",
+        text(normalized.cadence) ? `Acompanhamento: ${text(normalized.cadence)}` : "",
+        text(normalized.nextCommitment) ? `Próximo compromisso: ${text(normalized.nextCommitment)}.` : "",
+        "Posso gravar?",
+      ].filter(Boolean).join("\n");
     }
   }
   if (sessionType === "quarterly") {
@@ -997,6 +1021,10 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
 }
 
 export function normalizeProposalConfirmationEnvelope(envelope: SessionEnvelope, sessionType: string) {
+  if (sessionType === "monthly" && text(asRecord(envelope.proposal).type) === "save_monthly_plan") {
+    const proposal = normalizeMonthlyContinuity(envelope.proposal);
+    return { ...envelope, proposal, reply: proposalConfirmationReply(proposal, sessionType) };
+  }
   if (sessionType !== "quarterly" || text(asRecord(envelope.proposal).type) !== "save_quarterly_plan") return envelope;
   const proposal = normalizeQuarterlyKpiLinks(normalizeQuarterlySharedActions(envelope.proposal));
   return {

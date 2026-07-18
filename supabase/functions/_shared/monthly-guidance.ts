@@ -1,4 +1,5 @@
 import { monthPeriodParts } from "./periods.ts";
+import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
 
 type MonthlyEnvelope = {
   reply?: unknown;
@@ -118,7 +119,7 @@ function pendingDecisionOptionCount(value: string) {
 
 export function validateMonthlyProposal(proposalValue: unknown, sessionPeriod: string) {
   const reasons: string[] = [];
-  const proposal = asRecord(proposalValue);
+  const proposal = asRecord(normalizeMonthlyContinuity(proposalValue));
   if (!Object.keys(proposal).length) return reasons;
   if (proposal.type !== "save_monthly_plan") return ["monthly_wrong_proposal_type"];
 

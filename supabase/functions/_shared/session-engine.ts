@@ -361,6 +361,7 @@ export async function processPlanningMessage(
     .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
     .join("\n");
   const normalizeEnvelope = (envelope: any) => {
+    if (session.type === "monthly") return normalizeProposalConfirmationEnvelope(envelope, session.type);
     if (session.type !== "quarterly") return envelope;
     const preparedEnvelope = deferUnchallengedQuarterlyProposal({
       envelope,

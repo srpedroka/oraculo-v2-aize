@@ -977,6 +977,43 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
+  it("summarizes an inherited monthly decision with origin, reason and new deadline", () => {
+    const normalized = normalizeProposalConfirmationEnvelope({
+      proposal: {
+        type: "save_monthly_plan",
+        quarterlyAlignment: { status: "linked", quarterlyObjectiveTitle: "Qualidade do funil" },
+        pendingDecisions: [{
+          item: "integração do CRM",
+          origin: "Jun 2027",
+          reason: "dependência do fornecedor",
+          decision: "roll",
+        }],
+        objectives: [{
+          title: "integração do CRM",
+          result: "integração do CRM",
+          metric: "oportunidades com próxima ação",
+          current: "40%",
+          target: "55%",
+          actions: [{
+            description: "Rolar a integração",
+            deadline: "2027-07-20",
+            completionCriterion: "integração validada e aceite registrado",
+          }],
+        }],
+      },
+    }, "monthly");
+    const proposal = normalized.proposal as any;
+    const reply = String(normalized.reply);
+
+    expect(proposal.objectives[0].result).toBe("Elevar oportunidades com próxima ação de 40% para 55%");
+    expect(proposal.cadence).toContain("dependência do fornecedor");
+    expect(proposal.nextCommitment).toContain("2027-07-20");
+    expect(reply).toContain("Jun 2027");
+    expect(reply).toContain("dependência do fornecedor");
+    expect(reply).toContain("2027-07-20");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
   it("grounds a discount objective in its current measure before suggesting actions", () => {
     const userMessage = "O objetivo e reduzir desconto medio e melhorar a qualidade da venda.";
     const blocked = reasons({

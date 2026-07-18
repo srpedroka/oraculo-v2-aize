@@ -1,5 +1,6 @@
 import { createDocumentForProposal } from "./plan-documents.ts";
 import { validateMonthlyProposal } from "./monthly-guidance.ts";
+import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
 import { quarterPeriodForMonth } from "./periods.ts";
 import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
 import { normalizeQuarterlyKpiLinks } from "./quarterly-kpis.ts";
@@ -1014,6 +1015,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
 export async function applyProposal(client: Client, session: any, proposal: any, userId: string) {
   await assertProposalPermission(client, session, userId);
   const type = asText(proposal?.type);
+  if (type === "save_monthly_plan") proposal = normalizeMonthlyContinuity(proposal);
   let summary = "";
   if (type === "save_strategic_plan") summary = await saveStrategicPlan(client, session, proposal, userId);
   else if (type === "save_quarterly_plan") summary = await saveQuarterlyPlan(client, session, proposal, userId);

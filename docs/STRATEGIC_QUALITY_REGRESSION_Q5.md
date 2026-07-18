@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q5B r8 com 13 aprovacoes; Q4T aprovada e retomada incremental preparada**
+Status: **Q5A e Q5B completas; Q5C com 2 aprovacoes; Q4U aprovada e retomada incremental preparada**
 
 ## Objetivo
 
@@ -611,3 +611,26 @@ A Q4T exige que a conversa explique que o efeito sobre Margem operacional ainda 
 O primeiro veredito automatico da Q4T foi aprovado pelo judge, mas o smoke local marcou falso negativo porque aceitava somente a expressao literal `nao comprovado`; o transcript usou `ainda sendo hipotese`. O guard passou a reconhecer ambas sem relaxar a exigencia de pergunta, KPI e escolha explicita. O mesmo relatorio pago foi revalidado por US$ 0. A suite passou 419 unitarios, catalogo 29/29, lint, build/bundle, secret scan e integracao real no staging. O lock por fase impede duas Q5/Q4T simultaneas.
 
 `resume-after-correction Q4T` arquiva somente KPI R2 bloqueada e preserva 23 aprovacoes totais, sendo 10 Q5A e 13 Q5B. `phase Q5B` repete KPI R2 e, se passar, executa apenas as duas rodadas ainda ausentes do gestor experiente. Qualquer nova falha segue correcao + smoke focado + retomada incremental. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.
+
+## Q5B completa e correcao Q4U: continuidade mensal
+
+A retomada Q4T repetiu somente KPI R2, que passou por US$ 0,054676. As duas rodadas ainda ausentes do gestor experiente tambem passaram por US$ 0,035430 e US$ 0,029382. A Q5B terminou com 16/16 medicoes oficiais verdes; custo oficial da fase US$ 0,797116. Nenhum trimestral aprovado foi repetido.
+
+Na Q5C, as duas rodadas de cascata mensal passaram. A primeira rodada de pendencia herdada preservou origem, motivo, decisao e prazo, mas tratou `integracao do CRM` como resultado em vez de acao; deixou a mudanca de 40% para 55% escondida, nao definiu acompanhamento/compromisso seguinte e resumiu somente o nome da atividade. Conducao ficou em 86,25, Plano Mensal 78,75 e media 82,50; custo US$ 0,034121. O fail-fast impediu R2 e os casos seguintes.
+
+A Q4U normaliza apenas pendencias herdadas com decisao explicita. A atividade permanece em `actions`; quando indicador, baseline e alvo ja existem, o resultado mensal passa a expressar a mudanca mensuravel. Origem, motivo, bloqueio, prazo, criterio, acompanhamento e proximo compromisso sao derivados somente dos fatos confirmados. A confirmacao final mostra tudo isso uma vez, sem criar reuniao ou frequencia. Nao houve migration.
+
+| Evidencia | Resultado |
+|---|---:|
+| Conducao | 82,50 |
+| Plano Mensal | 97,50 |
+| Media conjunta | 90,00 |
+| Checks deterministas | 10/10 |
+| Falhas criticas | 0 |
+| Persistencia real | resultado + acao + origem + prazo + documento |
+| Custo Q4U | US$ 0,034245 |
+| Acumulado do plano | US$ 7,242402 |
+
+A validacao passou 425 testes unitarios, catalogo 29/29, lint, build/bundle, secret scan e integracao real no staging. Somente `oracle-session` foi publicada no staging; producao e frontend publicado permanecem inalterados.
+
+`resume-after-correction Q4U` arquiva somente a pendencia herdada R1 bloqueada e preserva 28 aprovacoes totais: 10 Q5A, 16 Q5B e 2 Q5C. `phase Q5C` repete essa rodada e continua apenas pelos cinco resultados mensais ausentes. Novos problemas seguem o mesmo ciclo. A regressao geral limpa permanece reservada para depois de Q5A-Q5D integralmente verdes.

@@ -278,6 +278,20 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4U somente a primeira rodada da pendencia mensal herdada", () => {
+    const source = readFileSync("scripts/strategic-q4u-smoke.ts", "utf8");
+    expect(source).toContain('CASE_ID = "Q2C-MONTHLY-INHERITED-PENDING-002"');
+    expect(source).toContain('executeCase(item, "Q2C", 1');
+    expect(source).toContain('runLabel: "q4u"');
+    expect(source).toContain('ledgerLabel: "Q4U"');
+    expect(source).toContain('acquireStrategicPhaseLock(resolve(".agents-private"), "q5", "Q4U")');
+    expect(source).toContain('comparable(objective.result) === comparable(pending.item)');
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"]');
@@ -299,7 +313,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -312,6 +326,8 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4r"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4s"');
     expect(source).toContain('"2026-07-18.q5-regression-r9-incremental-q4t"');
+    expect(source).toContain('"2026-07-18.q5-regression-r10-incremental-q4u"');
+    expect(source).toContain('normalizedReference === "Q4U" ? "Q2C" : "Q2B"');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
   });

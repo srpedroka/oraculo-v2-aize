@@ -1,5 +1,6 @@
 import { normalizeQuarterlySharedActions } from "./quarterly-actions.ts";
 import { normalizeQuarterlyKpiLink, normalizeQuarterlyKpiLinks, quarterlyKpiKey, quarterlyKpiLabel } from "./quarterly-kpis.ts";
+import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
 
 type Client = any;
 
@@ -255,6 +256,7 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
 }
 
 function buildMonthlyContent(base: Record<string, unknown>, proposal: any, period: string) {
+  proposal = normalizeMonthlyContinuity(proposal);
   const objectives = asArray<any>(proposal.objectives ?? proposal.objetivos_mes);
   const learningFocus = firstFilledArray<string>(proposal.learningFocus, proposal.foco_aprendizado);
   const quarterlyAlignment = proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral ?? {};
