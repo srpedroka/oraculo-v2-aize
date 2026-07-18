@@ -373,6 +373,8 @@ limit 40;
 
 Se duas pessoas se contaminarem, confira se as mensagens estão com `user_id` diferente e `conversation_id` diferente. Se web e WhatsApp da mesma pessoa se misturarem, confira se `channel` está separado em `conversations`. Depois de uma pausa maior que 4 horas, confirme que o episodio anterior ficou `archived` e existe somente um `active` no canal. Se um "Ola" retomar formulario antigo, confira se a `planning_session.conversation_id` pertence ao episodio atual e se as functions publicadas incluem `_shared/conversation-policy.ts`. Se a conversa passar de 40 mensagens novas e `summary` continuar vazio, confira `public.ai_function_settings` da função `background`, chave do provedor e logs de `ai_usage_logs.metadata.action = 'conversation_summary'`.
 
+Se a fase da sessao avancar mas a mensagem nova nao aparecer no painel, compare `planning_sessions.conversation_id` com a conversa `active` da mesma empresa, pessoa e canal. `oracle-session` deve religar automaticamente um vinculo arquivado, ocioso ou fora de escopo antes de inserir a mensagem. Nao copie mensagens nem altere o estado da sessao manualmente; publique a Function com o compartilhado atual e confirme a regressao `planning-session-conversation-rebind.test.ts` no staging.
+
 ## Problema: Oraculo nao enxerga ações-chave do mês
 
 Fluxo esperado da Fase 3:

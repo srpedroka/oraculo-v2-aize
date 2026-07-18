@@ -14,6 +14,7 @@ import {
   loadConversationHistory,
   maybeSummarize,
 } from "./conversations.ts";
+import { shouldRebindSessionConversation } from "./conversation-policy.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
 import { preserveExplicitQuarterlyCadence, validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
 import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
@@ -139,7 +140,11 @@ function planFocusForSession(type: string) {
 async function ensureSessionConversation(client: Client, session: any, channel: "web" | "whatsapp") {
   if (session.conversation_id) {
     const existing = await getConversationById(client, session.conversation_id);
-    if (existing) return { session, conversation: existing };
+    if (!shouldRebindSessionConversation(existing, {
+      orgId: session.org_id,
+      userId: session.user_id,
+      channel,
+    })) return { session, conversation: existing };
   }
 
   const conversation = await getOrCreateConversation(client, {

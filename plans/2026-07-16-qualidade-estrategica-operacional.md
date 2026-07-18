@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **Mapa A aprovado; Q5 integral r24 em 40/40 e Q6 aceita pelo owner; proxima fase O0**
+Status: **Mapa A e O0 aprovados; O1 pausado antes da gravacao, com correcao de episodio aprovada no staging e producao pendente**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -588,6 +588,8 @@ O Oráculo deve chegar a um plano bom por condução; não deve simplesmente cop
 ### Gate O1
 
 Condução e plano aprovados pela rubrica, proposta única e gravação única.
+
+Estado em 2026-07-18: o baseline de producao confirmou zero objetivo trimestral e zero documento para Comercial T3 2026. A primeira mensagem revelou uma sessao ativa vinculada a episodio arquivado; o servidor avancava, mas o painel mostrava somente outro episodio ativo. O piloto foi pausado sem proposta ou gravacao. A correcao preserva o estado e religa o vinculo antes da mensagem; 8 testes unitarios, regressao descartavel no staging, 520 unitarios, lint e build passaram. Producao aguarda PR/CI e autorizacao explicita antes de retomar o O1.
 
 ### Rollback
 
