@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Riscos estruturados sao normalizados na fronteira server-side
+
+Decisao: aceitar risco como texto ou como objeto com aliases de descricao e mitigacao, mas converter sempre para texto canonico antes da confirmacao e da geracao de documentos. A normalizacao e compartilhada pelos planos anual, trimestral e mensal e tambem protege importacoes prontas e projecoes diretas.
+
+Motivo: um plano trimestral materialmente correto recebeu risco como `{ descricao, mitigacao }`. O documento concatenou o objeto como string e exibiu `[object Object]`, derrubando fidelidade e legibilidade da Saida Derivada para 68,75 apesar de Conducao e Plano aprovados. O modelo produziu informacao util; faltava um contrato de dados no servidor.
+
+Consequencias: nao ha nova pergunta, tela, campo, tabela ou confirmacao. Riscos textuais continuam iguais; objetos conhecidos preservam descricao e mitigacao; objetos desconhecidos falham fechados e nao poluem PDF, tela ou WhatsApp. Testes cobrem proposta, documento canonico e renderizacao.
+
 ## 2026-07-18 - Desafio trimestral proporcional a prontidao
 
 Decisao: exigir um desafio curto somente quando um bloco trimestral ainda nao testou a decisao. Se o gestor ja informou resultado verificavel, acoes, risco, mitigacao e foco de aprendizado, a sessao segue para sintese e uma unica confirmacao. Se os dados suficientes chegam antes do bloco suplementar da fixture, o fechamento antecipado tambem e valido desde que proposta, banco e saidas passem os contratos.

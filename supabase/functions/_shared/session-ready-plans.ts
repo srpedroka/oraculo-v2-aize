@@ -1,6 +1,7 @@
 import { PERSONA_ORACULO } from "./conductors/persona.ts";
 import { MONTHLY_GUIDANCE_RULES } from "./monthly-guidance.ts";
 import { UNTRUSTED_CONTENT_RULES } from "./untrusted-content.ts";
+import { normalizeRiskList } from "./risk-normalization.ts";
 
 export function currentYearFromPeriod(period: string) {
   const match = period.match(/\b(20\d{2})\b/);
@@ -70,7 +71,7 @@ export function normalizeReadyStrategicProposal(
     },
     themes: asTextArray(rawProposal?.themes ?? rawProposal?.temas ?? rawProposal?.theme ?? rawProposal?.tema_do_ano).slice(0, 4),
     renunciations: asTextArray(rawProposal?.renunciations ?? rawProposal?.renuncias).slice(0, 8),
-    risks: asTextArray(rawProposal?.risks ?? rawProposal?.riscos ?? rawProposal?.riscos_estrategicos).slice(0, 8),
+    risks: normalizeRiskList(rawProposal?.risks, rawProposal?.riscos, rawProposal?.riscos_estrategicos),
     pendingDecisions: asTextArray(rawProposal?.pendingDecisions ?? rawProposal?.pending_decisions ?? rawProposal?.decisoes_pendentes).slice(0, 8),
     historicalLessons: asTextArray(rawProposal?.historicalLessons ?? rawProposal?.historical_lessons ?? rawProposal?.aprendizados_historicos).slice(0, 8),
     rituals: asTextArray(rawProposal?.rituals ?? rawProposal?.rituais).slice(0, 8),
@@ -396,7 +397,7 @@ export function normalizeReadyMonthlyProposal(rawProposal: any, period: string) 
       decision: asText(decision?.decision ?? decision?.decisao).toLowerCase(),
     })).slice(0, 8),
     backlog: asTextArray(rawProposal?.backlog ?? rawProposal?.tradeOffs ?? rawProposal?.renuncias).slice(0, 12),
-    risks: asTextArray(rawProposal?.risks ?? rawProposal?.riscos).slice(0, 8),
+    risks: normalizeRiskList(rawProposal?.risks, rawProposal?.riscos),
     blockers: asTextArray(rawProposal?.blockers ?? rawProposal?.bloqueios).slice(0, 8),
     cadence: asText(rawProposal?.cadence ?? rawProposal?.cadencia),
     confidence: asText(rawProposal?.confidence ?? rawProposal?.confianca),

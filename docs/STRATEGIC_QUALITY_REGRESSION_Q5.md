@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q4AI aprovada no staging; regressao r22 preserva Q5A 10/10 e Q5B 15/16, pronta para repetir somente gestor experiente R2**
+Status: **Q4AJ aprovada no staging; regressao r22 preserva Q5A 10/10 e Q5B 15/16, pronta para repetir somente gestor experiente R2**
 
 ## Objetivo
 
@@ -828,3 +828,13 @@ A retomada Q5B aprovou sete das oito medicoes restantes e bloqueou somente `Q2B-
 A Q4AI torna o desafio proporcional: bloco completo e ja testado segue para sintese; bloco superficial ainda recebe uma pergunta curta. No smoke R2, o Oraculo fez uma pergunta sobre o gargalo e fechou assim que objetivo, acoes, risco e cadencia ficaram suficientes. Foram 2 chamadas, zero reparo, uma confirmacao, Conducao 92,50, Plano Trimestral 100, Saida Derivada 100 e cleanup completo. O script inicialmente exigiu um terceiro bloco literal, apesar do fechamento antecipado aprovado; o mesmo relatorio foi revalidado a custo zero com o contrato corrigido.
 
 Q4AI custou US$ 0,013438 de geracao e US$ 0,016262 de judge, total US$ 0,029699. O acumulado chegou a US$ 13,571522. O proximo passo e `resume-after-correction Q4AI`, preservando 25 aprovacoes e repetindo somente a medicao bloqueada antes de encerrar Q5B.
+
+## Q4AJ: risco estruturado legivel nas saidas derivadas
+
+A repeticao oficial do gestor trimestral experiente R2 passou todos os checks e manteve Conducao 87,50 e Plano Trimestral 92,50. A proposta, porem, trouxe o risco como objeto `{ descricao, mitigacao }`; o documento usou coercao implicita e renderizou `[object Object]`. A Saida Derivada caiu para 68,75 e a media conjunta para 82,92. O custo foi US$ 0,036667 e o acumulado chegou a US$ 13,608189.
+
+A Q4AJ centraliza a normalizacao de risco para planos anual, trimestral e mensal. Texto simples permanece texto; descricao e mitigacao estruturadas viram uma frase legivel; objetos desconhecidos sao descartados. A protecao atua na confirmacao, nos normalizadores de plano pronto e na projecao canonica, com testes que verificam tambem o WhatsApp.
+
+O smoke focado passou com Conducao 85, Plano Trimestral 92,50, Saida Derivada 100 e media 92,50. O guard adicional inicialmente exigiu `acompanhamento semanal` dentro do proprio risco, embora a informacao estivesse preservada como cadencia; o contrato foi corrigido e o mesmo relatorio revalidado sem nova chamada. Q4AJ custou US$ 0,030452 e levou o acumulado a US$ 13,638641. Validacao local: 490 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 527 arquivos. Somente `oracle-session` mudou no staging; producao permanece inalterada.
+
+O proximo passo e `resume-after-correction Q4AJ`, arquivando somente a medicao bloqueada e preservando as 25 aprovacoes. Depois, `phase Q5B` repete apenas gestor experiente R2; se passar, Q5B fecha 16/16 e a regressao limpa avanca para Q5C.

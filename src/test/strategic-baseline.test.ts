@@ -339,6 +339,19 @@ describe("Q3 strategic baseline", () => {
     expect(runner).toContain("incremental-q4ai");
   });
 
+  it("repete na Q4AJ somente a saida trimestral com risco estruturado", () => {
+    const smoke = readFileSync("scripts/strategic-q4aj-smoke.ts", "utf8");
+    const runner = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2B-QUARTERLY-EXPERIENCED-MANAGER-008"');
+    expect(smoke).toContain('executeCase(item, "Q2B", 2');
+    expect(smoke).toContain('runLabel: "q4aj"');
+    expect(smoke).toContain('ledgerLabel: "Q4AJ"');
+    expect(smoke).toContain("[object Object]");
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+    expect(runner).toContain('normalizedReference === "Q4AJ"');
+    expect(runner).toContain("incremental-q4aj");
+  });
+
   it("mantem o caso de produtividade no escopo industrial declarado pela fixture", () => {
     const block = JSON.parse(readFileSync("tests/evals/strategic-quality/cases/q2b-quarterly.json", "utf8"));
     const item = block.cases.find((candidate: ReferenceCase) => candidate.caseId === "Q2B-QUARTERLY-MISSING-BASELINE-005");
@@ -477,7 +490,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH", "Q4AI"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH", "Q4AI", "Q4AJ"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -496,6 +509,7 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('"2026-07-18.q5-regression-r12-incremental-q4w"');
     expect(source).toContain('"2026-07-18.q5-regression-r13-incremental-q4x"');
     expect(source).toContain('normalizedReference === "Q4W"');
+    expect(source).toContain('normalizedReference === "Q4AJ"');
     expect(source).toContain('["Q4U", "Q4V"].includes(normalizedReference)');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');

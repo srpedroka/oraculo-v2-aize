@@ -1,6 +1,7 @@
 import { normalizeQuarterlySharedActions } from "./quarterly-actions.ts";
 import { normalizeQuarterlyKpiLink, normalizeQuarterlyKpiLinks, quarterlyKpiKey, quarterlyKpiLabel } from "./quarterly-kpis.ts";
 import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
+import { normalizeRiskList } from "./risk-normalization.ts";
 
 type Client = any;
 
@@ -188,7 +189,7 @@ function buildStrategicContent(base: Record<string, unknown>, proposal: any) {
       },
       temas: themes,
       renuncias: firstFilledArray<string>(proposal.renunciations, proposal.renuncias),
-      riscos: firstFilledArray<string>(proposal.risks, proposal.riscos, proposal.riscos_estrategicos),
+      riscos: normalizeRiskList(proposal.risks, proposal.riscos, proposal.riscos_estrategicos),
       decisoes_pendentes: firstFilledArray<string>(proposal.pendingDecisions, proposal.pending_decisions, proposal.decisoes_pendentes),
       aprendizados_historicos: firstFilledArray<string>(proposal.historicalLessons, proposal.historical_lessons, proposal.aprendizados_historicos),
       projetos: projects,
@@ -236,7 +237,7 @@ function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, per
   const learningFocus = firstFilledArray<string>(proposal.learningFocus, proposal.foco_aprendizado);
   const annualAlignment = proposal.annualAlignment ?? proposal.alinhamento_anual ?? {};
   const annualException = asText(annualAlignment.status).toLowerCase() === "exception";
-  const risks = firstFilledArray<string>(proposal.risks, proposal.riscos);
+  const risks = normalizeRiskList(proposal.risks, proposal.riscos);
   const tradeOffs = firstFilledArray<string>(proposal.tradeOffs, proposal.trade_offs, proposal.renuncias);
   const cadence = asText(proposal.cadence ?? proposal.cadencia);
   const sharedActions = normalizeActions(proposal.sharedActions ?? proposal.acoesTransversais, "T");
@@ -300,7 +301,7 @@ function buildMonthlyContent(base: Record<string, unknown>, proposal: any, perio
     objectives.map((objective) => objective.parentTitle ?? objective.vinculo),
   );
   const backlog = firstFilledArray<string>(proposal.backlog, proposal.tradeOffs, proposal.trade_offs, proposal.renuncias);
-  const risks = firstFilledArray<string>(proposal.risks, proposal.riscos);
+  const risks = normalizeRiskList(proposal.risks, proposal.riscos);
   const blockers = firstFilledArray<string>(proposal.blockers, proposal.bloqueios);
   const cadence = asText(proposal.cadence ?? proposal.cadencia);
   const confidence = asText(proposal.confidence ?? proposal.confianca);

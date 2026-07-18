@@ -126,6 +126,32 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("KPIs vinculados: Margem operacional");
   });
 
+  it("renders structured quarterly risks as readable text", () => {
+    const content = buildPlanDocumentPreview({
+      type: "save_quarterly_plan",
+      risks: [{ descricao: "Baixa adesão dos vendedores", mitigacao: "Acompanhamento semanal" }],
+      quarterlyObjectives: [{
+        title: "Elevar adoção do sistema",
+        current: "40%",
+        target: "80%",
+      }],
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      areaName: "Comercial",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "quarterly",
+      period: "T3 2027",
+    }) as any;
+
+    expect(content.quarterly.riscos).toEqual([
+      "Baixa adesão dos vendedores (mitigação: Acompanhamento semanal)",
+    ]);
+    const whatsapp = renderPlanForWhatsApp(content);
+    expect(whatsapp).toContain("Baixa adesão dos vendedores");
+    expect(whatsapp).toContain("Acompanhamento semanal");
+    expect(whatsapp).not.toContain("[object Object]");
+  });
+
   it("keeps inherited monthly continuity in the canonical document", () => {
     const content = buildPlanDocumentPreview({
       type: "save_monthly_plan",

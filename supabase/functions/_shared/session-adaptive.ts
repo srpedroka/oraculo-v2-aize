@@ -1,6 +1,7 @@
 import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
 import { normalizeQuarterlyKpiLinks, quarterlyKpiLabel, quarterlyKpiLinks } from "./quarterly-kpis.ts";
 import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
+import { normalizeRiskList } from "./risk-normalization.ts";
 
 type SessionEnvelope = {
   reply?: unknown;
@@ -1287,11 +1288,19 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
 
 export function normalizeProposalConfirmationEnvelope(envelope: SessionEnvelope, sessionType: string) {
   if (sessionType === "monthly" && text(asRecord(envelope.proposal).type) === "save_monthly_plan") {
-    const proposal = normalizeMonthlyContinuity(envelope.proposal);
+    const continuousProposal = asRecord(normalizeMonthlyContinuity(envelope.proposal));
+    const proposal = {
+      ...continuousProposal,
+      risks: normalizeRiskList(continuousProposal.risks, continuousProposal.riscos),
+    };
     return { ...envelope, proposal, reply: proposalConfirmationReply(proposal, sessionType) };
   }
   if (sessionType !== "quarterly" || text(asRecord(envelope.proposal).type) !== "save_quarterly_plan") return envelope;
-  const proposal = normalizeQuarterlyKpiLinks(normalizeQuarterlySharedActions(envelope.proposal));
+  const quarterlyProposal = asRecord(normalizeQuarterlyKpiLinks(normalizeQuarterlySharedActions(envelope.proposal)));
+  const proposal = {
+    ...quarterlyProposal,
+    risks: normalizeRiskList(quarterlyProposal.risks, quarterlyProposal.riscos),
+  };
   return {
     ...envelope,
     proposal,

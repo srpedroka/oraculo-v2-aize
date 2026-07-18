@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40 e a regressao limpa r22 preserva 25 aprovacoes. Q4AI passou no staging; falta repetir somente o gestor trimestral experiente R2 para encerrar Q5B.
+Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40 e a regressao limpa r22 preserva 25 aprovacoes. Q4AJ passou no staging; falta repetir somente o gestor trimestral experiente R2 para encerrar Q5B.
 
 ## Objetivo
 
@@ -15,6 +15,7 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - `scripts/strategic-judge-schema.ts`: contrato JSON Schema estrito do judge.
 - `scripts/strategic-q4ah-smoke.ts`: smoke trimestral da fronteira estruturada e da nota objetiva de escopo.
 - `scripts/strategic-q4ai-smoke.ts`: smoke do fechamento trimestral sem pergunta redundante para gestor experiente.
+- `scripts/strategic-q4aj-smoke.ts`: smoke da normalizacao legivel de risco estruturado na proposta, documento e WhatsApp.
 - `scripts/strategic-model-ab.ts`: comparação paga e cega entre Grok 4.3/4.5, com trava de autorização e sem troca automática.
 - `tests/evals/strategic-quality/cases/q1-minimal-annual.json`: primeiro caso sintetico, obrigatoriamente anual.
 - `src/test/strategic-eval-runner.test.ts`: guardas e falhas seguras.

@@ -884,6 +884,14 @@ Este plano só termina quando:
 - Acumulado US$ 13,571522. Producao, frontend e migrations permanecem inalterados; somente `oracle-session` staging mudou.
 - Proxima execucao: arquivar somente a medicao bloqueada com `resume-after-correction Q4AI` e repetir apenas o gestor experiente R2. A regressao geral limpa continua reservada para depois de Q5A-Q5D verdes.
 
+### Atualizacao de execucao: Q4AJ
+
+- A repeticao oficial do gestor experiente R2 passou Conducao 87,50 e Plano 92,50, mas o risco estruturado foi coercido para `[object Object]` no documento. Saida Derivada 68,75 e media 82,92 bloquearam corretamente a Q5B.
+- Riscos textuais ou estruturados agora passam por uma normalizacao server-side unica antes de confirmacao, importacao pronta e documento canonico, cobrindo planos anual, trimestral e mensal sem criar etapa para o gestor.
+- Smoke focado: Conducao 85, Plano Trimestral 92,50, Saida Derivada 100, media 92,50, cleanup completo e custo US$ 0,030452. Acumulado US$ 13,638641.
+- Validacao: 490 unitarios, catalogo 29/29, lint, build/bundle e secret scan 527. Somente `oracle-session` mudou no staging; producao, frontend e migrations seguem intactos.
+- Proxima execucao: `resume-after-correction Q4AJ` e `phase Q5B`, repetindo somente gestor experiente R2. Se passar, Q5B fecha 16/16 e a regressao limpa segue para Q5C; a repeticao geral completa continua reservada para depois de Q5A-Q5D verdes.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

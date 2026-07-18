@@ -144,6 +144,11 @@
       "date": "2026-07-18",
       "gate": "Q4AI",
       "reason": "Um bloco trimestral completo que ja informa risco, mitigacao e foco de aprendizado segue direto para sintese e confirmacao unica; o desafio adicional permanece apenas quando a decisao ainda nao foi testada."
+    },
+    {
+      "date": "2026-07-18",
+      "gate": "Q4AJ",
+      "reason": "Riscos estruturados com descricao e mitigacao sao normalizados server-side em texto legivel antes da confirmacao e das saidas canonicas, impedindo coercao para [object Object] sem perder fidelidade."
     }
   ],
   "runtimeAssignments": [
@@ -181,19 +186,20 @@
     { "path": "supabase/functions/_shared/session-output-schema.ts", "sha256": "dd64b089c64d504e7a1cee6050e4eccc11c11c8fae2441021796044da19a1927" },
     { "path": "supabase/functions/_shared/session-canonical-envelope.ts", "sha256": "7311ef113b53fc9538ea7db3a49b9fae27864d28e9c76247ee4dd60f22279af7" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "f91c93d67b40275f62711a9e647d6f8d67170a150bf295aea606f44ce58b7c99" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "7332941115660bd2e32561f0d7028fcef81b85b085836f93b0d11fbfea6d03f7" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "bb581423d7d5ea2028bf55559d761d0973e9c6e6767c391fafdb157d69c9bac5" },
     { "path": "supabase/functions/_shared/quarterly-kpis.ts", "sha256": "891460d61b700f512f23fd4f26943e0d8dc34e2773f8d82c3cab57a63b108b60" },
     { "path": "supabase/functions/_shared/quarterly-actions.ts", "sha256": "5fc44ff140563b23fae00cc4aac02210dd6e9f5e75105fc0c71f9fc2c0476516" },
     { "path": "supabase/functions/_shared/session-runtime.ts", "sha256": "12995aaf4d99eb1db2713d2378ee852e422e4bd895b19a237b49144a6ce2d010" },
-    { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "86297cc29cab303cd84d5aace3c4090425271df305db6a3764828422d67cff08" },
+    { "path": "supabase/functions/_shared/session-ready-plans.ts", "sha256": "6bc58498893c02c4faff7a672bd8dde786642433b26fa7d1c483bb34d6bfdf3c" },
     { "path": "supabase/functions/_shared/session-imports.ts", "sha256": "d9ed3d6f0c0f8db62b8a9d029fdee77604b827d7aa348b5e69f2ff2322697820" },
     { "path": "supabase/functions/_shared/plan-context.ts", "sha256": "dcafa85416ea4cae8ca94c828b16ee77fb80ee884cb6a984aa4748f3d2789945" },
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "308c34138e9d0ec74b42ce6b90bfa13f2a75233e9df4d4918a77770608da0896" },
     { "path": "supabase/functions/_shared/model-structured-output.ts", "sha256": "6bea8c60171081ec8e5d6e770a4ede02c0cdc2b3caa8a00a0165440b809ac6e2" },
     { "path": "supabase/functions/_shared/proposals.ts", "sha256": "2f2bc94b0d5f614cdafc3e9eeb41bc474e51ca6faa86ce6b241c851fc2d45279" },
-    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "c440cdc0fc28d72b68ece7ec142b8b534d705ca8f80d89b59032bddc4ea5db03" },
+    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "3d6a909574e3d386ce772da4515ac103b4061453b633107e71b62b7c76bafe9f" },
+    { "path": "supabase/functions/_shared/risk-normalization.ts", "sha256": "2dc10a4e8306653f06e049b0ec9e1283ee94dd999d7b419f4fc00734d09628b5" },
     { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "482ccf7f87f67cf579a8323be11ea1ee0cae61fffdb989aec68d8d869ab6313b" },
     { "path": "supabase/functions/_shared/close-quality.ts", "sha256": "282de2b9ca4ea1ef76f1149ff4d96cfea453d50a3f334a7a10b2d64ddde527d6" },
     { "path": "supabase/functions/_shared/periods.ts", "sha256": "ff0b89f58abbd4929b4fae20eede319aebe1ee1b3632a10152574f3e33e98792" },

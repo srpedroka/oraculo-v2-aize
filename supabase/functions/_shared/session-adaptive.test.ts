@@ -1212,6 +1212,25 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
+  it("normalizes structured quarterly risks before confirmation", () => {
+    const normalized = normalizeProposalConfirmationEnvelope({
+      proposal: {
+        type: "save_quarterly_plan",
+        risks: [{ descricao: "Baixa adesão dos vendedores", mitigacao: "Acompanhamento semanal" }],
+        quarterlyObjectives: [{
+          result: "Elevar adoção do sistema",
+          current: "40%",
+          target: "80%",
+        }],
+      },
+    }, "quarterly");
+
+    expect((normalized.proposal as any).risks).toEqual([
+      "Baixa adesão dos vendedores (mitigação: Acompanhamento semanal)",
+    ]);
+    expect(JSON.stringify(normalized.proposal)).not.toContain("[object Object]");
+  });
+
   it("summarizes identical transversal actions once across quarterly objectives", () => {
     const action = {
       description: "publicar o padrão operacional",
