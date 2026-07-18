@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Baseline de qualidade e evidencia imutavel
+
+Decisao: relatorios historicos da Q3 permanecem imutaveis e uma evolucao posterior do catalogo e registrada como limitacao, nao como falha retroativa da baseline. O gate continua bloqueando qualquer rodada Q5 que divergir do catalogo aprovado no momento da execucao. Comparacoes de nota informam explicitamente quando as entradas historicas nao sao literalmente identicas.
+
+Motivo: dez rodadas anuais da Q3 preservavam o texto auxiliar anterior aos rotulos estruturais adicionados depois. Recalcular a Q3 contra o arquivo novo gerou um bloqueio artificial, apesar de a r24 atual ter passado 40/40 e repetido o catalogo vigente.
+
+Consequencias: nao se apaga, reescreve ou simula evidencia antiga; deriva historica fica visivel no relatorio. O owner pode aceitar a limitacao sem nova chamada paga, como ocorreu na Q5 r24. Mudancas futuras no input atual continuam exigindo nova medicao ou decisao humana explicita.
+
 ## 2026-07-18 - Fidelidade das acoes trimestrais e validada antes da proposta
 
 Decisao: quando o gestor lista duas ou mais acoes e nao explicita dono e criterio verificavel para cada uma, o servidor mantem a sessao aberta com uma unica pergunta que testa capacidade e solicita somente os campos faltantes. A regra atua tanto se o modelo tentar propor quanto se fizer uma pergunta organica. Proposta prematura e `state_patch` gerado nesse turno sao descartados; `realizado`, `feito`, `concluido` e `finalizado` nao contam como criterio de conclusao.

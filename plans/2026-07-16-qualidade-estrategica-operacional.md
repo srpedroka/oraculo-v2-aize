@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 8/8; proxima fase Q5D**
+Status: **Mapa A aprovado; Q5 integral r24 em 40/40 e Q6 aceita pelo owner; proxima fase O0**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -1014,3 +1014,11 @@ Smoke R2 aprovado em 100/100; custo US$ 0,046011; acumulado US$ 14,733149. Proxi
 A r23 concluiu Q5A 10/10 e aprovou 14 das 16 medicoes trimestrais antes de bloquear o gestor experiente R1. O modelo montou uma boa estrutura, mas pulou o desafio, inferiu donos e completou a segunda acao com `realizado`; Conducao 72,50 bloqueou apesar de Plano 92,50 e Saida 93,75.
 
 A Q4AP moveu essa decisao para o servidor. Duas ou mais acoes sem dono/criterio explicitos recebem uma unica pergunta sobre capacidade e os campos faltantes, com descarte de proposta e estado prematuros. O guard atua tambem quando o modelo faz uma pergunta organica e recusa criterios genericos. Os tres smokes custaram US$ 0,116052; o final passou com Conducao 96,25, Plano 100, Saida 100 e media 98,75. Acumulado US$ 15,909170. Proximo passo: commit/push, reiniciar a grade como r24 desde zero, rodar deterministas e Q5A-Q5D completas com fail-fast. Nenhuma aprovacao da r23 sera preservada.
+
+## Atualizacao 2026-07-18 - Q5/Q6 aprovadas; Mapa A encerrado
+
+A regressao integral r24 foi executada desde zero e terminou 40/40: Q5A 10/10, Q5B 16/16, Q5C 8/8 e Q5D 6/6. Media conjunta 97,23, zero falha critica, zero check reprovado, 15/15 entregas cobertas e mediana de turnos 4 -> 3. A grade custou US$ 1,443641; acumulado do plano US$ 17,352811.
+
+Dez relatorios anuais da Q3 usam o texto auxiliar historico anterior a refinamentos do catalogo. Isso e uma limitacao da comparacao antiga, nao falha das 40 medicoes atuais, que repetiram integralmente o catalogo aprovado. O laboratorio foi corrigido para nao invalidar retroativamente uma baseline imutavel e continua bloqueando qualquer divergencia da Q5 atual. O comparativo foi recalculado sem IA e aprovado automaticamente.
+
+O owner decidiu nao repetir chamadas pagas e aprovou a Q5/Q6 com a limitacao documentada. O pacote cego A/B foi preservado para auditoria, sem criar nova medicao. O Mapa A esta encerrado. Proxima fatia: **O0 - preflight e checkpoint de recuperacao**, com briefing e autorizacao antes de qualquer acao em producao.

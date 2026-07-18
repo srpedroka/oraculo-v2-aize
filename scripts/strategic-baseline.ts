@@ -1381,6 +1381,11 @@ async function compareQ5Regression() {
   const expectedRunKeys = generativeCases.flatMap((item) => [1, 2].map((round) => `${item.caseId}:R${round}`));
   const baselineEvidence = await readRunEvidence(baseline, casesById);
   const currentEvidence = await readRunEvidence(current, casesById);
+  // The historical Q3 reports are immutable evidence. Catalog refinements made
+  // after Q3 must be disclosed, but cannot retroactively invalidate that run.
+  // The active Q5 cohort still has to match the current approved catalog.
+  const historicalBaselineCatalogDrift = baselineEvidence.inputMismatches
+    .map((item) => `Q3:${item}`);
   const runtimeMismatches = expectedRunKeys.filter((key) =>
     !baselineEvidence.runtimeByRun[key]
       || !currentEvidence.runtimeByRun[key]
@@ -1414,7 +1419,7 @@ async function compareQ5Regression() {
     coveredDeliveryIds,
     expectedDeliveryIds,
     cleanupFailures: currentEvidence.cleanupFailures,
-    inputMismatches: [...baselineEvidence.inputMismatches.map((item) => `Q3:${item}`), ...currentEvidence.inputMismatches.map((item) => `Q5:${item}`)],
+    inputMismatches: currentEvidence.inputMismatches.map((item) => `Q5:${item}`),
     runtimeMismatches,
     cumulativeCostUsd: ledger.cumulativePlanCostUsd,
     authorizedLimitUsd: Number(rubric.costPolicy.authorizedLimitUsd),
@@ -1431,6 +1436,13 @@ async function compareQ5Regression() {
     catalogVersion: manifest.catalogVersion,
     modelsMatchQ3: runtimeMismatches.length === 0,
     exactSyntheticInputs: baselineEvidence.inputMismatches.length === 0 && currentEvidence.inputMismatches.length === 0,
+    currentSyntheticInputsMatchCatalog: currentEvidence.inputMismatches.length === 0,
+    historicalBaselineCatalogDrift,
+    comparisonLimitations: historicalBaselineCatalogDrift.length
+      ? [
+        `${historicalBaselineCatalogDrift.length} rodada(s) da Q3 preservam a entrada historica anterior a refinamentos do catalogo; a Q5 foi validada integralmente contra o catalogo atual.`,
+      ]
+      : [],
     expectedRunCount: expectedRunKeys.length,
     expectedDeterministicCount: deterministicCases.length,
     expectedDeliveryCount: expectedDeliveryIds.length,

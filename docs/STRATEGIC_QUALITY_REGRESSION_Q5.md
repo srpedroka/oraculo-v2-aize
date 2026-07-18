@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **incremental r22 em 40/40; Q4AP aprovada; regressao integral r24 reiniciara desde zero**
+Status: **regressao integral r24 aprovada 40/40; gate automatico aprovado; aceite do owner registrado**
 
 ## Objetivo
 
@@ -25,6 +25,25 @@ A r23 aprovou a matriz, Q5A 10/10 e as primeiras 14 medicoes Q5B. `Q2B-QUARTERLY
 A Q4AP compara as acoes explicitamente fornecidas pelo gestor antes de aceitar a proposta. Quando duas ou mais acoes nao trazem dono e criterio por acao, o servidor substitui proposta ou pergunta organica por uma unica pergunta sobre capacidade e dados faltantes; nao persiste o rascunho nem o estado gerado. Criterios genericos tambem falham na validacao. Os dois primeiros smokes foram preservados como calibracao porque revelaram, respectivamente, uma invencao plausivel e o caminho sem proposta. O terceiro passou com Conducao 96,25, Plano Trimestral 100, Saida Derivada 100 e media 98,75. Custos Q4AP: US$ 0,030323 + US$ 0,038770 + US$ 0,046959 = US$ 0,116052; acumulado US$ 15,909170.
 
 Validacao local: 509 unitarios, catalogo 29/29, lint, build/bundle, secret scan em 533 arquivos e diff check. Somente `oracle-session` foi publicada no staging. `restart-clean-after-correction Q4AP` arquivara as 24 aprovacoes e o bloqueio da r23, abrira `2026-07-18.q5-clean-regression-r24-q4ap` vazia e repetira toda a grade. Producao, frontend, migrations, banco real, WhatsApp real e Evolution permanecem inalterados.
+
+### Fechamento da regressao integral r24
+
+A r24 repetiu a matriz deterministica e as quatro fases generativas desde zero. O resultado final foi 40/40 medicoes aprovadas: Q5A 10/10, Q5B 16/16, Q5C 8/8 e Q5D 6/6. Nao houve erro de execucao, falha critica, check reprovado ou residuo de organizacao descartavel. A media conjunta foi 97,23; a mediana de turnos do gestor caiu de 4 para 3. Todas as 15 entregas avaliadas ficaram cobertas.
+
+| Rubrica | Media r24 | Minimo |
+|---|---:|---:|
+| Conducao | 96,44 | 85,00 |
+| Plano Anual | 98,00 | 93,75 |
+| Plano Trimestral | 98,28 | 97,50 |
+| Plano Mensal | 99,22 | 97,50 |
+| Revisao/Fechamento | 95,00 | 83,75 |
+| Saida Derivada | 96,46 | 81,25 |
+
+A grade r24 custou US$ 0,875035 de geracao e US$ 0,568606 de judge, total US$ 1,443641. O acumulado do plano terminou em US$ 17,352811, abaixo da parada preventiva de US$ 19 e do limite autorizado de US$ 20.
+
+O primeiro comparativo foi bloqueado apenas porque dez relatorios anuais imutaveis da Q3 preservam a versao antiga do texto auxiliar, anterior aos rotulos `Objetivos (4)` e `Projetos (4)`. As 40 entradas da Q5 correspondem ao catalogo atual. O comparador passou a tratar essa deriva historica como limitacao declarada, sem invalidar retroativamente a baseline; divergencia da Q5 contra o catalogo atual continua bloqueante. O recálculo, sem chamada de IA, ficou `approved-automatic`.
+
+Em 2026-07-18, o owner decidiu nao repetir os testes pagos porque todas as 40 medicoes atuais ja haviam passado e aceitou o resultado com essa limitacao documentada. O pacote cego A/B foi gerado e preservado em `.agents-private/strategic-q5-human-review.md`; ele nao foi usado para alegar nova medicao. Producao continua inalterada.
 
 ### Regressao integral e Q4AO
 

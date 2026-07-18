@@ -703,6 +703,14 @@ describe("Q3 strategic baseline", () => {
     expect(comparison.managerTurns).toEqual({ baselineMedian: 4, currentMedian: 4, increaseRatio: 0 });
   });
 
+  it("nao invalida retroativamente a baseline quando apenas o catalogo historico derivou", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain("historicalBaselineCatalogDrift");
+    expect(source).toContain("inputMismatches: currentEvidence.inputMismatches");
+    expect(source).toContain("currentSyntheticInputsMatchCatalog");
+    expect(source).not.toContain("inputMismatches: [...baselineEvidence.inputMismatches");
+  });
+
   it("bloqueia Q5 com nota baixa, falha critica, input divergente ou conversa longa", () => {
     const comparison = compareStrategicRegression({
       baselineRuns: [{
