@@ -376,7 +376,15 @@ export async function processPlanningMessage(
         contextText: context,
       });
     }
-    if (session.type === "strategic") return normalizeStrategicHistoricalLessons(envelope, conversationText);
+    if (session.type === "strategic") {
+      const normalized = envelope?.proposal?.type === "save_strategic_plan"
+        ? {
+          ...envelope,
+          proposal: normalizeReadyStrategicProposal(envelope.proposal, session.period, { fillMissingLabels: false }),
+        }
+        : envelope;
+      return normalizeStrategicHistoricalLessons(normalized, conversationText);
+    }
     if (session.type !== "quarterly") return envelope;
     const priorityEnvelope = challengeQuarterlyPriorityOverload({
       envelope,

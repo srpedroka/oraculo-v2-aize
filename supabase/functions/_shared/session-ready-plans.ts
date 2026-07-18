@@ -43,8 +43,13 @@ function kpiLinkLabels(value: unknown) {
   return normalizeKpiLinks(value).map((item) => labels[item.kpiKey]).filter(Boolean);
 }
 
-export function normalizeReadyStrategicProposal(rawProposal: any, period: string) {
+export function normalizeReadyStrategicProposal(
+  rawProposal: any,
+  period: string,
+  options: { fillMissingLabels?: boolean } = {},
+) {
   const year = Number(rawProposal?.year ?? currentYearFromPeriod(period));
+  const fillMissingLabels = options.fillMissingLabels ?? true;
   const drivers = rawProposal?.drivers && typeof rawProposal.drivers === "object" ? rawProposal.drivers : {};
   const swot = rawProposal?.swot && typeof rawProposal.swot === "object" ? rawProposal.swot : {};
 
@@ -72,9 +77,9 @@ export function normalizeReadyStrategicProposal(rawProposal: any, period: string
     executiveSummary: asText(rawProposal?.executiveSummary ?? rawProposal?.executive_summary ?? rawProposal?.resumoExecutivo),
     objectives: asArray<any>(rawProposal?.objectives ?? rawProposal?.objetivos)
       .map((objective) => ({
-        title: asText(objective?.title ?? objective?.titulo, "Objetivo estratégico"),
+        title: asText(objective?.title ?? objective?.titulo, fillMissingLabels ? "Objetivo estratégico" : ""),
         type: asText(objective?.type ?? objective?.tipo).toLowerCase().includes("seed") || asText(objective?.type ?? objective?.tipo).toLowerCase().includes("plantio") ? "seed" : "harvest",
-        result: asText(objective?.result ?? objective?.resultado),
+        result: asText(objective?.result ?? objective?.resultado, asText(objective?.target ?? objective?.meta)),
         current: asText(objective?.current ?? objective?.baseline ?? objective?.valor_atual ?? objective?.atual),
         metric: asText(objective?.metric ?? objective?.metrica ?? objective?.indicador),
         target: asText(objective?.target ?? objective?.meta),
@@ -89,7 +94,7 @@ export function normalizeReadyStrategicProposal(rawProposal: any, period: string
       .slice(0, 8),
     projects: asArray<any>(rawProposal?.projects ?? rawProposal?.projetos)
       .map((project) => ({
-        name: asText(project?.name ?? project?.nome, "Projeto estratégico"),
+        name: asText(project?.name ?? project?.nome, fillMissingLabels ? "Projeto estratégico" : ""),
         owner: asText(project?.owner ?? project?.responsavel),
         deadline: asText(project?.deadline ?? project?.prazo),
         linkedObjectiveTitle: asText(project?.linkedObjectiveTitle ?? project?.objetivoVinculado ?? project?.objetivo_vinculado),

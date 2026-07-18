@@ -739,13 +739,16 @@ export function buildAdaptiveRepairDirective(reasons: string[], rejectedReply: s
   const quarterlyProceedInstruction = reasons.includes("quarterly_proceed_after_challenge_without_proposal")
     ? "\nO bloco trimestral completo e a checagem estrategica ja foram concluídos. A decisao de seguir sem evidencia adicional e consciente. Gere agora a proposal save_quarterly_plan completa e termine com uma unica confirmacao; nao faca outra pergunta de conteudo."
     : "";
+  const strategicProposalInstruction = reasons.includes("strategic_incomplete_proposal")
+    ? "\nA proposta anual saiu incompleta. Releia o bloco concreto ja presente na conversa e reconstrua save_strategic_plan agora. Cada objetivo exige title, type, result, current, metric, target, deadline, source, strategies, owner e period; cada projeto exige name, owner, deadline e linkedObjectiveTitle. Se target ja estiver confirmado, result pode repetir esse mesmo alvo. Nao peca ao gestor para reenviar dados que ja aparecem no historico."
+    : "";
   return `CORRECAO INTERNA OBRIGATORIA:
 A resposta anterior foi recusada antes de chegar ao gestor:
 ${labels}
 
 Trecho recusado: ${text(rejectedReply).replace(/\s+/g, " ").slice(0, 900) || "envelope invalido"}
 
-Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}`;
+Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}${strategicProposalInstruction}`;
 }
 
 export function safeAdaptiveNextPhase(currentPhase: string, requestedPhase: unknown, phases: string[], reasons: string[]) {

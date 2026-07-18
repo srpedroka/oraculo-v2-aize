@@ -26,11 +26,23 @@ describe("ready strategic proposal quality fields", () => {
     expect(proposal.historicalLessons).toEqual(["Baseline precisa estar explícita"]);
     expect(proposal.pendingDecisions).toEqual(["Validar delegação"]);
     expect(proposal.objectives[0]).toMatchObject({
+      result: "80%",
       current: "55%",
       deadline: "2026-12-31",
       source: "CRM",
       strategies: ["Revisar previsão semanalmente"],
     });
+  });
+
+  it("does not invent objective or project labels for conversational proposals", () => {
+    const proposal = normalizeReadyStrategicProposal({
+      year: 2027,
+      objectives: [{ target: "80%" }],
+      projects: [{ owner: "Ana" }],
+    }, "2027", { fillMissingLabels: false });
+
+    expect(proposal.objectives).toEqual([]);
+    expect(proposal.projects).toEqual([]);
   });
 });
 

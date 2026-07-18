@@ -859,6 +859,14 @@ Este plano só termina quando:
 - Quatro tentativas: US$ 0,203590; acumulado US$ 11,334556. Validacao: 462 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 511.
 - Proxima execucao: `restart-clean-after-correction Q4AD`, deterministica e Q5A-Q5D completas desde zero.
 
+### Atualizacao de execucao: Q4AE
+
+- A regressao limpa apos a Q4AD aprovou `Q2A-ANNUAL-VAGUE-ASPIRATION-001` R1, mas a R2 bloqueou: o modelo devolveu um envelope anual quase completo sem `result`, o validador o descartou e o reparo generico pediu tres vezes um bloco concreto que ja estava na conversa.
+- A Q4AE normaliza a proposta anual antes da validacao e usa o alvo confirmado como resultado quando esse campo redundante estiver ausente. Se ainda houver estrutura incompleta, a diretiva de reparo enumera os campos canonicos, manda reler o historico e proibe pedir novamente fatos ja informados. O condutor tambem deixa titulo/nome realmente ausente ser recusado, sem inserir rótulo generico; o importador preserva seu comportamento anterior.
+- Dois smokes exatos R2: Conducao 100, Plano Anual 100, media 100 em ambos; US$ 0,049654 + US$ 0,049553 = US$ 0,099207; acumulado US$ 11,592459.
+- Validacao: 466 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 512. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+- Proxima execucao: `restart-clean-after-correction Q4AE`, matriz deterministica e Q5A-Q5D completas desde zero. Nova falha volta a correcao e ao smoke somente do caso afetado antes de outro reinicio integral.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

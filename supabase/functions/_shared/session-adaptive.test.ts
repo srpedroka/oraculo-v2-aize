@@ -1346,6 +1346,17 @@ describe("adaptive planning session guard Q4A", () => {
     }, { sessionType: "strategic", userMessage })).toContain("strategic_fact_block_restart");
   });
 
+  it("repairs an incomplete annual proposal from the concrete block already in conversation", () => {
+    const directive = buildAdaptiveRepairDirective(
+      ["strategic_incomplete_proposal"],
+      "O plano anual ficou pronto. Posso gravar?",
+    );
+
+    expect(directive).toContain("Releia o bloco concreto ja presente na conversa");
+    expect(directive).toContain("title, type, result, current, metric, target, deadline, source, strategies, owner e period");
+    expect(directive).toContain("Nao peca ao gestor para reenviar dados");
+  });
+
   it("blocks invented percentage examples during annual diagnosis", () => {
     const blocked = reasons({
       reply: "Implantar o sistema é o meio. Pode mirar, por exemplo, faturamento 20% maior ou margem de 15%. Qual resultado importa?",
