@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; a regressao limpa incremental r22 comprovou Q5A 10/10, Q5B 16/16, Q5C 8/8 e Q5D 6/6, total 40/40. Falta executar uma ultima grade integral desde zero para provar que todas as correcoes convivem sem depender de resultados preservados.
+Status: Q0-Q4 concluidas; a regressao limpa incremental r22 comprovou 40/40. A primeira regressao integral desde zero parou na oitava medicao anual e originou a Q4AO, aprovada no smoke exato. A proxima grade r23 reinicia matriz e Q5A-Q5D sem preservar resultados.
 
 ## Objetivo
 

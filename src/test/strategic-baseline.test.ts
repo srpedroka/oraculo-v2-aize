@@ -623,6 +623,17 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('Q4AF: "2026-07-18.q5-clean-regression-r22-q4af"');
   });
 
+  it("reinicia toda a regressao limpa depois da correcao Q4AO", () => {
+    const smoke = readFileSync("scripts/strategic-q4ao-smoke.ts", "utf8");
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2A-ANNUAL-REPEATED-GOAL-004"');
+    expect(smoke).toContain('executeCase(item, "Q2A", 2');
+    expect(smoke).toContain('runLabel: "q4ao"');
+    expect(smoke).toContain('ledgerLabel: "Q4AO"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+    expect(source).toContain('Q4AO: "2026-07-18.q5-clean-regression-r23-q4ao"');
+  });
+
   it("retoma somente a medicao bloqueada depois da correcao Q4AG", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('"Q4Y", "Q4AG"');

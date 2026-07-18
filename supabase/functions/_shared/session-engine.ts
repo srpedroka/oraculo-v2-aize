@@ -393,7 +393,7 @@ export async function processPlanningMessage(
           proposal: normalizeReadyStrategicProposal(normalized.proposal, session.period, { fillMissingLabels: false }),
         }
         : normalized;
-      normalized = normalizeStrategicHistoricalLessons(normalized, conversationText);
+      normalized = normalizeStrategicHistoricalLessons(normalized, conversationText, session.period);
     }
     if (session.type === "quarterly") {
       const priorityEnvelope = challengeQuarterlyPriorityOverload({

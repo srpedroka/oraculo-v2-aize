@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Anos historicos nao confirmados tambem sao neutralizados na conversa
+
+Decisao: em sessoes estrategicas, o servidor normaliza anos absolutos da resposta visivel quando eles nao aparecem na conversa nem correspondem ao periodo canonico da sessao. Em contexto de meta repetida ou ciclo anterior, o ano vira `no ciclo anterior`; o plano, os numeros, a pergunta e os anos confirmados permanecem iguais.
+
+Motivo: a Q4AB ja protegia `historicalLessons`, mas a regressao integral mostrou a mesma atribuicao indevida numa fala intermediaria: `tentada em 2026`. O plano final estava correto e verificavel, mas a frase reduziu fidelidade e acionou `CRIT-FABRICATION-001`.
+
+Consequencias: nao existe nova etapa nem pergunta para o gestor. A Q4AO age depois da geracao e antes de validar/exibir a mensagem, sem alterar dados ou aceitar proposta insegura. Smoke exato R2: Conducao 100, Plano Anual 100, media 100; custo US$ 0,046011; acumulado US$ 14,733149.
+
 ## 2026-07-18 - Fechamento separa estado operacional de leitura executiva
 
 Decisao: fechamentos preservam o valor atingido em `review.current` porque esse campo atualiza o progresso operacional do objetivo. Para documentos e canais, o contrato explicita separadamente `baseline`, `achieved` e `verdict`; `statusFinal` continua sendo o estado operacional aceito pelo banco. A interface, o PDF e o WhatsApp nao podem chamar o atingido de baseline.

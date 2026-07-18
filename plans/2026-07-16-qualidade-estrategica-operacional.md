@@ -1002,3 +1002,9 @@ O smoke exato passou com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 
 A retomada Q4AN repetiu somente o fechamento mensal parcial R1 e concluiu todas as seis medicoes Q5D. Medias da fase: Conducao 97,92, Revisao/Fechamento 94,79 e Saida Derivada 96,04; custo US$ 0,149580. A grade completa ficou 40/40, media conjunta 96,64 e zero erro, falha critica ou check reprovado. As 40 medicoes oficiais custaram US$ 1,611006; o acumulado do plano chegou a US$ 14,318562.
 
 Proximo passo: arquivar a grade incremental aprovada, iniciar uma regressao integral final desde zero, rodar a matriz deterministica e repetir Q5A-Q5D inteiras. Essa rodada e deliberadamente redundante: comprova que as correcoes acumuladas passam juntas sem aproveitar aprovacao anterior. Fail-fast continua ativo; qualquer nova falha interrompe e volta ao ciclo de correcao focada.
+
+## Atualizacao 2026-07-18 - Q4AO aprovada na primeira regressao integral
+
+A grade integral passou matriz e sete medicoes anuais, mas meta repetida R2 atribuiu `2026` a um ciclo que o gestor descreveu apenas como anterior. Plano 96,25 e Conducao 91,25 estavam acima do piso, porem a fidelidade bloqueou por fabricacao. A Q4AO neutraliza somente o ano historico nao confirmado na resposta visivel; o periodo canonico, anos ditos pelo gestor, numeros, plano e pergunta continuam iguais.
+
+Smoke R2 aprovado em 100/100; custo US$ 0,046011; acumulado US$ 14,733149. Proximo passo: arquivar as sete aprovacoes e o bloqueio como calibracao, abrir r23 vazia, repetir matriz gratuita e Q5A-Q5D completas. Nenhum resultado da tentativa parcial sera preservado.

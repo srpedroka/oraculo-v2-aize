@@ -67,6 +67,7 @@
     "eval:strategic:q4al": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4al-smoke.ts",
     "eval:strategic:q4am": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4am-smoke.ts",
     "eval:strategic:q4an": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4an-smoke.ts",
+    "eval:strategic:q4ao": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-q4ao-smoke.ts",
     "eval:strategic:model-ab": "ORACULO_STRATEGIC_COHORT=q5 node --experimental-strip-types scripts/strategic-model-ab.ts",
     "eval:strategic:review": "RUN_STRATEGIC_REVIEW_LIVE=true vitest --config vitest.integration.config.ts run tests/integration/strategic-review-live.test.ts --passWithNoTests=false",
     "test:master:setup": "node --experimental-strip-types scripts/master-test.ts setup",

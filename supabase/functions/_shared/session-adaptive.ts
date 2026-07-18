@@ -552,29 +552,37 @@ function supportedConversationYears(conversationText: string) {
   return new Set(conversationText.match(/\b20\d{2}\b/g) ?? []);
 }
 
-function normalizeHistoricalLessonYears(value: unknown, conversationText: string) {
-  const supportedYears = supportedConversationYears(conversationText);
-  const previousCycleConfirmed = /\b(?:ciclo|ano|per[ií]odo)\s+anterior\b/i.test(conversationText);
+function normalizeHistoricalYearText(value: unknown, conversationText: string, canonicalPeriod = "") {
+  const supportedYears = supportedConversationYears(`${conversationText}\n${canonicalPeriod}`);
+  const previousCycleConfirmed = /\b(?:ciclo|ano|per[ií]odo)\s+anterior\b/i.test(conversationText)
+    || STRATEGIC_REPEATED_GOAL_PATTERN.test(conversationText);
+  return text(value).replace(/\b(?:em|no ano de|ano de)\s+(20\d{2})\b|\b(20\d{2})\b/gi, (match, qualifiedYear, bareYear) => {
+    const year = text(qualifiedYear || bareYear);
+    if (supportedYears.has(year)) return match;
+    return previousCycleConfirmed ? "no ciclo anterior" : "em período não confirmado";
+  }).replace(/\bno ciclo anterior\s+no ciclo anterior\b/gi, "no ciclo anterior");
+}
+
+function normalizeHistoricalLessonYears(value: unknown, conversationText: string, canonicalPeriod = "") {
   return (Array.isArray(value) ? value : [])
     .map(text)
     .filter(Boolean)
-    .map((lesson) => lesson.replace(/\b(?:em|no ano de|ano de)\s+(20\d{2})\b|\b(20\d{2})\b/gi, (match, qualifiedYear, bareYear) => {
-      const year = text(qualifiedYear || bareYear);
-      if (supportedYears.has(year)) return match;
-      return previousCycleConfirmed ? "no ciclo anterior" : "em período não confirmado";
-    }).replace(/\bno ciclo anterior\s+no ciclo anterior\b/gi, "no ciclo anterior"));
+    .map((lesson) => normalizeHistoricalYearText(lesson, conversationText, canonicalPeriod));
 }
 
-export function normalizeStrategicHistoricalLessons(envelope: SessionEnvelope, conversationText: string) {
-  const proposal = asRecord(envelope.proposal);
-  if (text(proposal.type) !== "save_strategic_plan") return envelope;
+export function normalizeStrategicHistoricalLessons(envelope: SessionEnvelope, conversationText: string, canonicalPeriod = "") {
+  const normalizedEnvelope = typeof envelope.reply === "string"
+    ? { ...envelope, reply: normalizeHistoricalYearText(envelope.reply, conversationText, canonicalPeriod) }
+    : envelope;
+  const proposal = asRecord(normalizedEnvelope.proposal);
+  if (text(proposal.type) !== "save_strategic_plan") return normalizedEnvelope;
   const source = proposal.historicalLessons ?? proposal.historical_lessons ?? proposal.aprendizados_historicos;
-  if (!Array.isArray(source)) return envelope;
+  if (!Array.isArray(source)) return normalizedEnvelope;
   return {
-    ...envelope,
+    ...normalizedEnvelope,
     proposal: {
       ...proposal,
-      historicalLessons: normalizeHistoricalLessonYears(source, conversationText),
+      historicalLessons: normalizeHistoricalLessonYears(source, conversationText, canonicalPeriod),
     },
   };
 }

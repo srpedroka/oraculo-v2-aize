@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **regressao limpa incremental r22 em 40/40; regressao integral final desde zero ainda pendente**
+Status: **incremental r22 em 40/40; regressao integral r23 reiniciara desde zero apos Q4AO**
 
 ## Objetivo
 
@@ -17,6 +17,12 @@ Repetir exatamente as 40 rodadas generativas e os nove casos deterministas da Q3
 - A matriz determinista terminou com oito `pass`, um `pending-human` de UX e zero `fail`.
 
 ## Resultado da tentativa
+
+### Regressao integral e Q4AO
+
+A primeira grade integral desde zero passou a matriz deterministica e sete medicoes Q5A. `Q2A-ANNUAL-REPEATED-GOAL-004` R2 teve plano 96,25, conducao 91,25, checks e cleanup verdes, mas o judge marcou `CRIT-FABRICATION-001`: antes de o gestor dizer `ciclo anterior`, a resposta afirmou que a meta fora tentada em `2026`. O fail-fast impediu as duas medicoes de gestor experiente. Custo do bloqueio US$ 0,051707; acumulado US$ 14,687138.
+
+A Q4AO aplica ao texto visivel a mesma fronteira que a Q4AB aplicava aos aprendizados salvos. Ano historico ausente da conversa e diferente do periodo canonico vira referencia relativa; anos informados e o ano da sessao sao preservados. O smoke R2 passou com Conducao 100 e Plano Anual 100, zero falha/check/residuo. Custo US$ 0,046011; acumulado US$ 14,733149. Como a falha surgiu na prova integral, `restart-clean-after-correction Q4AO` arquiva toda a tentativa parcial e abre r23 vazia; nenhum dos sete resultados sera reutilizado.
 
 ### Fechamento Q5D e grade 40/40
 

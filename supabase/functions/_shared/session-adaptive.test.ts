@@ -475,6 +475,26 @@ describe("adaptive planning session guard Q4A", () => {
     expect(lessons[1]).toContain("2027");
   });
 
+  it("keeps an unsupported historical year out of the visible strategic reply", () => {
+    const normalized = normalizeStrategicHistoricalLessons({
+      reply: "A meta de 95% ja foi tentada em 2026 e fechou em 81%. O que muda agora?",
+      proposal: null,
+    }, "manager: Quero repetir a meta de 95% de entregas no prazo.", "2027");
+
+    expect(normalized.reply).toContain("tentada no ciclo anterior");
+    expect(normalized.reply).not.toContain("2026");
+  });
+
+  it("preserves the canonical period and years stated in the conversation", () => {
+    const normalized = normalizeStrategicHistoricalLessons({
+      reply: "No plano 2027, vamos usar o aprendizado confirmado de 2025.",
+      proposal: null,
+    }, "manager: Em 2025 fechamos o ciclo anterior.", "2027");
+
+    expect(normalized.reply).toContain("2027");
+    expect(normalized.reply).toContain("2025");
+  });
+
   it("turns a vague annual growth aspiration into a contextual strategic choice", () => {
     const vague = adaptiveFallbackReply(false, false, ["vague_without_options"], {
       sessionType: "strategic",
