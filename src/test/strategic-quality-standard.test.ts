@@ -23,6 +23,8 @@ interface RubricFile {
     authorizedLimitUsd: number;
     warningAtUsd: number;
     preventiveStopAtUsd: number;
+    cycleStartCumulativeUsd: number;
+    cycleStartedAt: string;
     perCaseLimitUsd: null;
     reportAfterEveryExecution: string[];
     includedComponents: string[];
@@ -159,6 +161,8 @@ describe("strategic quality standard Q0 R2", () => {
     expect(rubric.costPolicy.warningAtUsd).toBe(15);
     expect(rubric.costPolicy.preventiveStopAtUsd).toBe(19);
     expect(rubric.costPolicy.authorizedLimitUsd).toBe(20);
+    expect(rubric.costPolicy.cycleStartCumulativeUsd).toBeCloseTo(17.35281075, 8);
+    expect(rubric.costPolicy.cycleStartedAt).toBe("2026-07-18");
     expect(rubric.costPolicy.perCaseLimitUsd).toBeNull();
     expect(rubric.costPolicy.warningAtUsd).toBeLessThan(rubric.costPolicy.preventiveStopAtUsd);
     expect(rubric.costPolicy.preventiveStopAtUsd).toBeLessThan(rubric.costPolicy.authorizedLimitUsd);
@@ -168,6 +172,8 @@ describe("strategic quality standard Q0 R2", () => {
       "totalCaseCostUsd",
       "cumulativePlanCostBeforeUsd",
       "cumulativePlanCostAfterUsd",
+      "cycleSpendBeforeUsd",
+      "cycleSpendAfterUsd",
     ]);
     expect(rubric.costPolicy.reportAfterEveryExecution).toEqual([
       "generationCostUsd",
@@ -175,6 +181,8 @@ describe("strategic quality standard Q0 R2", () => {
       "totalCaseCostUsd",
       "cumulativePlanCostBeforeUsd",
       "cumulativePlanCostAfterUsd",
+      "cycleSpendBeforeUsd",
+      "cycleSpendAfterUsd",
     ]);
   });
 

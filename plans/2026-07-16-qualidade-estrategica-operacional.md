@@ -1022,3 +1022,9 @@ A regressao integral r24 foi executada desde zero e terminou 40/40: Q5A 10/10, Q
 Dez relatorios anuais da Q3 usam o texto auxiliar historico anterior a refinamentos do catalogo. Isso e uma limitacao da comparacao antiga, nao falha das 40 medicoes atuais, que repetiram integralmente o catalogo aprovado. O laboratorio foi corrigido para nao invalidar retroativamente uma baseline imutavel e continua bloqueando qualquer divergencia da Q5 atual. O comparativo foi recalculado sem IA e aprovado automaticamente.
 
 O owner decidiu nao repetir chamadas pagas e aprovou a Q5/Q6 com a limitacao documentada. O pacote cego A/B foi preservado para auditoria, sem criar nova medicao. O Mapa A esta encerrado. Proxima fatia: **O0 - preflight e checkpoint de recuperacao**, com briefing e autorizacao antes de qualquer acao em producao.
+
+## Atualizacao 2026-07-18 - novo ciclo financeiro e O0 pausado
+
+O ciclo financeiro anterior foi encerrado em US$ 17,352811 sem apagar o ledger. O owner abriu um novo ciclo de US$ 20, com aviso apos US$ 15 de gasto novo e parada preventiva em US$ 19. O laboratorio agora subtrai `cycleStartCumulativeUsd` apenas para aplicar os limites do ciclo atual; relatorios continuam exibindo o custo historico total. Compra, recarga, upgrade ou assinatura continuam fora dessa autorizacao e exigem aceite separado no momento da cobranca.
+
+O preflight O0 confirmou 31 Functions, 54/54 migrations, frontend/headers e um backup manual verificado externamente com 646 registros. O gate permanece pausado: a branch aprovada ainda nao esta em producao, o CI mais recente da `main` falhou em integracao local, a auditoria do backup aguarda o snapshot incremental do cron e o WhatsApp nao recebe evento desde 13/07. Evidencias e ordem de desbloqueio estao em `docs/OPERATIONAL_PILOT_O0.md`. Nenhum plano real foi criado e nenhum deploy foi feito.

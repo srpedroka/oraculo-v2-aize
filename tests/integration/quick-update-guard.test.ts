@@ -102,7 +102,7 @@ d("atualizações rápidas seguras (staging, webhook real)", () => {
     ]);
     expect(evidenceCount).toBe(0);
     expect(objective).toMatchObject({ status: "on_track", progress: 0 });
-  });
+  }, 60_000);
 
   it("mantém gravação direta quando operação e alvo estão explícitos", async () => {
     await sendText("Evidência no Objetivo de teste E2E: contrato assinado hoje");
@@ -115,7 +115,7 @@ d("atualizações rápidas seguras (staging, webhook real)", () => {
     expect(data).toHaveLength(1);
     expect(data?.[0]).toMatchObject({ objective_id: org!.objectiveId });
     expect(data?.[0].text).toMatch(/contrato assinado hoje/i);
-  });
+  }, 60_000);
 
   it("pede confirmação quando infere o alvo e grava somente depois do sim", async () => {
     await sendText("Concluí o objetivo de teste");

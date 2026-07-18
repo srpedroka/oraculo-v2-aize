@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
+  budgetCycleSpendUsd,
   buildStrategicQualityGate,
   buildDeterministicChecks,
   buildSessionRequests,
@@ -27,6 +28,24 @@ describe("strategic evaluation runner Q1", () => {
     expect(evaluationCase.turns).toHaveLength(10);
     expect(evaluationCase.planType).toBe("strategic");
     expect(evaluationCase.expected.proposalType).toBe("save_strategic_plan");
+  });
+
+  it("starts a renewed budget cycle without erasing historical spend", () => {
+    const renewedPolicy = { ...policy, cycleStartCumulativeUsd: 17.35281075 };
+    expect(budgetCycleSpendUsd(17.35281075, renewedPolicy)).toBe(0);
+    expect(budgetCycleSpendUsd(18.85281075, renewedPolicy)).toBeCloseTo(1.5, 8);
+    expect(() => assertBudgetAllowsNextCall({
+      cumulativePlanCostUsd: 17.35281075,
+      currentCaseCostUsd: 0,
+      reserveUsd: 0.15,
+      policy: renewedPolicy,
+    })).not.toThrow();
+    expect(() => assertBudgetAllowsNextCall({
+      cumulativePlanCostUsd: 36.25281075,
+      currentCaseCostUsd: 0,
+      reserveUsd: 0.15,
+      policy: renewedPolicy,
+    })).toThrow(/parada preventiva/);
   });
 
   it("hard-blocks production and requires an explicitly disposable key", () => {

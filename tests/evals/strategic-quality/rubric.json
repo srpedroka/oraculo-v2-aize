@@ -141,11 +141,13 @@
     "authorizedLimitUsd": 20,
     "warningAtUsd": 15,
     "preventiveStopAtUsd": 19,
+    "cycleStartCumulativeUsd": 17.35281075,
+    "cycleStartedAt": "2026-07-18",
     "perCaseLimitUsd": null,
-    "reportAfterEveryExecution": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostBeforeUsd", "cumulativePlanCostAfterUsd"],
+    "reportAfterEveryExecution": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostBeforeUsd", "cumulativePlanCostAfterUsd", "cycleSpendBeforeUsd", "cycleSpendAfterUsd"],
     "includedComponents": ["generation", "judge"],
-    "caseFields": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostBeforeUsd", "cumulativePlanCostAfterUsd"],
-    "rule": "Nao existe teto isolado por caso. Somar chamadas pagas iniciadas pelo laboratorio e interromper pelo orcamento acumulado do plano; compras, creditos e assinaturas nunca entram nesta autorizacao. Priorizar checks deterministas para saidas derivadas e operacionais."
+    "caseFields": ["generationCostUsd", "judgeCostUsd", "totalCaseCostUsd", "cumulativePlanCostBeforeUsd", "cumulativePlanCostAfterUsd", "cycleSpendBeforeUsd", "cycleSpendAfterUsd"],
+    "rule": "Nao existe teto isolado por caso. Preservar o acumulado historico e aplicar aviso/parada ao gasto desde o inicio do ciclo atual; compras, creditos e assinaturas nunca entram nesta autorizacao. Priorizar checks deterministas para saidas derivadas e operacionais."
   },
   "sanitization": {
     "fixtureAliases": ["ORG_FIXTURE_A", "AREA_FIXTURE_A", "PERSON_FIXTURE_A"],

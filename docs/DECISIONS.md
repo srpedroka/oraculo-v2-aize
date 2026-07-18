@@ -893,6 +893,14 @@ Motivo: 67 deploys de produção consumiram 1.005 créditos do ciclo Netlify, pa
 
 Consequências: agentes devem informar custo antes da ação, nunca inferir autorização financeira e agrupar publicações. O saldo de serviços deve entrar no preflight operacional.
 
+## 2026-07-18 - Ciclos financeiros preservam o acumulado historico
+
+Decisao: ao renovar o orçamento de testes, encerrar o ciclo anterior sem zerar ou reescrever o ledger. O novo limite e aplicado ao delta entre o custo acumulado atual e o acumulado no inicio do ciclo. O owner abriu um segundo ciclo de US$ 20 a partir de US$ 17,352811 historicos, com aviso em US$ 15 novos e parada preventiva em US$ 19 novos.
+
+Motivo: apagar o acumulado esconderia o custo real do desenvolvimento; aplicar o novo teto diretamente ao total antigo bloquearia uma autorizacao valida antes da primeira chamada. Separar auditoria historica de disponibilidade do ciclo resolve os dois problemas.
+
+Consequencias: relatorios e ledger continuam exibindo o total historico; gates financeiros usam `cycleStartCumulativeUsd`; compras, recargas, upgrades e assinaturas nunca sao autorizados por esse limite de consumo e exigem confirmacao explicita separada no momento da cobranca.
+
 ## 2026-07-16 - Conducao adaptativa orientada a decisao e acao
 
 Decisao: sessoes de planejamento nao devem funcionar como formularios fase a fase. O Oraculo aproveita todos os fatos de uma resposta, pula etapas ja satisfeitas e pergunta somente a primeira lacuna que muda uma decisao. Quando a resposta for vaga, oferece duas ou tres possibilidades concretas e neutras; quando estiver completa, segue para sintese e uma unica confirmacao.

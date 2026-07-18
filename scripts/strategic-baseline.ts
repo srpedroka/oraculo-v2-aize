@@ -9,6 +9,7 @@ import { renderPlanForWhatsApp } from "../supabase/functions/_shared/plan-render
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
+  budgetCycleSpendUsd,
   buildStrategicQualityGate,
   sanitizeEvaluationText,
   sanitizeEvaluationValue,
@@ -1421,7 +1422,7 @@ async function compareQ5Regression() {
     cleanupFailures: currentEvidence.cleanupFailures,
     inputMismatches: currentEvidence.inputMismatches.map((item) => `Q5:${item}`),
     runtimeMismatches,
-    cumulativeCostUsd: ledger.cumulativePlanCostUsd,
+    cumulativeCostUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, rubric.costPolicy),
     authorizedLimitUsd: Number(rubric.costPolicy.authorizedLimitUsd),
     minimumPerRubric: Number(rubric.thresholds.minimumPerRubric),
     minimumJointAverage: Number(rubric.thresholds.minimumJointAverage),
@@ -1634,7 +1635,7 @@ async function preflight() {
   console.log(`Catalogo ${manifest.catalogVersion}: ${blocks.reduce((sum, block) => sum + block.cases.length, 0)} casos; gate owner-approved.`);
   console.log(`Staging acessivel; nenhuma organizacao de avaliacao pendente.`);
   console.log(`Gerador ${config.provider}/${config.planningModel}; judge ${config.provider}/${config.judgeModel}; chave descartavel presente e nao exibida.`);
-  console.log(`Custo acumulado atual: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}; limite US$ ${Number(rubric.costPolicy.authorizedLimitUsd).toFixed(2)}.`);
+  console.log(`Custo acumulado historico: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}; consumo do ciclo atual: US$ ${budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, rubric.costPolicy).toFixed(6)} de US$ ${Number(rubric.costPolicy.authorizedLimitUsd).toFixed(2)}.`);
 }
 
 export async function main(args = process.argv.slice(2)) {

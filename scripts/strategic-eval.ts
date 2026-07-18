@@ -11,6 +11,7 @@ import {
   assertEvaluationEnvironment,
   buildStrategicQualityGate,
   buildDeterministicChecks,
+  budgetCycleSpendUsd,
   comparisonFingerprint,
   hasOnlyGroundedYears,
   parseJsonObject,
@@ -766,7 +767,7 @@ export async function executeLiveCase(casePath: string) {
     judgeStatus: judge.status,
     checks,
     cleanupSucceeded,
-    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+    cumulativePlanCostUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd + totalCaseCostUsd, policy),
     authorizedLimitUsd: policy.authorizedLimitUsd,
   });
   if (executionError) technicalGate.reasons.unshift(sanitizeEvaluationText(executionError.message));
@@ -812,6 +813,10 @@ export async function executeLiveCase(casePath: string) {
       totalCaseCostUsd,
       cumulativePlanCostBeforeUsd: ledger.cumulativePlanCostUsd,
       cumulativePlanCostAfterUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+      cycleStartedAt: policy.cycleStartedAt ?? null,
+      cycleStartCumulativeUsd: Number(policy.cycleStartCumulativeUsd) || 0,
+      cycleSpendBeforeUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, policy),
+      cycleSpendAfterUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd + totalCaseCostUsd, policy),
       warningAtUsd: policy.warningAtUsd,
       preventiveStopAtUsd: policy.preventiveStopAtUsd,
       authorizedLimitUsd: policy.authorizedLimitUsd,
@@ -920,7 +925,7 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
     judgeStatus: judge.status,
     checks,
     cleanupSucceeded: true,
-    cumulativePlanCostUsd: cumulativePlanCostAfterUsd,
+    cumulativePlanCostUsd: budgetCycleSpendUsd(cumulativePlanCostAfterUsd, policy),
     authorizedLimitUsd: policy.authorizedLimitUsd,
   });
   const qualityGate = buildStrategicQualityGate({
@@ -951,6 +956,10 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
     judgeCostUsd,
     totalCaseCostUsd,
     cumulativePlanCostAfterUsd,
+    cycleStartedAt: policy.cycleStartedAt ?? null,
+    cycleStartCumulativeUsd: Number(policy.cycleStartCumulativeUsd) || 0,
+    cycleSpendBeforeUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, policy),
+    cycleSpendAfterUsd: budgetCycleSpendUsd(cumulativePlanCostAfterUsd, policy),
     judgeUsage: judge.usage ?? null,
     lastJudgeExecution: {
       judgeCostUsd: newJudgeCostUsd,

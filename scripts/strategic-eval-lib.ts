@@ -65,6 +65,8 @@ export interface EvaluationCostPolicy {
   authorizedLimitUsd: number;
   warningAtUsd: number;
   preventiveStopAtUsd: number;
+  cycleStartCumulativeUsd?: number;
+  cycleStartedAt?: string;
 }
 
 export interface UsageLike {
@@ -404,9 +406,16 @@ export function assertBudgetAllowsNextCall(params: {
   reserveUsd: number;
   policy: EvaluationCostPolicy;
 }): void {
-  const projectedPlan = params.cumulativePlanCostUsd + params.currentCaseCostUsd + params.reserveUsd;
-  if (projectedPlan >= params.policy.preventiveStopAtUsd) throw new Error("RECUSADO: parada preventiva de custo atingida");
-  if (projectedPlan > params.policy.authorizedLimitUsd) throw new Error("RECUSADO: teto financeiro do plano atingido");
+  const projectedCycleSpend = budgetCycleSpendUsd(
+    params.cumulativePlanCostUsd + params.currentCaseCostUsd + params.reserveUsd,
+    params.policy,
+  );
+  if (projectedCycleSpend >= params.policy.preventiveStopAtUsd) throw new Error("RECUSADO: parada preventiva de custo atingida");
+  if (projectedCycleSpend > params.policy.authorizedLimitUsd) throw new Error("RECUSADO: teto financeiro do plano atingido");
+}
+
+export function budgetCycleSpendUsd(cumulativePlanCostUsd: number, policy: EvaluationCostPolicy): number {
+  return Math.max(0, cumulativePlanCostUsd - Math.max(0, Number(policy.cycleStartCumulativeUsd) || 0));
 }
 
 export function buildSessionRequests(
