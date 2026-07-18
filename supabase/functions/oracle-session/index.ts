@@ -3,6 +3,7 @@ import { getUser, serviceClient } from "../_shared/auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   abandonPlanningSession,
+  bindPlanningSessionArea,
   prepareReadyMonthlyPlanProposal,
   confirmPlanningProposal,
   prepareReadyQuarterlyPlanProposal,
@@ -43,6 +44,16 @@ serve(async (req) => {
       const result = await processPlanningMessage(client, {
         sessionId: String(payload.sessionId ?? ""),
         message: String(payload.message ?? ""),
+        userId: user.id,
+        channel: payload.channel === "whatsapp" ? "whatsapp" : "web",
+      });
+      return jsonResponse(result);
+    }
+
+    if (action === "bind_area") {
+      const result = await bindPlanningSessionArea(client, {
+        sessionId: String(payload.sessionId ?? ""),
+        areaId: String(payload.areaId ?? ""),
         userId: user.id,
         channel: payload.channel === "whatsapp" ? "whatsapp" : "web",
       });

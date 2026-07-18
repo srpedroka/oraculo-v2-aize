@@ -1501,3 +1501,21 @@ pnpm run test:e2e:staging
 ```
 
 Publicação exige a migration `20260715193000_administrative_audit.sql`, as Functions `invite-member`, `remove-member`, `set-member-role`, `set-member-area`, `save-ai-settings`, `save-whatsapp-settings`, `save-security-settings`, `save-ai-control-policy`, `organization-backup` e `personal-account`, além do frontend. Depois do deploy, faça uma alteração administrativa reversível em empresa descartável, confirme um único evento sem dados sensíveis e reverta a alteração.
+
+## Recuperar proposta de sessao legada sem area
+
+O runtime atual recusa iniciar plano trimestral, mensal ou fechamento sem area. Se uma proposta antiga exibir `Plano trimestral exige uma área`, nao edite `planning_sessions` manualmente e nao reconduza o plano.
+
+1. Confirme que a proposta continua pendente e que nenhuma linha de objetivo, acao ou documento foi gravada.
+2. No painel do Oraculo, escolha explicitamente a area correta em `Escolha a área antes de gravar`.
+3. Clique `Vincular área`. A operacao preserva proposta e conversa e nao chama IA.
+4. Depois que o seletor desaparecer, confirme a proposta uma unica vez.
+5. Confira contagens, vinculo anual e documento canonico. Repetir o mesmo vinculo e seguro; tentar trocar a area deve falhar.
+
+Para validar em staging, publique somente `oracle-session` e rode:
+
+```bash
+pnpm exec vitest --config vitest.integration.config.ts run tests/integration/planning-session-scope.test.ts --passWithNoTests=false
+```
+
+O teste usa empresa descartavel e prova isolamento entre areas, bloqueio sem area, preservacao da proposta, idempotencia do mesmo vinculo e recusa de troca. Nunca execute a fixture contra producao.

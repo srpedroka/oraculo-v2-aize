@@ -82,6 +82,13 @@ type Client = any;
 
 export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
 
+const AREA_SCOPED_SESSION_TYPES = new Set<PlanningSessionType>([
+  "quarterly",
+  "monthly",
+  "month_close",
+  "quarter_close",
+]);
+
 const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: string }> = {
   strategic: {
     phases: STRATEGIC_PHASES,
@@ -248,6 +255,89 @@ export async function startPlanningSession(
     await insertMessage(client, session, "oracle", conductor.opening, params.channel ?? "web");
   }
   return { session, reply: conductor.opening };
+}
+
+export async function bindPlanningSessionArea(
+  client: Client,
+  params: { sessionId: string; areaId: string; userId: string; channel?: "web" | "whatsapp" },
+) {
+  if (!params.areaId) throw new Error("Selecione a área correta desta proposta");
+
+  const { data: session, error } = await client
+    .from("planning_sessions")
+    .select("*")
+    .eq("id", params.sessionId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!session) throw new Error("Sessão não encontrada");
+  if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
+  if (session.status !== "active") throw new Error("Sessão não está ativa");
+  if (!AREA_SCOPED_SESSION_TYPES.has(session.type as PlanningSessionType)) {
+    throw new Error("Este tipo de sessão não usa área");
+  }
+
+  await assertCanStartSession(client, session.org_id, params.areaId, params.userId);
+  if (session.area_id && session.area_id !== params.areaId) {
+    throw new Error("A sessão já está vinculada a outra área");
+  }
+  if (session.area_id === params.areaId) return { session };
+
+  let conversationId: string | null = null;
+  if (session.conversation_id) {
+    const conversation = await getConversationById(client, session.conversation_id);
+    const belongsToSession = conversation
+      && conversation.org_id === session.org_id
+      && conversation.user_id === params.userId
+      && conversation.status === "active";
+
+    if (belongsToSession && conversation.area_id && conversation.area_id !== params.areaId) {
+      throw new Error("A conversa desta sessão já está vinculada a outra área");
+    }
+    if (belongsToSession && !conversation.area_id) {
+      const { data: updatedConversation, error: conversationError } = await client
+        .from("conversations")
+        .update({ area_id: params.areaId })
+        .eq("id", conversation.id)
+        .eq("org_id", session.org_id)
+        .eq("user_id", params.userId)
+        .eq("status", "active")
+        .is("area_id", null)
+        .select("id")
+        .maybeSingle();
+      if (conversationError) throw conversationError;
+      if (!updatedConversation) throw new Error("A conversa mudou enquanto a área era vinculada. Tente novamente.");
+    }
+    if (belongsToSession) conversationId = conversation.id;
+  }
+
+  if (!conversationId) {
+    const { data: conversation, error: conversationError } = await client
+      .from("conversations")
+      .insert({
+        org_id: session.org_id,
+        user_id: params.userId,
+        area_id: params.areaId,
+        channel: params.channel ?? "web",
+      })
+      .select("id")
+      .single();
+    if (conversationError) throw conversationError;
+    conversationId = conversation.id;
+  }
+
+  const { data: updated, error: updateError } = await client
+    .from("planning_sessions")
+    .update({ area_id: params.areaId, conversation_id: conversationId })
+    .eq("id", session.id)
+    .eq("user_id", params.userId)
+    .eq("status", "active")
+    .is("area_id", null)
+    .select("*")
+    .maybeSingle();
+  if (updateError) throw updateError;
+  if (!updated) throw new Error("A sessão mudou enquanto a área era vinculada. Tente novamente.");
+
+  return { session: updated };
 }
 
 async function createFollowUpSessionAfterClose(

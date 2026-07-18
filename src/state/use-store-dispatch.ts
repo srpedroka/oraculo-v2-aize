@@ -460,6 +460,23 @@ export function useStoreDispatch({
         return;
       }
 
+      if (action.type === "bind_session_area") {
+        void callEdgeFunction("oracle-session", {
+          action: "bind_area",
+          sessionId: action.sessionId,
+          areaId: action.areaId,
+          channel: "web",
+        })
+          .then(() => {
+            invalidateDomains(["sessions", "chat"]);
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível vincular a área.");
+          });
+        return;
+      }
+
       if (action.type === "confirm_session_proposal") {
         void callEdgeFunction("oracle-session", {
           action: "confirm",

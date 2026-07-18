@@ -424,11 +424,21 @@ export function OraclePanel() {
   // Trava o botao de confirmar enquanto a gravacao esta em voo, evitando duplo submit.
   const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [selectedSessionAreaId, setSelectedSessionAreaId] = useState("");
+  const [bindingSessionArea, setBindingSessionArea] = useState(false);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const mode = state.ui.oracleMode;
   const isDashboard = location.pathname === "/";
   const activeSession = state.activeSession;
+  const areaScopedSession = activeSession
+    ? ["quarterly", "monthly", "month_close", "quarter_close"].includes(activeSession.type)
+    : false;
+  const requiresAreaBinding = Boolean(activeSession && areaScopedSession && !activeSession.areaId);
+  const availableSessionAreas = state.areas.filter((area) => {
+    if (state.currentMembership?.role === "owner") return true;
+    return state.currentMembership?.role === "coordinator" && area.coordinatorId === state.currentMembership.id;
+  });
   const phases = activeSession ? SESSION_PHASES[activeSession.type] : [];
   const phaseIndex = activeSession ? Math.max(0, phases.indexOf(activeSession.phase)) : 0;
   const phaseProgress = phases.length ? ((phaseIndex + 1) / phases.length) * 100 : 0;
@@ -454,6 +464,8 @@ export function OraclePanel() {
 
   useEffect(() => {
     setConfirmationError(null);
+    setSelectedSessionAreaId("");
+    setBindingSessionArea(false);
   }, [activeSession?.id]);
 
   useEffect(() => {
@@ -664,6 +676,49 @@ export function OraclePanel() {
                 <StrategicProposalPreview proposal={activeSession.pendingProposal} />
                 <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
                 <StrategicReviewProposalPreview proposal={activeSession.pendingProposal} />
+                {requiresAreaBinding ? (
+                  <div className="mt-3 rounded-xl border border-[#E8D49A] bg-[#FFF8E8] p-3">
+                    <p className="text-xs font-semibold text-[#6F4A10]">Escolha a área antes de gravar</p>
+                    <p className="mt-1 text-xs leading-5 text-[#7A5A26]">
+                      Esta proposta veio de uma sessão antiga sem área vinculada. A escolha abaixo preserva todo o conteúdo.
+                    </p>
+                    <select
+                      aria-label="Área desta proposta"
+                      value={selectedSessionAreaId}
+                      onChange={(event) => setSelectedSessionAreaId(event.target.value)}
+                      disabled={bindingSessionArea}
+                      className="mt-2 h-10 w-full rounded-lg border border-[#D9C488] bg-white px-3 text-sm text-[#1D1D1F]"
+                    >
+                      <option value="">Selecione a área</option>
+                      {availableSessionAreas.map((area) => (
+                        <option key={area.id} value={area.id}>{area.name}</option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="mt-2 w-full bg-white"
+                      disabled={!selectedSessionAreaId || bindingSessionArea}
+                      onClick={() => {
+                        if (!selectedSessionAreaId || bindingSessionArea) return;
+                        setConfirmationError(null);
+                        setBindingSessionArea(true);
+                        dispatch({
+                          type: "bind_session_area",
+                          sessionId: activeSession.id,
+                          areaId: selectedSessionAreaId,
+                          onSuccess: () => setBindingSessionArea(false),
+                          onError: (errorMessage) => {
+                            setBindingSessionArea(false);
+                            setConfirmationError(errorMessage);
+                          },
+                        });
+                      }}
+                    >
+                      {bindingSessionArea ? "Vinculando…" : "Vincular área"}
+                    </Button>
+                  </div>
+                ) : null}
                 {confirmationError ? (
                   <p role="alert" className="mt-3 rounded-xl bg-[#FFF1F0] px-3 py-2 text-xs leading-5 text-[#A12622]">
                     {confirmationError}
@@ -673,7 +728,7 @@ export function OraclePanel() {
                   <Button
                     type="button"
                     className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
-                    disabled={confirmingSessionId === activeSession.id}
+                    disabled={requiresAreaBinding || confirmingSessionId === activeSession.id}
                     onClick={() => {
                       if (confirmingSessionId === activeSession.id) return;
                       setConfirmationError(null);

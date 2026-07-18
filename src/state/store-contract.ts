@@ -119,6 +119,13 @@ export type AppAction =
   | { type: "confirm_company_profile"; summary: string; sources: CompanyProfileSource[]; queries: string[]; links: string[]; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "send_session_message"; sessionId: string; text: string }
   | {
+      type: "bind_session_area";
+      sessionId: string;
+      areaId: string;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
+  | {
       type: "confirm_session_proposal";
       sessionId: string;
       onSuccess?: () => void;

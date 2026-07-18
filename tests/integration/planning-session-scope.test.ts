@@ -26,6 +26,20 @@ async function startQuarterly(areaId: string | null) {
   return { status: response.status, body: await response.json() as any };
 }
 
+async function bindSessionArea(sessionId: string, areaId: string) {
+  const response = await fetch(FUNCTIONS_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ownerJwt}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "bind_area",
+      sessionId,
+      areaId,
+      channel: "web",
+    }),
+  });
+  return { status: response.status, body: await response.json() as any };
+}
+
 d("escopo de sessões de planejamento", () => {
   beforeAll(async () => {
     org = await createDisposableOrg("planning-scope");
@@ -63,5 +77,68 @@ d("escopo de sessões de planejamento", () => {
     const result = await startQuarterly(null);
     expect(result.status).toBe(400);
     expect(String(result.body.error)).toContain("área");
+  });
+
+  it("recupera sessão legada somente com área explícita e preserva a proposta", async () => {
+    const pendingProposal = {
+      type: "quarterly_plan",
+      summary: "Proposta legada preservada",
+      objectives: [],
+      actions: [],
+    };
+    const { data: conversation, error: conversationError } = await admin
+      .from("conversations")
+      .insert({
+        org_id: org.orgId,
+        user_id: org.owner.id,
+        area_id: null,
+        channel: "web",
+        status: "active",
+      })
+      .select("id")
+      .single();
+    if (conversationError || !conversation) throw conversationError ?? new Error("conversa legada não criada");
+
+    const { data: session, error: sessionError } = await admin
+      .from("planning_sessions")
+      .insert({
+        org_id: org.orgId,
+        user_id: org.owner.id,
+        area_id: null,
+        conversation_id: conversation.id,
+        type: "quarterly",
+        period: "T4 2026",
+        phase: "sintese",
+        state: { periodo: "T4 2026" },
+        pending_proposal: pendingProposal,
+        status: "active",
+      })
+      .select("id")
+      .single();
+    if (sessionError || !session) throw sessionError ?? new Error("sessão legada não criada");
+
+    const bound = await bindSessionArea(session.id, org.areas.comercialId);
+    expect(bound.status).toBe(200);
+    expect(bound.body.session.area_id).toBe(org.areas.comercialId);
+    expect(bound.body.session.pending_proposal).toEqual(pendingProposal);
+
+    const [{ data: storedSession, error: storedSessionError }, { data: storedConversation, error: storedConversationError }] = await Promise.all([
+      admin.from("planning_sessions").select("area_id, conversation_id, pending_proposal, status").eq("id", session.id).single(),
+      admin.from("conversations").select("area_id").eq("id", conversation.id).single(),
+    ]);
+    if (storedSessionError) throw storedSessionError;
+    if (storedConversationError) throw storedConversationError;
+    expect(storedSession.area_id).toBe(org.areas.comercialId);
+    expect(storedSession.conversation_id).toBe(conversation.id);
+    expect(storedSession.pending_proposal).toEqual(pendingProposal);
+    expect(storedSession.status).toBe("active");
+    expect(storedConversation.area_id).toBe(org.areas.comercialId);
+
+    const repeated = await bindSessionArea(session.id, org.areas.comercialId);
+    expect(repeated.status).toBe(200);
+
+    const conflicting = await bindSessionArea(session.id, org.areas.producaoId);
+    expect(conflicting.status).toBe(400);
+    expect(String(conflicting.body.error)).toContain("outra área");
   });
 });
