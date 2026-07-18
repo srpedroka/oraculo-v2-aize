@@ -63,6 +63,7 @@ import {
   latestOracleReply,
   normalizeReadyProposalEnvelope,
   normalizeProposalConfirmationEnvelope,
+  normalizeStrategicHistoricalLessons,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   validateAdaptiveEnvelope,
 } from "./session-adaptive.ts";
@@ -375,6 +376,7 @@ export async function processPlanningMessage(
         contextText: context,
       });
     }
+    if (session.type === "strategic") return normalizeStrategicHistoricalLessons(envelope, conversationText);
     if (session.type !== "quarterly") return envelope;
     const priorityEnvelope = challengeQuarterlyPriorityOverload({
       envelope,

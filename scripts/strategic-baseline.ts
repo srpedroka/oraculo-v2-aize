@@ -1013,9 +1013,10 @@ async function restartCleanQ5AfterCorrection(correctionReference: string) {
   const cleanBaselineByCorrection: Record<string, string> = {
     Q4Z: "2026-07-18.q5-clean-regression-r16-q4z",
     Q4AA: "2026-07-18.q5-clean-regression-r17-q4aa",
+    Q4AB: "2026-07-18.q5-clean-regression-r18-q4ab",
   };
   const nextBaseline = cleanBaselineByCorrection[normalizedReference];
-  if (!nextBaseline) throw new Error("a retomada limpa atual exige a correcao Q4Z ou Q4AA aprovada");
+  if (!nextBaseline) throw new Error("a retomada limpa atual exige a correcao Q4Z, Q4AA ou Q4AB aprovada");
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.baselineVersion.includes("q5-clean-regression")) throw new Error("nao existe regressao geral limpa ativa para reiniciar");
@@ -1617,7 +1618,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA|Q4AB | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

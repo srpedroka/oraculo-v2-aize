@@ -835,6 +835,14 @@ Este plano só termina quando:
 - Smoke final: Conducao 100, Plano Trimestral 97,50, media 98,75; US$ 0,035514. Duas tentativas Q4AA: US$ 0,076966. Acumulado: US$ 9,532934.
 - Proxima execucao: `restart-clean-after-correction Q4AA`, deterministica e Q5A-Q5D completas desde zero.
 
+### Atualizacao de execucao: Q4AB
+
+- A regressao limpa apos Q4AA passou a matriz deterministica e seis medicoes Q5A antes de a meta anual recorrente R1 bloquear por ano historico nao dito pelo gestor.
+- A Q4AB restringe a normalizacao a aprendizados historicos do plano anual: preserva anos da conversa e usa periodo relativo quando o numero veio somente do metadado do contexto.
+- Smoke focado: Conducao 100, Plano Anual 100, media 100; US$ 0,046061; acumulado US$ 9,918158.
+- O falso negativo do harness sobre `plano anterior` foi corrigido e revalidado sem nova chamada paga. Validacao: 454 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 509.
+- Proxima execucao: `restart-clean-after-correction Q4AB`, deterministica e Q5A-Q5D completas desde zero.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

@@ -492,6 +492,37 @@ export function challengeQuarterlyPriorityOverload(input: {
   };
 }
 
+function supportedConversationYears(conversationText: string) {
+  return new Set(conversationText.match(/\b20\d{2}\b/g) ?? []);
+}
+
+function normalizeHistoricalLessonYears(value: unknown, conversationText: string) {
+  const supportedYears = supportedConversationYears(conversationText);
+  const previousCycleConfirmed = /\b(?:ciclo|ano|per[ií]odo)\s+anterior\b/i.test(conversationText);
+  return (Array.isArray(value) ? value : [])
+    .map(text)
+    .filter(Boolean)
+    .map((lesson) => lesson.replace(/\b(?:em|no ano de|ano de)\s+(20\d{2})\b|\b(20\d{2})\b/gi, (match, qualifiedYear, bareYear) => {
+      const year = text(qualifiedYear || bareYear);
+      if (supportedYears.has(year)) return match;
+      return previousCycleConfirmed ? "no ciclo anterior" : "em período não confirmado";
+    }).replace(/\bno ciclo anterior\s+no ciclo anterior\b/gi, "no ciclo anterior"));
+}
+
+export function normalizeStrategicHistoricalLessons(envelope: SessionEnvelope, conversationText: string) {
+  const proposal = asRecord(envelope.proposal);
+  if (text(proposal.type) !== "save_strategic_plan") return envelope;
+  const source = proposal.historicalLessons ?? proposal.historical_lessons ?? proposal.aprendizados_historicos;
+  if (!Array.isArray(source)) return envelope;
+  return {
+    ...envelope,
+    proposal: {
+      ...proposal,
+      historicalLessons: normalizeHistoricalLessonYears(source, conversationText),
+    },
+  };
+}
+
 export function acknowledgeEquivalentQuarterlyArea(input: {
   envelope: SessionEnvelope;
   sessionType: string;

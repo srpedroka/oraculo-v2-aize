@@ -751,3 +751,19 @@ A Q4AA separa semanticamente os IDs no contexto e resolve a referencia antes da 
 | Deploy | somente `oracle-session` no staging; sem migration ou frontend |
 
 A validacao final passou 450 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 507 arquivos. O proximo passo e `restart-clean-after-correction Q4AA`: arquivar toda a grade parcial, zerar deterministas e medicoes e repetir Q5A-Q5D integralmente. Em nova falha, aplica-se novamente smoke focal e novo reinicio completo. Producao permanece inalterada.
+
+## Correcao Q4AB: periodo historico ancorado na conversa
+
+A regressao limpa reiniciada apos Q4AA passou novamente a matriz deterministica e seis medicoes Q5A. `Q2A-ANNUAL-REPEATED-GOAL-004` R1 concluiu a jornada e recebeu Conducao 95 e Plano Anual 97,50, mas o judge bloqueou `CRIT-FABRICATION-001`: um aprendizado dizia `em 2026`, embora o gestor tivesse informado apenas `ciclo anterior`. O ano veio do metadado do documento historico, nao da conversa. O fail-fast impediu R2 e preservou custo e cleanup.
+
+A Q4AB normaliza somente `historicalLessons` de `save_strategic_plan`. Anos realmente presentes na conversa continuam iguais; um ano trazido apenas pelo contexto vira `no ciclo anterior` quando essa referencia foi declarada, ou `em periodo nao confirmado` nos demais casos. O smoke do caso exato passou com Conducao 100, Plano Anual 100, media 100, nenhum candidato critico e nenhum `2026` inventado. A proposta preservou a equivalencia `plano anterior`. O harness, que exigia literalmente `ciclo anterior`, foi corrigido e o relatorio aprovado foi revalidado localmente sem outra chamada paga.
+
+| Medida | Resultado |
+| --- | --- |
+| Grade limpa antes do bloqueio | matriz deterministica verde; Q5A 6 verdes |
+| Smoke Q4AB | Conducao 100; Plano Anual 100; media 100 |
+| Custo Q4AB | US$ 0,046061 |
+| Acumulado do plano | US$ 9,918158 de US$ 20 |
+| Validacao local | 454 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 509 arquivos |
+
+Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AB`, seguido de deterministas e Q5A-Q5D integralmente desde zero. Producao permanece inalterada.

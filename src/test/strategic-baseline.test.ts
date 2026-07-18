@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { ReferenceCase } from "../../scripts/strategic-reference-cases";
+import { hasGroundedRelativeHistoricalPeriod } from "../../scripts/strategic-q4ab-validation";
 import {
   aggregateBaseline,
   compareStrategicRegression,
@@ -269,6 +270,21 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4AB somente a meta anual recorrente com ano fabricado", () => {
+    const smoke = readFileSync("scripts/strategic-q4ab-smoke.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2A-ANNUAL-REPEATED-GOAL-004"');
+    expect(smoke).toContain('executeCase(item, "Q2A", 1');
+    expect(smoke).toContain('runLabel: "q4ab"');
+    expect(smoke).toContain('ledgerLabel: "Q4AB"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
+  it("aceita periodo historico relativo sem exigir uma frase literal", () => {
+    expect(hasGroundedRelativeHistoricalPeriod(["o plano anterior mediu atraso"])).toBe(true);
+    expect(hasGroundedRelativeHistoricalPeriod(["no ciclo anterior a meta ficou abaixo"])).toBe(true);
+    expect(hasGroundedRelativeHistoricalPeriod(["meta de 2026 ficou abaixo"])).toBe(false);
+  });
+
   it("repete na Q4O somente a segunda rodada da area equivalente com erro de envelope", () => {
     const source = readFileSync("scripts/strategic-q4o-smoke.ts", "utf8");
     expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-EQUIVALENT-AREA-003"');
@@ -430,6 +446,11 @@ describe("Q3 strategic baseline", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('Q4AA: "2026-07-18.q5-clean-regression-r17-q4aa"');
     expect(source).toContain("progress.baselineVersion = nextBaseline");
+  });
+
+  it("reinicia toda a regressao limpa depois da correcao Q4AB", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain('Q4AB: "2026-07-18.q5-clean-regression-r18-q4ab"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

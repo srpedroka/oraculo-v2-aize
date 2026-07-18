@@ -9,6 +9,7 @@ import {
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeProposalConfirmationEnvelope,
+  normalizeStrategicHistoricalLessons,
   normalizeReadyProposalEnvelope,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   repeatsPreviousQuestion,
@@ -389,6 +390,24 @@ describe("adaptive planning session guard Q4A", () => {
     expect(reply).toContain("2%");
     expect(reply).toContain("margem, volume ou previsibilidade");
     expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
+  it("keeps an unsupported year out of strategic historical lessons", () => {
+    const normalized = normalizeStrategicHistoricalLessons({
+      proposal: {
+        type: "save_strategic_plan",
+        year: 2027,
+        historicalLessons: [
+          "A meta de entregas em 2026 fechou abaixo do esperado",
+          "O plano atual de 2027 limita quatro objetivos",
+        ],
+      },
+    }, "O ciclo anterior fechou abaixo da meta. O plano atual e 2027.");
+    const lessons = (normalized.proposal as any).historicalLessons as string[];
+
+    expect(lessons[0]).toContain("no ciclo anterior");
+    expect(lessons[0]).not.toContain("2026");
+    expect(lessons[1]).toContain("2027");
   });
 
   it("turns a vague annual growth aspiration into a contextual strategic choice", () => {
