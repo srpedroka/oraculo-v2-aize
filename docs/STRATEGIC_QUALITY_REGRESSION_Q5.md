@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C com 7/8 aprovacoes preservadas; Q4AM aprovada para repetir somente gestor mensal experiente R2**
+Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 8/8; proxima fase Q5D**
 
 ## Objetivo
 
@@ -29,6 +29,12 @@ O smoke do mesmo caso passou com Conducao 90, Plano Mensal 100, media 95, uma co
 A retomada Q4AL aprovou oficialmente a pendencia herdada R2 e seguiu pelas quatro medicoes ausentes. Sobrecarga de capacidade R1/R2 e gestor experiente R1 passaram. Gestor experiente R2 produziu Plano Mensal 98,75 e Saida Derivada 100, mas bloqueou Conducao 76,25: repetiu a cobranca de dono/criterio depois da lista e nao fez o desafio executivo de capacidade observado no R1.
 
 A Q4AM estabiliza essa passagem no servidor. O smoke exato fez uma coleta das acoes, um desafio de capacidade/backlog e uma confirmacao; Conducao, Plano Mensal e Saida Derivada marcaram 100. Custo US$ 0,028244; acumulado US$ 14,078300. Proximo fluxo: `resume-after-correction Q4AM` preserva 33 aprovacoes e arquiva apenas o bloqueio; `phase Q5C` repete somente R2 para fechar a fase 8/8.
+
+### Fechamento Q5C r22
+
+`resume-after-correction Q4AM` arquivou apenas a medicao bloqueada e preservou 33 aprovacoes. `phase Q5C` reconheceu os sete resultados mensais verdes e executou somente gestor experiente R2. A rodada oficial passou com Conducao 100, Plano Mensal 100 e Saida Derivada 100, zero falha critica, zero check reprovado e cleanup completo.
+
+Q5C terminou 8/8. A repeticao custou US$ 0,010760 de geracao e US$ 0,017352 de judge, total US$ 0,028112. O custo oficial da Q5C e US$ 0,218668 e o acumulado do plano chegou a US$ 14,106412. A proxima fase e Q5D, com seis medicoes; qualquer bloqueio recebe correcao e repeticao apenas do caso afetado.
 
 A execucao foi interrompida automaticamente no segundo de 40 casos pagos. Continuar consumindo IA nao mudaria o gate ja reprovado e esconderia dois defeitos objetivos.
 

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 7/8 em retomada incremental apos Q4AM**
+Status: **em execucao; regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 8/8; proxima fase Q5D**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -986,3 +986,7 @@ A Q4AL transforma deterministicamente esse bloco completo em proposta, usando a 
 A retomada Q5C passou oficialmente a pendencia herdada R2, a sobrecarga de capacidade R1/R2 e o gestor experiente R1. O R2 final bloqueou apenas Conducao 76,25; plano 98,75, saida 100, checks e cleanup ficaram verdes. A variacao estava na pergunta: R1 testou capacidade, R2 repetiu dono e criterio.
 
 A Q4AM faz o desafio de capacidade/backlog uma vez quando o gestor ja informou o resultado e listou de duas a cinco acoes. Bloco completo segue direto a proposta e campos ausentes continuam obrigatorios. Smoke aprovado com 100/100/100; custo US$ 0,028244; acumulado US$ 14,078300. Proximo passo: preservar 33 aprovacoes, repetir somente gestor mensal experiente R2 e, se verde, declarar Q5C 8/8 antes do briefing Q5D.
+
+## Atualizacao 2026-07-18 - Q5C concluida 8/8
+
+A repeticao oficial do gestor mensal experiente R2 marcou 100 em Conducao, Plano Mensal e Saida Derivada. Q5C terminou 8/8 por US$ 0,218668; acumulado do plano US$ 14,106412. O proximo passo e Q5D: duas rodadas de fechamento mensal, duas de fechamento trimestral e duas de Revisao Estrategica, preservando as 34 aprovacoes atuais e interrompendo no primeiro bloqueio.
