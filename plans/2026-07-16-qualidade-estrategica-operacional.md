@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **Mapa A e O0 aprovados; O1 pausado antes da gravacao, com correcao de episodio aprovada no staging e producao pendente**
+Status: **Mapa A e O0 aprovados; ensaio trimestral descartado e limpo; O1 oficial ainda nao iniciada**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -48,9 +48,10 @@ Q0 padrão/cobertura -> Q1 laboratório anual -> Q2 casos por entrega -> Q3 base
           | Gate estratégico aprovado
           v
 MAPA B — QUALIDADE OPERACIONAL
-O0 preflight -> O1 piloto web -> O2 dados/documento
--> O3 WhatsApp -> O4 mídia/memória -> O5 KPI/revisão
--> O6 fechamento owner -> O7 gestor real -> O8 aceite/rollout
+O0 preflight -> PRE-O1 design/revisao anual/usabilidade assistida
+-> O1 piloto web oficial -> O2 dados/documento -> O3 WhatsApp
+-> O4 mídia/memória -> O5 KPI/revisão -> O6 fechamento owner
+-> O7 gestor real -> O8 aceite/rollout
 ```
 
 Não iniciar o Mapa B antes da aprovação do gate Q6.
@@ -550,16 +551,38 @@ Confirma que produção está pronta e cria ponto de segurança antes do piloto.
 
 Tudo verde e checkpoint recuperável. Qualquer `503`, alerta ativo, fila pendente ou backup sem proteção pausa o piloto.
 
+## PRE-O1 — Design, revisão anual e usabilidade assistida
+
+Antes da O1 oficial, executar
+`plans/2026-07-18-pre-piloto-design-revisao-anual.md`.
+
+Essa etapa:
+
+1. diagnostica e corrige fricções visuais dos rituais sem mudar regras de negócio;
+2. valida em produção uma revisão real e controlada de objetivo anual escolhido
+   pelo owner;
+3. deixa um gestor experimentar o plano trimestral primeiro em clone isolado;
+4. corrige P0/P1 comprovados antes de criar um plano trimestral oficial.
+
+O ensaio anterior foi descartado e removido da base ativa. Ele preserva somente
+as lições técnicas já corrigidas e não fornece área, período, responsável,
+objetivo ou proposta para a O1.
+
+### Gate PRE-O1
+
+Design aprovado em desktop/mobile, revisão anual correta, ensaio assistido sem
+falha crítica e autorização explícita do owner para escolher o escopo oficial.
+
 ## O1 — Piloto web com o owner
 
 ### Escopo inicial
 
 - empresa: Gaam/Aize;
-- área: Comercial;
-- período: T3 2026;
 - usuário: owner;
-- objetivo anual de origem: reorganização da Área Comercial;
-- nenhum contato com Diego nesta fatia.
+- objetivo anual, área e período: escolhidos explicitamente pelo owner no
+  briefing imediatamente anterior;
+- nenhum conteúdo do ensaio descartado pode ser reutilizado;
+- nenhum contato com gestor nesta fatia.
 
 ### Trabalho
 
@@ -573,23 +596,14 @@ Tudo verde e checkpoint recuperável. Qualquer `503`, alerta ativo, fila pendent
 8. Confirmar uma única vez.
 9. Não corrigir diretamente no banco.
 
-### Referência inicial, não resposta obrigatória
-
-- resultado desejado: sistema de vendas em operação para gerar informação comercial confiável;
-- adoção: distinguir “disponível” de “usado”;
-- base: definir migrada, validada e atualizada;
-- integração: definir prova de funcionamento com ERP;
-- responsável provável: Diego, sujeito à confirmação na conversa;
-- prazo: fim do T3;
-- ações possíveis: migração, integração, treinamento e rotina de adoção.
-
-O Oráculo deve chegar a um plano bom por condução; não deve simplesmente copiar esta referência.
-
 ### Gate O1
 
 Condução e plano aprovados pela rubrica, proposta única e gravação única.
 
-Estado em 2026-07-18: o baseline de producao confirmou zero objetivo trimestral e zero documento para Comercial T3 2026. A primeira mensagem revelou uma sessao ativa vinculada a episodio arquivado; o servidor avancava, mas o painel mostrava somente outro episodio ativo. O piloto foi pausado sem proposta ou gravacao. A correcao preserva o estado e religa o vinculo antes da mensagem; 8 testes unitarios, regressao descartavel no staging, 520 unitarios, lint e build passaram. Producao aguarda PR/CI e autorizacao explicita antes de retomar o O1.
+Estado em 2026-07-18: a O1 oficial nao foi iniciada. O ensaio anterior serviu
+somente para localizar dois defeitos tecnicos, depois foi descartado e removido
+da base ativa. Plano Estrategico Anual e 30 documentos historicos permaneceram
+intactos. O proximo gate e o PRE-O1.
 
 ### Rollback
 
@@ -620,7 +634,7 @@ Prova que o mesmo plano pode ser retomado naturalmente no WhatsApp sem misturar 
 ### Trabalho
 
 1. Enviar mensagem pelo número do owner.
-2. Pedir resumo do plano Comercial T3.
+2. Pedir resumo do plano oficial criado e confirmado na O1.
 3. Confirmar que memória relevante aparece sem colar histórico de outra área.
 4. Perguntar status de uma ação.
 5. Registrar uma atualização pequena, concreta e explicitamente direcionada.
@@ -644,7 +658,7 @@ Prova que o mesmo plano pode ser retomado naturalmente no WhatsApp sem misturar 
 2. Conferir transcrição e alvo antes da mutação quando necessário.
 3. Enviar documento relacionado ao plano.
 4. Conferir leitura real do conteúdo, sem inferir apenas pelo nome.
-5. Enviar documento de outra área e confirmar que ele não contamina o plano Comercial.
+5. Enviar documento de outra área e confirmar que ele não contamina o plano oficial.
 6. Conferir que mídia bruta, URL temporária e chave de mídia não foram persistidas.
 
 ### Gate O4
@@ -751,14 +765,17 @@ Cada expansão exige que o grupo anterior permaneça sem falha crítica.
 | 6 | Q5 | Regressão | Não | Sim | Notas e falhas críticas aprovadas |
 | 7 | Q6 | Aceite estratégico | Não | Não | Owner autoriza Mapa B |
 | 8 | O0 | Preflight | Somente leitura/backup | Não | Produção saudável |
-| 9 | O1 | Plano web owner | Sim | Sim | Plano aprovado |
-| 10 | O2 | Documento/dados | Leitura | Não | Consistência total |
-| 11 | O3 | WhatsApp owner | Sim | Sim | Continuidade aprovada |
-| 12 | O4 | Mídia/memória | Sim | Sim | Contexto e segurança |
-| 13 | O5 | KPI/revisão | Sim controlado | Sim | Dashboard coerente |
-| 14 | O6 | Fechamento owner | Sim | Mínima | Owner aprova gestor |
-| 15 | O7 | Gestor real | Sim | Sim | Gestor e owner aprovam |
-| 16 | O8 | Aceite/rollout | Não necessariamente | Não | Decisão final |
+| 9 | D0-D1 | Diagnóstico e polimento de design | Staging antes de produção | Não | UI aprovada |
+| 10 | R1 | Revisão anual real | Sim controlado | Sim | Revisão aprovada |
+| 11 | U1-U2 | Ensaio assistido e correções | Clone/staging | Sim controlado | Usabilidade aprovada |
+| 12 | O1 | Plano web owner | Sim | Sim | Plano aprovado |
+| 13 | O2 | Documento/dados | Leitura | Não | Consistência total |
+| 14 | O3 | WhatsApp owner | Sim | Sim | Continuidade aprovada |
+| 15 | O4 | Mídia/memória | Sim | Sim | Contexto e segurança |
+| 16 | O5 | KPI/revisão | Sim controlado | Sim | Dashboard coerente |
+| 17 | O6 | Fechamento owner | Sim | Mínima | Owner aprova gestor |
+| 18 | O7 | Gestor real | Sim | Sim | Gestor e owner aprovam |
+| 19 | O8 | Aceite/rollout | Não necessariamente | Não | Decisão final |
 
 ## 10. Matriz de rollback
 

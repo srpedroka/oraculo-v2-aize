@@ -2,45 +2,63 @@
 
 Data: 2026-07-18
 
-Ambiente: producao para observacao inicial; staging descartavel para a correcao
+Estado do gate: **nao iniciado oficialmente**
 
-Empresa do piloto: Gaam/Aize
+## Ensaio anterior
 
-Estado do gate: **conducao concluida; confirmacao pausada sem gravacao por erro 400 recuperavel**
+Antes da O1 oficial houve um ensaio descartavel de planejamento trimestral com o
+owner. O conteudo empresarial desse ensaio nao foi aprovado como plano, nao deve
+ser usado como baseline e nao pode alimentar retomadas futuras.
 
-## Resumo executivo
+O ensaio encontrou dois defeitos tecnicos reais:
 
-O baseline do Comercial T3 2026 foi confirmado sem objetivo trimestral e sem documento canonico do periodo. Ao iniciar a conversa real no app, a sessao avancou no servidor, mas a mensagem e a resposta nao apareceram no painel. O piloto foi interrompido imediatamente; nenhum plano, objetivo, acao, KPI, membro ou configuracao foi gravado. A mensagem, a resposta e o uso de IA permaneceram na conversa arquivada como evidencia tecnica.
+1. uma sessao podia continuar vinculada a um episodio de conversa arquivado,
+   deixando mensagem e resposta invisiveis no painel;
+2. uma rejeicao HTTP da confirmacao podia deixar o botao em estado de gravacao
+   permanente, sem mostrar o erro recuperavel.
 
-A causa foi reproduzida no codigo: uma `planning_session` ativa ainda apontava para um episodio de `conversations` ja arquivado. `oracle-session` reutilizava esse ID, enquanto o frontend exibia somente a conversa ativa mais recente. O estado estrategico avancava na conversa antiga e ficava invisivel.
+As correcoes foram publicadas nos merges `9f8287a` e `214faf0`. Elas preservam
+o estado valido da sessao, religam apenas o episodio quando necessario e exibem a
+falha de confirmacao com possibilidade de nova tentativa segura. A PR #13, que
+tratava uma recuperacao especifica do ensaio, foi fechada sem merge e sem deploy.
 
-A correcao preserva o estado da sessao e, antes da primeira mensagem, valida status, limite ocioso de quatro horas, empresa, pessoa e canal. Vinculo ausente, arquivado, vencido ou fora de escopo e trocado pela conversa ativa. Nenhum roteiro, regra de qualidade, confirmacao ou conteudo do plano foi alterado.
+## Limpeza concluida
 
-A PR #11 foi mesclada em `9f8287a` e o release protegido #32 publicou somente `oracle-session` em producao. A retomada real passou: mensagem e resposta apareceram no episodio ativo, a conversa permaneceu no Comercial T3 2026 e chegou a uma proposta unica. Antes de confirmar, o owner ajustou o vinculo para o objetivo anual canonico da area e preservou a terceira acao de migracao da base.
+Em 2026-07-18 foi executada uma transacao restrita a organizacao oficial, com IDs
+exatos e verificacoes antes do commit. Foram removidos:
 
-A confirmacao unica retornou HTTP 400 em 579 ms e nao gravou objetivo, acao ou documento. O frontend nao tratava a rejeicao do `callEdgeFunction`, por isso mantinha o botao em `Gravando...` indefinidamente mesmo com a Function ja encerrada. A proposta continua pendente e nenhuma segunda confirmacao foi enviada. A correcao em andamento mostra a mensagem real no painel, libera nova tentativa e preserva a idempotencia server-side.
+- 2 sessoes descartaveis;
+- 2 conversas e 122 mensagens do ensaio;
+- 2 objetivos arquivados de teste;
+- 1 acao, 1 projeto e 2 documentos gerados pelo ensaio;
+- revisoes e eventos administrativos ligados exclusivamente a esses IDs.
 
-## Evidencias
+Foram preservados e verificados dentro da mesma transacao:
 
-- Baseline de producao: Comercial, T3 2026, objetivo anual de reorganizacao da area; zero objetivo trimestral e zero documento canonico do periodo.
-- Tentativa interrompida antes de proposta ou confirmacao; nenhum dado de plano ou configuracao foi gravado.
-- Teste unitario: 8 cenarios de conversa ativa, ausente, arquivada, vencida e fora de escopo.
-- Suite local: 520/520 testes unitarios, lint, build e bundle verdes.
-- Staging: `oracle-session` publicada no projeto descartavel, sem migration ou frontend.
-- Regressao real: sessao apontando para episodio arquivado foi religada ao episodio ativo antes da mensagem; 1/1 aprovado e cleanup concluido.
-- Producao: CI da `main` `29660743221` verde; release protegido `29660983334` verde, com migration ignorada e somente `oracle-session` publicada.
-- Retomada real: conversa visivel no episodio ativo, escopo Comercial T3 2026 preservado e proposta unica preparada.
-- Confirmacao real: uma tentativa, HTTP 400 em 579 ms, zero gravacao e proposta pendente preservada; log estruturado `00391ed0-5dde-4f4e-996b-a7df46d8d697`.
-- Recuperacao de frontend: erro da Function passa a aparecer no painel e libera retry seguro; 520/520 unitarios, lint, build e bundle verdes.
-- Tentativa real invisivel: uma chamada de planejamento `gpt-5.4`, 8.882 tokens e US$ 0,023930; nenhuma chamada de judge.
-- IA no teste da correcao: nenhuma chamada; custo US$ 0.
-- Consumo acumulado do novo ciclo: US$ 0,025465 de US$ 20; aviso em US$ 15 e parada preventiva em US$ 19.
+- 1 Plano Estrategico Anual oficial;
+- 30 documentos historicos;
+- 7 objetivos oficiais nao pertencentes ao ensaio;
+- o projeto oficial ligado ao Plano Estrategico Anual;
+- logs tecnicos de custo e seguranca, sem conteudo operacional reutilizavel.
+
+Os fingerprints do plano anual, dos objetivos preservados e dos documentos
+preservados permaneceram identicos. Depois do commit da transacao, todas as
+contagens dos IDs descartaveis ficaram em zero.
+
+## Custo
+
+- ensaio tecnico anterior: US$ 0,023930;
+- teste de WhatsApp O0 no ciclo atual: US$ 0,001535;
+- limpeza e documentacao: US$ 0;
+- acumulado do ciclo: US$ 0,025465 de US$ 20.
 
 ## Proximo gate
 
-1. Publicar a recuperacao de erro do frontend apos PR e CI.
-2. Repetir somente a confirmacao da proposta pendente e capturar a mensagem de validacao exata.
-3. Corrigir a causa server-side sem recriar nem reconduzir o plano.
-4. Confirmar uma unica gravacao, sem duplicatas, e seguir para o gate O2.
+A O1 oficial nao reutilizara area, periodo, responsavel, objetivo ou proposta do
+ensaio. Antes dela deve ser executado o plano
+`plans/2026-07-18-pre-piloto-design-revisao-anual.md`: diagnostico e ajuste de
+design, revisao real e controlada de um objetivo anual escolhido pelo owner e
+ensaio assistido de usabilidade em clone isolado.
 
-Enquanto a correcao nao estiver publicada, o O1 permanece pausado e nenhum dado precisa de rollback.
+Somente depois desses gates o owner escolhera explicitamente o objetivo anual,
+a area e o periodo da O1 oficial.

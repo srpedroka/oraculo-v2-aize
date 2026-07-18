@@ -166,11 +166,11 @@ Consequências: desligar flag não ativa modo antigo; causa `503`. Rollback exig
 
 Decisão: nenhuma classificação probabilística pode iniciar ou trocar uma sessão estruturada sem sinal determinístico de que a pessoa quer começar, abrir, criar ou retomar um plano. A síntese entrega resumo e proposta juntos e pede uma única confirmação para gravar.
 
-Contexto: durante o Plano Comercial T3, a ação "Planejar o calendário de migração e instalação" foi classificada como início de planejamento anual porque a conversa anterior vinha sendo conduzida informalmente pela IA diária, sem `planning_session`. O fluxo seguinte perguntou várias vezes se podia gerar, conferir e gravar, e salvou o conteúdo trimestral por cima do plano anual.
+Contexto: durante um ensaio trimestral depois descartado, uma ação operacional iniciada pelo verbo "planejar" foi classificada como início de planejamento anual porque a conversa anterior vinha sendo conduzida informalmente pela IA diária, sem `planning_session`. O fluxo seguinte perguntou várias vezes se podia gerar, conferir e gravar, e salvou conteúdo trimestral por cima do plano anual.
 
 Motivo: o verbo "planejar" também descreve ações operacionais e não é autorização para mudar o tipo do plano. A sessão persistida, e não o texto aparente da conversa, precisa ser a fonte de verdade. Uma confirmação explícita depois da proposta preserva controle humano sem burocracia repetida.
 
-Consequências: a IA diária não coleta campos nem retoma fases de planejamento; mensagens ambíguas pedem que a pessoa indique o plano. O PDF nasce apenas do documento canônico confirmado, com layout executivo. No incidente de 2026-07-13, o plano anual foi restaurado pelo snapshot de `operational_revisions`, o plano Comercial T3 foi reconstruído e os registros incorretos foram arquivados, não apagados.
+Consequências: a IA diária não coleta campos nem retoma fases de planejamento; mensagens ambíguas pedem que a pessoa indique o plano. O PDF nasce apenas do documento canônico confirmado, com layout executivo. No incidente de 2026-07-13, o plano anual foi restaurado pelo snapshot de `operational_revisions` e os registros incorretos foram isolados. A limpeza autorizada de 2026-07-18 removeu os artefatos descartáveis por IDs exatos, preservando o plano anual e os históricos.
 
 ## 2026-07-13 - Leitura de documentos no WhatsApp com insight seguro
 
