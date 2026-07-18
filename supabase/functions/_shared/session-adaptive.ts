@@ -775,12 +775,28 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
   const type = text(value.type);
   if (type === "apply_strategic_review") {
     const adjustments = Array.isArray(value.adjustments) ? value.adjustments.map(asRecord) : [];
-    const first = adjustments[0] ?? {};
-    if (adjustments.length === 1 && text(first.title) && text(first.from) && text(first.to)) {
-      const reason = text(first.because);
-      return `A revisão altera apenas “${text(first.title)}”, de ${text(first.from)} para ${text(first.to)}${reason ? `, porque ${reason}` : ""}. Posso aplicar?`;
+    if (adjustments.length > 0) {
+      const fieldLabels: Record<string, string> = {
+        current: "valor atual",
+        target: "meta",
+        metric: "indicador",
+        deadline: "prazo",
+        status: "status",
+      };
+      const details = adjustments.map((adjustment) => {
+        const field = text(adjustment.field).toLowerCase();
+        return `- ${text(adjustment.title) || "Objetivo"}: ${fieldLabels[field] ?? field}, de ${text(adjustment.from)} para ${text(adjustment.to)}.`;
+      });
+      const reasons = [...new Set(adjustments.map((adjustment) => text(adjustment.because)).filter(Boolean))];
+      const basis = reasons.length ? `Base informada: ${reasons.join("; ")}.` : "";
+      return [
+        `Revisão ${text(value.period) || "do plano anual"}`,
+        ...details,
+        basis,
+        "Leitura: os números mudam com base no fechamento, sem reabrir a estratégia; os demais objetivos e campos permanecem iguais.",
+        `Confirma aplicar ${adjustments.length === 1 ? "este microajuste" : `estes ${adjustments.length} microajustes`}?`,
+      ].filter(Boolean).join("\n");
     }
-    if (adjustments.length > 0) return `A revisão reúne ${adjustments.length} ajustes no plano atual. Posso aplicar?`;
   }
   if (type === "save_monthly_plan") {
     const normalized = asRecord(normalizeMonthlyContinuity(value));

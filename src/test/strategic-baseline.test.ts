@@ -230,7 +230,22 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).toContain("MINIMUM_JOINT_AVERAGE = 85");
     expect(smoke).not.toContain("strategic-q5-progress.json");
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
-    expect(runner).toContain('["Q4W", "Q4X"].includes(normalizedReference)');
+    expect(runner).toContain('["Q4W", "Q4X", "Q4Y"].includes(normalizedReference)');
+    expect(runner).toContain('targetPhase === "Q2D" ? "Q5D"');
+  });
+
+  it("repete na Q4Y somente a revisao estrategica bloqueada e retoma a Q5D", () => {
+    const smoke = readFileSync("scripts/strategic-q4y-smoke.ts", "utf8");
+    const runner = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2D-STRATEGIC-REVIEW-BOUNDARY-003"');
+    expect(smoke).toContain('executeCase(item, "Q2D", 1');
+    expect(smoke).toContain('runLabel: "q4y"');
+    expect(smoke).toContain('ledgerLabel: "Q4Y"');
+    expect(smoke).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(smoke).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(smoke).not.toContain("strategic-q5-progress.json");
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+    expect(runner).toContain('normalizedReference === "Q4Y"');
     expect(runner).toContain('targetPhase === "Q2D" ? "Q5D"');
   });
 
@@ -344,7 +359,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -353,6 +368,7 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('"2026-07-17.q5-regression-r8-incremental-q4n"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4o"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4p"');
+    expect(source).toContain('"2026-07-18.q5-regression-r14-incremental-q4y"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4q"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4r"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4s"');

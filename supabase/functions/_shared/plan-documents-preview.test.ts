@@ -51,6 +51,46 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("Versão 1");
   });
 
+  it("projects a strategic review with before, after and channel traceability", () => {
+    const content = buildPlanDocumentPreview({
+      type: "apply_strategic_review",
+      period: "2027",
+      motivo_revisao: "Fechamento validado",
+      adjustments: [
+        { objectiveId: "objective-a", title: "Objetivo A", field: "current", from: "68%", to: "72%", because: "Fechamento validado" },
+        { objectiveId: "objective-b", title: "Objetivo B", field: "target", from: "15%", to: "12%", because: "Fechamento validado" },
+      ],
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "strategic_review",
+      period: "2027",
+    }) as any;
+
+    expect(content).toMatchObject({
+      tipo: "strategic_review",
+      periodo: "2027",
+      motivo_revisao: "Fechamento validado",
+      rastreabilidade: { origem: "proposta_confirmada", tipo_sessao: "strategic_review" },
+      ajustes: [
+        { titulo: "Objetivo A", campo: "current", de: "68%", para: "72%" },
+        { titulo: "Objetivo B", campo: "target", de: "15%", para: "12%" },
+      ],
+    });
+    expect(content.antes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ titulo: "Objetivo A", valor: "68%" }),
+      expect.objectContaining({ titulo: "Objetivo B", valor: "15%" }),
+    ]));
+    expect(content.depois).toEqual(expect.arrayContaining([
+      expect.objectContaining({ titulo: "Objetivo A", valor: "72%" }),
+      expect.objectContaining({ titulo: "Objetivo B", valor: "12%" }),
+    ]));
+    const whatsapp = renderPlanForWhatsApp(content, { version: 1, origin: "session" });
+    expect(whatsapp).toContain("Objetivo A: current de 68% para 72%");
+    expect(whatsapp).toContain("Objetivo B: target de 15% para 12%");
+    expect(whatsapp).toContain("Origem: Proposta confirmada");
+  });
+
   it("renders repeated quarterly actions once as transversal execution", () => {
     const action = {
       description: "Publicar o padrão operacional",

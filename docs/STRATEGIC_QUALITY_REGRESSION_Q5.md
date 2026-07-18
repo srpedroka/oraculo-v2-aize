@@ -692,3 +692,22 @@ A Q4X usa a memoria da dependencia para desafiar a repeticao da mesma abordagem 
 | Deploy | somente `oracle-session` no staging; sem migration ou frontend |
 
 A validacao passou 438 unitarios, catalogo 29/29, integracao real 2/2, lint, build/bundle e secret scan em 504 arquivos. `resume-after-correction Q4X` deve arquivar somente o fechamento trimestral R1 bloqueado e preservar as 36 aprovacoes. `phase Q5D` repete esse resultado e continua apenas por fechamento trimestral R2 e revisao estrategica R1/R2. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.
+
+## Correcao Q4Y: revisao estrategica com diff e saida canonica
+
+A retomada Q4X aprovou fechamento trimestral R1/R2. A revisao estrategica R1 gravou corretamente dois microajustes, mas a confirmacao dizia apenas `2 ajustes` e usava `Posso aplicar?`; o gate tecnico nao a reconheceu e o gestor nao via campo, antes/depois ou limite. A avaliacao tambem recebeu `derivedOutputs` nulo, embora a confirmacao real criasse documento. O fail-fast preservou 38 aprovacoes e nao executou R2.
+
+A Q4Y mantem o ritual enxuto: o gestor fornece os ajustes em bloco, recebe um resumo com campo, antes/depois e base informada e confirma uma vez. O texto deixa claro que os demais objetivos e campos ficam iguais e que nao existe reabertura da estrategia. A projecao pre-confirmacao usa o formato canonico `strategic_review`, com ajustes, antes/depois e rastreabilidade; tela, PDF e WhatsApp derivam dessa mesma estrutura. A mutacao continua ocorrendo somente depois da confirmacao.
+
+| Evidencia | Resultado |
+|---|---:|
+| Q5 preservada | 38 aprovacoes: Q5A 10, Q5B 16, Q5C 8, Q5D 4 |
+| Conducao Q4Y | 96,25 |
+| Revisao/Fechamento Q4Y | 83,75 |
+| Saida Derivada Q4Y | 96,25 |
+| Media conjunta | 92,08 |
+| Custo Q4Y | US$ 0,019090 |
+| Acumulado | US$ 7,914731 / US$ 20 |
+| Deploy | somente `oracle-session` no staging; sem migration ou frontend |
+
+A validacao passou 440 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 505 arquivos. `resume-after-correction Q4Y` deve arquivar somente revisao estrategica R1 bloqueada e preservar as 38 aprovacoes. `phase Q5D` repete essa rodada e continua apenas por R2. Quando as duas passarem, Q5A-Q5D estarao verdes e o proximo passo sera a regressao geral limpa de todos os cenarios, conforme decisao do owner.

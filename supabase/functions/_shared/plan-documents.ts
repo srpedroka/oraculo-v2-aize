@@ -4,7 +4,7 @@ import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
 
 type Client = any;
 
-type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
+type PlanDocumentType = "strategic" | "strategic_review" | "quarterly" | "monthly" | "month_close" | "quarter_close";
 
 type PlanDocumentPreviewInput = {
   organizationName: string;
@@ -195,6 +195,35 @@ function buildStrategicContent(base: Record<string, unknown>, proposal: any) {
       rituais: firstFilledArray<string>(proposal.rituals, proposal.rituais),
       resumo_executivo: asText(proposal.executiveSummary ?? proposal.executive_summary),
     },
+  };
+}
+
+function buildStrategicReviewContent(base: Record<string, unknown>, proposal: any) {
+  const adjustments = asArray<any>(proposal.adjustments ?? proposal.ajustes).map((adjustment) => ({
+    objetivo_id: asText(adjustment.objectiveId ?? adjustment.objective_id ?? adjustment.objetivo_id),
+    titulo: asText(adjustment.title ?? adjustment.titulo, "Objetivo"),
+    campo: asText(adjustment.field ?? adjustment.campo),
+    de: asText(adjustment.from ?? adjustment.de),
+    para: asText(adjustment.to ?? adjustment.para),
+    porque: asText(adjustment.because ?? adjustment.porque ?? adjustment.justificativa),
+  }));
+
+  return {
+    ...base,
+    motivo_revisao: asText(proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason),
+    ajustes: adjustments,
+    antes: adjustments.map((adjustment) => ({
+      id: adjustment.objetivo_id,
+      titulo: adjustment.titulo,
+      campo: adjustment.campo,
+      valor: adjustment.de,
+    })),
+    depois: adjustments.map((adjustment) => ({
+      id: adjustment.objetivo_id,
+      titulo: adjustment.titulo,
+      campo: adjustment.campo,
+      valor: adjustment.para,
+    })),
   };
 }
 
@@ -419,6 +448,7 @@ export function buildPlanDocumentPreview(proposal: any, input: PlanDocumentPrevi
   };
 
   if (proposalType === "save_strategic_plan") return buildStrategicContent(base, proposal);
+  if (proposalType === "apply_strategic_review") return buildStrategicReviewContent(base, proposal);
   if (proposalType === "save_quarterly_plan") return buildQuarterlyContent(base, proposal, period);
   if (proposalType === "save_monthly_plan") return buildMonthlyContent(base, proposal, period);
   if (proposalType === "month_close" || proposalType === "quarter_close") {
@@ -510,6 +540,7 @@ export async function createDocumentForProposal(client: Client, session: any, pr
 
 export function documentTypeFromProposalType(proposalType: string): PlanDocumentType | null {
   if (proposalType === "save_strategic_plan") return "strategic";
+  if (proposalType === "apply_strategic_review") return "strategic_review";
   if (proposalType === "save_quarterly_plan") return "quarterly";
   if (proposalType === "save_monthly_plan") return "monthly";
   if (proposalType === "month_close") return "month_close";

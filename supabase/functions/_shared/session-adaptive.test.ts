@@ -323,6 +323,8 @@ describe("adaptive planning session guard Q4A", () => {
     expect(monthly).toContain("elevar adoção do CRM de 40% para 60%");
     expect(review).toContain("Aumentar previsibilidade");
     expect(review).toContain("52% para 45%");
+    expect(review).toContain("os demais objetivos e campos permanecem iguais");
+    expect(review).toContain("Confirma aplicar este microajuste?");
     expect(visibleQuestions(monthly)).toHaveLength(1);
     expect(visibleQuestions(review)).toHaveLength(1);
   });
