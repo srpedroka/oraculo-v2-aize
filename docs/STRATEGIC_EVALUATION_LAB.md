@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; a regressao limpa incremental r22 comprovou 40/40. A primeira regressao integral desde zero parou na oitava medicao anual e originou a Q4AO, aprovada no smoke exato. A proxima grade r23 reinicia matriz e Q5A-Q5D sem preservar resultados.
+Status: Q0-Q4 concluidas; a incremental r22 comprovou 40/40. A regressao integral r23 aprovou Q5A 10/10 e Q5B 14/16 antes de revelar proposta trimestral prematura. A Q4AP foi aprovada no smoke exato; a proxima grade r24 reinicia matriz e Q5A-Q5D sem preservar resultados.
 
 ## Objetivo
 
@@ -19,6 +19,7 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - `scripts/strategic-q4ak-smoke.ts`: smoke do bloqueio server-side de KPI trimestral nao escolhido pelo gestor.
 - `scripts/strategic-q4al-smoke.ts`: smoke do bloco mensal completo com pendencia herdada, continuidade e confirmacao unica.
 - `scripts/strategic-q4am-smoke.ts`: smoke do desafio de capacidade sem repeticao de campos para gestor mensal experiente.
+- `scripts/strategic-q4ap-smoke.ts`: smoke da barreira de fidelidade para varias acoes trimestrais incompletas, desafio unico e confirmacao unica.
 - `scripts/strategic-model-ab.ts`: comparação paga e cega entre Grok 4.3/4.5, com trava de autorização e sem troca automática.
 - `tests/evals/strategic-quality/cases/q1-minimal-annual.json`: primeiro caso sintetico, obrigatoriamente anual.
 - `src/test/strategic-eval-runner.test.ts`: guardas e falhas seguras.

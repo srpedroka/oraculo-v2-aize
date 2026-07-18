@@ -1,4 +1,5 @@
 import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
+import { quarterlyProposalActionGaps } from "./quarterly-guidance.ts";
 import { normalizeQuarterlyKpiLinks, quarterlyKpiLabel, quarterlyKpiLinks, retainConfirmedQuarterlyKpiLinks } from "./quarterly-kpis.ts";
 import { normalizeMonthlyContinuity } from "./monthly-continuity.ts";
 import { normalizeRiskList } from "./risk-normalization.ts";
@@ -84,6 +85,11 @@ const QUARTERLY_KPI_HYPOTHESIS_CONTEXT_PATTERN = /\bDashboard\b[\s\S]{0,320}\bMa
 const QUARTERLY_KPI_HYPOTHESIS_REPLY_PATTERN = /\bhip[oó]tese\b[\s\S]{0,280}\bMargem operacional\b|\bMargem operacional\b[\s\S]{0,280}\bhip[oó]tese\b/i;
 const QUARTERLY_KPI_CHOICE_REPLY_PATTERN = /\b(?:quer|deseja|prefere|escolhe|confirma)\b[\s\S]{0,180}\bvincul|\bvincul[ao]\b[\s\S]{0,180}\b(?:quer|deseja|prefere|escolhe|confirma)\b/i;
 const QUARTERLY_OBJECTIVE_OVERLOAD_PATTERN = /\b(?:tenho|temos|existem|listei)\b[\s\S]{0,100}\b(quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+objetivos?\b[\s\S]{0,100}\b(?:iguais|igualmente|importantes|prioridade)\b/i;
+const QUARTERLY_ACTION_LINE_PATTERN = /\b(?:a[cç][aã]o\s*\d+|primeir[ao]\s+a[cç][aã]o|segund[ao]\s+a[cç][aã]o|terceir[ao]\s+a[cç][aã]o)\b/i;
+const QUARTERLY_ACTION_OWNER_PATTERN = /\b(?:respons[aá]vel|dono)\b/i;
+const QUARTERLY_ACTION_CRITERION_PATTERN = /\bcrit[eé]rio(?:\s+de\s+conclus[aã]o)?\b/i;
+const QUARTERLY_COLLECTIVE_ACTION_OWNER_PATTERN = /\b(?:ambas|todas|as\s+duas|duas\s+a[cç][oõ]es)\b[^.\n]{0,100}\b(?:respons[aá]vel|dono)\b|\b(?:respons[aá]vel|dono)\b[^.\n]{0,100}\b(?:ambas|todas|as\s+duas|duas\s+a[cç][oõ]es)\b/i;
+const QUARTERLY_COLLECTIVE_ACTION_CRITERION_PATTERN = /\b(?:ambas|todas|as\s+duas|duas\s+a[cç][oõ]es)\b[^.\n]{0,100}\bcrit[eé]rio\b|\bcrit[eé]rio\b[^.\n]{0,100}\b(?:ambas|todas|as\s+duas|duas\s+a[cç][oõ]es)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -363,6 +369,37 @@ function quarterlyCompleteBlockChallengeReply(userMessage: string) {
   return `A meta${measure} está clara. Qual evidência intermediária vai mostrar, antes do fechamento, que as ações realmente estão mudando esse resultado?`;
 }
 
+function quarterlyIncompleteActionChallengeReply(gaps: string[]) {
+  const missingFields = [
+    ...(gaps.includes("actions") || gaps.includes("description") ? ["a descrição"] : []),
+    ...(gaps.includes("owner") || gaps.includes("ownerConfirmation") ? ["o responsável"] : []),
+    ...(gaps.includes("deadline") ? ["o prazo"] : []),
+    ...(gaps.includes("completionCriterion") ? ["o critério de conclusão"] : []),
+  ];
+  const fields = missingFields.length > 1
+    ? `${missingFields.slice(0, -1).join(", ")} e ${missingFields.at(-1)}`
+    : missingFields[0] ?? "os dados verificáveis";
+  return `Considerando o risco informado, a capacidade da equipe comporta essas ações e elas realmente movem a meta? Para fechar sem assumir dados, responda com ${fields} de cada ação.`;
+}
+
+function quarterlyUserActionFidelityGaps(userMessage: string) {
+  const actionLines = userMessage
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => QUARTERLY_ACTION_LINE_PATTERN.test(line));
+  if (actionLines.length < 2) return [];
+  const gaps = new Set<string>();
+  const hasCollectiveOwner = QUARTERLY_COLLECTIVE_ACTION_OWNER_PATTERN.test(userMessage);
+  const hasCollectiveCriterion = QUARTERLY_COLLECTIVE_ACTION_CRITERION_PATTERN.test(userMessage);
+  if (!hasCollectiveOwner && actionLines.some((line) => !QUARTERLY_ACTION_OWNER_PATTERN.test(line))) {
+    gaps.add("ownerConfirmation");
+  }
+  if (!hasCollectiveCriterion && actionLines.some((line) => !QUARTERLY_ACTION_CRITERION_PATTERN.test(line))) {
+    gaps.add("completionCriterion");
+  }
+  return [...gaps];
+}
+
 function oracleConversation(conversationText: string) {
   return conversationText
     .split(/\n(?=(?:oracle|user):\s*)/i)
@@ -417,9 +454,51 @@ export function deferUnchallengedQuarterlyProposal(input: {
   conversationText?: string;
   userMessage: string;
 }) {
-  if (input.sessionType !== "quarterly"
-    || !input.envelope.proposal
-    || !looksLikeCompleteQuarterlyBlock(input.userMessage)
+  if (input.sessionType !== "quarterly") return input.envelope;
+
+  const actionGaps = quarterlyUserActionFidelityGaps(input.userMessage);
+  if (actionGaps.length) {
+    return {
+      ...input.envelope,
+      reply: quarterlyIncompleteActionChallengeReply(actionGaps),
+      proposal: null,
+      done: false,
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: verifiedStateKeys(input.sessionState, {}),
+          blocking_gap: "responsavel e criterio de conclusao verificavel de cada acao",
+          question_goal: "testar a capacidade e completar as acoes sem assumir dados",
+          action_direction: "confirmar dono e evidencia concreta de conclusao por acao",
+        },
+      },
+      next_phase: input.currentPhase,
+    };
+  }
+
+  if (!input.envelope.proposal) return input.envelope;
+
+  const proposalActionGaps = quarterlyProposalActionGaps(input.envelope.proposal);
+  if (proposalActionGaps.length) {
+    return {
+      ...input.envelope,
+      reply: quarterlyIncompleteActionChallengeReply(proposalActionGaps),
+      proposal: null,
+      done: false,
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: verifiedStateKeys(input.sessionState, {}),
+          blocking_gap: "responsavel e criterio de conclusao verificavel de cada acao",
+          question_goal: "testar a capacidade e completar as acoes sem assumir dados",
+          action_direction: "confirmar dono e evidencia concreta de conclusao por acao",
+        },
+      },
+      next_phase: input.currentPhase,
+    };
+  }
+
+  if (!looksLikeCompleteQuarterlyBlock(input.userMessage)
     || quarterlyBlockAlreadyStressTested(input.userMessage)
     || hasQuarterlyStrategicChallenge(text(input.conversationText))) {
     return input.envelope;

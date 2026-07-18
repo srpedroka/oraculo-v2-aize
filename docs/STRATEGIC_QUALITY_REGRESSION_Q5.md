@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **incremental r22 em 40/40; regressao integral r23 reiniciara desde zero apos Q4AO**
+Status: **incremental r22 em 40/40; Q4AP aprovada; regressao integral r24 reiniciara desde zero**
 
 ## Objetivo
 
@@ -17,6 +17,14 @@ Repetir exatamente as 40 rodadas generativas e os nove casos deterministas da Q3
 - A matriz determinista terminou com oito `pass`, um `pending-human` de UX e zero `fail`.
 
 ## Resultado da tentativa
+
+### Regressao integral r23 e Q4AP
+
+A r23 aprovou a matriz, Q5A 10/10 e as primeiras 14 medicoes Q5B. `Q2B-QUARTERLY-EXPERIENCED-MANAGER-008` R1 bloqueou Conducao em 72,50: o Oraculo pulou o desafio de capacidade, inferiu os donos das acoes e usou `realizado` como criterio da segunda. Plano Trimestral 92,50, Saida Derivada 93,75, checks e cleanup passaram; o fail-fast impediu R2. A rodada custou US$ 0,037135 e levou o acumulado a US$ 15,793117.
+
+A Q4AP compara as acoes explicitamente fornecidas pelo gestor antes de aceitar a proposta. Quando duas ou mais acoes nao trazem dono e criterio por acao, o servidor substitui proposta ou pergunta organica por uma unica pergunta sobre capacidade e dados faltantes; nao persiste o rascunho nem o estado gerado. Criterios genericos tambem falham na validacao. Os dois primeiros smokes foram preservados como calibracao porque revelaram, respectivamente, uma invencao plausivel e o caminho sem proposta. O terceiro passou com Conducao 96,25, Plano Trimestral 100, Saida Derivada 100 e media 98,75. Custos Q4AP: US$ 0,030323 + US$ 0,038770 + US$ 0,046959 = US$ 0,116052; acumulado US$ 15,909170.
+
+Validacao local: 509 unitarios, catalogo 29/29, lint, build/bundle, secret scan em 533 arquivos e diff check. Somente `oracle-session` foi publicada no staging. `restart-clean-after-correction Q4AP` arquivara as 24 aprovacoes e o bloqueio da r23, abrira `2026-07-18.q5-clean-regression-r24-q4ap` vazia e repetira toda a grade. Producao, frontend, migrations, banco real, WhatsApp real e Evolution permanecem inalterados.
 
 ### Regressao integral e Q4AO
 

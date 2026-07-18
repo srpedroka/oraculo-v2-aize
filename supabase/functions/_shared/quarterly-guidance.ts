@@ -15,13 +15,14 @@ const ACTIVITY_TITLE_PATTERN = /^(?:implantar|implementar|instalar|criar|fazer|p
 const ANNUAL_RITUAL_SWITCH_PATTERN = /\b(?:vamos|precisamos|vou)\s+(?:construir|montar|fazer|iniciar|come[cç]ar)\s+(?:o\s+)?(?:planejamento|plano)\s+(?:estrat[eé]gico\s+)?anual\b/i;
 const CADENCE_ACTION_PATTERN = /\b(?:acompanhar|acompanhamento|auditar|auditoria|revisar|revis[aã]o|reuni[aã]o|check-?in|ritual|monitorar|monitoramento)\b/i;
 const CADENCE_FREQUENCY_PATTERN = /\b(?:di[aá]ri[oa]s?|diariamente|semanal|semanalmente|quinzenal|quinzenalmente|mensal|mensalmente|bimestral|bimestralmente|trimestral|trimestralmente)\b/i;
+const GENERIC_ACTION_COMPLETION_PATTERN = /^(?:realizad[ao]|feit[ao]|conclu[ií]d[ao]|finalizad[ao])(?:\s+com\s+sucesso)?[.!]?$/i;
 
 export const QUARTERLY_GUIDANCE_RULES = `REGRAS ESPECIFICAS DO PLANO TRIMESTRAL (obrigatorias):
 - O trimestre transforma a direcao anual em 1 a 3 resultados decisivos. Nunca mude para o ritual anual durante esta sessao.
 - Quando houver objetivo anual aplicavel no contexto, vincule cada resultado trimestral a ele. Quando nao houver, continue no trimestre e registre annualAlignment={"status":"exception","rationale":"motivo confirmado pelo gestor"}; nunca invente um objetivo anual apenas para preencher o vinculo.
 - Forcas e gargalos sao proporcionais ao caso. Colete somente o diagnostico que muda uma escolha; nao exija listas fixas de tres itens.
 - Se o gestor trouxer uma atividade como objetivo (implantar CRM, contratar, criar processo), investigue o resultado que ela precisa produzir. A atividade fica em actions[]; o objetivo descreve a mudanca mensuravel.
-- Cada objetivo trimestral precisa preservar title, result, metric, current (baseline), target, source, deadline, owner e parentTitle. A execucao pode ficar em actions[] do objetivo ou em sharedActions[] quando a mesma acao move mais de um resultado; nunca repita uma acao transversal dentro de cada objetivo. Cada action preserva description, owner, deadline e completionCriterion.
+- Cada objetivo trimestral precisa preservar title, result, metric, current (baseline), target, source, deadline, owner e parentTitle. A execucao pode ficar em actions[] do objetivo ou em sharedActions[] quando a mesma acao move mais de um resultado; nunca repita uma acao transversal dentro de cada objetivo. Cada action preserva description, owner, deadline e completionCriterion. O criterio deve ser uma evidencia observavel; nunca use placeholders como "realizado", "feito", "concluido" ou "finalizado".
 - Vinculos confirmados com KPIs existentes usam kpiLinks=[{"kpiKey":"revenue|operating_margin|production|cash","rationale":"hipotese ou justificativa confirmada"}]. Nunca trate hipotese como causalidade comprovada e nunca grave o vinculo antes da escolha do gestor.
 - Se baseline, indicador, fonte, prazo, dono ou criterio ainda nao existirem, nao monte proposal: pergunte somente a lacuna que torna o objetivo verificavel.
 - Se houver mais de tres prioridades, conduza a escolha de 1 a 3 resultados. Registre itens adiados em tradeOffs[]; nao os esconda como uma lista excessiva de acoes.
@@ -82,12 +83,43 @@ function objectiveIsVerifiable(objective: Record<string, unknown>) {
 
 function actionIsComplete(action: unknown) {
   const record = asRecord(action);
-  return [
+  const values = [
     record.description ?? record.descricao,
     record.owner ?? record.responsavel,
     record.deadline ?? record.prazo,
     record.completionCriterion ?? record.completion_criterion ?? record.criterio,
-  ].every((value) => text(value));
+  ];
+  const completionCriterion = text(values[3]);
+  return values.every((value) => text(value)) && !GENERIC_ACTION_COMPLETION_PATTERN.test(completionCriterion);
+}
+
+export function quarterlyProposalActionGaps(proposalValue: unknown) {
+  const proposal = asRecord(normalizeQuarterlySharedActions(proposalValue));
+  if (proposal.type !== "save_quarterly_plan") return [];
+  const objectives = asArray(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre).map(asRecord);
+  const sharedActions = asArray(proposal.sharedActions ?? proposal.acoesTransversais);
+  if (!objectives.length) return [];
+  const gaps = new Set<string>();
+  let actionCount = 0;
+  const inspectAction = (action: unknown) => {
+    actionCount += 1;
+    const record = asRecord(action);
+    const description = text(record.description ?? record.descricao);
+    const owner = text(record.owner ?? record.responsavel);
+    const deadline = text(record.deadline ?? record.prazo);
+    const criterion = text(record.completionCriterion ?? record.completion_criterion ?? record.criterio);
+    if (!description) gaps.add("description");
+    if (!owner) gaps.add("owner");
+    if (!deadline) gaps.add("deadline");
+    if (!criterion || GENERIC_ACTION_COMPLETION_PATTERN.test(criterion)) gaps.add("completionCriterion");
+    if (GENERIC_ACTION_COMPLETION_PATTERN.test(criterion)) gaps.add("ownerConfirmation");
+  };
+  objectives.forEach((objective) => {
+    const actions = asArray(objective.actions ?? objective.acoes);
+    actions.forEach(inspectAction);
+  });
+  sharedActions.forEach(inspectAction);
+  return actionCount ? [...gaps] : [];
 }
 
 function hasAnnualLink(proposal: Record<string, unknown>, alignment: Record<string, unknown>, objectives: unknown[]) {

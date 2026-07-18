@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Fidelidade das acoes trimestrais e validada antes da proposta
+
+Decisao: quando o gestor lista duas ou mais acoes e nao explicita dono e criterio verificavel para cada uma, o servidor mantem a sessao aberta com uma unica pergunta que testa capacidade e solicita somente os campos faltantes. A regra atua tanto se o modelo tentar propor quanto se fizer uma pergunta organica. Proposta prematura e `state_patch` gerado nesse turno sao descartados; `realizado`, `feito`, `concluido` e `finalizado` nao contam como criterio de conclusao.
+
+Motivo: o mesmo modelo variou entre um placeholder ruim, uma inferencia plausivel e uma pergunta estrategica adequada. Judge e prompt nao bastam para garantir fidelidade em todas as amostras. O contrato precisa pertencer ao servidor, sem aumentar a burocracia quando as acoes ja estao completas.
+
+Consequencias: planos trimestrais completos continuam indo direto para a sintese e uma confirmacao; planos parciais recebem no maximo uma pergunta combinada. Nao ha tabela, migration, frontend ou mudanca de permissao. A Q4AP foi validada somente no staging e producao permanece inalterada.
+
 ## 2026-07-18 - Anos historicos nao confirmados tambem sao neutralizados na conversa
 
 Decisao: em sessoes estrategicas, o servidor normaliza anos absolutos da resposta visivel quando eles nao aparecem na conversa nem correspondem ao periodo canonico da sessao. Em contexto de meta repetida ou ciclo anterior, o ano vira `no ciclo anterior`; o plano, os numeros, a pergunta e os anos confirmados permanecem iguais.

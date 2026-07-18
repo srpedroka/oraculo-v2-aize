@@ -1008,3 +1008,9 @@ Proximo passo: arquivar a grade incremental aprovada, iniciar uma regressao inte
 A grade integral passou matriz e sete medicoes anuais, mas meta repetida R2 atribuiu `2026` a um ciclo que o gestor descreveu apenas como anterior. Plano 96,25 e Conducao 91,25 estavam acima do piso, porem a fidelidade bloqueou por fabricacao. A Q4AO neutraliza somente o ano historico nao confirmado na resposta visivel; o periodo canonico, anos ditos pelo gestor, numeros, plano e pergunta continuam iguais.
 
 Smoke R2 aprovado em 100/100; custo US$ 0,046011; acumulado US$ 14,733149. Proximo passo: arquivar as sete aprovacoes e o bloqueio como calibracao, abrir r23 vazia, repetir matriz gratuita e Q5A-Q5D completas. Nenhum resultado da tentativa parcial sera preservado.
+
+## Atualizacao 2026-07-18 - Q4AP aprovada na regressao integral r23
+
+A r23 concluiu Q5A 10/10 e aprovou 14 das 16 medicoes trimestrais antes de bloquear o gestor experiente R1. O modelo montou uma boa estrutura, mas pulou o desafio, inferiu donos e completou a segunda acao com `realizado`; Conducao 72,50 bloqueou apesar de Plano 92,50 e Saida 93,75.
+
+A Q4AP moveu essa decisao para o servidor. Duas ou mais acoes sem dono/criterio explicitos recebem uma unica pergunta sobre capacidade e os campos faltantes, com descarte de proposta e estado prematuros. O guard atua tambem quando o modelo faz uma pergunta organica e recusa criterios genericos. Os tres smokes custaram US$ 0,116052; o final passou com Conducao 96,25, Plano 100, Saida 100 e media 98,75. Acumulado US$ 15,909170. Proximo passo: commit/push, reiniciar a grade como r24 desde zero, rodar deterministas e Q5A-Q5D completas com fail-fast. Nenhuma aprovacao da r23 sera preservada.

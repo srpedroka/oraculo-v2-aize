@@ -898,8 +898,8 @@ describe("adaptive planning session guard Q4A", () => {
       "Dados concretos adicionais confirmados pelo gestor sintetico para fechar o plano trimestral:",
       "- Resultado principal confirmado: elevar entregas no prazo de 82% para 92% ate 30/09/2027, fonte relatorio de expedicao.",
       "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
-      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
-      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
+      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel; responsavel PERSON_FIXTURE_MANAGER.",
+      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas; responsavel PERSON_FIXTURE_MANAGER.",
       "- Risco: baixa adesao.",
     ].join("\n");
     const readyEnvelope = {
@@ -945,8 +945,8 @@ describe("adaptive planning session guard Q4A", () => {
       "Dados concretos adicionais confirmados pelo gestor sintetico para fechar o plano trimestral:",
       "- Resultado principal confirmado: elevar oportunidades com proxima acao registrada de 40% para 85% ate 30/09/2027, fonte relatorio semanal do funil.",
       "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
-      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
-      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
+      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel; responsavel PERSON_FIXTURE_MANAGER.",
+      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas; responsavel PERSON_FIXTURE_MANAGER.",
       "- Risco: baixa adesao.",
     ].join("\n");
     const readyEnvelope = {
@@ -993,13 +993,109 @@ describe("adaptive planning session guard Q4A", () => {
     expect(preparedReasons).toEqual([]);
   });
 
+  it("discards a premature quarterly proposal and asks one combined challenge for unverifiable actions", () => {
+    const prepared = deferUnchallengedQuarterlyProposal({
+      envelope: {
+        reply: "O plano ficou pronto. Posso gravar?",
+        proposal: {
+          type: "save_quarterly_plan",
+          annualAlignment: { status: "linked", strategicObjectiveTitle: "Aumentar previsibilidade comercial" },
+          quarterlyObjectives: [{
+            title: "Elevar oportunidades com proxima acao",
+            result: "Elevar de 40% para 85%",
+            metric: "percentual",
+            current: "40",
+            target: "85",
+            source: "relatorio semanal",
+            deadline: "2027-09-30",
+            owner: "PERSON_FIXTURE_MANAGER",
+            actions: [{
+              description: "Padronizar etapas do funil",
+              owner: "PERSON_FIXTURE_MANAGER",
+              deadline: "2027-07-31",
+              completionCriterion: "aceite documentado",
+            }, {
+              description: "Revisar oportunidades sem proxima acao",
+              owner: "PERSON_FIXTURE_MANAGER",
+              deadline: "2027-09-30",
+              completionCriterion: "revisoes documentadas no relatorio semanal",
+            }],
+          }],
+        },
+        state_patch: {
+          acoes: [{ completionCriterion: "revisoes documentadas no relatorio semanal" }],
+        },
+        next_phase: "sintese",
+      },
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      sessionState: { resultado: "Elevar oportunidades com proxima acao" },
+      conversationText: "oracle: Qual a primeira das duas acoes, com dono, prazo e criterio?",
+      userMessage: [
+        "Informacoes confirmadas para este caso sintetico:",
+        "- A primeira acao e padronizar etapas do funil ate julho, com criterio de aceite documentado.",
+        "- A segunda acao e revisar oportunidades sem proxima acao semanalmente ate setembro.",
+        "- O risco confirmado e baixa adesao dos vendedores e o acompanhamento sera semanal.",
+      ].join("\n"),
+    });
+    const validationReasons = validateAdaptiveEnvelope({
+      envelope: prepared,
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      phases,
+      sessionState: { resultado: "Elevar oportunidades com proxima acao" },
+      conversationText: "oracle: Qual a primeira das duas acoes, com dono, prazo e criterio?",
+      previousOracleReply: "Qual a primeira das duas acoes, com dono, prazo e criterio?",
+      userMessage: "A primeira tem aceite documentado; a segunda sera revisada semanalmente. O risco e baixa adesao.",
+    });
+
+    expect(prepared.proposal).toBeNull();
+    expect(prepared.done).toBe(false);
+    expect(prepared.next_phase).toBe("diagnostico");
+    expect(prepared.reply).toContain("capacidade da equipe");
+    expect(prepared.reply).toContain("responsável");
+    expect(prepared.reply).toContain("critério de conclusão");
+    expect(visibleQuestions(String(prepared.reply))).toHaveLength(1);
+    expect(JSON.stringify(prepared.state_patch)).not.toContain("revisoes documentadas");
+    expect((prepared.state_patch as Record<string, unknown>)).not.toHaveProperty("_deferred_quarterly_proposal");
+    expect(validationReasons).toEqual([]);
+  });
+
+  it("normalizes an organic quarterly challenge when the manager action block still has fidelity gaps", () => {
+    const prepared = deferUnchallengedQuarterlyProposal({
+      envelope: {
+        reply: "Com o risco de baixa adesao, como essas acoes vao mover a taxa de 40% para 85%?",
+        proposal: null,
+        state_patch: { risco: "baixa adesao" },
+        next_phase: "diagnostico",
+      },
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      sessionState: { resultado: "Elevar oportunidades com proxima acao" },
+      conversationText: "oracle: Qual o gargalo principal que explica o patamar atual?",
+      userMessage: [
+        "Informacoes confirmadas para este caso sintetico:",
+        "- A primeira acao e padronizar etapas do funil ate julho, com criterio de aceite documentado.",
+        "- A segunda acao e revisar oportunidades sem proxima acao semanalmente ate setembro.",
+        "- O risco confirmado e baixa adesao dos vendedores e o acompanhamento sera semanal.",
+      ].join("\n"),
+    });
+
+    expect(prepared.proposal).toBeNull();
+    expect(prepared.reply).toContain("capacidade da equipe");
+    expect(prepared.reply).toContain("responsável");
+    expect(prepared.reply).toContain("critério de conclusão");
+    expect(visibleQuestions(String(prepared.reply))).toHaveLength(1);
+    expect(prepared.state_patch).not.toHaveProperty("risco");
+  });
+
   it("closes a complete quarterly block already tested by risk, mitigation and learning", () => {
     const userMessage = [
       "Dados concretos adicionais confirmados pelo gestor sintetico para fechar o plano trimestral:",
       "- Resultado principal confirmado: elevar oportunidades com proxima acao registrada de 40% para 85% ate 30/09/2027, fonte relatorio semanal do funil.",
       "- Responsavel: PERSON_FIXTURE_MANAGER. Periodo: T3 2027.",
-      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel.",
-      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas.",
+      "- Acao 1: publicar o padrao operacional ate 31/07/2027; criterio: padrao aprovado e acessivel; responsavel PERSON_FIXTURE_MANAGER.",
+      "- Acao 2: revisar semanalmente as excecoes ate 30/09/2027; criterio: doze revisoes registradas; responsavel PERSON_FIXTURE_MANAGER.",
       "- Risco: baixa adesao. Mitigacao: acompanhamento semanal. Foco de aprendizado: validar se a padronizacao melhora o indicador sem aumentar carga da equipe.",
     ].join("\n");
     const proposal = { type: "save_quarterly_plan", quarterlyObjectives: [{ result: "Elevar oportunidades" }] };
@@ -1052,8 +1148,8 @@ describe("adaptive planning session guard Q4A", () => {
       "Dados concretos adicionais confirmados para fechar o plano trimestral:",
       "- Resultado principal: elevar entregas no prazo de 82% para 92%, fonte expedicao.",
       "- Responsavel: Diego. Periodo: T3 2027.",
-      "- Acao 1: publicar padrao; criterio: padrao aprovado.",
-      "- Acao 2: revisar excecoes; criterio: doze revisoes.",
+      "- Acao 1: publicar padrao; criterio: padrao aprovado; responsavel Diego.",
+      "- Acao 2: revisar excecoes; criterio: doze revisoes; responsavel Diego.",
       "- Risco: baixa adesao. Mitigacao: acompanhamento semanal.",
     ].join("\n");
     const readyEnvelope = {

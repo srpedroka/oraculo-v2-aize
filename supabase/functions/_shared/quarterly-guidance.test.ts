@@ -98,6 +98,21 @@ describe("quarterly guidance", () => {
     expect(reasons(proposal)).toContain("quarterly_incomplete_actions");
   });
 
+  it("recusa criterio de conclusao generico que nao produz evidencia", () => {
+    const proposal = completeProposal({
+      quarterlyObjectives: [completeObjective({
+        actions: [{
+          description: "Revisar oportunidades sem proxima acao",
+          owner: "Gestor Comercial",
+          deadline: "2027-09-30",
+          completionCriterion: "realizado",
+        }],
+      })],
+    });
+
+    expect(reasons(proposal)).toContain("quarterly_incomplete_actions");
+  });
+
   it("aceita ações transversais completas sem exigir cópias em cada objetivo", () => {
     const proposal = completeProposal({
       sharedActions: [{
