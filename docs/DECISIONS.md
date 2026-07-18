@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Bloco mensal completo de pendencia vira proposta sem reentrevista
+
+Decisao: reconhecer deterministicamente uma pendencia mensal herdada quando a mensagem confirma item, origem, motivo, decisao de rolar, prazo, responsavel, criterio de conclusao e resultado mensuravel. Nesse caso, a pendencia e a propria acao; o servidor monta a proposta com uma confirmacao e usa apenas um objetivo trimestral atual inequivoco como pai.
+
+Motivo: o modelo recebeu todos os fatos do caso, mas perguntou a acao novamente duas vezes e caiu no fallback sem proposta. A falha nao era falta de capacidade do provedor para entender estrategia; era a ausencia de uma transicao deterministica entre fatos completos e o contrato mensal.
+
+Consequencias: o gestor nao ganha uma etapa nova. Blocos completos encerram a entrevista mais cedo; se faltar qualquer campo obrigatorio ou houver mais de um pai possivel, o fluxo adaptativo continua perguntando. Nenhum valor e inventado e nenhum vinculo ambiguo e escolhido automaticamente.
+
 ## 2026-07-18 - Vinculo com KPI exige escolha explicita do gestor
 
 Decisao: tratar `kpiLinks` como decisao autorizada, nao como conteudo livre da IA. Em sessao trimestral, um KPI conhecido permanece somente quando a mensagem do gestor nomeia e confirma o vinculo ou quando uma resposta afirmativa curta sucede uma pergunta explicita que nomeia o KPI. Sem essa evidencia, o servidor remove o link antes da confirmacao.

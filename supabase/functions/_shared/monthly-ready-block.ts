@@ -25,6 +25,20 @@ type ParsedMonthlyReadyBlock = {
   confidence: string;
 };
 
+type ParsedInheritedMonthlyPendingBlock = {
+  item: string;
+  origin: string;
+  reason: string;
+  deadline: string;
+  owner: string;
+  completionCriterion: string;
+  resultBase: string;
+  metric: string;
+  current: string;
+  target: string;
+  source: string;
+};
+
 function text(value: unknown) {
   return String(value ?? "").trim();
 }
@@ -153,6 +167,47 @@ export function parseCompleteMonthlyReadyBlock(message: string, period: string):
   };
 }
 
+export function parseInheritedMonthlyPendingBlock(
+  message: string,
+  period: string,
+): ParsedInheritedMonthlyPendingBlock | null {
+  const lines = message.split(/\r?\n/).map((line) => stripBullet(line.trim())).filter(Boolean);
+  const decisionLine = lines.find((line) => /^rolar\s+/i.test(line) && /preservando a origem/i.test(line));
+  const detailsLine = lines.find((line) => /^novo prazo:/i.test(line));
+  const resultLine = lines.find((line) => /^resultado mensal vinculado ao trimestre:/i.test(line));
+  if (!decisionLine || !detailsLine || !resultLine) return null;
+
+  const decision = decisionLine.match(
+    /^rolar\s+(?:a|o)?\s*(.+?)\s+para\s+([^,]+),\s*preservando a origem de\s+(.+?)\s+e registrando\s+(.+?)\s+como motivo[.]?$/i,
+  );
+  const details = detailsLine.match(
+    /^novo prazo:\s*([^.]+)[.]\s*respons[aá]vel:\s*([^.]+)[.]\s*crit[eé]rio:\s*(.+?)[.]?$/i,
+  );
+  const result = resultLine.match(
+    /^resultado mensal vinculado ao trimestre:\s*(.+?)\s+de\s+(\d+(?:[.,]\d+)?\s*%?)\s+para\s+(\d+(?:[.,]\d+)?\s*%?)\s*;\s*fonte\s+(.+?)[.]?$/i,
+  );
+  if (!decision || !details || !result) return null;
+
+  const destination = text(decision[2]);
+  const deadline = isoDate(text(details[1]), period);
+  const resultBase = text(result[1]);
+  const metric = resultBase.replace(/^(?:elevar|aumentar|reduzir|diminuir|melhorar)\s+/i, "").trim();
+  if (comparable(destination) !== comparable(period) || !deadline || !metric) return null;
+  return {
+    item: text(decision[1]),
+    origin: text(decision[3]),
+    reason: text(decision[4]),
+    deadline,
+    owner: text(details[2]),
+    completionCriterion: text(details[3]),
+    resultBase,
+    metric,
+    current: text(result[2]),
+    target: text(result[3]),
+    source: text(result[4]),
+  };
+}
+
 const QUARTERLY_LINK_STOPWORDS = new Set([
   "a", "ao", "da", "das", "de", "do", "dos", "e", "o", "os", "para",
   "objetivo", "trimestral", "trimestre", "elevar", "aumentar", "reduzir", "melhorar",
@@ -175,7 +230,7 @@ export function matchingQuarterlyObjective(
   return matches.length === 1 ? matches[0] : null;
 }
 
-async function loadQuarterlyParent(client: Client, session: any, hint: string) {
+async function loadQuarterlyParent(client: Client, session: any, hint: string, allowUnique = false) {
   if (!session.area_id) return null;
   const quarter = quarterPeriodForMonth(session.period);
   const acceptedPeriods = [quarter, quarter.replace(/^T/i, "Q")];
@@ -188,7 +243,85 @@ async function loadQuarterlyParent(client: Client, session: any, hint: string) {
     .in("period", acceptedPeriods)
     .is("archived_at", null);
   if (error) throw error;
-  return matchingQuarterlyObjective(hint, data ?? []);
+  const candidates = data ?? [];
+  return matchingQuarterlyObjective(hint, candidates)
+    ?? (allowUnique && candidates.length === 1 ? candidates[0] : null);
+}
+
+export async function monthlyInheritedPendingEnvelope(client: Client, session: any, message: string) {
+  if (session.type !== "monthly") return null;
+  const block = parseInheritedMonthlyPendingBlock(message, session.period);
+  if (!block) return null;
+  const parent = await loadQuarterlyParent(client, session, block.metric, true);
+  if (!parent) return null;
+  const actionDescription = `Rolar a ${block.item}`;
+  const proposal = {
+    type: "save_monthly_plan",
+    period: session.period,
+    quarterlyAlignment: {
+      status: "linked",
+      quarterlyObjectiveId: parent.id,
+      quarterlyObjectiveTitle: parent.title,
+      rationale: `Resultado mensal confirmado como contribuição a ${parent.title}.`,
+    },
+    capacity: { maxCommittedActions: 5 },
+    pendingDecisions: [{
+      item: block.item,
+      origin: block.origin,
+      reason: block.reason,
+      decision: "roll",
+    }],
+    backlog: [],
+    risks: [],
+    blockers: [],
+    cadence: "",
+    nextCommitment: "",
+    learningFocus: [],
+    focusPhrase: "",
+    realism: { fits: true, firstToRemove: "" },
+    objectives: [{
+      title: block.item,
+      type: "harvest",
+      result: block.item,
+      metric: block.metric,
+      current: block.current,
+      target: block.target,
+      source: block.source,
+      deadline: block.deadline,
+      owner: block.owner,
+      period: session.period,
+      linkedQuarterlyObjectiveId: parent.id,
+      parentTitle: parent.title,
+      kpiLinks: [],
+      actions: [{
+        description: actionDescription,
+        completionCriterion: block.completionCriterion,
+        deadline: block.deadline,
+        owner: block.owner,
+      }],
+    }],
+  };
+  const statePatch = {
+    resultado_mensal: `${capitalize(block.resultBase)} de ${block.current} para ${block.target}`,
+    decisao_pendencia: proposal.pendingDecisions[0],
+    acoes_mes: proposal.objectives[0].actions,
+    alinhamento_trimestral: parent.title,
+  };
+  return {
+    reply: "A pendência e o resultado mensal estão completos para a confirmação final.",
+    state_patch: {
+      ...statePatch,
+      _adaptive: {
+        readiness: "ready",
+        confirmed_facts: Object.keys(statePatch),
+        blocking_gap: null,
+        question_goal: "confirmar gravação",
+        action_direction: "gravar o plano confirmado",
+      },
+    },
+    next_phase: "sintese",
+    proposal,
+  };
 }
 
 export async function completeMonthlyReadyEnvelope(client: Client, session: any, message: string) {

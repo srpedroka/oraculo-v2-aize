@@ -4,7 +4,7 @@ import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
 import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
-import { completeMonthlyReadyEnvelope, monthlyCapacityDecisionEnvelope } from "./monthly-ready-block.ts";
+import { completeMonthlyReadyEnvelope, monthlyCapacityDecisionEnvelope, monthlyInheritedPendingEnvelope } from "./monthly-ready-block.ts";
 import {
   conversationMessagesForModel,
   formatConversationMemory,
@@ -481,6 +481,7 @@ export async function processPlanningMessage(
     currentPhase: session.phase,
     phases: CONDUCTORS[session.type].phases,
   })
+    ?? await monthlyInheritedPendingEnvelope(client, ensured.session, params.message)
     ?? await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
     ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context)
     ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText)

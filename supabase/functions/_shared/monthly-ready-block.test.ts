@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { matchingQuarterlyObjective, monthlyCapacityDecisionEnvelope, parseCompleteMonthlyReadyBlock } from "./monthly-ready-block.ts";
-import { validateAdaptiveEnvelope } from "./session-adaptive.ts";
+import {
+  matchingQuarterlyObjective,
+  monthlyCapacityDecisionEnvelope,
+  monthlyInheritedPendingEnvelope,
+  parseCompleteMonthlyReadyBlock,
+  parseInheritedMonthlyPendingBlock,
+} from "./monthly-ready-block.ts";
+import { normalizeProposalConfirmationEnvelope, validateAdaptiveEnvelope } from "./session-adaptive.ts";
+import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
 
 const completeBlock = `Dados concretos adicionais confirmados pelo gestor sintetico para fechar Jul 2027:
 - Objetivo mensal: elevar oportunidades com proxima acao de 40% para 55% ate 31/07/2027; fonte relatorio semanal; responsavel PERSON_FIXTURE_MANAGER; vinculo ao objetivo trimestral de qualidade do funil.
@@ -10,6 +17,11 @@ const completeBlock = `Dados concretos adicionais confirmados pelo gestor sintet
 - Acao 4: corrigir duas causas principais ate 25/07, criterio correcoes validadas; responsavel PERSON_FIXTURE_MANAGER.
 - Acao 5: revisar indicador ate 31/07, criterio fechamento registrado; responsavel PERSON_FIXTURE_MANAGER.
 - Acompanhamento semanal. Confianca amarela. Bloqueio principal: adesao da equipe. As demais demandas ficam no backlog do mes.`;
+
+const inheritedBlock = `Decisao concreta do gestor para completar o plano mensal:
+- Rolar a integracao do CRM para Jul 2027, preservando a origem de Jun 2027 e registrando dependencia do fornecedor como motivo.
+- Novo prazo: 20/07/2027. Responsavel: PERSON_FIXTURE_MANAGER. Criterio: integracao validada em ambiente produtivo e aceite registrado.
+- Resultado mensal vinculado ao trimestre: elevar oportunidades com proxima acao de 40% para 55%; fonte relatorio semanal.`;
 
 describe("complete monthly ready block Q4V", () => {
   it("extracts a complete capacity choice without inventing fields", () => {
@@ -75,6 +87,62 @@ describe("complete monthly ready block Q4V", () => {
       sessionState: {},
       previousOracleReply: "Qual resultado precisa mudar?",
       userMessage: message,
+    })).toEqual([]);
+  });
+
+  it("extracts a complete inherited pending decision without asking for another action", () => {
+    expect(parseInheritedMonthlyPendingBlock(inheritedBlock, "Jul 2027")).toEqual({
+      item: "integracao do CRM",
+      origin: "Jun 2027",
+      reason: "dependencia do fornecedor",
+      deadline: "2027-07-20",
+      owner: "PERSON_FIXTURE_MANAGER",
+      completionCriterion: "integracao validada em ambiente produtivo e aceite registrado",
+      resultBase: "elevar oportunidades com proxima acao",
+      metric: "oportunidades com proxima acao",
+      current: "40%",
+      target: "55%",
+      source: "relatorio semanal",
+    });
+    expect(parseInheritedMonthlyPendingBlock(inheritedBlock, "Ago 2027")).toBeNull();
+  });
+
+  it("builds a valid proposal when exactly one quarterly parent exists", async () => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      in: () => query,
+      is: async () => ({
+        data: [{ id: "quarterly-1", title: "Elevar qualidade do funil comercial", period: "T3 2027" }],
+        error: null,
+      }),
+    };
+    const envelope = await monthlyInheritedPendingEnvelope(
+      { from: () => query },
+      { type: "monthly", period: "Jul 2027", org_id: "org-1", area_id: "area-1" },
+      inheritedBlock,
+    );
+    const normalized = normalizeProposalConfirmationEnvelope(envelope as any, "monthly") as any;
+
+    expect(normalized.proposal).toMatchObject({
+      type: "save_monthly_plan",
+      pendingDecisions: [{
+        item: "integracao do CRM",
+        origin: "Jun 2027",
+        reason: "dependencia do fornecedor",
+        decision: "roll",
+      }],
+      blockers: ["Dependencia do fornecedor"],
+      objectives: [{
+        result: "Elevar oportunidades com proxima acao de 40% para 55%",
+        linkedQuarterlyObjectiveId: "quarterly-1",
+        actions: [{ deadline: "2027-07-20", owner: "PERSON_FIXTURE_MANAGER" }],
+      }],
+    });
+    expect(validateMonthlyGuidanceEnvelope({
+      envelope: normalized,
+      sessionPeriod: "Jul 2027",
+      userMessage: inheritedBlock,
     })).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4S aprovada e Q5B r8 em retomada incremental**
+Status: **em execucao; regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C em retomada incremental apos Q4AL**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -974,3 +974,9 @@ Proxima fatia: **retomada incremental Q5D apos Q4X**. Preservar 36 aprovacoes, r
 A retomada Q4X aprovou fechamento trimestral R1/R2 e elevou o conjunto oficial para 38 aprovacoes. Revisao estrategica R1 bloqueou porque a confirmacao omitiu o diff e usou uma frase nao reconhecida pelo gate, enquanto a projecao de saidas derivadas ficou nula. A **Q4Y foi aprovada no staging**: a confirmacao mostra campo, antes/depois, base e limite, pede uma unica confirmacao e nao reabre a estrategia. Documento, tela/PDF e WhatsApp possuem projecao canonica rastreavel antes da gravacao. Smoke: Conducao 96,25, Revisao 83,75, Saida Derivada 96,25, media 92,08; custo US$ 0,019090; acumulado US$ 7,914731. Foram aprovados 440 unitarios, catalogo, lint/build/bundle e secret scan; somente `oracle-session` no staging.
 
 Proxima fatia: **retomada incremental Q5D apos Q4Y**. Preservar 38 aprovacoes, repetir somente revisao estrategica R1 e seguir pela R2 ausente. Se ambas passarem, executar a regressao geral limpa com todos os cenarios; se uma falhar, corrigir e repetir apenas a afetada antes dessa regressao.
+
+## Atualizacao 2026-07-18 - Q4AL aprovada na regressao limpa r22
+
+Q5A e Q5B estao completas. Q5C preserva tres aprovacoes: cascata mensal R1/R2 e pendencia herdada R1. A pendencia herdada R2 bloqueou sem proposta porque o motor repetiu a pergunta de acao mesmo depois de receber item, origem, motivo, decisao, prazo, responsavel, criterio e resultado 40% -> 55%.
+
+A Q4AL transforma deterministicamente esse bloco completo em proposta, usando a propria pendencia como acao e somente um pai trimestral atual inequivoco. Smoke aprovado: Conducao 90, Plano Mensal 100, media 95; custo US$ 0,027565; acumulado US$ 13,928945. Proximo passo: preservar 29 aprovacoes, repetir somente R2 e continuar pelas quatro medicoes Q5C ainda ausentes. Nova falha interrompe a fase e recebe correcao mais smoke focado; a regressao geral completa continua reservada para depois de Q5A-Q5D verdes.

@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **regressao limpa r22 com Q5A 10/10 e Q5B 16/16; proxima fase Q5C mensal**
+Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C com 3 aprovacoes preservadas; Q4AL aprovada para repetir somente o bloqueio mensal**
 
 ## Objetivo
 
@@ -17,6 +17,12 @@ Repetir exatamente as 40 rodadas generativas e os nove casos deterministas da Q3
 - A matriz determinista terminou com oito `pass`, um `pending-human` de UX e zero `fail`.
 
 ## Resultado da tentativa
+
+### Q5C e Q4AL
+
+Q5C aprovou as duas rodadas de cascata mensal e a primeira rodada de pendencia herdada. A segunda rodada recebeu todos os fatos necessarios, mas repetiu a pergunta de acao e encerrou sem proposta; o fail-fast impediu as quatro medicoes seguintes. A Q4AL adicionou uma transicao deterministica para esse bloco completo, sem mudar o comportamento quando faltam dados ou o pai trimestral e ambiguo.
+
+O smoke do mesmo caso passou com Conducao 90, Plano Mensal 100, media 95, uma confirmacao e zero conteudo sintetico. Custo US$ 0,027565; acumulado US$ 13,928945. Proximo fluxo: `resume-after-correction Q4AL` preserva 29 aprovacoes e arquiva apenas o bloqueio; `phase Q5C` repete R2 e, se verde, executa somente as quatro medicoes mensais ainda ausentes.
 
 A execucao foi interrompida automaticamente no segundo de 40 casos pagos. Continuar consumindo IA nao mudaria o gate ja reprovado e esconderia dois defeitos objetivos.
 
