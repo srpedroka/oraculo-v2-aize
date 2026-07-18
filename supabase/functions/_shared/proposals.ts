@@ -625,7 +625,7 @@ async function copyOpenActionsToObjective(client: Client, session: any, sourceOb
   }
 }
 
-async function rollObjective(client: Client, session: any, source: any, nextPeriod: string) {
+async function rollObjective(client: Client, session: any, source: any, nextPeriod: string, copyOpenActions = true) {
   const rolled = await insertObjective(client, {
     org_id: session.org_id,
     area_id: source.area_id,
@@ -646,7 +646,7 @@ async function rollObjective(client: Client, session: any, source: any, nextPeri
     parent_id: source.parent_id ?? null,
     period: nextPeriod,
   });
-  await copyOpenActionsToObjective(client, session, source.id, rolled.id);
+  if (copyOpenActions) await copyOpenActionsToObjective(client, session, source.id, rolled.id);
   return rolled;
 }
 
@@ -706,8 +706,9 @@ async function applyClosePendencies(client: Client, session: any, proposal: any,
   const explicitPendencies = asArray<any>(proposal.pendencies ?? proposal.pendencias);
   const reviewsWithDecision = asArray<any>(proposal.reviews ?? proposal.revisao_tri)
     .filter((review) => asText(review.decision ?? review.decisao));
+  const decisionItems = explicitPendencies.length ? explicitPendencies : reviewsWithDecision;
 
-  for (const item of [...explicitPendencies, ...reviewsWithDecision]) {
+  for (const item of decisionItems) {
     const decision = normalizeDecision(item.decision ?? item.decisao);
     const objective = await findObjectiveById(client, session, item.objectiveId ?? item.objective_id, level);
     const action = await findActionById(client, session, item.actionId ?? item.action_id);
@@ -749,7 +750,7 @@ async function applyClosePendencies(client: Client, session: any, proposal: any,
     if (!objective) continue;
     let targetObjectiveId = rolledObjectiveIds.get(objective.id);
     if (!targetObjectiveId) {
-      const newObjective = await rollObjective(client, session, objective, nextPeriod);
+      const newObjective = await rollObjective(client, session, objective, nextPeriod, !action);
       targetObjectiveId = newObjective.id;
       rolledObjectiveIds.set(objective.id, targetObjectiveId);
       rolled += 1;
@@ -759,7 +760,7 @@ async function applyClosePendencies(client: Client, session: any, proposal: any,
       const { error } = await client.from("key_actions").insert({
         org_id: session.org_id,
         objective_id: targetObjectiveId,
-        description: `${action.description} (rolado de ${session.period})`,
+        description: `${asText(item.newScope ?? item.new_scope, action.description)} (rolado de ${session.period})`,
         completion_criterion: action.completion_criterion ?? "",
         deadline: cleanDate(item.newDeadline ?? item.new_deadline) ?? action.deadline,
         owner: action.owner ?? "",

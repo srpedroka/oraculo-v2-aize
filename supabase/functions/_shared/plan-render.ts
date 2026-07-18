@@ -149,6 +149,16 @@ function strategicReviewBlock(content: any) {
   return lines.join("\n");
 }
 
+function closeReferenceBlock(content: any) {
+  if (!["month_close", "quarter_close"].includes(asText(content?.tipo))) return "";
+  const reference = asRecord(content?.referencia);
+  const lines: string[] = [];
+  if (asText(reference.objetivo_anual)) lines.push(`Alinhamento anual: ${asText(reference.objetivo_anual)}`);
+  const quarterObjectives = asArray<string>(reference.objetivos_trimestre);
+  if (quarterObjectives.length) lines.push(`Objetivo(s) do trimestre: ${quarterObjectives.join("; ")}`);
+  return lines.join("\n");
+}
+
 export function renderPlanForWhatsApp(content: any, document: { version?: unknown; origin?: unknown } = {}) {
   const title = [
     documentTypeLabel(content?.tipo),
@@ -177,6 +187,7 @@ export function renderPlanForWhatsApp(content: any, document: { version?: unknow
     strategicBlock(content),
     quarterlyBlock(content),
     monthlyBlock(content),
+    closeReferenceBlock(content),
     strategicReviewBlock(content),
   ];
 

@@ -157,4 +157,43 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("Confiança: yellow");
     expect(whatsapp).not.toContain("[object Object]");
   });
+
+  it("preserves quarterly alignment and complete roll decision", () => {
+    const content = buildPlanDocumentPreview({
+      type: "quarter_close",
+      period: "T2 2027",
+      nextPeriod: "T3 2027",
+      completionRate: 78,
+      annualAlignment: { status: "linked", strategicObjectiveTitle: "Aumentar previsibilidade comercial" },
+      reviews: [{
+        title: "Elevar adoção do processo",
+        result: "Atingido 78% contra meta 80%",
+        current: "78%",
+        target: "80%",
+        owner: "PERSON_FIXTURE_MANAGER",
+        decision: "roll",
+        reason: "dependência externa subestimada",
+        newScope: "integração principal",
+        newDeadline: "2027-07-31",
+        learning: "Validar dependência no início",
+      }],
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      areaName: "Comercial",
+      managerName: "PERSON_FIXTURE_MANAGER",
+      sessionType: "quarter_close",
+      period: "T2 2027",
+    }) as any;
+
+    expect(content.referencia).toMatchObject({
+      objetivo_anual: "Aumentar previsibilidade comercial",
+      objetivos_trimestre: ["Elevar adoção do processo"],
+    });
+    expect(content.objetivos[0]).toMatchObject({ atual: "78%", meta: "80%", responsavel: "PERSON_FIXTURE_MANAGER" });
+    expect(content.fechamento.pendencias[0]).toContain("integração principal");
+    expect(content.fechamento.pendencias[0]).toContain("novo prazo: 2027-07-31");
+    const whatsapp = renderPlanForWhatsApp(content);
+    expect(whatsapp).toContain("Alinhamento anual: Aumentar previsibilidade comercial");
+    expect(whatsapp).toContain("novo prazo: 2027-07-31");
+  });
 });

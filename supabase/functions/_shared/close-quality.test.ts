@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope } from "./close-quality.ts";
+import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { validateAdaptiveEnvelope } from "./session-adaptive.ts";
 
 describe("close quality Q4W", () => {
@@ -50,5 +50,86 @@ describe("close quality Q4W", () => {
     expect(normalized.proposal.reviews[0]).toMatchObject({ current: "50%", target: "60%", result: "Atingido 50% contra meta 60%" });
     expect(normalized.proposal.learnings).toEqual(["Envolver o fornecedor no início"]);
     expect(normalized.proposal.nextPeriod).toBe("Jul 2027");
+  });
+
+  it("uses quarterly memory, alignment and asks only for scope and deadline", () => {
+    const message = [
+      "A adocao ficou dois pontos abaixo e o resultado deve ser parcial.",
+      "A integracao ainda contribui para o mesmo objetivo anual.",
+      "O gestor decide rolar somente a integracao para o proximo trimestre com escopo reduzido.",
+      "A causa foi dependencia externa subestimada.",
+    ].join("\n");
+    const conversation = [
+      "user: O trimestre terminou com setenta e oito por cento de adocao contra meta de oitenta.",
+      `user: ${message}\nContexto superior: Objetivo anual: aumentar previsibilidade comercial com adocao consistente do processo.`,
+    ].join("\n");
+    const envelope = quarterCloseOpenDecisionEnvelope(
+      { type: "quarter_close" },
+      message,
+      conversation,
+      "Check-ins do trimestre registram dependencia externa desde o segundo mes.",
+    ) as any;
+
+    expect(envelope.reply).toContain("78%");
+    expect(envelope.reply).toContain("meta de 80%");
+    expect(envelope.reply).toContain("desde o segundo mês");
+    expect(envelope.reply).toContain("objetivo anual de aumentar previsibilidade comercial");
+    expect(envelope.reply).toContain("escopo reduzido e o prazo");
+    expect(envelope.reply.match(/\?/g)).toHaveLength(1);
+  });
+
+  it("enriches the quarterly close proposal and builds a complete final summary", () => {
+    const objectiveId = "00000000-0000-0000-0000-000000000111";
+    const actionId = "00000000-0000-0000-0000-000000000222";
+    const conversation = "Resultado 78% contra meta 80%. Rolar somente a acao Concluir integracao externa para T3. Contexto superior: Objetivo anual: aumentar previsibilidade comercial com adocao consistente do processo.";
+    const normalized = normalizeCloseQualityEnvelope({
+      envelope: {
+        reply: "Confirma?",
+        proposal: {
+          type: "quarter_close",
+          reviews: [{
+            objectiveId,
+            title: "Elevar adoção",
+            decision: "roll",
+            reason: "dependência externa subestimada",
+            newScope: "integração principal",
+            newDeadline: "2027-07-31",
+            learning: "validar dependência no início",
+          }],
+        },
+      },
+      sessionType: "quarter_close",
+      period: "T2 2027",
+      conversationText: conversation,
+      contextText: [
+        `- [Em risco] Elevar adoção (id: ${objectiveId}; Trimestral; Resultado; indicador: Adoção; meta: 80%; atual: 78%; prazo: 2027-06-30; dono: PERSON_FIXTURE_MANAGER; progresso: 78%)`,
+        `    - [Atrasado] Concluir integracao externa (id: ${actionId}; dono: PERSON_FIXTURE_MANAGER; prazo: 2027-06-30; critério: Integração validada)`,
+      ].join("\n"),
+    }) as any;
+
+    expect(normalized.proposal.reviews[0]).toMatchObject({
+      current: "78%",
+      target: "80%",
+      metric: "Adoção",
+      owner: "PERSON_FIXTURE_MANAGER",
+      deadline: "2027-06-30",
+    });
+    expect(normalized.proposal.annualAlignment).toMatchObject({
+      status: "linked",
+      strategicObjectiveTitle: "aumentar previsibilidade comercial com adocao consistente do processo",
+    });
+    expect(normalized.proposal.nextPeriod).toBe("T3 2027");
+    expect(normalized.proposal.pendencies[0]).toMatchObject({
+      kind: "action",
+      objectiveId,
+      actionId,
+      decision: "roll",
+      newScope: "integração principal",
+      newDeadline: "2027-07-31",
+    });
+    expect(normalized.reply).toContain("78% contra meta de 80%");
+    expect(normalized.reply).toContain("rolar somente integração principal para 2027-07-31");
+    expect(normalized.reply).toContain("objetivo anual aumentar previsibilidade comercial");
+    expect(normalized.reply.match(/\?/g)).toHaveLength(1);
   });
 });

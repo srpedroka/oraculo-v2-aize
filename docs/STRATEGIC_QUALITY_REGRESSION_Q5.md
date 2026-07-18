@@ -672,3 +672,23 @@ A Q4W absorve os fatos completos e pergunta somente o novo prazo da integracao. 
 | Deploy | somente `oracle-session` no staging; sem migration ou frontend |
 
 `resume-after-correction Q4W` deve arquivar somente o fechamento mensal parcial R1 bloqueado e preservar as 34 aprovacoes. `phase Q5D` repete primeiro esse caso e continua apenas pelas cinco medicoes generativas ausentes. Em nova falha, o ciclo permanece correcao + smoke isolado + retomada incremental. A regressao geral limpa repetindo todos os cenarios sera executada uma unica vez quando Q5A-Q5D estiverem integralmente verdes.
+
+## Correcao Q4X: fechamento trimestral com rolagem seletiva
+
+A retomada Q4W aprovou fechamento mensal R1/R2. O fechamento trimestral R1 reconheceu 78% contra meta 80%, mas perguntou genericamente o que destravaria a integracao, ignorou a dependencia recorrente desde o segundo mes e deixou a confirmacao sem resumo suficiente. A proposta poderia rolar o objetivo inteiro e duplicar a acao em vez de selecionar somente a integracao. O fail-fast preservou 36 aprovacoes e impediu as tres medicoes seguintes.
+
+A Q4X usa a memoria da dependencia para desafiar a repeticao da mesma abordagem e pergunta somente escopo reduzido e prazo. A normalizacao preserva atingido, meta, responsavel, prazo original, aprendizado, proximo trimestre e vinculo anual. O contexto trimestral passou a incluir cada acao-chave com seu ID server-side; assim a proposta aponta para a acao confirmada e a persistencia cria somente essa acao no trimestre seguinte, uma vez, com novo escopo e prazo. Acoes concluidas nao sao copiadas.
+
+| Evidencia | Resultado |
+|---|---:|
+| Q5 preservada | 36 aprovacoes: Q5A 10, Q5B 16, Q5C 8, Q5D 2 |
+| Conducao Q4X | 100,00 |
+| Revisao/Fechamento Q4X | 93,75 |
+| Saida Derivada Q4X | 85,00 |
+| Media conjunta | 92,92 |
+| Teste real | contexto com ID, rolagem unica, escopo/prazo, banco, documento, WhatsApp e cleanup |
+| Custo Q4X final | US$ 0,031324 |
+| Acumulado | US$ 7,820758 / US$ 20 |
+| Deploy | somente `oracle-session` no staging; sem migration ou frontend |
+
+A validacao passou 438 unitarios, catalogo 29/29, integracao real 2/2, lint, build/bundle e secret scan em 504 arquivos. `resume-after-correction Q4X` deve arquivar somente o fechamento trimestral R1 bloqueado e preservar as 36 aprovacoes. `phase Q5D` repete esse resultado e continua apenas por fechamento trimestral R2 e revisao estrategica R1/R2. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.

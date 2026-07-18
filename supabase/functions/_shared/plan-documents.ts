@@ -343,21 +343,25 @@ function buildCloseContent(base: Record<string, unknown>, proposal: any, period:
   );
   const decisionLabels: Record<string, string> = { roll: "rolar", renegotiate: "renegociar", cut: "cortar" };
   const structuredPendencies = asArray<any>(proposal.pendencies ?? proposal.pendencias);
-  const pendencies = structuredPendencies.length
-    ? structuredPendencies.map((pendency) => {
+  const decisionItems = structuredPendencies.length
+    ? structuredPendencies
+    : reviews.filter((review) => asText(review.decision ?? review.decisao));
+  const pendencies = decisionItems
+    .map((pendency) => {
       if (typeof pendency === "string") return pendency;
       const decision = asText(pendency.decision ?? pendency.decisao).toLowerCase();
-      const subject = asText(pendency.newScope ?? pendency.new_scope) || (asText(pendency.kind) === "objective" ? "Objetivo pendente" : "Ação pendente");
+      const subject = asText(pendency.newScope ?? pendency.new_scope)
+        || asText(pendency.title ?? pendency.titulo ?? pendency.objectiveTitle)
+        || (asText(pendency.kind) === "objective" ? "Objetivo pendente" : "Ação pendente");
       const details = [
         decisionLabels[decision] ?? decision,
         asText(pendency.reason ?? pendency.motivo) ? `motivo: ${asText(pendency.reason ?? pendency.motivo)}` : "",
         asText(pendency.newDeadline ?? pendency.new_deadline) ? `novo prazo: ${asText(pendency.newDeadline ?? pendency.new_deadline)}` : "",
       ].filter(Boolean).join("; ");
       return `${subject}: ${details}`;
-    }).filter(Boolean)
-    : reviews.filter((review) => asText(review.decision ?? review.decisao)).map((review) => `${asText(review.title ?? review.titulo ?? review.objectiveTitle)}: ${asText(review.decision ?? review.decisao)}`);
+    }).filter(Boolean);
   const managementPulse = proposal.managementPulse ?? proposal.management_pulse ?? {};
-  const decisions = structuredPendencies.map((pendency) => {
+  const decisions = decisionItems.map((pendency) => {
     const decision = asText(pendency.decision ?? pendency.decisao).toLowerCase();
     return decisionLabels[decision] ?? decision;
   }).filter(Boolean);
@@ -365,8 +369,12 @@ function buildCloseContent(base: Record<string, unknown>, proposal: any, period:
   return {
     ...base,
     referencia: {
-      objetivo_anual: "",
-      objetivos_trimestre: [],
+      objetivo_anual: asText(
+        proposal.annualAlignment?.strategicObjectiveTitle
+          ?? proposal.annualAlignment?.objectiveTitle
+          ?? proposal.alinhamento_anual?.objetivo,
+      ),
+      objetivos_trimestre: reviews.map((review) => asText(review.title ?? review.titulo ?? review.objectiveTitle)).filter(Boolean),
     },
     objetivos: reviews.map((review, index) => normalizeObjective(review, index, documentType === "month_close" ? "Objetivo mensal revisado" : "Objetivo trimestral revisado")),
     foco_aprendizado: firstFilledArray<string>(proposal.nextLearningFocus, proposal.next_learning_focus),

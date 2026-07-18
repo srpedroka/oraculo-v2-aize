@@ -23,7 +23,7 @@ import { parseJsonObject } from "./json.ts";
 import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
 import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-timeout.ts";
 import { callModelForFunction } from "./call-for-function.ts";
-import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope } from "./close-quality.ts";
+import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
 import { applyProposal } from "./proposals.ts";
@@ -371,6 +371,7 @@ export async function processPlanningMessage(
         sessionType: session.type,
         period: session.period,
         conversationText,
+        contextText: context,
       });
     }
     if (session.type !== "quarterly") return envelope;
@@ -420,7 +421,8 @@ export async function processPlanningMessage(
   });
   const deterministicPlanningEnvelope = await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
     ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context)
-    ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText);
+    ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText)
+    ?? quarterCloseOpenDecisionEnvelope(ensured.session, params.message, conversationText, context);
   let result: { text: string; [key: string]: unknown } = { text: "" };
   let parsed: any = null;
   let repairReasons: string[] = [];

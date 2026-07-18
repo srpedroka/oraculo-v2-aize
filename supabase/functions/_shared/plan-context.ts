@@ -382,7 +382,15 @@ export async function buildPlanContext(
   if (focus === "quarterly" || focus === "monthly" || focus === "area") {
     lines.push(`  TRIMESTRE EM FOCO (${quarterDisplay}):`);
     if (quarterlyObjectives.length) {
-      lines.push(...quarterlyObjectives.map(objectiveLine));
+      for (const objective of quarterlyObjectives) {
+        lines.push(objectiveLine(objective));
+        const actions = allActions.filter((action: any) => action.objective_id === objective.id);
+        if (actions.length) {
+          lines.push("    AÇÕES-CHAVE:", ...actions.map(keyActionLine));
+        } else {
+          lines.push("    AÇÕES-CHAVE: nenhuma ação-chave cadastrada para este objetivo.");
+        }
+      }
     } else {
       lines.push("  - Nenhum objetivo trimestral cadastrado para o período vigente.");
     }
