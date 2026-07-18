@@ -1379,7 +1379,9 @@ describe("adaptive planning session guard Q4A", () => {
           actions: [{ description: "revisar exceções" }],
         }],
       },
-    }, "quarterly");
+    }, "quarterly", {
+      userMessage: "O gestor confirma vinculo apenas como hipotese com o KPI existente Margem operacional.",
+    });
     const proposal = normalized.proposal as any;
     const reply = String(normalized.reply);
 
@@ -1387,6 +1389,27 @@ describe("adaptive planning session guard Q4A", () => {
     expect(reply).toContain("Hipótese de impacto confirmada");
     expect(reply).toContain("Margem operacional");
     expect(reply).toContain("efeito causal ainda não comprovado");
+  });
+
+  it("removes a quarterly KPI link that the manager never chose", () => {
+    const normalized = normalizeProposalConfirmationEnvelope({
+      proposal: {
+        type: "save_quarterly_plan",
+        quarterlyObjectives: [{
+          result: "Elevar oportunidades com próxima ação",
+          current: "40%",
+          target: "85%",
+          kpiLinks: [{ kpi: "Margem operacional", rationale: "vinculado ao objetivo anual" }],
+        }],
+      },
+    }, "quarterly", {
+      userMessage: "O risco é baixa adesão e o acompanhamento será semanal.",
+      previousOracleReply: "Qual é o foco de aprendizado?",
+    });
+
+    expect((normalized.proposal as any).quarterlyObjectives[0].kpiLinks).toEqual([]);
+    expect(String(normalized.reply)).not.toContain("Hipótese de impacto confirmada");
+    expect(String(normalized.reply)).not.toContain("Margem operacional");
   });
 
   it("blocks an annual activity and self-declared weak target when they are accepted without challenge", () => {

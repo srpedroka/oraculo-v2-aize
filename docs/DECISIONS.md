@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Vinculo com KPI exige escolha explicita do gestor
+
+Decisao: tratar `kpiLinks` como decisao autorizada, nao como conteudo livre da IA. Em sessao trimestral, um KPI conhecido permanece somente quando a mensagem do gestor nomeia e confirma o vinculo ou quando uma resposta afirmativa curta sucede uma pergunta explicita que nomeia o KPI. Sem essa evidencia, o servidor remove o link antes da confirmacao.
+
+Motivo: o modelo vinculou Margem operacional a um plano de previsibilidade comercial sem qualquer sugestao ou aceite na conversa. A chave era valida e passou pela validacao anterior, mas o ato de vincular era fabricado. Isso derrubou fidelidade da conducao e das saidas, embora o restante do plano estivesse forte.
+
+Consequencias: o gestor nao recebe nova etapa. Sugestoes confirmadas continuam funcionando, inclusive `sim` natural depois da pergunta; links nao escolhidos nao chegam ao banco, documento, PDF ou WhatsApp. Chaves desconhecidas continuam sujeitas ao bloqueio existente em vez de serem silenciosamente aceitas.
+
 ## 2026-07-18 - Riscos estruturados sao normalizados na fronteira server-side
 
 Decisao: aceitar risco como texto ou como objeto com aliases de descricao e mitigacao, mas converter sempre para texto canonico antes da confirmacao e da geracao de documentos. A normalizacao e compartilhada pelos planos anual, trimestral e mensal e tambem protege importacoes prontas e projecoes diretas.

@@ -3,6 +3,7 @@ import {
   isExplicitQuarterlyKpiHypothesisChoiceReply,
   normalizeQuarterlyKpiLinks,
   quarterlyKpiLinks,
+  retainConfirmedQuarterlyKpiLinks,
 } from "./quarterly-kpis.ts";
 
 describe("quarterly KPI links", () => {
@@ -38,5 +39,39 @@ describe("quarterly KPI links", () => {
     expect(isExplicitQuarterlyKpiHypothesisChoiceReply(
       "Margem operacional pode melhorar.",
     )).toBe(false);
+  });
+
+  it("keeps only KPI links explicitly chosen by the manager", () => {
+    const proposal = {
+      type: "save_quarterly_plan",
+      quarterlyObjectives: [{
+        kpiLinks: [{ kpi: "Margem operacional", linkType: "hypothesis" }],
+      }],
+    };
+    const unconfirmed = retainConfirmedQuarterlyKpiLinks(proposal) as any;
+    const confirmed = retainConfirmedQuarterlyKpiLinks(proposal, {
+      userMessage: "O gestor confirma vinculo apenas como hipotese com o KPI existente Margem operacional.",
+    }) as any;
+
+    expect(unconfirmed.quarterlyObjectives[0].kpiLinks).toEqual([]);
+    expect(confirmed.quarterlyObjectives[0].kpiLinks[0]).toMatchObject({ kpiKey: "operating_margin" });
+  });
+
+  it("accepts a short yes only after an explicit KPI question", () => {
+    const proposal = {
+      type: "save_quarterly_plan",
+      quarterlyObjectives: [{ kpiLinks: [{ kpi: "Margem operacional" }] }],
+    };
+    const confirmed = retainConfirmedQuarterlyKpiLinks(proposal, {
+      userMessage: "sim",
+      previousOracleReply: "Você quer vincular este objetivo ao KPI Margem operacional?",
+    }) as any;
+    const unrelated = retainConfirmedQuarterlyKpiLinks(proposal, {
+      userMessage: "sim",
+      previousOracleReply: "O prazo está correto?",
+    }) as any;
+
+    expect(confirmed.quarterlyObjectives[0].kpiLinks).toHaveLength(1);
+    expect(unrelated.quarterlyObjectives[0].kpiLinks).toEqual([]);
   });
 });

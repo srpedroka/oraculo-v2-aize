@@ -892,6 +892,14 @@ Este plano só termina quando:
 - Validacao: 490 unitarios, catalogo 29/29, lint, build/bundle e secret scan 527. Somente `oracle-session` mudou no staging; producao, frontend e migrations seguem intactos.
 - Proxima execucao: `resume-after-correction Q4AJ` e `phase Q5B`, repetindo somente gestor experiente R2. Se passar, Q5B fecha 16/16 e a regressao limpa segue para Q5C; a repeticao geral completa continua reservada para depois de Q5A-Q5D verdes.
 
+### Atualizacao de execucao: Q4AK
+
+- A repeticao oficial apos Q4AJ removeu o defeito visual, mas o modelo inventou um vinculo com Margem operacional. Plano 97,50 e Saida 87,50; Conducao 73,75 bloqueou por fidelidade, sem falha tecnica ou residuo.
+- A autoridade sobre `kpiLinks` passa ao servidor: o vinculo so permanece com escolha direta do gestor ou `sim` imediatamente posterior a uma pergunta explicita que nomeia o KPI. Links nao escolhidos somem antes da confirmacao sem acrescentar etapa.
+- Smoke focado: Conducao 92,50, Plano Trimestral 100, Saida Derivada 100, media 97,50, zero KPI indevido, cleanup completo e custo US$ 0,036364. Acumulado US$ 13,713619.
+- Validacao: 494 unitarios, catalogo 29/29, lint, build/bundle e secret scan 528. Somente `oracle-session` mudou no staging; producao, frontend e migrations seguem intactos.
+- Proxima execucao: `resume-after-correction Q4AK` e `phase Q5B`, repetindo somente gestor experiente R2. Depois de Q5B 16/16, seguir para Q5C; repetir todos os cenarios juntos apenas quando Q5A-Q5D estiverem verdes.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

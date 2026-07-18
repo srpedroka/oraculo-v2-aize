@@ -88,6 +88,49 @@ export function normalizeQuarterlyKpiLinks(proposalValue: unknown) {
   return { ...proposal, [objectiveKey]: objectives };
 }
 
+type QuarterlyKpiConfirmationContext = {
+  userMessage?: unknown;
+  previousOracleReply?: unknown;
+};
+
+function explicitlyConfirmedKpi(key: string, context: QuarterlyKpiConfirmationContext) {
+  const label = comparable(KPI_LABELS[key]);
+  const userMessage = comparable(context.userMessage);
+  const previousOracleReply = comparable(context.previousOracleReply);
+  const directConfirmation = userMessage.includes(label)
+    && userMessage.includes("vincul")
+    && /\b(?:aceito|autorizo|confirma|confirmo|pode|quero|vamos)\b/.test(userMessage);
+  const shortConfirmation = /^(?:sim|confirmo|pode vincular|quero vincular|aceito)[.! ]*$/.test(userMessage)
+    && previousOracleReply.includes(label)
+    && previousOracleReply.includes("vincul")
+    && /\b(?:confirma|quer|deseja|prefere)\b/.test(previousOracleReply);
+  return directConfirmation || shortConfirmation;
+}
+
+export function retainConfirmedQuarterlyKpiLinks(
+  proposalValue: unknown,
+  context: QuarterlyKpiConfirmationContext = {},
+) {
+  const proposal = asRecord(normalizeQuarterlyKpiLinks(proposalValue));
+  if (text(proposal.type) !== "save_quarterly_plan") return proposalValue;
+  const objectiveKey = Array.isArray(proposal.quarterlyObjectives)
+    ? "quarterlyObjectives"
+    : "objetivos_trimestre";
+  const objectives = asArray(proposal[objectiveKey]).map(asRecord).map((objective) => {
+    const linkKey = Array.isArray(objective.kpiLinks) ? "kpiLinks" : "kpi_links";
+    if (!Array.isArray(objective[linkKey])) return objective;
+    return {
+      ...objective,
+      [linkKey]: asArray(objective[linkKey]).filter((link) => {
+        const record = asRecord(link);
+        const key = quarterlyKpiKey(record.kpiKey ?? record.kpi_key ?? record.kpi ?? record.label ?? record.name);
+        return !key || explicitlyConfirmedKpi(key, context);
+      }),
+    };
+  });
+  return { ...proposal, [objectiveKey]: objectives };
+}
+
 export function quarterlyKpiLinks(proposalValue: unknown) {
   const proposal = asRecord(normalizeQuarterlyKpiLinks(proposalValue));
   const objectives = asArray(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre).map(asRecord);

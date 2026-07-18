@@ -413,6 +413,7 @@ export async function processPlanningMessage(
       const normalizedEnvelope = normalizeProposalConfirmationEnvelope(
         preserveExplicitQuarterlyCadence(scopedEnvelope, conversationText),
         session.type,
+        { userMessage: params.message, previousOracleReply },
       );
       normalized = deferUnchallengedQuarterlyProposal({
         envelope: normalizedEnvelope,
@@ -429,7 +430,11 @@ export async function processPlanningMessage(
       sessionPeriod: session.period,
     });
     if (["strategic", "quarterly", "monthly"].includes(session.type) && normalized?.proposal) {
-      normalized = normalizeProposalConfirmationEnvelope(normalized, session.type);
+      normalized = normalizeProposalConfirmationEnvelope(
+        normalized,
+        session.type,
+        { userMessage: params.message, previousOracleReply },
+      );
     }
     return {
       ...normalized,

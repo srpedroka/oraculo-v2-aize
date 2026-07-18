@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q4AJ aprovada no staging; regressao r22 preserva Q5A 10/10 e Q5B 15/16, pronta para repetir somente gestor experiente R2**
+Status: **Q4AK aprovada no staging; regressao r22 preserva Q5A 10/10 e Q5B 15/16, pronta para repetir somente gestor experiente R2**
 
 ## Objetivo
 
@@ -838,3 +838,13 @@ A Q4AJ centraliza a normalizacao de risco para planos anual, trimestral e mensal
 O smoke focado passou com Conducao 85, Plano Trimestral 92,50, Saida Derivada 100 e media 92,50. O guard adicional inicialmente exigiu `acompanhamento semanal` dentro do proprio risco, embora a informacao estivesse preservada como cadencia; o contrato foi corrigido e o mesmo relatorio revalidado sem nova chamada. Q4AJ custou US$ 0,030452 e levou o acumulado a US$ 13,638641. Validacao local: 490 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 527 arquivos. Somente `oracle-session` mudou no staging; producao permanece inalterada.
 
 O proximo passo e `resume-after-correction Q4AJ`, arquivando somente a medicao bloqueada e preservando as 25 aprovacoes. Depois, `phase Q5B` repete apenas gestor experiente R2; se passar, Q5B fecha 16/16 e a regressao limpa avanca para Q5C.
+
+## Q4AK: KPI somente com escolha explicita
+
+A repeticao oficial apos Q4AJ eliminou `[object Object]` e entregou Plano Trimestral 97,50 e Saida Derivada 87,50, mas fabricou o vinculo com `operating_margin`. O gestor nao citou nem escolheu Margem operacional; ainda assim a proposta e a confirmacao exibiram `Hipotese de impacto confirmada`. O judge marcou fidelidade 1, a Conducao caiu para 73,75 e o gate bloqueou. Todos os checks tecnicos e o cleanup passaram. A rodada custou US$ 0,038614 e levou o acumulado a US$ 13,677255.
+
+A Q4AK move a autoridade do vinculo para o servidor. Confirmacao direta com o nome do KPI e aceita; um `sim` curto so vale quando responde a uma pergunta anterior que nomeia o KPI e pede o vinculo. Sem uma dessas provas, links conhecidos sao removidos antes da sintese. Links desconhecidos continuam falhando pela validacao existente.
+
+O smoke R2 passou com Conducao 92,50, Plano Trimestral 100, Saida Derivada 100, media 97,50, zero KPI nao escolhido e cleanup completo. Custou US$ 0,036364; acumulado US$ 13,713619. Validacao local: 494 unitarios, catalogo 29/29, lint, build/bundle e secret scan em 528 arquivos. Somente `oracle-session` mudou no staging; producao permanece inalterada.
+
+O proximo passo e `resume-after-correction Q4AK`, preservando as 25 aprovacoes e repetindo somente gestor experiente R2. Se passar, Q5B fecha 16/16 e a regressao limpa segue para Q5C.
