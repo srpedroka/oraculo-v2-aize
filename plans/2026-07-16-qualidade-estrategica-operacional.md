@@ -855,8 +855,8 @@ Este plano só termina quando:
 
 - A regressao limpa apos Q4AC passou a matriz deterministica e oito medicoes Q5A antes de o owner experiente R1 bloquear por reentrevista; Plano e Saida ficaram 100, Conducao 66,25.
 - A Q4AD conecta o periodo canonico ao validador, bloqueia plano anual vazio/ano errado e pede somente o bloco concreto quando a estrutura veio sem valores.
-- O primeiro smoke revelou proposta vazia; o segundo fechou integridade e revelou `Qual a principal dor`; o terceiro passou Conducao 100, Plano 100 e Saida 100.
-- Tres tentativas: US$ 0,146259; acumulado US$ 10,824693. Validacao: 462 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 511.
+- O primeiro smoke revelou proposta vazia; o segundo fechou integridade e revelou `Qual a principal dor`; o terceiro passou, mas a regressao mostrou que o teste aceitara a insercao no objeto trimestral vizinho. A chamada exata foi corrigida e o quarto smoke passou Conducao 100, Plano 100 e Saida 100.
+- Quatro tentativas: US$ 0,203590; acumulado US$ 11,334556. Validacao: 462 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 511.
 - Proxima execucao: `restart-clean-after-correction Q4AD`, deterministica e Q5A-Q5D completas desde zero.
 
 ## 13. Prompt para outra ferramenta de desenvolvimento

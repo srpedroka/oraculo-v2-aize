@@ -791,14 +791,14 @@ A regressao limpa apos Q4AC passou a matriz deterministica e oito medicoes Q5A. 
 
 A Q4AD mudou duas fronteiras. Primeiro, `session.period` passou a entrar na validacao adaptativa: proposta anual vazia, nao verificavel ou no ano errado nao pode mais chegar a confirmacao. Segundo, quando um bloco estrutural tenta reiniciar dor, proposito, visao ou valores, a recuperacao prioriza pedir o conteudo concreto. O detector aceita tanto `Qual e a principal dor` quanto `Qual a principal dor`.
 
-O primeiro smoke revelou uma casca vazia e bloqueou com media 34,58. A conexao do periodo fechou a integridade: o segundo voltou a Plano/Saida 100, mas Conducao 70 revelou a variante sem verbo. Depois desse ajuste, o terceiro smoke passou com as tres rubricas em 100, uma confirmacao, proposta completa e cleanup.
+O primeiro smoke revelou uma casca vazia e bloqueou com media 34,58. A tentativa de conectar o periodo fechou a integridade naquela rodada: o segundo voltou a Plano/Saida 100, mas Conducao 70 revelou a variante sem verbo. Depois desse ajuste, o terceiro smoke passou, porem a regressao `r20` expôs que `sessionPeriod` fora inserido no objeto trimestral vizinho e o teste textual nao distinguiu o local. O campo foi movido para a chamada exata de `validateAdaptiveEnvelope`, o teste passou a inspecionar estruturalmente esse bloco e o quarto smoke confirmou as tres rubricas em 100.
 
 | Medida | Resultado |
 | --- | --- |
 | Grade limpa antes do bloqueio | matriz deterministica verde; Q5A 8 verdes |
 | Smoke Q4AD final | Conducao 100; Plano Anual 100; Saida Derivada 100 |
-| Custo das tres tentativas | US$ 0,146259 |
-| Acumulado do plano | US$ 10,824693 de US$ 20 |
+| Custo das quatro tentativas | US$ 0,203590 |
+| Acumulado do plano | US$ 11,334556 de US$ 20 |
 | Validacao local | 462 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 511 arquivos |
 
 Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AD`, matriz deterministica e Q5A-Q5D completas desde zero. Producao permanece inalterada.

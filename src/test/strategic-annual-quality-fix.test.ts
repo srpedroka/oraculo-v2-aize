@@ -7,7 +7,9 @@ const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf
 describe("strategic annual quality correction", () => {
   it("passes the canonical session period into annual proposal validation", () => {
     const engine = source("supabase/functions/_shared/session-engine.ts");
-    expect(engine).toContain("sessionPeriod: session.period");
+    const validationCall = engine.match(/validateAdaptiveEnvelope\(\{([\s\S]*?)\}\)/)?.[1] ?? "";
+    expect(validationCall).toContain("sessionType: session.type");
+    expect(validationCall).toContain("sessionPeriod: session.period");
   });
 
   it("uses one final confirmation and advances when an experienced manager supplies complete blocks", () => {
