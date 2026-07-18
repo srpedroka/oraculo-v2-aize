@@ -4,6 +4,7 @@ import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
 import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
+import { completeMonthlyReadyEnvelope, monthlyCapacityDecisionEnvelope } from "./monthly-ready-block.ts";
 import {
   conversationMessagesForModel,
   formatConversationMemory,
@@ -283,9 +284,6 @@ export async function processPlanningMessage(
   if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
   if (session.status !== "active") throw new Error("Sessão não está ativa");
 
-  const aiRoute = await resolveAiFunction(client, session.org_id, "planning");
-  if (!aiRoute) throw new Error("IA de planejamento não configurada");
-
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
   await insertMessage(client, ensured.session, "user", params.message, channel);
@@ -318,25 +316,29 @@ export async function processPlanningMessage(
   const modelMessages = conversationMessagesForModel(history);
   const transientRetryBudget = createTransientAiRetryBudget(1);
   const planningRequestDeadline = Date.now() + PLANNING_REQUEST_DEADLINE_MS;
+  let aiRoute: Awaited<ReturnType<typeof resolveAiFunction>> | null = null;
   const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
+    aiRoute ??= await resolveAiFunction(client, session.org_id, "planning");
+    const route = aiRoute;
+    if (!route) throw new Error("IA de planejamento não configurada");
     const output = await withTransientAiRetry(() => callModelForFunction(
       client,
       session.org_id,
       "planning",
-      aiRoute,
+      route,
       prompt,
       modelMessages,
-      { ...aiRoute.limits, timeoutMs: planningModelTimeout(planningRequestDeadline) },
+      { ...route.limits, timeoutMs: planningModelTimeout(planningRequestDeadline) },
       { userId: params.userId },
     ), transientRetryBudget);
     await recordAiUsage({
       client,
       orgId: session.org_id,
-      provider: aiRoute.provider,
-      model: aiRoute.model,
+      provider: route.provider,
+      model: route.model,
       channel: params.channel ?? "web",
       usage: output.usage,
-      settings: aiRoute.legacySettings,
+      settings: route.legacySettings,
       metadata: {
         aiFunction: "planning",
         sessionId: session.id,
@@ -407,14 +409,23 @@ export async function processPlanningMessage(
     userMessage: params.message,
     sessionState: session.state,
   });
-  let result = await callPlanningModel(systemPrompt, 1);
+  const deterministicMonthlyEnvelope = await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
+    ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context);
+  let result: { text: string; [key: string]: unknown } = { text: "" };
   let parsed: any = null;
   let repairReasons: string[] = [];
-  try {
-    parsed = normalizeEnvelope(parseEnvelope(result.text));
+  if (deterministicMonthlyEnvelope) {
+    parsed = normalizeEnvelope(deterministicMonthlyEnvelope);
     repairReasons = validateEnvelope(parsed);
-  } catch {
-    repairReasons = ["invalid_json_envelope"];
+  }
+  if (!deterministicMonthlyEnvelope || repairReasons.length) {
+    result = await callPlanningModel(systemPrompt, 1);
+    try {
+      parsed = normalizeEnvelope(parseEnvelope(result.text));
+      repairReasons = validateEnvelope(parsed);
+    } catch {
+      repairReasons = ["invalid_json_envelope"];
+    }
   }
 
   const normalizedReadyProposal = normalizeReadyProposalEnvelope({

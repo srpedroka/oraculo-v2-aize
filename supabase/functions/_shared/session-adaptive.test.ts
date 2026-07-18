@@ -1014,6 +1014,41 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
+  it("summarizes monthly capacity, backlog and all committed actions once", () => {
+    const normalized = normalizeProposalConfirmationEnvelope({
+      proposal: {
+        type: "save_monthly_plan",
+        capacity: { maxCommittedActions: 5 },
+        pendingDecisions: [],
+        backlog: ["As demais demandas ficam no backlog do mês"],
+        blockers: ["Adesão da equipe"],
+        cadence: "Semanal",
+        confidence: "amarela",
+        objectives: [{
+          result: "Elevar oportunidades com próxima ação de 40% para 55%",
+          source: "Relatório semanal",
+          owner: "Diego",
+          deadline: "2027-07-31",
+          actions: Array.from({ length: 5 }, (_, index) => ({
+            description: `Ação ${index + 1}`,
+            deadline: `2027-07-${String(index + 5).padStart(2, "0")}`,
+            completionCriterion: `Critério ${index + 1}`,
+            owner: "Diego",
+          })),
+        }],
+      },
+    }, "monthly");
+    const reply = String(normalized.reply);
+
+    expect(reply).toContain("Ações comprometidas (5/5)");
+    expect(reply).toContain("Ação 1");
+    expect(reply).toContain("Ação 5");
+    expect(reply).toContain("critério Critério 5");
+    expect(reply).toContain("Backlog:");
+    expect(reply).toContain("Confiança: amarela");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
   it("grounds a discount objective in its current measure before suggesting actions", () => {
     const userMessage = "O objetivo e reduzir desconto medio e melhorar a qualidade da venda.";
     const blocked = reasons({

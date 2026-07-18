@@ -41,6 +41,7 @@ describe("ready monthly proposal quality fields", () => {
       risks: ["Fornecedor"],
       blockers: ["Dados incompletos"],
       cadence: "Semanal",
+      confidence: "amarela",
       nextCommitment: "Revisar na sexta",
       objectives: [
         {
@@ -87,6 +88,7 @@ describe("ready monthly proposal quality fields", () => {
     expect(proposal.quarterlyAlignment).toMatchObject({ status: "linked", quarterlyObjectiveId: "q-1" });
     expect(proposal.risks).toEqual(["Fornecedor"]);
     expect(proposal.blockers).toEqual(["Dados incompletos"]);
+    expect(proposal.confidence).toBe("amarela");
     expect(proposal.objectives[0]).toMatchObject({ current: "40%", source: "CRM", deadline: "2027-05-31" });
     expect(proposal.objectives.flatMap((objective) => objective.actions)).toHaveLength(5);
     expect(proposal.objectives.flatMap((objective) => objective.actions).some((action) => action.description.startsWith("Ignorada"))).toBe(false);

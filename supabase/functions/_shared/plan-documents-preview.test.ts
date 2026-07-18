@@ -91,6 +91,7 @@ describe("canonical plan document preview", () => {
       type: "save_monthly_plan",
       quarterlyAlignment: { status: "linked", quarterlyObjectiveTitle: "Qualidade do funil" },
       pendingDecisions: [{ item: "integração do CRM", origin: "Jun 2027", reason: "dependência do fornecedor", decision: "roll" }],
+      confidence: "amarela",
       objectives: [{
         title: "integração do CRM",
         result: "integração do CRM",
@@ -119,6 +120,7 @@ describe("canonical plan document preview", () => {
     expect(content.monthly.decisoes_pendentes[0]).toMatchObject({ origem: "Jun 2027", decisao: "roll" });
     expect(content.monthly.bloqueios).toEqual(["Dependência do fornecedor"]);
     expect(content.monthly.cadencia).toContain("2027-07-20");
+    expect(content.monthly.confianca).toBe("amarela");
     expect(content.monthly.proximo_compromisso).toContain("aceite registrado");
   });
 });

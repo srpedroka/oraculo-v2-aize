@@ -394,6 +394,7 @@ export function normalizeReadyMonthlyProposal(rawProposal: any, period: string) 
     risks: asTextArray(rawProposal?.risks ?? rawProposal?.riscos).slice(0, 8),
     blockers: asTextArray(rawProposal?.blockers ?? rawProposal?.bloqueios).slice(0, 8),
     cadence: asText(rawProposal?.cadence ?? rawProposal?.cadencia),
+    confidence: asText(rawProposal?.confidence ?? rawProposal?.confianca),
     nextCommitment: asText(rawProposal?.nextCommitment ?? rawProposal?.proximo_compromisso),
     realism: rawProposal?.realism && typeof rawProposal.realism === "object"
       ? {

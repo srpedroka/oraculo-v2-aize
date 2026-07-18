@@ -274,6 +274,7 @@ function buildMonthlyContent(base: Record<string, unknown>, proposal: any, perio
   const risks = firstFilledArray<string>(proposal.risks, proposal.riscos);
   const blockers = firstFilledArray<string>(proposal.blockers, proposal.bloqueios);
   const cadence = asText(proposal.cadence ?? proposal.cadencia);
+  const confidence = asText(proposal.confidence ?? proposal.confianca);
   const nextCommitment = asText(proposal.nextCommitment ?? proposal.proximo_compromisso);
   const pendingDecisions = asArray<any>(proposal.pendingDecisions ?? proposal.decisoes_pendentes).map((decision) => ({
     item: asText(decision.item ?? decision.pendencia),
@@ -294,6 +295,7 @@ function buildMonthlyContent(base: Record<string, unknown>, proposal: any, perio
       risks.length ? `Riscos: ${risks.join("; ")}` : "",
       blockers.length ? `Bloqueios: ${blockers.join("; ")}` : "",
       cadence ? `Acompanhamento: ${cadence}` : "",
+      confidence ? `Confiança: ${confidence}` : "",
       nextCommitment ? `Próximo compromisso: ${nextCommitment}` : "",
     ]),
     referencia: {
@@ -323,6 +325,7 @@ function buildMonthlyContent(base: Record<string, unknown>, proposal: any, perio
       riscos: risks,
       bloqueios: blockers,
       cadencia: cadence,
+      confianca: confidence,
       proximo_compromisso: nextCommitment,
     },
   };

@@ -313,7 +313,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -327,7 +327,8 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4s"');
     expect(source).toContain('"2026-07-18.q5-regression-r9-incremental-q4t"');
     expect(source).toContain('"2026-07-18.q5-regression-r10-incremental-q4u"');
-    expect(source).toContain('normalizedReference === "Q4U" ? "Q2C" : "Q2B"');
+    expect(source).toContain('"2026-07-18.q5-regression-r11-incremental-q4v"');
+    expect(source).toContain('["Q4U", "Q4V"].includes(normalizedReference) ? "Q2C" : "Q2B"');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
   });

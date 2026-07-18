@@ -85,6 +85,7 @@ describe("renderização canônica para WhatsApp", () => {
         riscos: ["Baixa adesão"],
         bloqueios: ["Integração pendente"],
         cadencia: "Check-in semanal",
+        confianca: "amarela",
         proximo_compromisso: "Primeira revisão em 07/08",
       },
     });
@@ -93,6 +94,7 @@ describe("renderização canônica para WhatsApp", () => {
     expect(rendered).toContain("Capacidade: 2/5 ações comprometidas");
     expect(rendered).toContain("Migrar carteira antiga → Renegociar para setembro");
     expect(rendered).toContain("Backlog: Automação secundária");
+    expect(rendered).toContain("Confiança: amarela");
     expect(rendered).toContain("Próximo compromisso: Primeira revisão em 07/08");
   });
 });

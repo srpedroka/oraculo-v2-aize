@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A e Q5B completas; Q5C com 2 aprovacoes; Q4U aprovada e retomada incremental preparada**
+Status: **Q5A e Q5B completas; Q5C com 4 aprovacoes; Q4V aprovada e retomada incremental preparada**
 
 ## Objetivo
 
@@ -634,3 +634,21 @@ A Q4U normaliza apenas pendencias herdadas com decisao explicita. A atividade pe
 A validacao passou 425 testes unitarios, catalogo 29/29, lint, build/bundle, secret scan e integracao real no staging. Somente `oracle-session` foi publicada no staging; producao e frontend publicado permanecem inalterados.
 
 `resume-after-correction Q4U` arquiva somente a pendencia herdada R1 bloqueada e preserva 28 aprovacoes totais: 10 Q5A, 16 Q5B e 2 Q5C. `phase Q5C` repete essa rodada e continua apenas pelos cinco resultados mensais ausentes. Novos problemas seguem o mesmo ciclo. A regressao geral limpa permanece reservada para depois de Q5A-Q5D integralmente verdes.
+
+## Correcao Q4V: capacidade mensal sem loop
+
+A retomada Q4U aprovou as duas rodadas de pendencia herdada. O caso de capacidade bloqueou na R1: o plano final chegou a cinco acoes, mas o Oraculo repetiu a pergunta generica `o que destrava` depois de receber a divisao de capacidade, ignorou o historico de sete acoes abertas e nao conduziu a renuncia. Conducao 21,25, Plano Mensal 0 e custo US$ 0,081840 na medicao oficial bloqueada; fail-fast impediu R2 e o caso mensal seguinte.
+
+A Q4V reconhece somente blocos mensais estritamente completos. Datas, indicador, baseline, alvo, fonte, dono e uma a cinco acoes precisam estar explicitos; o vinculo trimestral so e aceito quando existe um unico candidato seguro na mesma empresa, area e trimestre. Antes do bloco final, a mensagem de capacidade recebe resposta deterministica: lembra o excesso anterior, confronta doze demandas com cinco vagas, preserva a divisao tres para resultado e duas para risco, registra o backlog e pede as cinco acoes com prazo e criterio. Nada e gravado antes da confirmacao.
+
+A primeira medicao Q4V comprovou Plano Mensal 96,25, mas bloqueou Conducao 56,25 porque a pergunta generica anterior ainda existia; custou US$ 0,033466. Depois da transicao focada, o smoke final passou com Conducao 91,25, Plano Mensal 97,50, media 94,38, zero falha critica e custo US$ 0,022743. A jornada real do endpoint passou sem chamada de IA: memoria, proposta, confirmacao unica, objetivo, cinco acoes, pai trimestral e documento foram conferidos, e a organizacao descartavel foi removida.
+
+| Medicao | Resultado |
+| --- | --- |
+| Q5C preservada | 30 aprovacoes: Q5A 10, Q5B 16, Q5C 4 |
+| Q4V final | Conducao 91,25; Plano Mensal 97,50; media 94,38 |
+| Custo Q4V | US$ 0,056209 nas duas tentativas |
+| Acumulado | US$ 7,450188 / US$ 20 |
+| Deploy | somente `oracle-session` no staging; sem migration ou frontend |
+
+`resume-after-correction Q4V` arquiva somente a capacidade mensal R1 bloqueada e preserva as 30 aprovacoes. `phase Q5C` repete essa rodada e, se passar, executa apenas capacidade R2 e as duas rodadas mensais ainda ausentes. A mesma politica vale para novos defeitos. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.

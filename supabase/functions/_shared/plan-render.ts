@@ -135,6 +135,7 @@ function monthlyBlock(content: any) {
     if (items.length) lines.push(`${label}: ${items.join("; ")}`);
   }
   if (asText(monthly.cadencia)) lines.push(`Acompanhamento: ${asText(monthly.cadencia)}`);
+  if (asText(monthly.confianca)) lines.push(`Confiança: ${asText(monthly.confianca)}`);
   if (asText(monthly.proximo_compromisso)) lines.push(`Próximo compromisso: ${asText(monthly.proximo_compromisso)}`);
   return lines.join("\n");
 }

@@ -789,7 +789,7 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
     const result = text(first.result) || text(first.title);
     if (result) {
       const suffix = objectives.length > 1 ? ` e mais ${objectives.length - 1} resultado${objectives.length > 2 ? "s" : ""}` : "";
-      const pending = Array.isArray(normalized.pendingDecisions) ? normalized.pendingDecisions.map(asRecord)[0] : {};
+      const pending = Array.isArray(normalized.pendingDecisions) ? normalized.pendingDecisions.map(asRecord)[0] ?? {} : {};
       const action = Array.isArray(first.actions) ? first.actions.map(asRecord)[0] ?? {} : {};
       const decisionLabels: Record<string, string> = {
         roll: "rolar",
@@ -803,13 +803,41 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
         : "";
       const deadline = text(action.deadline ?? action.prazo);
       const criterion = text(action.completionCriterion ?? action.completion_criterion ?? action.criterio);
+      const allActions = objectives.flatMap((objective) => Array.isArray(objective.actions)
+        ? objective.actions.map(asRecord)
+        : []);
+      const actionSummary = allActions
+        .map((item, index) => {
+          const description = text(item.description ?? item.descricao);
+          if (!description) return "";
+          const details = [
+            text(item.deadline ?? item.prazo) ? `prazo ${text(item.deadline ?? item.prazo)}` : "",
+            text(item.completionCriterion ?? item.completion_criterion ?? item.criterio)
+              ? `critério ${text(item.completionCriterion ?? item.completion_criterion ?? item.criterio)}` : "",
+            text(item.owner ?? item.responsavel) ? `responsável ${text(item.owner ?? item.responsavel)}` : "",
+          ].filter(Boolean);
+          return `${index + 1}. ${description}${details.length ? ` (${details.join("; ")})` : ""}`;
+        })
+        .filter(Boolean);
+      const backlog = Array.isArray(normalized.backlog) ? normalized.backlog.map(text).filter(Boolean) : [];
+      const blockers = Array.isArray(normalized.blockers) ? normalized.blockers.map(text).filter(Boolean) : [];
+      const capacity = asRecord(normalized.capacity);
+      const maxActions = Number(capacity.maxCommittedActions ?? 5);
       return [
         "**Plano do mês**",
         `Resultado: ${result}${suffix}.`,
+        text(first.source) ? `Fonte: ${text(first.source)}.` : "",
+        text(first.owner) || text(first.deadline)
+          ? `Responsável e prazo: ${[text(first.owner), text(first.deadline)].filter(Boolean).join(" · ")}.`
+          : "",
+        actionSummary.length ? `Ações comprometidas (${allActions.length}/${maxActions}): ${actionSummary.join("; ")}.` : "",
+        backlog.length ? `Backlog: ${backlog.join("; ")}.` : "",
         pendingSummary,
         deadline || criterion ? `Novo prazo e aceite: ${deadline}${criterion ? `; ${criterion}` : ""}.` : "",
+        blockers.length ? `Bloqueio: ${blockers.join("; ")}.` : "",
         text(normalized.cadence) ? `Acompanhamento: ${text(normalized.cadence)}` : "",
-        text(normalized.nextCommitment) ? `Próximo compromisso: ${text(normalized.nextCommitment)}.` : "",
+        text(normalized.confidence) ? `Confiança: ${text(normalized.confidence)}.` : "",
+        text(normalized.nextCommitment) ? `Próximo compromisso: ${text(normalized.nextCommitment).replace(/[.]+$/, "")}.` : "",
         "Posso gravar?",
       ].filter(Boolean).join("\n");
     }

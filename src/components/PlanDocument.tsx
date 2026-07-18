@@ -231,6 +231,7 @@ function MonthlySection({ content }: { content: Record<string, unknown> }) {
       <KeyValue label="Riscos" value={asArray<string>(monthly.riscos).join("; ")} />
       <KeyValue label="Bloqueios" value={asArray<string>(monthly.bloqueios).join("; ")} />
       <KeyValue label="Acompanhamento" value={monthly.cadencia} />
+      <KeyValue label="Confiança" value={monthly.confianca} />
       <KeyValue label="Próximo compromisso" value={monthly.proximo_compromisso} />
     </div>
   );
