@@ -423,6 +423,7 @@ export function OraclePanel() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   // Trava o botao de confirmar enquanto a gravacao esta em voo, evitando duplo submit.
   const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const mode = state.ui.oracleMode;
@@ -445,8 +446,15 @@ export function OraclePanel() {
 
   // Libera o botao quando a proposta e aplicada/descartada (pendingProposal some) ou troca a sessao.
   useEffect(() => {
-    if (!activeSession?.pendingProposal) setConfirmingSessionId(null);
+    if (!activeSession?.pendingProposal) {
+      setConfirmingSessionId(null);
+      setConfirmationError(null);
+    }
   }, [activeSession?.id, activeSession?.pendingProposal]);
+
+  useEffect(() => {
+    setConfirmationError(null);
+  }, [activeSession?.id]);
 
   useEffect(() => {
     function syncNarrowMode() {
@@ -656,6 +664,11 @@ export function OraclePanel() {
                 <StrategicProposalPreview proposal={activeSession.pendingProposal} />
                 <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
                 <StrategicReviewProposalPreview proposal={activeSession.pendingProposal} />
+                {confirmationError ? (
+                  <p role="alert" className="mt-3 rounded-xl bg-[#FFF1F0] px-3 py-2 text-xs leading-5 text-[#A12622]">
+                    {confirmationError}
+                  </p>
+                ) : null}
                 <div className="mt-3 grid gap-2">
                   <Button
                     type="button"
@@ -663,8 +676,17 @@ export function OraclePanel() {
                     disabled={confirmingSessionId === activeSession.id}
                     onClick={() => {
                       if (confirmingSessionId === activeSession.id) return;
+                      setConfirmationError(null);
                       setConfirmingSessionId(activeSession.id);
-                      dispatch({ type: "confirm_session_proposal", sessionId: activeSession.id });
+                      dispatch({
+                        type: "confirm_session_proposal",
+                        sessionId: activeSession.id,
+                        onSuccess: () => setConfirmingSessionId(null),
+                        onError: (errorMessage) => {
+                          setConfirmingSessionId(null);
+                          setConfirmationError(errorMessage);
+                        },
+                      });
                     }}
                   >
                     {confirmingSessionId === activeSession.id ? "Gravando…" : "Confirmar e gravar"}
@@ -675,7 +697,10 @@ export function OraclePanel() {
                       variant="ghost"
                       className="w-full"
                       disabled={confirmingSessionId === activeSession.id}
-                      onClick={() => setMessage("Quero ajustar: ")}
+                      onClick={() => {
+                        setConfirmationError(null);
+                        setMessage("Quero ajustar: ");
+                      }}
                     >
                       Ajustar
                     </Button>
@@ -684,7 +709,10 @@ export function OraclePanel() {
                       variant="ghost"
                       className="w-full"
                       disabled={confirmingSessionId === activeSession.id}
-                      onClick={() => dispatch({ type: "abandon_session", sessionId: activeSession.id })}
+                      onClick={() => {
+                        setConfirmationError(null);
+                        dispatch({ type: "abandon_session", sessionId: activeSession.id });
+                      }}
                     >
                       Descartar
                     </Button>
