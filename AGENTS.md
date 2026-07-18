@@ -279,7 +279,7 @@ Compartilhados criticos:
 
 - `_shared/auth.ts`: sessao, membership, owner e permissao por area.
 - `_shared/administrative-audit.ts`: grava eventos administrativos idempotentes e sanitizados, sem segredos, contatos, prompts ou conteúdo.
-- `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios e deteccao de retomada explicita.
+- `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios, deteccao de retomada explicita e validacao do vinculo entre sessao e episodio ativo.
 - `_shared/whatsapp-processor.ts`: núcleo único de autenticação/processamento usado pelo ingress e pelo worker; texto externo nunca usa fallback síncrono.
 - `_shared/whatsapp-event.ts`, `_shared/whatsapp-media.ts`, `_shared/whatsapp-documents.ts` e `_shared/whatsapp-conversation.ts`: parsing/autenticação, mídia em memória, importação de documentos e respostas do processador público.
 - `_shared/model.ts`: chamadas OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok.
@@ -485,7 +485,7 @@ Motivo: evitar vazamento de credenciais, controlar custo e impedir gravacao inde
 ### Oraculo V3
 
 - Conversas sao separadas por pessoa e canal em `conversations`; 4 horas de inatividade abrem novo episodio sem apagar memoria anterior.
-- Sessoes estruturadas ficam em `planning_sessions`.
+- Sessoes estruturadas ficam em `planning_sessions`; ao retomar, o motor preserva o estado e religa conversas arquivadas, ociosas ou fora de escopo ao episodio ativo antes de gravar.
 - Condutores ficam em `_shared/conductors/`.
 - Persona, tom e guias por contexto ficam em `_shared/conductors/persona.ts`.
 - Propostas confirmadas geram `plan_documents` deterministico.
@@ -598,7 +598,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - A Q2 foi implementada e aprovada pelo owner em 2026-07-16: 29 casos sinteticos em Q2A-Q2E cobrem 15 entregas e as 16 falhas criticas. `pnpm run test:strategic-cases` valida manifesto, casos, metodos, rubricas, canais, confirmacoes e sanitizacao. O gate esta `owner-approved`.
 - A Q3 foi medida no staging em 2026-07-16 e a Q4A-Q4F foi concluida em 2026-07-17. O gate integrado passou 350 unitarios, 122 integracoes, 7 testes de seguranca, 11 E2E, fixtures, catalogo, paridade de saidas, lint/build/bundle e secret scan; cleanup independente ficou zerado. Q4F custou US$ 0 e o acumulado permanece US$ 2,890842. Producao permanece anterior; leia `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`.
 - A Q4G-Q4AP, a rodada incremental e a regressao integral r24 foram aprovadas no staging. A r24 terminou 40/40: Q5A 10/10, Q5B 16/16, Q5C 8/8 e Q5D 6/6; media conjunta 97,23, zero falha critica/check reprovado, 15/15 entregas e mediana 4 -> 3 turnos. Custo r24 US$ 1,443641; acumulado US$ 17,352811. Dez entradas anuais historicas da Q3 anteriores ao catalogo atual permanecem declaradas como limitacao; o owner aprovou sem nova repeticao paga. Mapa A/Q6 encerrado; producao permanece inalterada.
-- O preflight O0 foi iniciado em 2026-07-18 e esta pausado. Infraestrutura declarada e backup externo estao verdes; o cron protegeu a auditoria do backup em snapshot externo de 647 registros. O pacote Q4/Q5 ainda nao esta em producao, a PR `#10` precisa concluir CI e o WhatsApp precisa confirmar inbound real. Nao iniciar O1 antes do gate descrito em `docs/OPERATIONAL_PILOT_O0.md`.
+- O preflight O0 foi aprovado em 2026-07-18: pacote Q4/Q5 em producao, backup externo protegido e inbound real do WhatsApp com resposta unica. O O1 confirmou o baseline do Comercial T3 2026, mas foi pausado antes de proposta/gravação ao revelar uma sessao ligada a episodio arquivado. A correcao de religacao passou local e staging; somente `oracle-session` de staging mudou. Producao aguarda PR/CI e autorizacao explicita. Consulte `docs/OPERATIONAL_PILOT_O1.md`.
 
 - Etapa 3 / Fatia 3E concluída e publicada em produção em 2026-07-13: texto usa obrigatoriamente fila + worker + outbox + sender; ausência da infraestrutura falha fechado antes de mutação. O piloto real aprovou texto, áudio, documento, envio, deduplicação 10x e ordem. Mídia continua síncrona/em memória e suas respostas textuais usam outbox.
 
@@ -620,7 +620,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Pendencias conhecidas / proximos passos
 
-- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`. O Mapa A/Q0-Q6 esta aprovado. Proxima fatia: O0, preflight e checkpoint de recuperacao em producao, sempre com briefing e autorizacao explicita antes de qualquer acao que altere producao ou gere custo.
+- Executar em ordem o plano integrado `plans/2026-07-16-qualidade-estrategica-operacional.md`. O Mapa A/Q0-Q6 e o O0 estao aprovados. Proxima acao: concluir PR/CI da correcao de episodio, pedir autorizacao de producao e retomar o O1 sem refazer o baseline.
 - Para uma futura prova com geração textual real, abrir um novo ciclo MASTER com chave própria e descartável apenas no staging; nunca reutilizar credencial de produção.
 - Ampliar a suíte conforme regressões reais surgirem, mantendo a matriz de `docs/TESTING.md` atualizada.
 - Antes de transformar o aviso operacional em política contratual definitiva, o responsável deve validar papéis de controlador/operador, razão social, contato institucional, bases legais e termos/retenção dos provedores listados em `docs/DATA_INVENTORY.md`.

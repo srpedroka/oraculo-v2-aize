@@ -1,5 +1,19 @@
 export const CONVERSATION_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 
+interface SessionConversationCandidate {
+  org_id?: string | null;
+  user_id?: string | null;
+  channel?: string | null;
+  status?: string | null;
+  last_message_at?: string | null;
+}
+
+interface SessionConversationScope {
+  orgId: string;
+  userId: string;
+  channel: "web" | "whatsapp";
+}
+
 interface EpisodeMessage {
   author: "oracle" | "user";
   text: string;
@@ -24,6 +38,20 @@ export function conversationIdleExpired(
   const last = new Date(lastMessageAt).getTime();
   if (!Number.isFinite(last)) return false;
   return now.getTime() - last >= timeoutMs;
+}
+
+export function shouldRebindSessionConversation(
+  conversation: SessionConversationCandidate | null | undefined,
+  scope: SessionConversationScope,
+  now = new Date(),
+) {
+  if (!conversation || conversation.status !== "active") return true;
+  if (
+    conversation.org_id !== scope.orgId ||
+    conversation.user_id !== scope.userId ||
+    conversation.channel !== scope.channel
+  ) return true;
+  return conversationIdleExpired(conversation.last_message_at, now);
 }
 
 export function isExplicitPlanningResume(value: unknown) {
