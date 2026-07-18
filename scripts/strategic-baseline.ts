@@ -197,6 +197,8 @@ async function must<T>(operation: PromiseLike<{ data: T; error: any }>, label: s
 }
 
 function areaNameForCase(item: ReferenceCase) {
+  const explicitAreaName = item.input.areaName?.trim();
+  if (explicitAreaName) return explicitAreaName;
   const text = `${item.caseId} ${item.input.opening}`.toLowerCase();
   if (text.includes("equivalent-area") || text.includes("industrial") || text.includes("producao")) return "Producao";
   if (text.includes("marketing")) return "Marketing";
@@ -635,6 +637,7 @@ export async function executeCase(
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: checks,
   });
   const criticalFailureCandidates = qualityGate.criticalFailureCandidates;
   const summary: BaselineRunSummary = {
@@ -897,8 +900,8 @@ async function restartQ5AfterCorrection(correctionReference: string) {
 async function resumeQ5AfterCorrection(correctionReference: string) {
   if (EVALUATION_COHORT !== "q5") throw new Error("resume-after-correction e exclusivo da regressao Q5");
   const normalizedReference = correctionReference.toUpperCase();
-  if (!(["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y"] as string[]).includes(normalizedReference)) {
-    throw new Error("retomada incremental Q5 exige uma correcao ou recheck aprovado (Q4N a Q4Y)");
+  if (!(["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH"] as string[]).includes(normalizedReference)) {
+    throw new Error("retomada incremental Q5 exige uma correcao ou recheck aprovado (Q4N a Q4Y, Q4AG ou Q4AH)");
   }
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
@@ -937,7 +940,11 @@ async function resumeQ5AfterCorrection(correctionReference: string) {
   }
   const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath));
   progress.runs = progress.runs.filter((run) => !failedReportPaths.has(run.reportPath));
-  progress.baselineVersion = normalizedReference === "Q4Y"
+  progress.baselineVersion = normalizedReference === "Q4AH"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4ah"
+    : normalizedReference === "Q4AG"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4ag"
+    : normalizedReference === "Q4Y"
     ? "2026-07-18.q5-regression-r14-incremental-q4y"
     : normalizedReference === "Q4X"
     ? "2026-07-18.q5-regression-r13-incremental-q4x"
@@ -1519,6 +1526,7 @@ async function rejudgeReportWithCanonicalScope(reportPathValue: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: Array.isArray(report.deterministicChecks) ? report.deterministicChecks : [],
   });
   const completedAt = new Date().toISOString();
   report.judgeHistory = [
@@ -1622,7 +1630,7 @@ export async function main(args = process.argv.slice(2)) {
   else if (command === "summary") await writeSummary();
   else if (command === "compare") await compareQ5Regression();
   else {
-    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA|Q4AB|Q4AC|Q4AD|Q4AE|Q4AF | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y|Q4AG|Q4AH | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA|Q4AB|Q4AC|Q4AD|Q4AE|Q4AF | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

@@ -23,6 +23,8 @@ import { parseJsonObject } from "./json.ts";
 import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
 import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-timeout.ts";
 import { callModelForFunction } from "./call-for-function.ts";
+import { PLANNING_SESSION_OUTPUT } from "./session-output-schema.ts";
+import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.ts";
 import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
@@ -65,6 +67,7 @@ import {
   normalizeProposalConfirmationEnvelope,
   normalizeStrategicHistoricalLessons,
   recoverAdaptiveEnvelopeAfterRepairFailure,
+  resumeDeferredQuarterlyProposal,
   validateAdaptiveEnvelope,
 } from "./session-adaptive.ts";
 
@@ -331,7 +334,11 @@ export async function processPlanningMessage(
       route,
       prompt,
       modelMessages,
-      { ...route.limits, timeoutMs: planningModelTimeout(planningRequestDeadline) },
+      {
+        ...route.limits,
+        timeoutMs: planningModelTimeout(planningRequestDeadline),
+        structuredOutput: PLANNING_SESSION_OUTPUT,
+      },
       { userId: params.userId },
     ), transientRetryBudget);
     await recordAiUsage({
@@ -366,10 +373,13 @@ export async function processPlanningMessage(
     .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
     .join("\n");
   const normalizeEnvelope = (envelope: any) => {
-    if (session.type === "monthly") return normalizeProposalConfirmationEnvelope(envelope, session.type);
+    let normalized = envelope;
+    if (session.type === "monthly") {
+      normalized = normalizeProposalConfirmationEnvelope(normalized, session.type);
+    }
     if (session.type === "month_close" || session.type === "quarter_close") {
-      return normalizeCloseQualityEnvelope({
-        envelope,
+      normalized = normalizeCloseQualityEnvelope({
+        envelope: normalized,
         sessionType: session.type,
         period: session.period,
         conversationText,
@@ -377,42 +387,60 @@ export async function processPlanningMessage(
       });
     }
     if (session.type === "strategic") {
-      const normalized = envelope?.proposal?.type === "save_strategic_plan"
+      normalized = normalized?.proposal?.type === "save_strategic_plan"
         ? {
-          ...envelope,
-          proposal: normalizeReadyStrategicProposal(envelope.proposal, session.period, { fillMissingLabels: false }),
+          ...normalized,
+          proposal: normalizeReadyStrategicProposal(normalized.proposal, session.period, { fillMissingLabels: false }),
         }
-        : envelope;
-      return normalizeStrategicHistoricalLessons(normalized, conversationText);
+        : normalized;
+      normalized = normalizeStrategicHistoricalLessons(normalized, conversationText);
     }
-    if (session.type !== "quarterly") return envelope;
-    const priorityEnvelope = challengeQuarterlyPriorityOverload({
-      envelope,
-      sessionType: session.type,
-      currentPhase: session.phase,
-      sessionState: session.state,
-      userMessage: params.message,
-      planContext: context,
-    });
-    const preparedEnvelope = deferUnchallengedQuarterlyProposal({
-      envelope: priorityEnvelope,
+    if (session.type === "quarterly") {
+      const priorityEnvelope = challengeQuarterlyPriorityOverload({
+        envelope: normalized,
+        sessionType: session.type,
+        currentPhase: session.phase,
+        sessionState: session.state,
+        userMessage: params.message,
+        planContext: context,
+      });
+      const scopedEnvelope = acknowledgeEquivalentQuarterlyArea({
+        envelope: priorityEnvelope,
+        sessionType: session.type,
+        userMessage: params.message,
+        planContext: context,
+      });
+      const normalizedEnvelope = normalizeProposalConfirmationEnvelope(
+        preserveExplicitQuarterlyCadence(scopedEnvelope, conversationText),
+        session.type,
+      );
+      normalized = deferUnchallengedQuarterlyProposal({
+        envelope: normalizedEnvelope,
+        sessionType: session.type,
+        currentPhase: session.phase,
+        sessionState: session.state,
+        conversationText,
+        userMessage: params.message,
+      });
+    }
+    normalized = canonicalizePlanningEnvelopeScope({
+      envelope: normalized,
       sessionType: session.type,
       sessionPeriod: session.period,
-      currentPhase: session.phase,
-      sessionState: session.state,
-      conversationText,
-      userMessage: params.message,
     });
-    const scopedEnvelope = acknowledgeEquivalentQuarterlyArea({
-      envelope: preparedEnvelope,
-      sessionType: session.type,
-      userMessage: params.message,
-      planContext: context,
-    });
-    return normalizeProposalConfirmationEnvelope(
-      preserveExplicitQuarterlyCadence(scopedEnvelope, conversationText),
-      session.type,
-    );
+    if (["strategic", "quarterly", "monthly"].includes(session.type) && normalized?.proposal) {
+      normalized = normalizeProposalConfirmationEnvelope(normalized, session.type);
+    }
+    return {
+      ...normalized,
+      state_patch: ensureAdaptiveStatePatch(
+        normalized?.state_patch,
+        params.message,
+        Boolean(normalized?.proposal),
+        false,
+        session.state,
+      ),
+    };
   };
   const validateEnvelope = (envelope: any) => [
     ...validateAdaptiveEnvelope({
@@ -440,7 +468,15 @@ export async function processPlanningMessage(
     userMessage: params.message,
     sessionState: session.state,
   });
-  const deterministicPlanningEnvelope = await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
+  const deterministicPlanningEnvelope = resumeDeferredQuarterlyProposal({
+    sessionType: session.type,
+    sessionState: session.state,
+    conversationText,
+    userMessage: params.message,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+  })
+    ?? await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
     ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context)
     ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText)
     ?? quarterCloseOpenDecisionEnvelope(ensured.session, params.message, conversationText, context);

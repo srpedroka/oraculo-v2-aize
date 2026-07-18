@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A e Q5B completas; Q5C com 4 aprovacoes; Q4V aprovada e retomada incremental preparada**
+Status: **Q4AH e A/B aprovados no staging; regressão limpa r22 preserva 18 aprovações e está pronta para retomar Q5B**
 
 ## Objetivo
 
@@ -802,3 +802,21 @@ O primeiro smoke revelou uma casca vazia e bloqueou com media 34,58. A tentativa
 | Validacao local | 462 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 511 arquivos |
 
 Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AD`, matriz deterministica e Q5A-Q5D completas desde zero. Producao permanece inalterada.
+
+## Q4AE-Q4AF: estabilizacao anual antes da r22
+
+A Q4AE impediu que uma proposta anual quase completa, mas sem `result`, reiniciasse a entrevista. A Q4AF separou contagens realmente declaradas de números citados apenas na memória histórica e corrigiu a fixture que duplicava o projeto do sistema. Os smokes finais passaram; o acumulado chegou a US$ 12,054798. A regressão limpa r22 foi então aberta e preservou 18 aprovações: Q5A 10/10 e Q5B 8/16.
+
+## Q4AG: proposta trimestral deferida e defeito da fixture
+
+`Q2B-QUARTERLY-MISSING-BASELINE-005` R1 mostrou que o desafio sobre medida de produtividade podia remover uma proposta completa e exigir uma nova chamada genérica. A Q4AG preserva o rascunho validado no estado interno e, quando o gestor decide seguir, reabre deterministicamente a mesma proposta com uma única confirmação. O smoke comprovou todos os checks técnicos, Plano Trimestral 95, Condução 78,75 e média 86,88; custou US$ 0,044535 e levou o acumulado a US$ 13,1060965.
+
+A reprovação restante não era do plano: a fixture criava a área `Comercial` por heurística, embora abertura e fatos fossem de produtividade industrial. O catálogo agora declara `areaName = Producao` explicitamente. A retomada Q5 deixa de apagar as 18 aprovações e arquiva somente a medição bloqueada.
+
+## Q4AH: fronteira estruturada antes de novos testes pagos
+
+Antes de repetir o caso, o motor foi endurecido estruturalmente. xAI recebe JSON Schema estrito para o envelope; OpenAI recebe o mesmo schema guiado e continua com validação local. `_adaptive`, ano/período, campos de escopo e confirmação são normalizados pelo servidor. O judge também usa schema estrito, e `COND-SCOPE-001` usa o check objetivo de sessão, com a origem da nota registrada no relatório. Critérios sem prova técnica continuam subjetivos.
+
+O smoke Q4AH passou no staging com 3 chamadas, zero reparo estrutural, Condução 100, Plano Trimestral 97,50, custo US$ 0,032404 e cleanup completo. `resume-after-correction Q4AH` arquivou somente a medição antiga e preservou as 18 aprovações.
+
+O A/B cego também passou nos dois modelos. Grok 4.3 obteve Condução 92,50, Plano 95, 4 chamadas, 1 reparo semântico e custo total US$ 0,038189. Grok 4.5 obteve 93,75, 97,50, 4 chamadas, 1 reparo e US$ 0,057875. O total do A/B foi US$ 0,096064; acumulado US$ 13,234564. Como a amostra é única, os judges foram cruzados e a diferença de qualidade é pequena, Grok 4.3 permanece como condutor. O próximo passo é `phase Q5B`, repetindo somente o caso trimestral bloqueado e seguindo pelos sete resultados ausentes.

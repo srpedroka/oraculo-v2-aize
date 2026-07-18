@@ -3,6 +3,7 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ModelUsage, Provider } from "../supabase/functions/_shared/model.ts";
+import { structuredOutputRequestFields } from "../supabase/functions/_shared/model-structured-output.ts";
 import { resolveKnownPricing } from "../supabase/functions/_shared/pricing.ts";
 import { anonClient, assertStaging, serviceClient } from "../tests/helpers/staging.ts";
 import {
@@ -22,6 +23,7 @@ import {
   type EvaluationCheck,
   type StrategicEvaluationCase,
 } from "./strategic-eval-lib.ts";
+import { STRATEGIC_JUDGE_OUTPUT } from "./strategic-judge-schema.ts";
 
 const PRIVATE_DIR = resolve(".agents-private");
 const LEDGER_PATH = resolve(PRIVATE_DIR, "strategic-eval-ledger.json");
@@ -549,6 +551,7 @@ export async function runJudge(params: {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("Tempo limite do judge atingido"), JUDGE_TIMEOUT_MS);
   const baseUrl = params.provider === "xai" ? "https://api.x.ai/v1" : "https://api.openai.com/v1";
+  const structuredOutput = structuredOutputRequestFields(params.provider, STRATEGIC_JUDGE_OUTPUT);
   let response: Response;
   try {
     response = await fetch(`${baseUrl}/${params.provider === "openai" ? "responses" : "chat/completions"}`, {
@@ -560,6 +563,7 @@ export async function runJudge(params: {
         input: [{ role: "user", content: JSON.stringify(input) }],
         max_output_tokens: 2_000,
         store: false,
+        ...structuredOutput,
       } : {
         model: params.model,
         messages: [
@@ -567,6 +571,7 @@ export async function runJudge(params: {
           { role: "user", content: JSON.stringify(input) },
         ],
         max_tokens: 2_000,
+        ...structuredOutput,
       }),
       signal: controller.signal,
     });
@@ -773,6 +778,7 @@ export async function executeLiveCase(casePath: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: checks,
   });
 
   const report: Record<string, unknown> = {
@@ -924,6 +930,7 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: checks,
   });
   const completedAt = new Date().toISOString();
   report.runtime = {
@@ -997,6 +1004,7 @@ export async function recomputeReportGate(reportPathValue: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: Array.isArray(report.deterministicChecks) ? report.deterministicChecks : [],
   });
   report.qualityGate = qualityGate;
   report.comparisonFingerprint = comparisonFingerprint(report as any);

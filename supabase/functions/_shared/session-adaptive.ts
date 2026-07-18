@@ -77,6 +77,7 @@ const QUARTERLY_PRODUCTIVITY_AMBIGUITY_PATTERN = /\b(?:n[aã]o\s+sabe\s+qual\s+m
 const QUARTERLY_MEASURE_REPLY_PATTERN = /\b(?:medidas?|indicadores?|f[oó]rmulas?)\b/i;
 const QUARTERLY_STRATEGIC_CHALLENGE_PATTERN = /\b(?:meta|alvo)\b[\s\S]{0,160}\b(?:suficiente|ambicios[oa]|realista|sustent[aá]vel|resolve)\b|\b(?:capacidade|sobrecarga|comporta|cabem|cabe)\b|\b(?:evid[eê]ncia intermedi[aá]ria|sinal antecipado|antes do fechamento|provar que)\b|\b(?:o que|qual)\b[\s\S]{0,100}\b(?:impedir|comprometer|risco|mudar o resultado)\b/i;
 const QUARTERLY_PROCEED_AFTER_CHALLENGE_PATTERN = /\b(?:continue|continuar|prossiga|prosseguir|pode seguir|siga|seguir sem|considere tudo|apresente (?:agora )?(?:a )?(?:s[ií]ntese|proposta)|feche (?:a )?(?:s[ií]ntese|proposta))\b/i;
+const DEFERRED_QUARTERLY_PROPOSAL_KEY = "_deferred_quarterly_proposal";
 const QUARTERLY_DISCOUNT_QUALITY_PATTERN = /\breduzir\s+(?:o\s+)?desconto\s+m[eé]dio\b[\s\S]{0,140}\bqualidade\s+da\s+venda\b/i;
 const QUARTERLY_KPI_HYPOTHESIS_CONTEXT_PATTERN = /\bDashboard\b[\s\S]{0,320}\bMargem operacional\b[\s\S]{0,320}\bhip[oó]tese\b[\s\S]{0,320}\b(?:escolher|vincular)\b/i;
 const QUARTERLY_KPI_HYPOTHESIS_REPLY_PATTERN = /\bhip[oó]tese\b[\s\S]{0,280}\bMargem operacional\b|\bMargem operacional\b[\s\S]{0,280}\bhip[oó]tese\b/i;
@@ -196,7 +197,7 @@ const DETERMINISTIC_PROPOSAL_REPAIR_REASONS = new Set([
 
 export const ADAPTIVE_SESSION_RULES = `CONTRATO DE CONDUCAO ADAPTATIVA (obrigatorio):
 - As fases sao um checklist de decisoes, nao um formulario por turnos. Absorva TODOS os fatos da mensagem atual e do historico; pule qualquer fase ja satisfeita e use next_phase para ir direto a primeira lacuna real, inclusive sintese.
-- Cada state_patch deve incluir _adaptive no formato {"readiness":"vague|partial|ready","confirmed_facts":[""],"blocking_gap":string|null,"question_goal":string|null,"action_direction":string|null}. confirmed_facts lista somente CHAVES DE TOPO exatas do estado ja coletado ou do state_patch que tenham valor concreto; o servidor valida essas chaves. Esse bloco e interno e nunca aparece em reply.
+- Use state_patch somente para os fatos novos da conversa. O servidor classifica prontidao, lacuna e direcao internamente; nunca crie nem exponha _adaptive em reply.
 - Use readiness=vague quando ainda faltam escolhas basicas; partial quando existe uma lacuna realmente bloqueante; ready somente quando a proposal completa pode ser criada agora.
 - Se a resposta for vaga, reconheca o que foi dito e ofereca 2 ou 3 possibilidades curtas dentro de UMA pergunta neutra. Nao escolha pela pessoa.
 - Se a resposta for parcial, faca somente a pergunta da lacuna bloqueante. Cite o fato que motivou a pergunta e a decisao ou acao que ela destrava.
@@ -395,7 +396,7 @@ function mergedCanonicalState(sessionState: unknown, statePatch: unknown) {
 
 function verifiedStateKeys(sessionState: unknown, statePatch: unknown) {
   const merged = mergedCanonicalState(sessionState, statePatch);
-  return Object.keys(merged).filter((key) => key !== "_adaptive" && hasConcreteValue(merged[key]));
+  return Object.keys(merged).filter((key) => !key.startsWith("_") && hasConcreteValue(merged[key]));
 }
 
 export function deferUnchallengedQuarterlyProposal(input: {
@@ -421,6 +422,7 @@ export function deferUnchallengedQuarterlyProposal(input: {
     done: false,
     state_patch: {
       ...statePatch,
+      [DEFERRED_QUARTERLY_PROPOSAL_KEY]: input.envelope.proposal,
       _adaptive: {
         readiness: "partial",
         confirmed_facts: verifiedStateKeys(input.sessionState, statePatch),
@@ -430,6 +432,40 @@ export function deferUnchallengedQuarterlyProposal(input: {
       },
     },
     next_phase: input.currentPhase,
+  };
+}
+
+export function resumeDeferredQuarterlyProposal(input: {
+  sessionType: string;
+  sessionState?: unknown;
+  conversationText?: string;
+  userMessage: string;
+  currentPhase: string;
+  phases: string[];
+}) {
+  if (input.sessionType !== "quarterly"
+    || !hasQuarterlyStrategicChallenge(text(input.conversationText))
+    || !QUARTERLY_PROCEED_AFTER_CHALLENGE_PATTERN.test(input.userMessage)) {
+    return null;
+  }
+  const proposal = asRecord(asRecord(input.sessionState)[DEFERRED_QUARTERLY_PROPOSAL_KEY]);
+  if (text(proposal.type) !== "save_quarterly_plan") return null;
+
+  return {
+    reply: proposalConfirmationReply(proposal, "quarterly"),
+    proposal,
+    done: false,
+    state_patch: {
+      [DEFERRED_QUARTERLY_PROPOSAL_KEY]: null,
+      _adaptive: {
+        readiness: "ready",
+        confirmed_facts: verifiedStateKeys(input.sessionState, {}),
+        blocking_gap: null,
+        question_goal: "confirmar gravacao",
+        action_direction: "gravar plano trimestral",
+      },
+    },
+    next_phase: input.phases.includes("sintese") ? "sintese" : input.currentPhase,
   };
 }
 
@@ -868,12 +904,29 @@ export function ensureAdaptiveStatePatch(
   sessionState: unknown = {},
 ) {
   const patch = asRecord(statePatch);
-  if (!force && adaptiveMetadata({ state_patch: patch })) return patch;
+  const existing = adaptiveMetadata({ state_patch: patch });
+  const confirmedFacts = verifiedStateKeys(sessionState, patch);
+  const readiness = hasProposal
+    ? "ready"
+    : existing?.readiness === "ready"
+      ? "partial"
+      : confirmedFacts.length || looksLikeFactBlock(userMessage)
+        ? "partial"
+        : "vague";
+  if (!force && existing
+    && existing.readiness === readiness
+    && existing.question_goal
+    && existing.action_direction
+    && (readiness === "ready" || existing.blocking_gap)
+    && existing.confirmed_facts.length === confirmedFacts.length
+    && existing.confirmed_facts.every((key, index) => key === confirmedFacts[index])) {
+    return patch;
+  }
   return {
     ...patch,
     _adaptive: {
-      readiness: hasProposal ? "ready" : looksLikeFactBlock(userMessage) ? "partial" : "vague",
-      confirmed_facts: verifiedStateKeys(sessionState, patch),
+      readiness,
+      confirmed_facts: confirmedFacts,
       blocking_gap: hasProposal ? null : "proxima decisao executavel",
       question_goal: hasProposal ? "confirmar gravacao" : "identificar a proxima decisao executavel",
       action_direction: hasProposal ? "gravar o plano confirmado" : "transformar a resposta em acao",

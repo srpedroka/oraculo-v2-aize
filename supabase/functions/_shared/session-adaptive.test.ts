@@ -13,6 +13,7 @@ import {
   normalizeReadyProposalEnvelope,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   repeatsPreviousQuestion,
+  resumeDeferredQuarterlyProposal,
   safeAdaptiveNextPhase,
   validateAdaptiveEnvelope,
   visibleQuestions,
@@ -49,6 +50,27 @@ function reasons(overrides: Record<string, unknown> = {}, input: Partial<Paramet
 }
 
 describe("adaptive planning session guard Q4A", () => {
+  it("derives internal adaptive metadata on the server", () => {
+    expect(ensureAdaptiveStatePatch(
+      { objective_title: "Elevar produtividade" },
+      "O objetivo e elevar produtividade.",
+      false,
+      false,
+      {},
+    )).toEqual({
+      objective_title: "Elevar produtividade",
+      _adaptive: {
+        readiness: "partial",
+        confirmed_facts: ["objective_title"],
+        blocking_gap: "proxima decisao executavel",
+        question_goal: "identificar a proxima decisao executavel",
+        action_direction: "transformar a resposta em acao",
+      },
+    });
+    expect(ADAPTIVE_SESSION_RULES).toContain("O servidor classifica prontidao");
+    expect(ADAPTIVE_SESSION_RULES).not.toContain("Cada state_patch deve incluir _adaptive");
+  });
+
   it("reproduces and blocks the semantic question loop seen in the pilot", () => {
     const previous = "Vamos montar o plano do trimestre da área. Antes de começarmos: qual é o principal desafio da sua área hoje?";
     const reply = "Você trouxe um bom contexto. Antes de avançarmos: qual é o principal desafio da sua área hoje?";
@@ -253,7 +275,7 @@ describe("adaptive planning session guard Q4A", () => {
       true,
     ) as Record<string, any>;
 
-    expect(corrected._adaptive.readiness).toBe("vague");
+    expect(corrected._adaptive.readiness).toBe("partial");
     expect(corrected._adaptive.confirmed_facts).toContain("objetivo");
     expect(corrected._adaptive.action_direction).toBe("transformar a resposta em acao");
   });
@@ -1042,6 +1064,48 @@ describe("adaptive planning session guard Q4A", () => {
     expect(accepted).not.toContain("quarterly_proceed_after_challenge_without_proposal");
     expect(directive).toContain("decisao de seguir sem evidencia adicional e consciente");
     expect(directive).toContain("save_quarterly_plan");
+  });
+
+  it("preserves a complete quarterly draft and resumes it without another content question", () => {
+    const proposal = {
+      type: "save_quarterly_plan",
+      annualAlignment: { status: "linked", strategicObjectiveTitle: "Aumentar capacidade" },
+      linkedStrategicObjectiveIds: ["annual-1"],
+      quarterlyObjectives: [{ title: "Elevar produtividade", result: "12 para 14,4" }],
+    };
+    const deferred = deferUnchallengedQuarterlyProposal({
+      envelope: {
+        reply: "O plano ficou pronto. Posso gravar?",
+        proposal,
+        state_patch: { resultado: "12 para 14,4" },
+      },
+      sessionType: "quarterly",
+      currentPhase: "diagnostico",
+      sessionState: {},
+      conversationText: "",
+      userMessage: [
+        "Resultado principal confirmado: elevar produtividade de 12 para 14,4 ate 30/09/2027.",
+        "Responsavel: Diego. Periodo: T3 2027.",
+        "Acao 1: publicar padrao ate 31/07/2027; criterio: padrao aprovado.",
+        "Risco: baixa adesao. Foco de aprendizado: validar a padronizacao.",
+      ].join("\n"),
+    });
+    const deferredState = deferred.state_patch as Record<string, any>;
+    const resumed = resumeDeferredQuarterlyProposal({
+      sessionType: "quarterly",
+      sessionState: deferredState,
+      conversationText: "oracle: Qual evidencia intermediaria vai mostrar, antes do fechamento, que as acoes mudam o resultado?",
+      userMessage: "Continue com o que ja foi confirmado e apresente a proposta final.",
+      currentPhase: "diagnostico",
+      phases: ["abertura", "diagnostico", "sintese"],
+    });
+
+    expect(deferredState._deferred_quarterly_proposal).toEqual(proposal);
+    expect(resumed?.proposal).toEqual(proposal);
+    expect(resumed?.reply).toContain("Posso gravar?");
+    expect(resumed?.next_phase).toBe("sintese");
+    expect((resumed?.state_patch as Record<string, any>)._deferred_quarterly_proposal).toBeNull();
+    expect((resumed?.state_patch as Record<string, any>)._adaptive.confirmed_facts).not.toContain("_deferred_quarterly_proposal");
   });
 
   it("acknowledges the unique Industrial and Producao equivalence without adding a question", () => {

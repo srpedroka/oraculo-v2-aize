@@ -1,3 +1,6 @@
+// @ts-expect-error Deno Edge Functions require the explicit TypeScript extension.
+import { structuredOutputRequestFields, type ModelStructuredOutput } from "./model-structured-output.ts";
+
 export type Provider = "openai" | "anthropic" | "moonshot" | "xai";
 
 interface ModelMessage {
@@ -20,6 +23,7 @@ export interface ModelCallOptions {
   maxTokens?: number;
   temperature?: number;
   timeoutMs?: number;
+  structuredOutput?: ModelStructuredOutput;
 }
 
 export interface ModelImageInput {
@@ -147,6 +151,7 @@ export async function callModel(
 ): Promise<ModelCallResult> {
   const maxTokens = options.maxTokens;
   const temperature = options.temperature;
+  const structuredOutputFields = structuredOutputRequestFields(provider, options.structuredOutput);
 
   if (provider === "openai" || provider === "moonshot" || provider === "xai") {
     const baseUrl = provider === "moonshot" ? "https://api.moonshot.ai/v1" : provider === "xai" ? "https://api.x.ai/v1" : "https://api.openai.com/v1";
@@ -164,6 +169,7 @@ export async function callModel(
           input: messages,
           max_output_tokens: maxTokens ?? 700,
           ...(typeof temperature === "number" ? { temperature } : {}),
+          ...structuredOutputFields,
           store: false,
         }),
       }, options.timeoutMs);
@@ -191,6 +197,7 @@ export async function callModel(
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         max_tokens: maxTokens,
         temperature,
+        ...structuredOutputFields,
       }),
     }, options.timeoutMs);
 

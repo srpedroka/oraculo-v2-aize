@@ -315,6 +315,24 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4AG somente a meta trimestral sem baseline R1", () => {
+    const smoke = readFileSync("scripts/strategic-q4ag-smoke.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2B-QUARTERLY-MISSING-BASELINE-005"');
+    expect(smoke).toContain('executeCase(item, "Q2B", 1');
+    expect(smoke).toContain('runLabel: "q4ag"');
+    expect(smoke).toContain('ledgerLabel: "Q4AG"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
+  it("mantem o caso de produtividade no escopo industrial declarado pela fixture", () => {
+    const block = JSON.parse(readFileSync("tests/evals/strategic-quality/cases/q2b-quarterly.json", "utf8"));
+    const item = block.cases.find((candidate: ReferenceCase) => candidate.caseId === "Q2B-QUARTERLY-MISSING-BASELINE-005");
+    const baseline = readFileSync("scripts/strategic-baseline.ts", "utf8");
+
+    expect(item?.input.areaName).toBe("Producao");
+    expect(baseline).toContain("item.input.areaName?.trim()");
+  });
+
   it("mantem o projeto do sistema uma unica vez no bloco anual de atividade", () => {
     const item = fixture({
       caseId: "Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003",
@@ -444,7 +462,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -520,6 +538,13 @@ describe("Q3 strategic baseline", () => {
   it("reinicia toda a regressao limpa depois da correcao Q4AF", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('Q4AF: "2026-07-18.q5-clean-regression-r22-q4af"');
+  });
+
+  it("retoma somente a medicao bloqueada depois da correcao Q4AG", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain('"Q4Y", "Q4AG"');
+    expect(source).toContain('"2026-07-18.q5-clean-regression-r22-incremental-q4ag"');
+    expect(source).not.toContain('Q4AG: "2026-07-18.q5-clean-regression-r23-q4ag"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

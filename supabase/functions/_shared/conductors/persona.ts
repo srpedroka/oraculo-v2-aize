@@ -64,7 +64,7 @@ export function conversationGuideForContext(context: string) {
 }
 
 export const REGRAS_DE_SESSAO = `Você está conduzindo uma sessão estruturada. Regras técnicas obrigatórias:
-1. Responda SOMENTE com um objeto JSON válido, sem markdown ao redor, no formato: {"reply": string, "state_patch": object, "next_phase": string|null, "proposal": object|null, "done": boolean}.
+1. Responda no envelope estruturado solicitado pela API: {"reply": string, "state_patch": object, "next_phase": string|null, "proposal": object|null, "done": boolean}.
 2. Use o roteiro como mapa interno de decisões, não como formulário visível. Respeite a ordem lógica, mas pule o que já estiver cumprido no estado e vá à primeira lacuna que realmente muda a decisão.
 3. O "Estado já coletado" é sua memória da sessão. Não pergunte de novo o que já está lá. Se o usuário corrigir algo, atualize via state_patch.
 4. Guarde TODA informação nova relevante em state_patch, com chaves em snake_case descritivo.

@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Modelo sugere conteúdo; servidor possui o contrato da sessão
+
+Decisão: usar JSON Schema nas respostas de planejamento e do judge, mantendo no servidor a autoridade sobre escopo, período, prontidão adaptativa e confirmação. xAI usa schema estrito; OpenAI usa o mesmo schema sem `strict` para acomodar os objetos internos variáveis e continua sujeito à validação fail-closed. No laboratório, `COND-SCOPE-001` passa a receber nota efetiva do check `DET-SESSION-SCOPE-001`; critérios sem prova objetiva continuam com o judge.
+
+Motivo: a regressão Q5 mostrou que envelopes livres geravam reparos por forma, que o modelo podia repetir metadados internos inconsistentes e que o judge às vezes penalizava um escopo que o banco já havia provado correto. Isso misturava defeito real, variação probabilística e erro da fixture, elevando custo e número de reinícios.
+
+Consequências: a conversa e a proposta visível não ganham etapas nem confirmações. O modelo continua extraindo e redigindo os fatos de negócio, mas campos técnicos são normalizados antes da validação e da persistência. Relatórios registram a fonte de cada nota efetiva. A comparação Grok 4.3 x 4.5 é paga, separada, cega e nunca troca o modelo automaticamente; exige autorização explícita no comando.
+
 ## 2026-07-14 - Concorrencia otimista nas edicoes de alto valor
 
 Decisao: usar `updated_at` como versao de compare-and-swap em objetivos e configuracoes criticas, e uma RPC SQL unica para salvar definicao e meses de KPI. Conflitos retornam resultado controlado, preservam o rascunho local e exigem recarregar a versao atual antes de tentar novamente.

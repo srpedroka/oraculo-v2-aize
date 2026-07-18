@@ -8,6 +8,7 @@ import {
   buildDeterministicChecks,
   buildSessionRequests,
   comparisonFingerprint,
+  deterministicCriterionRatings,
   hasOnlyGroundedYears,
   q1Gate,
   sanitizeEvaluationValue,
@@ -150,6 +151,39 @@ describe("strategic evaluation runner Q1", () => {
     expect(gate.jointAverage).toBe(62.5);
     expect(gate.criticalFailureCandidates).toEqual(["CRIT-SCOPE-001"]);
     expect(gate.reasons).toContain("RUBRIC-CONDUCTION abaixo de 80: 50");
+  });
+
+  it("uses server-proven session scope instead of a contradictory judge rating", () => {
+    const rubric = JSON.parse(readFileSync(resolve(process.cwd(), "tests/evals/strategic-quality/rubric.json"), "utf8"));
+    const applicable = selectApplicableRubric(rubric, evaluationCase.planType);
+    const rubricScores = (applicable.rubrics as Array<any>).map((item) => ({
+      rubricId: item.id,
+      score: 75,
+      criteria: item.criteria.map((criterion: any) => ({ id: criterion.id, rating: 3 })),
+    }));
+    const humanCriticalFailureCandidates = (applicable.criticalFailures as Array<any>).map((item) => ({
+      id: item.id,
+      occurred: false,
+    }));
+    const deterministicChecks = [{ id: "DET-SESSION-SCOPE-001", status: "pass", evidence: "scope canonico" }];
+    const gate = buildStrategicQualityGate({
+      technicalGateStatus: "approved",
+      judgeStatus: "completed",
+      judgeResult: { rubricScores, humanCriticalFailureCandidates },
+      applicableRubric: applicable,
+      minimumPerRubric: 0,
+      minimumJointAverage: 0,
+      deterministicChecks,
+    });
+    const scope = gate.rubricScores[0].criterionRatings.find((item) => item.criterionId === "COND-SCOPE-001");
+    expect(scope).toEqual({
+      criterionId: "COND-SCOPE-001",
+      rating: 4,
+      source: "deterministic",
+      sourceCheckIds: ["DET-SESSION-SCOPE-001"],
+    });
+    expect(gate.rubricScores[0].score).toBe(78.75);
+    expect(deterministicCriterionRatings(deterministicChecks).get("COND-SCOPE-001")?.rating).toBe(4);
   });
 
   it("redacts identifiers and secret-shaped values from reports", () => {
