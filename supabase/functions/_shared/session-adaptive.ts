@@ -1,4 +1,5 @@
 import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
+import { normalizeQuarterlyKpiLinks, quarterlyKpiLabel, quarterlyKpiLinks } from "./quarterly-kpis.ts";
 
 type SessionEnvelope = {
   reply?: unknown;
@@ -73,6 +74,10 @@ const QUARTERLY_PRODUCTIVITY_AMBIGUITY_PATTERN = /\b(?:n[aã]o\s+sabe\s+qual\s+m
 const QUARTERLY_MEASURE_REPLY_PATTERN = /\b(?:medidas?|indicadores?|f[oó]rmulas?)\b/i;
 const QUARTERLY_STRATEGIC_CHALLENGE_PATTERN = /\b(?:meta|alvo)\b[\s\S]{0,160}\b(?:suficiente|ambicios[oa]|realista|sustent[aá]vel|resolve)\b|\b(?:capacidade|sobrecarga|comporta|cabem|cabe)\b|\b(?:evid[eê]ncia intermedi[aá]ria|sinal antecipado|antes do fechamento|provar que)\b|\b(?:o que|qual)\b[\s\S]{0,100}\b(?:impedir|comprometer|risco|mudar o resultado)\b/i;
 const QUARTERLY_PROCEED_AFTER_CHALLENGE_PATTERN = /\b(?:continue|continuar|prossiga|prosseguir|pode seguir|siga|seguir sem|considere tudo|apresente (?:agora )?(?:a )?(?:s[ií]ntese|proposta)|feche (?:a )?(?:s[ií]ntese|proposta))\b/i;
+const QUARTERLY_DISCOUNT_QUALITY_PATTERN = /\breduzir\s+(?:o\s+)?desconto\s+m[eé]dio\b[\s\S]{0,140}\bqualidade\s+da\s+venda\b/i;
+const QUARTERLY_KPI_HYPOTHESIS_CONTEXT_PATTERN = /\bDashboard\b[\s\S]{0,320}\bMargem operacional\b[\s\S]{0,320}\bhip[oó]tese\b[\s\S]{0,320}\b(?:escolher|vincular)\b/i;
+const QUARTERLY_KPI_HYPOTHESIS_REPLY_PATTERN = /\bhip[oó]tese\b[\s\S]{0,280}\bMargem operacional\b|\bMargem operacional\b[\s\S]{0,280}\bhip[oó]tese\b/i;
+const QUARTERLY_KPI_CHOICE_REPLY_PATTERN = /\b(?:quer|deseja|prefere|escolhe|confirma)\b[\s\S]{0,180}\bvincul|\bvincul[ao]\b[\s\S]{0,180}\b(?:quer|deseja|prefere|escolhe|confirma)\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
@@ -127,6 +132,10 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_repeated_goal_memory_omitted: "os ciclos anteriores foram confirmados, mas a resposta nao reconheceu a trajetoria antes de avancar",
   quarterly_repeated_goal_malformed_echo: "a meta recorrente foi repetida com uma frase truncada ou pouco natural",
   quarterly_productivity_measure_missing: "uma meta percentual de produtividade sem medida recebeu uma pergunta generica em vez de definir indicador ou escolher entre as fontes informadas",
+  quarterly_discount_diagnosis_missing: "a abertura sobre desconto e qualidade da venda pulou o baseline para sugerir acoes prematuras",
+  quarterly_kpi_hypothesis_choice_missing: "a hipotese desconto-margem nao foi explicada nem apresentada como escolha explicita de vinculo ao KPI existente",
+  quarterly_confirmed_kpi_link_missing: "o gestor confirmou o vinculo de KPI como hipotese, mas a proposta nao preservou a chave real do indicador",
+  quarterly_invalid_kpi_link: "o vinculo de KPI nao usou uma chave existente e permitida do Dashboard",
   quarterly_complete_block_unchallenged: "um bloco trimestral quase completo virou proposta antes de um desafio curto e contextual sobre meta, capacidade, risco, evidencia ou consistencia das acoes",
   quarterly_proceed_after_challenge_without_proposal: "o bloco trimestral ja foi desafiado e o gestor decidiu seguir; monte agora a proposta completa sem repetir a escolha nem abrir outra pergunta",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
@@ -536,6 +545,22 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
       && !quarterlyProductivityMeasureSatisfied(input.userMessage, reply)) {
       reasons.push("quarterly_productivity_measure_missing");
     }
+    if (!hasProposal
+      && input.userMessage.length <= 180
+      && QUARTERLY_DISCOUNT_QUALITY_PATTERN.test(input.userMessage)
+      && !/\bdesconto\s+m[eé]dio\s+atual\b|\bonde\s+(?:ele\s+)?[eé]\s+medido\b/i.test(reply)) {
+      reasons.push("quarterly_discount_diagnosis_missing");
+    }
+    if (!hasProposal
+      && QUARTERLY_KPI_HYPOTHESIS_CONTEXT_PATTERN.test(input.userMessage)
+      && !(QUARTERLY_KPI_HYPOTHESIS_REPLY_PATTERN.test(reply) && QUARTERLY_KPI_CHOICE_REPLY_PATTERN.test(reply))) {
+      reasons.push("quarterly_kpi_hypothesis_choice_missing");
+    }
+    if (hasProposal
+      && /\bconfirma\s+v[ií]nculo\s+apenas\s+como\s+hip[oó]tese\b/i.test(input.userMessage)
+      && !quarterlyKpiLinks(input.envelope.proposal).some((link) => text(asRecord(link).kpiKey) === "operating_margin")) {
+      reasons.push("quarterly_confirmed_kpi_link_missing");
+    }
     if (hasProposal
       && looksLikeCompleteQuarterlyBlock(input.userMessage)
       && !hasQuarterlyStrategicChallenge(text(input.conversationText))) {
@@ -795,10 +820,18 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
     const actionDescriptions = actionEntries
       .map(({ action }) => text(action.description ?? action.descricao))
       .filter(Boolean);
+    const kpiEntries = quarterlyKpiLinks(value);
+    const kpiSummary = kpiEntries.map((link) => {
+      const record = asRecord(link);
+      const label = quarterlyKpiLabel(record.kpiKey ?? record.kpi_key);
+      const rationale = text(record.rationale ?? record.justificativa);
+      return rationale ? `${label} (${rationale})` : label;
+    }).filter(Boolean);
     return [
       "**Plano do trimestre**",
       ...objectiveLines,
       actionDescriptions.length ? `Ações que mudam a abordagem: ${actionDescriptions.join("; ")}.` : "",
+      kpiSummary.length ? `Hipótese de impacto confirmada: ${kpiSummary.join("; ")}.` : "",
       learningFocus.length ? `Foco de aprendizado: ${learningFocus.join("; ")}.` : "",
       cadence ? `Ritmo de acompanhamento: ${cadence}.` : "",
       actionCount ? `Execução: ${actionCount} ${actionCount === 1 ? "ação" : "ações"} com prazo e critério de conclusão.` : "",
@@ -933,6 +966,12 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
   )) {
     return quarterlyProductivityMeasureReply(userMessage);
   }
+  if (sessionType === "quarterly" && QUARTERLY_KPI_HYPOTHESIS_CONTEXT_PATTERN.test(userMessage)) {
+    return "Reduzir desconto pode elevar a Margem operacional, mas esse efeito ainda é uma hipótese, não uma causalidade comprovada. Você quer vincular este objetivo ao KPI existente Margem operacional para acompanhar a hipótese?";
+  }
+  if (sessionType === "quarterly" && userMessage.length <= 180 && QUARTERLY_DISCOUNT_QUALITY_PATTERN.test(userMessage)) {
+    return "Para transformar desconto e qualidade da venda em um resultado verificável, qual é o desconto médio atual e onde ele é medido?";
+  }
   if (sessionType === "quarterly" && looksLikeCompleteQuarterlyBlock(userMessage)) {
     return quarterlyCompleteBlockChallengeReply(userMessage);
   }
@@ -959,7 +998,7 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
 
 export function normalizeProposalConfirmationEnvelope(envelope: SessionEnvelope, sessionType: string) {
   if (sessionType !== "quarterly" || text(asRecord(envelope.proposal).type) !== "save_quarterly_plan") return envelope;
-  const proposal = normalizeQuarterlySharedActions(envelope.proposal);
+  const proposal = normalizeQuarterlyKpiLinks(normalizeQuarterlySharedActions(envelope.proposal));
   return {
     ...envelope,
     proposal,

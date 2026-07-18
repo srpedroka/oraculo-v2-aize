@@ -124,6 +124,24 @@ describe("quarterly guidance", () => {
     expect(reasons(proposal)).toContain("quarterly_incomplete_actions");
   });
 
+  it("normaliza o nome confirmado de KPI para a chave real do Dashboard", () => {
+    const proposal = completeProposal({
+      quarterlyObjectives: [completeObjective({
+        kpiLinks: [{ kpi: "Margem operacional", linkType: "hypothesis" }],
+      })],
+    });
+
+    expect(reasons(proposal)).toEqual([]);
+  });
+
+  it("recusa vínculo com KPI que não existe no catálogo permitido", () => {
+    const proposal = completeProposal({
+      quarterlyObjectives: [completeObjective({ kpiLinks: ["Ticket mágico"] })],
+    });
+
+    expect(reasons(proposal)).toContain("quarterly_invalid_kpi_link");
+  });
+
   it("preserva uma cadência semanal explícita sem inventar rotina", () => {
     const withoutCadence = { reply: "Plano pronto. Confirma?", proposal: completeProposal({ cadence: "" }) };
     const normalized = preserveExplicitQuarterlyCadence(

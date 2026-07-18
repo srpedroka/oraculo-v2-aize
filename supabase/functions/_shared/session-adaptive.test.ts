@@ -977,6 +977,66 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(reply)).toHaveLength(1);
   });
 
+  it("grounds a discount objective in its current measure before suggesting actions", () => {
+    const userMessage = "O objetivo e reduzir desconto medio e melhorar a qualidade da venda.";
+    const blocked = reasons({
+      reply: "Você prefere treinar o time, revisar alçadas ou mudar o mix?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      rejectedReply: "Você prefere treinar o time, revisar alçadas ou mudar o mix?",
+      userMessage,
+      sessionType: "quarterly",
+    });
+
+    expect(blocked).toContain("quarterly_discount_diagnosis_missing");
+    expect(fallback).toContain("desconto médio atual");
+    expect(fallback).toContain("onde ele é medido");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("explains the margin hypothesis and asks for an explicit KPI choice", () => {
+    const userMessage = [
+      "O Dashboard possui os KPIs Faturamento e Margem operacional.",
+      "A hipotese e que reduzir desconto pode elevar margem, mas o efeito ainda nao esta comprovado.",
+      "O gestor deve escolher se quer vincular o objetivo a Margem operacional.",
+    ].join(" ");
+    const blocked = reasons({
+      reply: "O que destrava o avanço agora: resultado, prazo, responsável ou ação?",
+    }, { sessionType: "quarterly", userMessage });
+    const fallback = adaptiveFallbackReply(false, false, blocked, {
+      rejectedReply: "O que destrava o avanço agora: resultado, prazo, responsável ou ação?",
+      userMessage,
+      sessionType: "quarterly",
+    });
+
+    expect(blocked).toContain("quarterly_kpi_hypothesis_choice_missing");
+    expect(fallback).toContain("hipótese, não uma causalidade comprovada");
+    expect(fallback).toContain("vincular este objetivo ao KPI existente Margem operacional");
+    expect(visibleQuestions(fallback)).toHaveLength(1);
+  });
+
+  it("normalizes and displays a confirmed KPI hypothesis in the final summary", () => {
+    const normalized = normalizeProposalConfirmationEnvelope({
+      proposal: {
+        type: "save_quarterly_plan",
+        quarterlyObjectives: [{
+          result: "Reduzir desconto médio",
+          current: "14%",
+          target: "9%",
+          kpiLinks: [{ kpi: "Margem operacional", linkType: "hypothesis" }],
+          actions: [{ description: "revisar exceções" }],
+        }],
+      },
+    }, "quarterly");
+    const proposal = normalized.proposal as any;
+    const reply = String(normalized.reply);
+
+    expect(proposal.quarterlyObjectives[0].kpiLinks[0].kpiKey).toBe("operating_margin");
+    expect(reply).toContain("Hipótese de impacto confirmada");
+    expect(reply).toContain("Margem operacional");
+    expect(reply).toContain("efeito causal ainda não comprovado");
+  });
+
   it("blocks an annual activity and self-declared weak target when they are accepted without challenge", () => {
     const userMessage = "Quero fazer uma campanha e crescer só 2%, mas não sei se o problema é margem, volume ou previsibilidade.";
     const unchallenged = reasons({

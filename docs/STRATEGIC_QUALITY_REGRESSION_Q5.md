@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q5B r8 com 11 aprovacoes; Q4R aprovada e retomada incremental liberada**
+Status: **Q5A preservada; Q5B r8 com 13 aprovacoes; Q4T aprovada e retomada incremental preparada**
 
 ## Objetivo
 
@@ -582,9 +582,32 @@ A Q4S introduz `sharedActions` no contrato trimestral. Quando descricao, dono, p
 | Checks deterministas | 10/10 |
 | Falhas criticas | 0 |
 | Teste real de persistencia | 3 objetivos / 1 copia da acao fixture |
-| Custo Q4S | US$ 0,040024 |
-| Acumulado do plano | US$ 6,679758 |
+| Custo Q4S principal | US$ 0,040024 |
+| Custo Q4S sobreposto | US$ 0,040420 |
+| Custo Q4S total | US$ 0,080443 |
+| Acumulado apos Q4S | US$ 6,720177 |
 
-O resumo aprovado apresenta tres resultados, as duas acoes uma vez e `Execucao: 2 acoes`. O endpoint real de staging confirmou que banco e documento canonico nao duplicam. Foram aprovados 410 testes unitarios, catalogo 29/29, lint, build/bundle e secret scan em 486 arquivos. Somente `oracle-session` foi publicada no staging; producao permanece inalterada e o frontend sera publicado apenas no release autorizado do conjunto.
+O resumo aprovado apresenta tres resultados, as duas acoes uma vez e `Execucao: 2 acoes`. O endpoint real de staging confirmou que banco e documento canonico nao duplicam. Foram aprovados 410 testes unitarios, catalogo 29/29, lint, build/bundle e secret scan em 486 arquivos. Uma segunda Q4S ja iniciada continuou em paralelo porque o identificador do terminal longo nao foi preservado; ela tambem passou (Conducao 100 e Plano Trimestral 97,50), mas consumiu US$ 0,040420 adicional. O runner agora usa lock atomico por fase para impedir nova sobreposicao. Somente `oracle-session` foi publicada no staging; producao permanece inalterada e o frontend sera publicado apenas no release autorizado do conjunto.
 
 `resume-after-correction Q4S` deve arquivar somente a medicao oficial bloqueada de prioridade R2, preservar 21 aprovacoes e repetir essa rodada. Depois, Q5B continua apenas pelos quatro resultados ausentes. A regressao geral limpa segue reservada para quando Q5A-Q5D estiverem integralmente verdes.
+
+## Correcao Q4T: hipotese de KPI confirmada e rastreavel
+
+A retomada Q4S aprovou prioridade R2 (Conducao 87,50; Plano Trimestral 88,75; US$ 0,054448). O caso seguinte revelou variacao real na conducao de hipotese de KPI: uma rodada R1 passou, outra execucao R1 sobreposta bloqueou e R2 bloqueou por perguntar genericamente em vez de explicar a hipotese e pedir a escolha. As tres medicoes permanecem no ledger: US$ 0,054424, US$ 0,054453 e US$ 0,053461.
+
+A Q4T exige que a conversa explique que o efeito sobre Margem operacional ainda e hipotese, pergunte explicitamente se o gestor quer vincular e somente entao aceite o vinculo. Nomes humanos sao normalizados para as chaves reais `revenue`, `operating_margin`, `production` ou `cash`; chaves desconhecidas sao recusadas. A ressalva causal segue na proposta, no banco, no documento canonico, na tela/PDF e no WhatsApp. Nao houve migration.
+
+| Evidencia | Resultado |
+|---|---:|
+| Conducao | 86,25 |
+| Plano Trimestral | 97,50 |
+| Media conjunta | 91,88 |
+| Checks deterministas | 10/10 |
+| Falhas criticas | 0 |
+| Persistencia real | `operating_margin` + ressalva + documento |
+| Custo Q4T | US$ 0,048241 |
+| Acumulado do plano | US$ 6,985203 |
+
+O primeiro veredito automatico da Q4T foi aprovado pelo judge, mas o smoke local marcou falso negativo porque aceitava somente a expressao literal `nao comprovado`; o transcript usou `ainda sendo hipotese`. O guard passou a reconhecer ambas sem relaxar a exigencia de pergunta, KPI e escolha explicita. O mesmo relatorio pago foi revalidado por US$ 0. A suite passou 419 unitarios, catalogo 29/29, lint, build/bundle, secret scan e integracao real no staging. O lock por fase impede duas Q5/Q4T simultaneas.
+
+`resume-after-correction Q4T` arquiva somente KPI R2 bloqueada e preserva 23 aprovacoes totais, sendo 10 Q5A e 13 Q5B. `phase Q5B` repete KPI R2 e, se passar, executa apenas as duas rodadas ainda ausentes do gestor experiente. Qualquer nova falha segue correcao + smoke focado + retomada incremental. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.

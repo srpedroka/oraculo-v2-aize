@@ -51,12 +51,16 @@ function objectiveBlock(objective: any) {
   const result = asText(objective.resultado) ? [`Resultado esperado: ${asText(objective.resultado)}`] : [];
   const source = asText(objective.fonte) ? [`Fonte: ${asText(objective.fonte)}`] : [];
   const link = asText(objective.vinculo) ? [`Vínculo: ${asText(objective.vinculo)}`] : [];
+  const kpiLinks = asArray<any>(objective.vinculos_kpi).map((item) =>
+    [asText(item.nome), asText(item.justificativa)].filter(Boolean).join(" — ")
+  ).filter(Boolean);
+  const kpis = kpiLinks.length ? [`KPIs vinculados: ${kpiLinks.join("; ")}`] : [];
   const strategies = asArray<string>(objective.estrategias).length ? [`Estratégias: ${asArray<string>(objective.estrategias).join("; ")}`] : [];
   const deliverables = asArray<string>(objective.entregas).length ? [`Entregas: ${asArray<string>(objective.entregas).join("; ")}`] : [];
   const actions = asArray<any>(objective.acoes).map(actionLine);
   const evidence = asText(objective.evidencia) ? [`Evidência: ${asText(objective.evidencia)}`] : [];
   const decision = asText(objective.decisao) ? [`Decisão: ${asText(objective.decisao)}`] : [];
-  return [header, ...meta, ...result, ...source, ...link, ...strategies, ...deliverables, ...actions, ...evidence, ...decision].filter(Boolean).join("\n");
+  return [header, ...meta, ...result, ...source, ...link, ...kpis, ...strategies, ...deliverables, ...actions, ...evidence, ...decision].filter(Boolean).join("\n");
 }
 
 function strategicBlock(content: any) {

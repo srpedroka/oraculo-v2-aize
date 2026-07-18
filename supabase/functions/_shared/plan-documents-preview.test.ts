@@ -64,6 +64,7 @@ describe("canonical plan document preview", () => {
       quarterlyObjectives: ["Prazo", "Retrabalho", "Capacidade"].map((title) => ({
         title,
         actions: [action],
+        kpiLinks: title === "Prazo" ? [{ kpi: "Margem operacional", linkType: "hypothesis" }] : [],
       })),
     }, {
       organizationName: "ORG_FIXTURE_A",
@@ -75,8 +76,13 @@ describe("canonical plan document preview", () => {
 
     expect(content.quarterly.acoes_transversais).toHaveLength(1);
     expect(content.objetivos.every((objective: any) => objective.acoes.length === 0)).toBe(true);
+    expect(content.objetivos[0].vinculos_kpi[0]).toMatchObject({
+      chave: "operating_margin",
+      nome: "Margem operacional",
+    });
     const whatsapp = renderPlanForWhatsApp(content, { version: 1, origin: "session" });
     expect(whatsapp.match(/Publicar o padrão operacional/g)).toHaveLength(1);
     expect(whatsapp).toContain("Ações transversais");
+    expect(whatsapp).toContain("KPIs vinculados: Margem operacional");
   });
 });

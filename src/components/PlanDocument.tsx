@@ -79,6 +79,7 @@ function ActionList({ actions }: { actions: Record<string, unknown>[] }) {
 
 function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
   const actions = asArray<Record<string, unknown>>(objective.acoes);
+  const kpiLinks = asArray<Record<string, unknown>>(objective.vinculos_kpi);
   const deliverables = asArray<string>(objective.entregas);
   const strategies = asArray<string>(objective.estrategias);
   const meta = [
@@ -103,6 +104,10 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
         <KeyValue label="Resultado esperado" value={objective.resultado} />
         <KeyValue label="Fonte" value={objective.fonte} />
         <KeyValue label="Vínculo" value={objective.vinculo} />
+        <KeyValue
+          label="KPIs vinculados"
+          value={kpiLinks.map((link) => [asText(link.nome), asText(link.justificativa)].filter(Boolean).join(" — ")).join("; ")}
+        />
         {strategies.length ? (
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Estratégias</p>

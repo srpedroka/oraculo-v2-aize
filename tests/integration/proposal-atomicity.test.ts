@@ -397,6 +397,76 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     expect(document.content.objetivos.every((objective: any) => objective.acoes.length === 0)).toBe(true);
   });
 
+  it("Q4T: normaliza e grava o KPI de margem confirmado como hipótese", async () => {
+    const annualTitle = "Margem com disciplina anual Q4T";
+    const quarterlyTitle = "Reduzir desconto médio Q4T";
+    const { error: kpiError } = await admin.from("executive_kpis").upsert({
+      org_id: org.orgId,
+      kpi_key: "operating_margin",
+      label: "Margem operacional",
+      unit: "percent",
+      direction: "higher_better",
+      flow_type: "flow",
+      sort_order: 20,
+    }, { onConflict: "org_id,kpi_key" });
+    if (kpiError) throw kpiError;
+    const hierarchy = await seedAnnualHierarchy(org.areas.comercialId, annualTitle);
+    const proposal = quarterlyProposalWithoutRepeatedAnnualObjective(
+      annualTitle,
+      hierarchy.strategic.id,
+      quarterlyTitle,
+    );
+    proposal.quarterlyObjectives[0].kpiLinks = [{
+      kpi: "Margem operacional",
+      linkType: "hypothesis",
+    }];
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: org.areas.comercialId,
+      user_id: org.owner.id,
+      type: "quarterly",
+      period: "T3 2026",
+      pending_proposal: proposal,
+    });
+
+    const { status } = await confirm(sessionId);
+    expect(status).toBe(200);
+    const { data: objective, error: objectiveError } = await admin
+      .from("objectives")
+      .select("id")
+      .eq("org_id", org.orgId)
+      .eq("title", quarterlyTitle)
+      .single();
+    if (objectiveError) throw objectiveError;
+    const { data: margin, error: marginError } = await admin
+      .from("executive_kpis")
+      .select("id")
+      .eq("org_id", org.orgId)
+      .eq("kpi_key", "operating_margin")
+      .single();
+    if (marginError) throw marginError;
+    const { data: links, error: linksError } = await admin
+      .from("objective_kpi_links")
+      .select("kpi_id,rationale")
+      .eq("objective_id", objective.id);
+    if (linksError) throw linksError;
+    expect(links).toEqual([{
+      kpi_id: margin.id,
+      rationale: "Hipótese confirmada pelo gestor; efeito causal ainda não comprovado.",
+    }]);
+
+    const { data: document, error: documentError } = await admin
+      .from("plan_documents")
+      .select("content")
+      .eq("session_id", sessionId)
+      .single();
+    if (documentError) throw documentError;
+    expect(document.content.objetivos[0].vinculos_kpi[0]).toMatchObject({
+      chave: "operating_margin",
+      nome: "Margem operacional",
+    });
+  });
+
   it("Q4J: recusa o objetivo anual canônico quando ele pertence a outra área", async () => {
     const annualTitle = "Pai anual de outra área Q4J";
     const quarterlyTitle = "Trimestre não deve gravar Q4J";

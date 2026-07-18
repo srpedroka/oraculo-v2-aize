@@ -1,4 +1,5 @@
 import { normalizeQuarterlySharedActions } from "./quarterly-actions.ts";
+import { normalizeQuarterlyKpiLink, normalizeQuarterlyKpiLinks, quarterlyKpiKey, quarterlyKpiLabel } from "./quarterly-kpis.ts";
 
 type Client = any;
 
@@ -70,6 +71,15 @@ function normalizeActions(actions: unknown, objectiveNumber: number | string) {
 
 function normalizeObjective(objective: any, index: number, fallbackTitle: string) {
   const number = index + 1;
+  const kpiLinks = asArray(objective.kpiLinks ?? objective.kpi_links)
+    .map(normalizeQuarterlyKpiLink)
+    .map((link) => typeof link === "string" ? { kpiKey: link } : link as Record<string, unknown>)
+    .filter((link) => quarterlyKpiKey(link.kpiKey ?? link.kpi_key))
+    .map((link) => ({
+      chave: quarterlyKpiKey(link.kpiKey ?? link.kpi_key),
+      nome: quarterlyKpiLabel(link.kpiKey ?? link.kpi_key),
+      justificativa: asText(link.rationale ?? link.justificativa),
+    }));
   return {
     origem_id: asText(objective.id ?? objective.objectiveId ?? objective.objective_id),
     numero: number,
@@ -94,6 +104,7 @@ function normalizeObjective(objective: any, index: number, fallbackTitle: string
     entregas: firstFilledArray<string>(objective.deliverables, objective.entregas),
     estrategias: firstFilledArray<string>(objective.strategies, objective.estrategias),
     acoes: normalizeActions(objective.actions ?? objective.acoes, number),
+    vinculos_kpi: kpiLinks,
     status_final: asText(objective.statusFinal ?? objective.status_final ?? objective.status),
     progresso_final: objective.progressFinal ?? objective.progress_final ?? objective.progress ?? null,
     evidencia: asText(objective.evidence ?? objective.evidencia),
@@ -187,7 +198,7 @@ function buildStrategicContent(base: Record<string, unknown>, proposal: any) {
 }
 
 function buildQuarterlyContent(base: Record<string, unknown>, proposal: any, period: string) {
-  proposal = normalizeQuarterlySharedActions(proposal);
+  proposal = normalizeQuarterlyKpiLinks(normalizeQuarterlySharedActions(proposal));
   const areaRole = proposal.areaRole ?? proposal.papel_area ?? {};
   const diagnosis = proposal.diagnosis ?? proposal.diagnostico ?? {};
   const annualObjectives = asArray<any>(proposal.annualObjectives ?? proposal.objetivos_anuais);
