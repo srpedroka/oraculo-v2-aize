@@ -66,6 +66,9 @@ const QUARTERLY_REPEATED_GOAL_CHANGE_PATTERN = /\b(?:o que muda|o que precisa se
 const QUARTERLY_REPEATED_FACTS_PATTERN = /\b(?:ciclos?|trimestres?|per[ií]odos?)\s+anteriores?\b[\s\S]{0,320}\bcausa\b[\s\S]{0,320}\b(?:nova abordagem|abordagem diferente|mudan[cç]a de abordagem)\b/i;
 const QUARTERLY_BASELINE_REINTERVIEW_PATTERN = /\b(?:qual|definir|confirma(?:r|e))\b[\s\S]{0,140}\b(?:indicador|baseline|linha de base|valor atual)\b/i;
 const QUARTERLY_REPEATED_GOAL_MALFORMED_ECHO_PATTERN = /\bmanter\s+(?:reduzir|aumentar|elevar|diminuir)\b/i;
+const QUARTERLY_PRODUCTIVITY_TARGET_PATTERN = /\b(?:aumentar|elevar|melhorar)\s+(?:a\s+)?produtividade\b[\s\S]{0,140}\b(?:\d+(?:[.,]\d+)?\s*%|(?:dez|vinte|trinta|quarenta|cinquenta)\s+por\s+cento)\b/i;
+const QUARTERLY_PRODUCTIVITY_AMBIGUITY_PATTERN = /\b(?:n[aã]o\s+sabe\s+qual\s+medida|qual\s+medida\s+de\s+produtividade|duas?\s+(?:fontes|medidas|formas)\s+poss[ií]ve(?:l|is)|nenhum\s+baseline)\b/i;
+const QUARTERLY_MEASURE_REPLY_PATTERN = /\b(?:medidas?|indicadores?|f[oó]rmulas?)\b/i;
 const QUARTERLY_STRATEGIC_CHALLENGE_PATTERN = /\b(?:meta|alvo)\b[\s\S]{0,160}\b(?:suficiente|ambicios[oa]|realista|sustent[aá]vel|resolve)\b|\b(?:capacidade|sobrecarga|comporta|cabem|cabe)\b|\b(?:evid[eê]ncia intermedi[aá]ria|sinal antecipado|antes do fechamento|provar que)\b|\b(?:o que|qual)\b[\s\S]{0,100}\b(?:impedir|comprometer|risco|mudar o resultado)\b/i;
 const QUARTERLY_PROCEED_AFTER_CHALLENGE_PATTERN = /\b(?:continue|continuar|prossiga|prosseguir|pode seguir|siga|seguir sem|considere tudo|apresente (?:agora )?(?:a )?(?:s[ií]ntese|proposta)|feche (?:a )?(?:s[ií]ntese|proposta))\b/i;
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
@@ -121,6 +124,7 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   quarterly_repeated_goal_reinterview: "trajetoria, causa e nova abordagem ja foram confirmadas, mas indicador ou baseline foram perguntados novamente",
   quarterly_repeated_goal_memory_omitted: "os ciclos anteriores foram confirmados, mas a resposta nao reconheceu a trajetoria antes de avancar",
   quarterly_repeated_goal_malformed_echo: "a meta recorrente foi repetida com uma frase truncada ou pouco natural",
+  quarterly_productivity_measure_missing: "uma meta percentual de produtividade sem medida recebeu uma pergunta generica em vez de definir indicador ou escolher entre as fontes informadas",
   quarterly_complete_block_unchallenged: "um bloco trimestral quase completo virou proposta antes de um desafio curto e contextual sobre meta, capacidade, risco, evidencia ou consistencia das acoes",
   quarterly_proceed_after_challenge_without_proposal: "o bloco trimestral ja foi desafiado e o gestor decidiu seguir; monte agora a proposta completa sem repetir a escolha nem abrir outra pergunta",
   monthly_ritual_switch: "o plano mensal tentou mudar indevidamente para o ritual anual ou trimestral",
@@ -524,6 +528,12 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
       && !QUARTERLY_REPEATED_GOAL_MEMORY_PATTERN.test(reply)) {
       reasons.push("quarterly_repeated_goal_memory_omitted");
     }
+    if ((QUARTERLY_PRODUCTIVITY_TARGET_PATTERN.test(input.userMessage)
+      || QUARTERLY_PRODUCTIVITY_AMBIGUITY_PATTERN.test(input.userMessage))
+      && !hasProposal
+      && !quarterlyProductivityMeasureSatisfied(input.userMessage, reply)) {
+      reasons.push("quarterly_productivity_measure_missing");
+    }
     if (hasProposal
       && looksLikeCompleteQuarterlyBlock(input.userMessage)
       && !hasQuarterlyStrategicChallenge(text(input.conversationText))) {
@@ -827,6 +837,32 @@ function strategicTensionConfirmationReply(proposal: unknown) {
   ].filter(Boolean).join("\n");
 }
 
+function quarterlyProductivityOptions(userMessage: string) {
+  const match = userMessage.match(/\b(?:duas?|2)\s+(?:fontes|medidas|formas)\s+poss[ií]ve(?:l|is)[^:\n]{0,80}:\s*([^\n.]+)/i);
+  if (!match?.[1]) return [];
+  return match[1]
+    .split(/\s+(?:e|ou)\s+|\s*,\s*/i)
+    .map((option) => option.trim().replace(/[;:,.!?]+$/, ""))
+    .filter((option) => option.length >= 4)
+    .slice(0, 3);
+}
+
+function quarterlyProductivityMeasureReply(userMessage: string) {
+  const options = quarterlyProductivityOptions(userMessage);
+  if (options.length >= 2) {
+    return `Temos duas formas possíveis de medir produtividade: ${options[0]} e ${options[1]}. Qual delas representa melhor o resultado que você quer elevar neste trimestre?`;
+  }
+  return "Aumentar a produtividade em percentual só fica verificável depois de definir a medida. Qual indicador representa melhor a produtividade que você quer elevar neste trimestre?";
+}
+
+function quarterlyProductivityMeasureSatisfied(userMessage: string, reply: string) {
+  if (!QUARTERLY_MEASURE_REPLY_PATTERN.test(reply)) return false;
+  const options = quarterlyProductivityOptions(userMessage);
+  if (options.length < 2) return true;
+  const normalizedReply = normalizeForComparison(reply);
+  return options.every((option) => normalizedReply.includes(normalizeForComparison(option)));
+}
+
 function strategicDecisionFallback(userMessage: string, sessionType: string) {
   if (sessionType === "strategic") {
     if (STRATEGIC_COMPLETE_PLAN_REQUEST_PATTERN.test(userMessage)) {
@@ -889,6 +925,12 @@ function strategicDecisionFallback(userMessage: string, sessionType: string) {
   }
   if (sessionType === "quarterly" && QUARTERLY_REPEATED_GOAL_PATTERN.test(userMessage)) {
     return "Essa meta está voltando, então não vale simplesmente copiá-la. O que mudou desde o ciclo anterior na causa, na abordagem ou na evidência de acompanhamento?";
+  }
+  if (sessionType === "quarterly" && (
+    QUARTERLY_PRODUCTIVITY_TARGET_PATTERN.test(userMessage)
+    || QUARTERLY_PRODUCTIVITY_AMBIGUITY_PATTERN.test(userMessage)
+  )) {
+    return quarterlyProductivityMeasureReply(userMessage);
   }
   if (sessionType === "quarterly" && looksLikeCompleteQuarterlyBlock(userMessage)) {
     return quarterlyCompleteBlockChallengeReply(userMessage);

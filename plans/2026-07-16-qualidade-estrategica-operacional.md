@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; Q4O aprovada e Q5B r8 em retomada incremental**
+Status: **em execucao; Q4P aprovada e Q5B r8 em retomada incremental**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -842,3 +842,7 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 A **Q4O foi aprovada no staging** depois que a retomada Q5B confirmou CRM R2 e area equivalente R1, mas encontrou um envelope de reparo invalido em area equivalente R2. O runtime agora recupera esse defeito sem terceira chamada: preserva fatos canonicos, mantem a sessao aberta, impede proposta insegura e segue com uma pergunta. A rodada final tambem reconhece explicitamente que `Industrial` corresponde a unica area `Producao` e que seu historico segue como referencia. Smoke final: Conducao 91,25, Plano Trimestral 95, media 93,13, dez checks verdes, zero falha critica e cleanup completo. As tres tentativas Q4O custaram US$ 0,170760; acumulado US$ 6,070176. Validacao local: 397 unitarios, 29 casos do catalogo, lint, build/bundle e secret scan em 478 arquivos. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
 
 Proxima fatia: **retomada incremental Q5B r8 apos Q4O**. Executar `resume-after-correction Q4O`, que arquiva apenas area equivalente R2 com erro tecnico e preserva as cinco medicoes aprovadas. Depois executar `phase Q5B`: o runner repete a combinacao ausente, ignora automaticamente as aprovadas e continua com fail-fast. Em diante, corrigir cada problema, repetir somente seu cenario e preservar os verdes. Quando todas as fases Q5A-Q5D passarem, executar uma regressao geral limpa com todos os cenarios para a prova final.
+
+A **Q4P foi aprovada no staging** depois que a Q5B chegou a oito aprovacoes e bloqueou na conducao de uma meta percentual de produtividade sem baseline. O Oraculo agora define primeiro a medida e, quando existem duas fontes candidatas, cita as duas e pede a escolha sem inventar numero. O smoke isolado passou com Conducao 100, Plano Trimestral 93,75, media 96,88, dez checks verdes, uma confirmacao e cleanup completo. Q4P custou US$ 0,052941; acumulado US$ 6,344882. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4P**. Executar `resume-after-correction Q4P`, preservando 10 aprovacoes Q5A e 8 Q5B, e repetir somente meta sem baseline R1 antes dos sete resultados trimestrais ainda ausentes. Novos problemas seguem correcao + smoke isolado + retomada incremental. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.

@@ -215,6 +215,18 @@ describe("Q3 strategic baseline", () => {
     expect(source).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4P somente a primeira rodada da meta sem baseline", () => {
+    const source = readFileSync("scripts/strategic-q4p-smoke.ts", "utf8");
+    expect(source).toContain('CASE_ID = "Q2B-QUARTERLY-MISSING-BASELINE-005"');
+    expect(source).toContain('executeCase(item, "Q2B", 1');
+    expect(source).toContain('runLabel: "q4p"');
+    expect(source).toContain('ledgerLabel: "Q4P"');
+    expect(source).toContain("MINIMUM_PER_RUBRIC = 80");
+    expect(source).toContain("MINIMUM_JOINT_AVERAGE = 85");
+    expect(source).not.toContain("strategic-q5-progress.json");
+    expect(source).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("reinicia Q5 somente apos uma correcao aprovada preservando medicoes e custo anteriores", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"]');
@@ -234,13 +246,14 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('"2026-07-17.q5-regression-r8"');
   });
 
-  it("retoma Q5 apos Q4N arquivando somente o erro tecnico e preservando as aprovacoes", () => {
+  it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O"]');
-    expect(source).toContain('run.phase === "Q2B" && run.status === "execution-error"');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P"]');
+    expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("...failedRuns.map((run) => ({ ...run, calibrationReason, archivedAt }))");
     expect(source).toContain('"2026-07-17.q5-regression-r8-incremental-q4n"');
     expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4o"');
+    expect(source).toContain('"2026-07-18.q5-regression-r8-incremental-q4p"');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
   });

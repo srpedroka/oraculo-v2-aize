@@ -594,6 +594,61 @@ describe("adaptive planning session guard Q4A", () => {
     expect(accepted).not.toContain("quarterly_activity_unchallenged");
   });
 
+  it("defines the productivity measure before calculating a percentage without baseline", () => {
+    const opening = "Quero aumentar a produtividade em vinte por cento neste trimestre.";
+    const openingBlocked = reasons({
+      reply: "O que destrava o avanço agora: fechar o resultado, o prazo, o responsável ou a primeira ação?",
+    }, { sessionType: "quarterly", userMessage: opening });
+    const openingFallback = adaptiveFallbackReply(false, false, openingBlocked, {
+      sessionType: "quarterly",
+      userMessage: opening,
+    });
+
+    expect(openingBlocked).toContain("quarterly_productivity_measure_missing");
+    expect(openingFallback).toMatch(/medida|indicador/i);
+    expect(openingFallback).not.toContain("prazo");
+    expect(visibleQuestions(openingFallback)).toHaveLength(1);
+
+    const ambiguity = [
+      "O gestor ainda nao sabe qual medida de produtividade sera usada.",
+      "Existem duas fontes possiveis: unidades por hora e pedidos concluidos por pessoa.",
+      "Nenhum baseline foi confirmado.",
+    ].join("\n");
+    const ambiguityBlocked = reasons({
+      reply: "Já temos uma parte importante definida. O que destrava o avanço agora: resultado, prazo, responsável ou ação?",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: [],
+          blocking_gap: "medida",
+          question_goal: "definir medida",
+          action_direction: "tornar a meta verificavel",
+        },
+      },
+    }, { sessionType: "quarterly", userMessage: ambiguity });
+    const ambiguityFallback = adaptiveFallbackReply(false, false, ambiguityBlocked, {
+      sessionType: "quarterly",
+      userMessage: ambiguity,
+    });
+
+    expect(ambiguityBlocked).toContain("quarterly_productivity_measure_missing");
+    expect(ambiguityFallback).toContain("unidades por hora");
+    expect(ambiguityFallback).toContain("pedidos concluidos por pessoa");
+    expect(visibleQuestions(ambiguityFallback)).toHaveLength(1);
+    expect(reasons({
+      reply: "Temos duas medidas possíveis: unidades por hora e pedidos concluidos por pessoa. Qual delas representa melhor a produtividade deste trimestre?",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          confirmed_facts: [],
+          blocking_gap: "medida",
+          question_goal: "escolher medida",
+          action_direction: "definir formula e depois baseline",
+        },
+      },
+    }, { sessionType: "quarterly", userMessage: ambiguity })).not.toContain("quarterly_productivity_measure_missing");
+  });
+
   it("investigates the cause before jumping from impact to annual alignment", () => {
     const userMessage = "A dor é a previsão inconsistente, com impacto em estoque e caixa.";
     const blocked = reasons({

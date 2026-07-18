@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **Q5A preservada; Q5B r8 com 5 aprovacoes; Q4O aprovada e retomada incremental liberada**
+Status: **Q5A preservada; Q5B r8 com 8 aprovacoes; Q4P aprovada e retomada incremental liberada**
 
 ## Objetivo
 
@@ -504,3 +504,34 @@ Na rodada final, os dez checks deterministas passaram, sem falha critica, gravac
 | Limite autorizado | US$ 20,00 |
 
 A proxima retomada executa `resume-after-correction Q4O`, arquiva somente a medicao de area equivalente R2 com erro e preserva as cinco aprovacoes Q5B r8. `phase Q5B` repete primeiro essa combinacao e continua apenas pelos casos ainda ausentes. Em qualquer novo bloqueio, o ciclo permanece: corrigir, testar somente o caso afetado e retomar incrementalmente. A regressao geral limpa, repetindo todos os cenarios, sera executada uma unica vez depois que Q5A-Q5D estiverem integralmente verdes.
+
+## Retomada Q5B e correcao Q4P
+
+A retomada apos Q4O repetiu somente area equivalente R2, que passou, e avancou pelos casos ainda ausentes. As duas rodadas de meta recorrente tambem passaram. O primeiro caso de meta sem baseline bloqueou somente a qualidade da conducao:
+
+| Caso | Rodada | Conducao | Plano Trimestral | Resultado | Custo |
+|---|---:|---:|---:|---|---:|
+| Area equivalente | 2 | aprovada | aprovada | aprovada | US$ 0,061705 |
+| Meta recorrente | 1 | aprovada | aprovada | aprovada | US$ 0,055510 |
+| Meta recorrente | 2 | aprovada | aprovada | aprovada | US$ 0,053522 |
+| Meta sem baseline | 1 | 52,50 | 96,25 | bloqueada | US$ 0,051027 |
+
+O plano final do caso bloqueado era verificavel e fiel, mas a conversa repetiu o mesmo menu generico duas vezes. Ela nao perguntou qual formula representava produtividade nem apresentou `unidades por hora` e `pedidos concluidos por pessoa` como alternativas. O fail-fast encerrou antes da segunda rodada e o cleanup removeu todos os dados descartaveis.
+
+A Q4P corrige somente essa conducao. Uma meta percentual de produtividade sem medida passa a pedir primeiro o indicador. Se o gestor informar duas fontes candidatas, a resposta cita ambas e pede que ele escolha, sem escolher por ele, inventar baseline ou abrir varias perguntas. O smoke repetiu apenas `Q2B-QUARTERLY-MISSING-BASELINE-005` R1:
+
+| Evidencia | Resultado |
+|---|---:|
+| Conducao | 100,00 |
+| Plano Trimestral | 93,75 |
+| Media conjunta | 96,88 |
+| Checks deterministas | 10/10 |
+| Falhas criticas | 0 |
+| Custo de geracao | US$ 0,041739 |
+| Custo do judge | US$ 0,011202 |
+| Total Q4P | US$ 0,052941 |
+| Acumulado do plano | US$ 6,344882 |
+
+A transcricao aprovada perguntou primeiro qual indicador representa produtividade. No turno seguinte, apresentou exatamente `unidades por hora` e `pedidos concluidos por pessoa`; somente depois da escolha preservou baseline 12, alvo 14,4 e fonte ERP. Houve uma confirmacao, banco/documento coerentes e cleanup completo. Testes focados, catalogo 29/29, lint e build/bundle passaram. Somente `oracle-session` foi publicada no staging; producao, Netlify, migrations, banco real, WhatsApp real e Evolution permaneceram inalterados.
+
+`resume-after-correction Q4P` arquiva apenas a medicao bloqueada de meta sem baseline e preserva 18 aprovacoes oficiais no total, sendo 10 Q5A e 8 Q5B. A fase deve repetir primeiro somente esse caso e continuar pelos sete resultados trimestrais ainda ausentes. A politica permanece fail-fast e incremental ate Q5A-Q5D ficarem verdes; somente depois sera feita a regressao geral limpa.

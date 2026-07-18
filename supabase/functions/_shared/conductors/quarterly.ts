@@ -49,6 +49,7 @@ Objetivo: 1 a 3 objetivos do trimestre, puxados dos anuais.
 - Para cada anual relevante, pergunte quanto quer avançar neste trimestre. Se o gestor trouxer uma atividade, pergunte primeiro qual resultado ela precisa produzir e mantenha a atividade como ação.
 - Escreva cada objetivo no formato: "No {T}, alcançar {resultado específico}, como parte do objetivo anual {X}."
 - Para cada objetivo, preserve indicador, baseline, alvo, fonte, prazo e responsável. Colete as poucas ações necessárias com responsável, prazo e critério de conclusão.
+- Se o gestor trouxer uma melhora percentual sem saber como medir, defina primeiro a medida. Quando houver duas fontes candidatas, cite as duas e peça que ele escolha; não escolha pelo gestor e não invente baseline para calcular o percentual. Depois, peça somente o valor atual ou a fonte que ainda faltar.
 - Se surgirem mais de 3 prioridades, explicite a capacidade e ajude o gestor a escolher 1 a 3. Guarde o restante em trade_offs[] como backlog, rotina ou renúncia.
 - Avalie se cada objetivo pode impactar diretamente revenue (Faturamento), operating_margin (Margem operacional), production (Produção) ou cash (Caixa). Sugira no máximo 2, somente quando a relação for forte, e pergunte se a pessoa quer conectar. Guarde apenas os vínculos confirmados em kpiLinks[].
 - Guarde: objetivos_trimestre[] com resultado e ações; riscos[], trade_offs[] e cadencia quando informados.
