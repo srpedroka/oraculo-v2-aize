@@ -9,7 +9,7 @@ Estado do gate: **pausado**
 
 ## Resumo executivo
 
-A producao responde e sua infraestrutura declarada esta coerente: 31 Edge Functions, 54 migrations, frontend HTTP 200, headers de seguranca e segredos fora do Git. Um backup manual pre-piloto foi criado, verificado no Storage interno e replicado externamente. O piloto funcional O1 ainda nao deve comecar porque o pacote de qualidade aprovado permanece fora de producao, o CI mais recente da `main` esta vermelho, o webhook do WhatsApp nao recebe evento recente e o snapshot incremental disparado pela auditoria do backup ainda precisa concluir.
+A producao responde e sua infraestrutura declarada esta coerente: 31 Edge Functions, 54 migrations, frontend HTTP 200, headers de seguranca e segredos fora do Git. Um backup manual pre-piloto foi criado, verificado no Storage interno e replicado externamente; seu evento de auditoria tambem ja recebeu snapshot incremental. O piloto funcional O1 ainda nao deve comecar porque o pacote de qualidade aprovado permanece fora de producao, a PR precisa concluir o CI e o webhook do WhatsApp nao recebe evento recente.
 
 Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste preflight.
 
@@ -34,6 +34,7 @@ Nenhum plano, KPI, membro, configuracao ou dado operacional foi alterado neste p
 - Ultimo exercicio externo: 15/07/2026 16:52:43, pacote validado em 1,7 s.
 - Politica: backup diario e snapshots por marco ativos; RPO 30 minutos; RTO 4 horas.
 - A auditoria `backup_created`, gravada depois da conclusao do pacote, abriu uma nova requisicao incremental em 18/07/2026 14:58:43. Isso e esperado: `administrative_audit_events` faz parte do pacote e o cron seguinte deve criar o snapshot de evento e limpar a requisicao. O gate so fica verde depois dessa confirmacao.
+- Confirmacao concluida: snapshot de marco em 18/07/2026 15:07:00, 647 registros, 113 KB, interno e externo verificados; painel voltou para `Protegido` e nao exibe requisicao pendente.
 
 ### WhatsApp
 
@@ -67,9 +68,8 @@ O ciclo anterior foi encerrado em US$ 17,352811. O historico continua imutavel n
 
 1. Commitar e enviar o checkpoint O0, abrir PR para executar o CI completo da branch e corrigir qualquer falha real.
 2. Obter CI verde e revisar o diff de producao; merge e release continuam dependentes de autorizacao explicita do owner.
-3. Confirmar que o cron limpou a requisicao incremental do backup dentro do RPO.
-4. Publicar o pacote aprovado somente pelo workflow protegido, depois da autorizacao do owner.
-5. Publicar `operational-health` corrigida: a branch agora espera 54 migrations e o teste deriva esse numero dos arquivos locais, enquanto a Function atual de producao ainda espera 49.
-6. Executar um teste inbound real do WhatsApp e confirmar evento, fila, outbox e resposta sem duplicacao.
+3. Publicar o pacote aprovado somente pelo workflow protegido, depois da autorizacao do owner.
+4. Publicar `operational-health` corrigida: a branch agora espera 54 migrations e o teste deriva esse numero dos arquivos locais, enquanto a Function atual de producao ainda espera 49.
+5. Executar um teste inbound real do WhatsApp e confirmar evento, fila, outbox e resposta sem duplicacao.
 
-Somente depois dos seis itens verdes o O1 pode criar um plano real pelo app.
+Somente depois dos cinco itens verdes o O1 pode criar um plano real pelo app.
