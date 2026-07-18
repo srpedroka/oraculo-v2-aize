@@ -52,7 +52,7 @@ const STRATEGIC_REPEATED_GOAL_CHALLENGE_PATTERN = /\b(?:repet|recorr|volta|ciclo
 const STRATEGIC_COMPLETE_PLAN_REQUEST_PATTERN = /\bplano(?:\s+anual)?\s+completo\b[\s\S]{0,260}\b(?:sem\s+(?:repetir|recome[cç]ar)|valid(?:ar|e)\s+lacunas?|mont(?:ar|e)\s+(?:a\s+)?proposta)\b|\b(?:sem\s+(?:repetir|recome[cç]ar)|valid(?:ar|e)\s+lacunas?)\b[\s\S]{0,260}\bplano(?:\s+anual)?\s+completo\b/i;
 const STRATEGIC_COMPLETE_PLAN_HANDOFF_PATTERN = /\b(?:envie|enviar|mande|mandar|cole|colar|compartilhe|bloco|arquivo)\b[\s\S]{0,180}\b(?:completo|conte[uú]do|dados|plano)\b|\b(?:lacuna|validar)\b[\s\S]{0,180}\b(?:bloco|conte[uú]do|plano)\b/i;
 const STRATEGIC_GENERIC_DECISION_PATTERN = /\bo que destrava o avan[cç]o agora\b|\bfechar o resultado,?\s+o prazo,?\s+o respons[aá]vel\b/i;
-const STRATEGIC_FACT_RESTART_PATTERN = /\bqual (?:e|é) (?:a |o )?(?:principal dor|prop[oó]sito|vis[aã]o|valores?)\b/i;
+const STRATEGIC_FACT_RESTART_PATTERN = /\bqual\s+(?:(?:e|é)\s+)?(?:a |o )?(?:principal dor|prop[oó]sito|vis[aã]o|valores?)\b/i;
 const STRATEGIC_UNGROUNDED_EXAMPLE_PATTERN = /\b(?:por exemplo|pode mirar|como exemplo)\b[\s\S]{0,220}\b\d+(?:[.,]\d+)?\s*%/i;
 const STRATEGIC_DELEGATION_PENDING_PATTERN = /\b(?:delegac[aã]o|retaguarda)\b[\s\S]{0,140}\b(?:concentra[cç][aã]o|respons[aá]ve(?:l|is)|dono)\b|\bconcentra[cç][aã]o\b[\s\S]{0,140}\b(?:delegac[aã]o|retaguarda)\b/i;
 const STRATEGIC_LIMITED_CAPACITY_PATTERN = /\bcapacidade\b[\s\S]{0,80}\b(?:limitad[ao]|restrit[ao]|gargalo)\b|\b(?:limitad[ao]|restrit[ao]|gargalo)\b[\s\S]{0,80}\bcapacidade\b/i;
@@ -1228,6 +1228,10 @@ export function adaptiveFallbackReply(
   }
   if (reasons.includes("strategic_incomplete_proposal") || reasons.includes("strategic_wrong_year")) {
     return "Você descreveu a estrutura, mas os valores concretos dos objetivos e projetos ainda não vieram; sem eles eu não vou montar um plano vazio nem trocar o ano. Pode enviar esse bloco completo em uma mensagem?";
+  }
+  if (text(context.sessionType) === "strategic" && reasons.includes("strategic_fact_block_restart")) {
+    const strategicFallback = strategicDecisionFallback(text(context.userMessage), text(context.sessionType));
+    if (strategicFallback) return strategicFallback;
   }
   const naturalized = naturalizeRejectedReply(
     text(context.rejectedReply),

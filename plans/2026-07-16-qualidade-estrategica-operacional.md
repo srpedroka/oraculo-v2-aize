@@ -851,6 +851,14 @@ Este plano só termina quando:
 - Validacao: 457 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 510. Somente `oracle-session` mudou no staging.
 - Proxima execucao: `restart-clean-after-correction Q4AC`, deterministica e Q5A-Q5D completas desde zero.
 
+### Atualizacao de execucao: Q4AD
+
+- A regressao limpa apos Q4AC passou a matriz deterministica e oito medicoes Q5A antes de o owner experiente R1 bloquear por reentrevista; Plano e Saida ficaram 100, Conducao 66,25.
+- A Q4AD conecta o periodo canonico ao validador, bloqueia plano anual vazio/ano errado e pede somente o bloco concreto quando a estrutura veio sem valores.
+- O primeiro smoke revelou proposta vazia; o segundo fechou integridade e revelou `Qual a principal dor`; o terceiro passou Conducao 100, Plano 100 e Saida 100.
+- Tres tentativas: US$ 0,146259; acumulado US$ 10,824693. Validacao: 462 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 511.
+- Proxima execucao: `restart-clean-after-correction Q4AD`, deterministica e Q5A-Q5D completas desde zero.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text

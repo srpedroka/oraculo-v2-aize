@@ -381,6 +381,7 @@ export async function processPlanningMessage(
     const priorityEnvelope = challengeQuarterlyPriorityOverload({
       envelope,
       sessionType: session.type,
+      sessionPeriod: session.period,
       currentPhase: session.phase,
       sessionState: session.state,
       userMessage: params.message,

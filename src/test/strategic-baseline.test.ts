@@ -288,6 +288,15 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
   });
 
+  it("repete na Q4AD somente o owner anual experiente reentrevistado", () => {
+    const smoke = readFileSync("scripts/strategic-q4ad-smoke.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2A-ANNUAL-EXPERIENCED-OWNER-005"');
+    expect(smoke).toContain('executeCase(item, "Q2A", 1');
+    expect(smoke).toContain('runLabel: "q4ad"');
+    expect(smoke).toContain('ledgerLabel: "Q4AD"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+  });
+
   it("aceita periodo historico relativo sem exigir uma frase literal", () => {
     expect(hasGroundedRelativeHistoricalPeriod(["o plano anterior mediu atraso"])).toBe(true);
     expect(hasGroundedRelativeHistoricalPeriod(["no ciclo anterior a meta ficou abaixo"])).toBe(true);
@@ -465,6 +474,11 @@ describe("Q3 strategic baseline", () => {
   it("reinicia toda a regressao limpa depois da correcao Q4AC", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
     expect(source).toContain('Q4AC: "2026-07-18.q5-clean-regression-r19-q4ac"');
+  });
+
+  it("reinicia toda a regressao limpa depois da correcao Q4AD", () => {
+    const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(source).toContain('Q4AD: "2026-07-18.q5-clean-regression-r20-q4ad"');
   });
 
   it("reavalia somente o judge Q5 com escopo canonico e preserva a auditoria anterior", () => {

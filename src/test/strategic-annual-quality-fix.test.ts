@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
 describe("strategic annual quality correction", () => {
+  it("passes the canonical session period into annual proposal validation", () => {
+    const engine = source("supabase/functions/_shared/session-engine.ts");
+    expect(engine).toContain("sessionPeriod: session.period");
+  });
+
   it("uses one final confirmation and advances when an experienced manager supplies complete blocks", () => {
     const conductor = source("supabase/functions/_shared/conductors/strategic.ts");
     expect(conductor).toContain("Não interrompa para pedir confirmação intermediária");

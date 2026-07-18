@@ -784,3 +784,21 @@ A Q4AC amplia o reconhecimento anual de atividades para sistemas, softwares, ERP
 | Validacao local | 457 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 510 arquivos |
 
 Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AC`, seguido da matriz deterministica e de Q5A-Q5D completas desde zero. Producao permanece inalterada.
+
+## Correcao Q4AD: owner experiente sem reentrevista ou plano vazio
+
+A regressao limpa apos Q4AC passou a matriz deterministica e oito medicoes Q5A. `Q2A-ANNUAL-EXPERIENCED-OWNER-005` R1 informou que o plano estava completo e, depois, trouxe um resumo estrutural sem os valores concretos. O Oraculo voltou a perguntar a principal dor. O plano final permaneceu 100, mas a Conducao marcou 66,25; fail-fast evitou R2.
+
+A Q4AD mudou duas fronteiras. Primeiro, `session.period` passou a entrar na validacao adaptativa: proposta anual vazia, nao verificavel ou no ano errado nao pode mais chegar a confirmacao. Segundo, quando um bloco estrutural tenta reiniciar dor, proposito, visao ou valores, a recuperacao prioriza pedir o conteudo concreto. O detector aceita tanto `Qual e a principal dor` quanto `Qual a principal dor`.
+
+O primeiro smoke revelou uma casca vazia e bloqueou com media 34,58. A conexao do periodo fechou a integridade: o segundo voltou a Plano/Saida 100, mas Conducao 70 revelou a variante sem verbo. Depois desse ajuste, o terceiro smoke passou com as tres rubricas em 100, uma confirmacao, proposta completa e cleanup.
+
+| Medida | Resultado |
+| --- | --- |
+| Grade limpa antes do bloqueio | matriz deterministica verde; Q5A 8 verdes |
+| Smoke Q4AD final | Conducao 100; Plano Anual 100; Saida Derivada 100 |
+| Custo das tres tentativas | US$ 0,146259 |
+| Acumulado do plano | US$ 10,824693 de US$ 20 |
+| Validacao local | 462 unitarios; 29/29 catalogo; lint; build/bundle; secret scan 511 arquivos |
+
+Somente `oracle-session` foi publicada no staging. O proximo passo e `restart-clean-after-correction Q4AD`, matriz deterministica e Q5A-Q5D completas desde zero. Producao permanece inalterada.

@@ -1317,6 +1317,35 @@ describe("adaptive planning session guard Q4A", () => {
     expect(fallback).toContain("liderar o objetivo anual");
   });
 
+  it("asks for concrete values instead of naturalizing a restarted interview for an experienced owner", () => {
+    const userMessage = [
+      "- Tema: crescer com previsibilidade e disciplina.",
+      "- Quatro objetivos com baseline, alvo, fonte e prazo.",
+      "- Quatro projetos com dono, prazo e objetivo anual de apoio.",
+    ].join("\n");
+    const fallback = adaptiveFallbackReply(false, false, ["strategic_fact_block_restart"], {
+      sessionType: "strategic",
+      userMessage,
+      rejectedReply: "Informações confirmadas. Qual a principal dor que o tema precisa resolver primeiro?",
+    });
+
+    expect(fallback).toContain("estrutura está completa");
+    expect(fallback).toContain("valores e vínculos");
+    expect(fallback).not.toContain("principal dor");
+  });
+
+  it("detects a restarted annual interview even when the question omits the verb", () => {
+    const userMessage = [
+      "- Tema: crescer com previsibilidade e disciplina.",
+      "- Quatro objetivos com baseline, alvo, fonte e prazo.",
+      "- Quatro projetos com dono e prazo.",
+    ].join("\n");
+
+    expect(reasons({
+      reply: "Tema registrado. Qual a principal dor que esse foco precisa resolver primeiro?",
+    }, { sessionType: "strategic", userMessage })).toContain("strategic_fact_block_restart");
+  });
+
   it("blocks invented percentage examples during annual diagnosis", () => {
     const blocked = reasons({
       reply: "Implantar o sistema é o meio. Pode mirar, por exemplo, faturamento 20% maior ou margem de 15%. Qual resultado importa?",
