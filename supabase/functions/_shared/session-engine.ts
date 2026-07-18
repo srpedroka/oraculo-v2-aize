@@ -3,6 +3,8 @@ import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
 import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
+import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
+import { completeMonthlyReadyEnvelope, monthlyCapacityDecisionEnvelope, monthlyExperiencedActionsChallengeEnvelope, monthlyInheritedPendingEnvelope } from "./monthly-ready-block.ts";
 import {
   conversationMessagesForModel,
   formatConversationMemory,
@@ -13,11 +15,17 @@ import {
   maybeSummarize,
 } from "./conversations.ts";
 import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts";
+import { preserveExplicitQuarterlyCadence, validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
 import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
+import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
+import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-timeout.ts";
 import { callModelForFunction } from "./call-for-function.ts";
+import { PLANNING_SESSION_OUTPUT } from "./session-output-schema.ts";
+import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.ts";
+import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { documentTypeFromProposalType } from "./plan-documents.ts";
 import { applyProposal } from "./proposals.ts";
@@ -47,6 +55,21 @@ import {
   readyQuarterlyPlanSystemPrompt,
 } from "./session-ready-plans.ts";
 import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMergeState } from "./session-runtime.ts";
+import {
+  ADAPTIVE_SESSION_RULES,
+  acknowledgeEquivalentQuarterlyArea,
+  challengeQuarterlyPriorityOverload,
+  buildAdaptiveRepairDirective,
+  deferUnchallengedQuarterlyProposal,
+  ensureAdaptiveStatePatch,
+  latestOracleReply,
+  normalizeReadyProposalEnvelope,
+  normalizeProposalConfirmationEnvelope,
+  normalizeStrategicHistoricalLessons,
+  recoverAdaptiveEnvelopeAfterRepairFailure,
+  resumeDeferredQuarterlyProposal,
+  validateAdaptiveEnvelope,
+} from "./session-adaptive.ts";
 
 export {
   prepareReadyMonthlyPlanProposal,
@@ -62,32 +85,32 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
   strategic: {
     phases: STRATEGIC_PHASES,
     prompt: STRATEGIC_CONDUCTOR,
-    opening: "Vamos construir o Plano Estratégico anual com calma e método. Pelo contexto, vou considerar a empresa cadastrada no Oráculo. Qual é a principal dor da empresa hoje, em uma frase?",
+    opening: "Vamos olhar o ano com foco no que realmente precisa mudar. Qual resultado faria a maior diferença para a empresa neste ciclo?",
   },
   quarterly: {
     phases: QUARTERLY_PHASES,
     prompt: QUARTERLY_CONDUCTOR,
-    opening: "Vamos montar o plano do trimestre da área. Antes de começarmos: qual é o principal desafio da sua área hoje?",
+    opening: "Neste trimestre, qual mudança na área faria mais diferença de verdade?",
   },
   monthly: {
     phases: MONTHLY_PHASES,
     prompt: MONTHLY_CONDUCTOR,
-    opening: "Vamos montar um plano mensal enxuto e executável. Qual é o principal resultado que você quer enxergar, de forma concreta, até o fim deste mês na sua área?",
+    opening: "No fim deste mês, o que precisa estar concretamente diferente na área?",
   },
   month_close: {
     phases: MONTH_CLOSE_PHASES,
     prompt: MONTH_CLOSE_CONDUCTOR,
-    opening: "Vamos fechar o mês antes de abrir o próximo. Vou olhar objetivos, ações, evidências e aprendizados; começamos pelo que estava planejado para este período.",
+    opening: "Vamos fechar o mês sem maquiar resultado. Qual objetivo melhor representa como o período terminou?",
   },
   quarter_close: {
     phases: QUARTER_CLOSE_PHASES,
     prompt: QUARTER_CLOSE_CONDUCTOR,
-    opening: "Vamos fechar o trimestre subindo um andar: resultado dos objetivos, evidências, aprendizados e o que fica para o próximo ciclo.",
+    opening: "Vamos fechar o trimestre olhando resultado, evidência e aprendizado. Qual objetivo melhor resume como o ciclo terminou?",
   },
   strategic_review: {
     phases: STRATEGIC_REVIEW_PHASES,
     prompt: STRATEGIC_REVIEW_CONDUCTOR,
-    opening: "Vamos fazer uma Revisão Estratégica: microajustes no plano anual, sem recriar a estratégia. O que mudou no contexto e por que vale revisar agora?",
+    opening: "Vamos ajustar o plano anual sem recomeçar do zero. O que mudou no contexto e passou a exigir uma revisão agora?",
   },
 };
 
@@ -267,9 +290,6 @@ export async function processPlanningMessage(
   if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
   if (session.status !== "active") throw new Error("Sessão não está ativa");
 
-  const aiRoute = await resolveAiFunction(client, session.org_id, "planning");
-  if (!aiRoute) throw new Error("IA de planejamento não configurada");
-
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
   await insertMessage(client, ensured.session, "user", params.message, channel);
@@ -288,6 +308,7 @@ export async function processPlanningMessage(
   const systemPrompt = [
     PERSONA_ORACULO,
     REGRAS_DE_SESSAO,
+    ADAPTIVE_SESSION_RULES,
     UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
@@ -298,32 +319,224 @@ export async function processPlanningMessage(
     context,
   ].filter(Boolean).join("\n\n");
 
-  const result = await callModelForFunction(
-    client,
-    session.org_id,
-    "planning",
-    aiRoute,
-    systemPrompt,
-    conversationMessagesForModel(history),
-    aiRoute.limits,
-    { userId: params.userId },
-  );
+  const modelMessages = conversationMessagesForModel(history);
+  const transientRetryBudget = createTransientAiRetryBudget(1);
+  const planningRequestDeadline = Date.now() + PLANNING_REQUEST_DEADLINE_MS;
+  let aiRoute: Awaited<ReturnType<typeof resolveAiFunction>> | null = null;
+  const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
+    aiRoute ??= await resolveAiFunction(client, session.org_id, "planning");
+    const route = aiRoute;
+    if (!route) throw new Error("IA de planejamento não configurada");
+    const output = await withTransientAiRetry(() => callModelForFunction(
+      client,
+      session.org_id,
+      "planning",
+      route,
+      prompt,
+      modelMessages,
+      {
+        ...route.limits,
+        timeoutMs: planningModelTimeout(planningRequestDeadline),
+        structuredOutput: PLANNING_SESSION_OUTPUT,
+      },
+      { userId: params.userId },
+    ), transientRetryBudget);
+    await recordAiUsage({
+      client,
+      orgId: session.org_id,
+      provider: route.provider,
+      model: route.model,
+      channel: params.channel ?? "web",
+      usage: output.usage,
+      settings: route.legacySettings,
+      metadata: {
+        aiFunction: "planning",
+        sessionId: session.id,
+        sessionType: session.type,
+        phase: session.phase,
+        conversationId: conversation?.id ?? ensured.session.conversation_id,
+        adaptiveAttempt: attempt,
+        adaptiveRepairReasons: repairReasons,
+      },
+    });
+    return output;
+  };
 
-  await recordAiUsage({
-    client,
-    orgId: session.org_id,
-    provider: aiRoute.provider,
-    model: aiRoute.model,
-    channel: params.channel ?? "web",
-    usage: result.usage,
-    settings: aiRoute.legacySettings,
-    metadata: { aiFunction: "planning", sessionId: session.id, sessionType: session.type, phase: session.phase, conversationId: conversation?.id ?? ensured.session.conversation_id },
+  const parseEnvelope = (value: string) => {
+    const envelope = parseJsonObject(value) as any;
+    assertSafeStructuredValue(envelope);
+    return envelope;
+  };
+
+  const previousOracleReply = latestOracleReply(history.messages);
+  const conversationText = history.messages
+    .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
+    .join("\n");
+  const normalizeEnvelope = (envelope: any) => {
+    let normalized = envelope;
+    if (session.type === "monthly") {
+      normalized = normalizeProposalConfirmationEnvelope(normalized, session.type);
+    }
+    if (session.type === "month_close" || session.type === "quarter_close") {
+      normalized = normalizeCloseQualityEnvelope({
+        envelope: normalized,
+        sessionType: session.type,
+        period: session.period,
+        conversationText,
+        contextText: context,
+      });
+    }
+    if (session.type === "strategic") {
+      normalized = normalized?.proposal?.type === "save_strategic_plan"
+        ? {
+          ...normalized,
+          proposal: normalizeReadyStrategicProposal(normalized.proposal, session.period, { fillMissingLabels: false }),
+        }
+        : normalized;
+      normalized = normalizeStrategicHistoricalLessons(normalized, conversationText, session.period);
+    }
+    if (session.type === "quarterly") {
+      const priorityEnvelope = challengeQuarterlyPriorityOverload({
+        envelope: normalized,
+        sessionType: session.type,
+        currentPhase: session.phase,
+        sessionState: session.state,
+        userMessage: params.message,
+        planContext: context,
+      });
+      const scopedEnvelope = acknowledgeEquivalentQuarterlyArea({
+        envelope: priorityEnvelope,
+        sessionType: session.type,
+        userMessage: params.message,
+        planContext: context,
+      });
+      const normalizedEnvelope = normalizeProposalConfirmationEnvelope(
+        preserveExplicitQuarterlyCadence(scopedEnvelope, conversationText),
+        session.type,
+        { userMessage: params.message, previousOracleReply },
+      );
+      normalized = deferUnchallengedQuarterlyProposal({
+        envelope: normalizedEnvelope,
+        sessionType: session.type,
+        currentPhase: session.phase,
+        sessionState: session.state,
+        conversationText,
+        userMessage: params.message,
+      });
+    }
+    normalized = canonicalizePlanningEnvelopeScope({
+      envelope: normalized,
+      sessionType: session.type,
+      sessionPeriod: session.period,
+    });
+    if (["strategic", "quarterly", "monthly"].includes(session.type) && normalized?.proposal) {
+      normalized = normalizeProposalConfirmationEnvelope(
+        normalized,
+        session.type,
+        { userMessage: params.message, previousOracleReply },
+      );
+    }
+    return {
+      ...normalized,
+      state_patch: ensureAdaptiveStatePatch(
+        normalized?.state_patch,
+        params.message,
+        Boolean(normalized?.proposal),
+        false,
+        session.state,
+      ),
+    };
+  };
+  const validateEnvelope = (envelope: any) => [
+    ...validateAdaptiveEnvelope({
+      envelope,
+      sessionType: session.type,
+      sessionPeriod: session.period,
+      currentPhase: session.phase,
+      phases: CONDUCTORS[session.type].phases,
+      sessionState: session.state,
+      conversationText,
+      previousOracleReply,
+      userMessage: params.message,
+    }),
+    ...(session.type === "quarterly" ? validateQuarterlyGuidanceEnvelope({ envelope }) : []),
+    ...(session.type === "monthly"
+      ? validateMonthlyGuidanceEnvelope({ envelope, sessionPeriod: session.period, userMessage: params.message })
+      : []),
+  ].filter((reason, index, values) => values.indexOf(reason) === index);
+  const recoverEnvelope = (envelope: any, reasons: string[]) => recoverAdaptiveEnvelopeAfterRepairFailure({
+    envelope,
+    reasons,
+    sessionType: session.type,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+    userMessage: params.message,
+    sessionState: session.state,
   });
+  const deterministicPlanningEnvelope = resumeDeferredQuarterlyProposal({
+    sessionType: session.type,
+    sessionState: session.state,
+    conversationText,
+    userMessage: params.message,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+  })
+    ?? await monthlyInheritedPendingEnvelope(client, ensured.session, params.message)
+    ?? await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
+    ?? monthlyExperiencedActionsChallengeEnvelope(ensured.session, params.message, conversationText)
+    ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context)
+    ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText)
+    ?? quarterCloseOpenDecisionEnvelope(ensured.session, params.message, conversationText, context);
+  let result: { text: string; [key: string]: unknown } = { text: "" };
+  let parsed: any = null;
+  let repairReasons: string[] = [];
+  if (deterministicPlanningEnvelope) {
+    parsed = normalizeEnvelope(deterministicPlanningEnvelope);
+    repairReasons = validateEnvelope(parsed);
+  }
+  if (!deterministicPlanningEnvelope || repairReasons.length) {
+    result = await callPlanningModel(systemPrompt, 1);
+    try {
+      parsed = normalizeEnvelope(parseEnvelope(result.text));
+      repairReasons = validateEnvelope(parsed);
+    } catch {
+      repairReasons = ["invalid_json_envelope"];
+    }
+  }
 
-  const parsed = parseJsonObject(result.text) as any;
-  assertSafeStructuredValue(parsed);
+  const normalizedReadyProposal = normalizeReadyProposalEnvelope({
+    envelope: parsed ?? {},
+    reasons: repairReasons,
+    sessionType: session.type,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+    userMessage: params.message,
+    sessionState: session.state,
+  });
+  if (normalizedReadyProposal) {
+    parsed = normalizedReadyProposal;
+    repairReasons = validateEnvelope(parsed);
+  }
+
+  if (repairReasons.length) {
+    const rejectedEnvelope = parsed;
+    const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
+    result = await callPlanningModel(repairPrompt, 2, repairReasons);
+    try {
+      parsed = normalizeEnvelope(parseEnvelope(result.text));
+    } catch {
+      parsed = recoverEnvelope(rejectedEnvelope, repairReasons);
+    }
+    const remainingReasons = validateEnvelope(parsed);
+    if (remainingReasons.length) {
+      parsed = recoverEnvelope(parsed, remainingReasons);
+    }
+  }
+
   const reply = typeof parsed?.reply === "string" ? parsed.reply : result.text;
-  const statePatch = parsed?.state_patch && typeof parsed.state_patch === "object" ? parsed.state_patch : {};
+  const statePatch = parsed?.state_patch && typeof parsed.state_patch === "object"
+    ? ensureAdaptiveStatePatch(parsed.state_patch, params.message, Boolean(parsed?.proposal), false, session.state)
+    : ensureAdaptiveStatePatch({}, params.message, Boolean(parsed?.proposal), false, session.state);
   const nextPhase = validNextPhase(session.type, parsed?.next_phase) ?? session.phase;
   const expectedProposalTypes: Partial<Record<PlanningSessionType, "save_strategic_plan" | "save_quarterly_plan" | "save_monthly_plan">> = {
     strategic: "save_strategic_plan",

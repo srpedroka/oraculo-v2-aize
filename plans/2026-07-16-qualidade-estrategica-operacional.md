@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execução; Q3 medida e revisada pelo owner; briefing Q4 aguarda aprovacao**
+Status: **Mapa A aprovado; Q5 integral r24 em 40/40 e Q6 aceita pelo owner; proxima fase O0**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -420,7 +420,7 @@ Mede o Oráculo como ele está hoje. Não corrigir durante a execução e não s
 
 Relatório completo, custo dentro do teto e lista priorizada de falhas. Nenhuma mudança funcional nesta fatia.
 
-Estado em 2026-07-16: baseline `2026-07-16.q3-baseline-r2` executada com 40 rodadas generativas, 9 casos deterministas, 39 medicoes completas e 1 erro tecnico. Plano Anual teve media 96,25, mas Conducao 44,97, Trimestral 31,56, Mensal 7,19, Revisao/Fechamento 75,63 e Saidas 51,15; media conjunta 51,13. O gate automatico esta reprovado. O owner concluiu a revisao humana qualitativa e confirmou conducao adaptativa, perguntas orientadas a acao, tom casual/objetivo, recuperacao de trimestral/mensal, avaliacao real das saidas e polimento dos fechamentos. Incremento total US$ 1,512869; acumulado do plano US$ 1,950646. Relatorio em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`; briefing candidato em `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md`. Q4 so inicia apos aprovacao desse briefing.
+Estado em 2026-07-17: baseline `2026-07-16.q3-baseline-r2` preservada e Q4A-Q4F concluidas no staging. O gate integrado passou 350 unitarios, 122 integracoes, 7 testes de seguranca, 11 E2E desktop/mobile, fixtures, catalogo, igualdade das saidas, lint/build/bundle e secret scan. Auditoria final confirmou zero residuo; custo Q4F US$ 0 e acumulado US$ 2,890842. A Q5 foi autorizada depois desse briefing e bloqueou na Q5A; os detalhes estao na propria secao Q5.
 
 ## Q4 — Correções orientadas pela evidência
 
@@ -462,6 +462,8 @@ Corrige apenas falhas demonstradas no baseline. Antes desta fatia, apresentar ex
 
 Todas as correções têm teste reproduzindo a falha original e briefing funcional aprovado.
 
+Estado final: Q4A-Q4F aprovadas no staging. O aceite tecnico esta em `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`; Q5 continua bloqueada ate briefing de custo e autorizacao explicita.
+
 ### Rollback
 
 Reverter condutor/validador por versão; preservar baseline e relatórios para comparação.
@@ -488,6 +490,26 @@ Reverter condutor/validador por versão; preservar baseline e relatórios para c
 - custo acumulado abaixo de US$ 20.
 
 Se falhar, voltar ao Q4 somente para os defeitos comprovados e repetir Q5.
+
+Estado em 2026-07-17: o preflight e a matriz determinista passaram, mas a Q5 foi interrompida no segundo caso pago. A primeira rodada entregou Plano Anual 96,25 e Conducao 57,50, abaixo do minimo 80 por diagnostico generico e falta de desafio. A segunda rodada falhou em `oracle-session` com `400/INTERNAL_ERROR` depois de receber os fatos completos. Cleanup e preflight final confirmaram zero residuo. Custo Q5 US$ 0,062662; acumulado US$ 2,953504. Producao nao mudou. O retorno ao Q4 deve corrigir somente conducao anual vaga e classificacao/tratamento seguro da falha interna; Q5, Q6 e Mapa B permanecem bloqueados. Relatorio: `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
+
+Correcao Q4G aprovada em 2026-07-17: a abertura vaga ficou contextual, o retry passou a ser unico por requisicao e propostas completas deixam de ser regeneradas por defeito apenas de envelope. O smoke final repetiu o mesmo caso anual e passou com Conducao 85, Plano Anual 100, media 92,50, confirmacao 1/1, zero gravacao prematura e cleanup. Q4G total US$ 0,100148; acumulado US$ 3,053653. A Q5 ainda nao foi reiniciada: as tentativas anteriores devem ser preservadas/arquivadas e o ciclo completo exige briefing e nova autorizacao paga.
+
+Estado apos Q4H/Q5A em 2026-07-17: os cinco riscos anuais passaram no smoke Q4H. A regressao foi reiniciada como `2026-07-17.q5-regression-r3`, preservando as tentativas anteriores como calibracao, e concluiu 10/10 rodadas Q5A. Plano Anual 99,75, Conducao 94,13, Saida Derivada 100, media conjunta 97,96; zero erro tecnico, falha critica ou check reprovado. Um falso positivo do judge sobre o ano canonico da sessao foi reavaliado somente leitura com auditoria preservada. Q5A total US$ 0,504286; acumulado US$ 4,544644. Q5B ainda nao foi iniciada e continua sendo o proximo gate pago separado.
+
+Bloqueio Q5B em 2026-07-17: a primeira rodada trimestral vaga entregou Plano Trimestral 92,50, Conducao 75 e media 83,75, sem falha critica e com dez checks deterministas verdes. O defeito comprovado e o menu generico prematuro antes de investigar dor, causa e impacto, alem de cadencia vazia apesar de acompanhamento semanal explicito. A execucao foi interrompida porque o runner ainda tratava apenas erro tecnico como fail-fast; uma fixture sintetica iniciada na rodada seguinte foi removida e o preflight confirmou staging limpo. Custo confirmado US$ 0,033476; acumulado US$ 4,578120, com eventual custo parcial da chamada abortada verificavel somente no provedor. Voltar ao Q4 para correcao focada e briefing antes de nova chamada paga.
+
+Estado apos Q4I em 2026-07-17: a conversa trimestral vaga passou a investigar situacao, causa, impacto e mudanca desejada antes de campos operacionais ou alinhamento anual. Cadencia explicita e preservada apenas quando existe acao de acompanhamento mais frequencia, sem inferir rotina de mencoes ambiguas. O runner agora encerra a fase em erro tecnico ou qualidade bloqueada, sempre depois de persistir relatorio, custo e cleanup. O smoke exato passou com Conducao 96,25, Plano Trimestral 97,50, media 96,88, zero falha critica e dez checks verdes. Custo US$ 0,034506; acumulado US$ 4,612626. A Q5B foi reiniciada como `2026-07-17.q5-regression-r4`, preservando Q5A, matriz deterministica e a medicao bloqueada para auditoria. Somente `oracle-session` de staging mudou; producao segue intocada.
+
+Bloqueio tecnico Q5B r4 em 2026-07-17: tres medicoes passaram e a quarta foi interrompida somente na gravacao, embora Conducao 86,25 e Plano Trimestral 90 estivessem acima do gate e sem falha critica. A proposta vinculou o objetivo estrategico existente, mas omitiu a copia redundante em `annualObjectives`; o aplicador nao reutilizou o `main_annual_objective_id` ja salvo para a mesma area e ano. O fail-fast encerrou antes da quinta chamada e o preflight confirmou staging limpo. Custo da tentativa US$ 0,153962; acumulado US$ 4,766588. Voltar ao Q4 para uma correcao tecnica focada e smoke isolado, sem mudar a conversa nem repetir Q5B automaticamente.
+
+Estado Q4J em 2026-07-17: o fallback canonico passou 382 unitarios e 7/7 integracoes no endpoint real, incluindo recusa entre areas/empresas. O smoke provou que a gravacao agora funciona e deu Plano Trimestral 95, mas bloqueou por Conducao 65 e media 80: a abertura `implantar um CRM` recebeu menu generico em vez de desafio pelo resultado empresarial. Sem falha critica ou check reprovado; custo US$ 0,035877; acumulado US$ 4,802465; cleanup limpo. Nao houve segunda chamada nem reinicio Q5B. A proxima correcao deve atuar apenas na conducao deterministica de atividade trimestral.
+
+Estado apos Q4K em 2026-07-17: atividades trimestrais curtas agora sao reenquadradas deterministicamente pelo resultado empresarial, adocao ou mudanca mensuravel, sem etapa adicional. O smoke CRM passou com Conducao 81,25, Plano Trimestral 93,75, media 87,50, zero falha critica/check/residuo. Custo US$ 0,049289; acumulado US$ 4,851754. As quatro medicoes Q5B r4 foram arquivadas e a fase abriu como `2026-07-17.q5-regression-r6`, preservando 10 Q5A e 9 deterministas; Q5B oficial esta zerada. Somente staging mudou.
+
+Bloqueio Q5B r6 em 2026-07-17: sete de oito medicoes passaram. Meta repetida R2 bloqueou com Conducao 75, Plano Trimestral 88,75 e media 81,88, sem falha critica/check/erro tecnico. Depois de receber ciclos 11% e 9%, causa e nova abordagem, o Oraculo perguntou novamente indicador e baseline e fechou com resumo generico. O fail-fast impediu a nona chamada; cleanup limpo. Custo parcial US$ 0,300678; acumulado US$ 5,152432. Voltar ao Q4 para correcao focada em memoria/aprendizado de meta recorrente, sem repetir Q5B automaticamente.
+
+Estado apos Q4L em 2026-07-17: meta recorrente agora exige reconhecer a memoria, absorver trajetoria/causa/nova abordagem e perguntar somente pela evidencia que prova o aprendizado; indicador e baseline confirmados nao sao reentrevistados. A sintese trimestral explicita resultado, medida, fonte, dono, acoes, foco e cadencia sem duplicacao e com uma confirmacao. O primeiro smoke bloqueou Conducao 77,50 e revelou memoria numerica/resumo ainda fracos; a rodada final passou Conducao 100, Plano Trimestral 96,25 e media 98,13. Custo Q4L US$ 0,089799; acumulado US$ 5,242231. As oito medicoes r6 foram preservadas e a Q5B abriu limpa como `2026-07-17.q5-regression-r7`.
 
 ## Q6 — Aceite da qualidade estratégica
 
@@ -793,6 +815,98 @@ Este plano só termina quando:
 - documentação, handoff, commit, push e CI estiverem verdes;
 - o owner tomar decisão explícita sobre rollout.
 
+### Atualizacao de execucao: Q5 incremental, regressao limpa e Q4Z
+
+- A rodada incremental Q5A-Q5D terminou com 40/40 medicoes generativas verdes.
+- A primeira regressao geral limpa passou a matriz deterministica 8/8 e repetiu oito medicoes anuais antes de bloquear no gestor anual experiente R1.
+- A causa foi uma proposta anual vazia e no ano errado diante de uma mensagem que anunciava, mas nao fornecia, quatro objetivos e quatro projetos.
+- A Q4Z exige ano correto e objetivos verificaveis; sem o bloco concreto, mantem a sessao aberta e nao gera proposta nem gravacao.
+- O smoke focal Q4Z passou com Conducao 90, Plano Anual 100, Saida Derivada 100 e media 96,67.
+- Custo Q4Z US$ 0,057392; acumulado do plano US$ 8,412568 de US$ 20.
+- Proxima execucao: arquivar a tentativa parcial, zerar a grade e repetir deterministas + Q5A + Q5B + Q5C + Q5D integralmente.
+- Regra permanente: nova falha interrompe a grade; corrige-se e testa-se somente o afetado; depois toda a regressao limpa recomeca. A Q5 so encerra com todos os cenarios aprovados na mesma rodada limpa.
+
+### Atualizacao de execucao: Q4AA
+
+- A regressao limpa apos Q4Z passou deterministas, Q5A 10/10 e dez medicoes Q5B antes de bloquear na confirmacao da prioridade trimestral R1.
+- O modelo confundiu o id do objetivo anual da area com o id estrategico; a barreira de isolamento recusou a gravacao e o fail-fast funcionou.
+- Q4AA rotula os IDs e converte somente o objetivo anual ativo da mesma empresa e area para seu pai estrategico. Referencias externas continuam bloqueadas.
+- O primeiro smoke ficou tecnicamente verde, mas revelou conducao generica. O confronto agora usa a memoria de excesso, limita a tres resultados e pede o backlog em uma unica pergunta.
+- Smoke final: Conducao 100, Plano Trimestral 97,50, media 98,75; US$ 0,035514. Duas tentativas Q4AA: US$ 0,076966. Acumulado: US$ 9,532934.
+- Proxima execucao: `restart-clean-after-correction Q4AA`, deterministica e Q5A-Q5D completas desde zero.
+
+### Atualizacao de execucao: Q4AB
+
+- A regressao limpa apos Q4AA passou a matriz deterministica e seis medicoes Q5A antes de a meta anual recorrente R1 bloquear por ano historico nao dito pelo gestor.
+- A Q4AB restringe a normalizacao a aprendizados historicos do plano anual: preserva anos da conversa e usa periodo relativo quando o numero veio somente do metadado do contexto.
+- Smoke focado: Conducao 100, Plano Anual 100, media 100; US$ 0,046061; acumulado US$ 9,918158.
+- O falso negativo do harness sobre `plano anterior` foi corrigido e revalidado sem nova chamada paga. Validacao: 454 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 509.
+- Proxima execucao: `restart-clean-after-correction Q4AB`, deterministica e Q5A-Q5D completas desde zero.
+
+### Atualizacao de execucao: Q4AC
+
+- A regressao limpa apos Q4AB passou a matriz deterministica e quatro medicoes Q5A antes de atividade anual R1 bloquear com Conducao 71,25 e Plano Anual 100.
+- A Q4AC reconhece implantacao de sistemas, softwares, ERPs, CRMs, ferramentas e plataformas como meios e exige uma pergunta real sobre mudanca empresarial, nao um menu generico de campos.
+- Smoke focado: Conducao 100, Plano Anual 100, media 100; US$ 0,057000; acumulado US$ 10,209470.
+- Validacao: 457 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 510. Somente `oracle-session` mudou no staging.
+- Proxima execucao: `restart-clean-after-correction Q4AC`, deterministica e Q5A-Q5D completas desde zero.
+
+### Atualizacao de execucao: Q4AD
+
+- A regressao limpa apos Q4AC passou a matriz deterministica e oito medicoes Q5A antes de o owner experiente R1 bloquear por reentrevista; Plano e Saida ficaram 100, Conducao 66,25.
+- A Q4AD conecta o periodo canonico ao validador, bloqueia plano anual vazio/ano errado e pede somente o bloco concreto quando a estrutura veio sem valores.
+- O primeiro smoke revelou proposta vazia; o segundo fechou integridade e revelou `Qual a principal dor`; o terceiro passou, mas a regressao mostrou que o teste aceitara a insercao no objeto trimestral vizinho. A chamada exata foi corrigida e o quarto smoke passou Conducao 100, Plano 100 e Saida 100.
+- Quatro tentativas: US$ 0,203590; acumulado US$ 11,334556. Validacao: 462 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 511.
+- Proxima execucao: `restart-clean-after-correction Q4AD`, deterministica e Q5A-Q5D completas desde zero.
+
+### Atualizacao de execucao: Q4AE
+
+- A regressao limpa apos a Q4AD aprovou `Q2A-ANNUAL-VAGUE-ASPIRATION-001` R1, mas a R2 bloqueou: o modelo devolveu um envelope anual quase completo sem `result`, o validador o descartou e o reparo generico pediu tres vezes um bloco concreto que ja estava na conversa.
+- A Q4AE normaliza a proposta anual antes da validacao e usa o alvo confirmado como resultado quando esse campo redundante estiver ausente. Se ainda houver estrutura incompleta, a diretiva de reparo enumera os campos canonicos, manda reler o historico e proibe pedir novamente fatos ja informados. O condutor tambem deixa titulo/nome realmente ausente ser recusado, sem inserir rótulo generico; o importador preserva seu comportamento anterior.
+- Dois smokes exatos R2: Conducao 100, Plano Anual 100, media 100 em ambos; US$ 0,049654 + US$ 0,049553 = US$ 0,099207; acumulado US$ 11,592459.
+- Validacao: 466 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 512. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+- Proxima execucao: `restart-clean-after-correction Q4AE`, matriz deterministica e Q5A-Q5D completas desde zero. Nova falha volta a correcao e ao smoke somente do caso afetado antes de outro reinicio integral.
+
+### Atualizacao de execucao: Q4AF
+
+- A regressao limpa apos Q4AE aprovou cinco medicoes Q5A e bloqueou `Q2A-ANNUAL-ACTIVITY-AS-STRATEGY-003` R2. Conducao 77,50 e Plano Anual 96,25: a conversa pediu novamente o bloco porque uma licao historica sobre limitar quatro projetos foi interpretada como contagem exata, enquanto a fixture somava cinco ao repetir o projeto do sistema.
+- A Q4AF reconhece quantidade exata somente em declaracao/lista explicita. A fixture anual agora tem `Objetivos (4)` e `Projetos (4)`, com o sistema aparecendo uma unica vez e preservando prazo, vinculo e aceite.
+- Primeiro smoke: Conducao 63,75, Plano 93,75, media 78,75, US$ 0,075416; revelou que o sistema ainda estava duplicado em objetivo e portfolio. Smoke final: Conducao 91,25, Plano 97,50, media 94,38, US$ 0,055542. Q4AF total US$ 0,130958; acumulado US$ 12,054798.
+- Validacao: 470 unitarios, 29/29 catalogo, lint, build/bundle e secret scan 513. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+- Proxima execucao: `restart-clean-after-correction Q4AF`, matriz deterministica e Q5A-Q5D completas desde zero. Nova falha segue correcao e smoke somente do caso antes de outro reinicio integral.
+
+### Atualizacao de execucao: Q4AI
+
+- A regressao r22 preservou Q5A 10/10 e chegou a Q5B 15/16 antes de bloquear apenas o gestor trimestral experiente R2.
+- Plano Trimestral e Saida Derivada ficaram em 100; a Conducao caiu para 75 porque uma evidencia intermediaria foi perguntada depois de risco, mitigacao e aprendizado ja estarem confirmados.
+- A regra agora distingue bloco superficial de bloco ja testado. O primeiro ainda recebe um desafio curto; o segundo segue para sintese e confirmacao unica.
+- Smoke R2: Conducao 92,50, Plano Trimestral 100, Saida Derivada 100, duas chamadas, zero reparo, cleanup completo e custo US$ 0,029699.
+- Acumulado US$ 13,571522. Producao, frontend e migrations permanecem inalterados; somente `oracle-session` staging mudou.
+- Proxima execucao: arquivar somente a medicao bloqueada com `resume-after-correction Q4AI` e repetir apenas o gestor experiente R2. A regressao geral limpa continua reservada para depois de Q5A-Q5D verdes.
+
+### Atualizacao de execucao: Q4AJ
+
+- A repeticao oficial do gestor experiente R2 passou Conducao 87,50 e Plano 92,50, mas o risco estruturado foi coercido para `[object Object]` no documento. Saida Derivada 68,75 e media 82,92 bloquearam corretamente a Q5B.
+- Riscos textuais ou estruturados agora passam por uma normalizacao server-side unica antes de confirmacao, importacao pronta e documento canonico, cobrindo planos anual, trimestral e mensal sem criar etapa para o gestor.
+- Smoke focado: Conducao 85, Plano Trimestral 92,50, Saida Derivada 100, media 92,50, cleanup completo e custo US$ 0,030452. Acumulado US$ 13,638641.
+- Validacao: 490 unitarios, catalogo 29/29, lint, build/bundle e secret scan 527. Somente `oracle-session` mudou no staging; producao, frontend e migrations seguem intactos.
+- Proxima execucao: `resume-after-correction Q4AJ` e `phase Q5B`, repetindo somente gestor experiente R2. Se passar, Q5B fecha 16/16 e a regressao limpa segue para Q5C; a repeticao geral completa continua reservada para depois de Q5A-Q5D verdes.
+
+### Atualizacao de execucao: Q4AK
+
+- A repeticao oficial apos Q4AJ removeu o defeito visual, mas o modelo inventou um vinculo com Margem operacional. Plano 97,50 e Saida 87,50; Conducao 73,75 bloqueou por fidelidade, sem falha tecnica ou residuo.
+- A autoridade sobre `kpiLinks` passa ao servidor: o vinculo so permanece com escolha direta do gestor ou `sim` imediatamente posterior a uma pergunta explicita que nomeia o KPI. Links nao escolhidos somem antes da confirmacao sem acrescentar etapa.
+- Smoke focado: Conducao 92,50, Plano Trimestral 100, Saida Derivada 100, media 97,50, zero KPI indevido, cleanup completo e custo US$ 0,036364. Acumulado US$ 13,713619.
+- Validacao: 494 unitarios, catalogo 29/29, lint, build/bundle e secret scan 528. Somente `oracle-session` mudou no staging; producao, frontend e migrations seguem intactos.
+- Proxima execucao: `resume-after-correction Q4AK` e `phase Q5B`, repetindo somente gestor experiente R2. Depois de Q5B 16/16, seguir para Q5C; repetir todos os cenarios juntos apenas quando Q5A-Q5D estiverem verdes.
+
+### Atualizacao de execucao: Q5B r22 concluida
+
+- A retomada Q4AK preservou quinze aprovacoes trimestrais e repetiu somente gestor experiente R2.
+- Rodada oficial final: Conducao 96,25, Plano Trimestral 100, Saida Derivada 100, zero falha critica/check/residuo e custo US$ 0,038097.
+- Q5B terminou 16/16; custo oficial US$ 0,712738; acumulado do plano US$ 13,751716.
+- Proxima fase: Q5C com oito medicoes de plano mensal. Manter fail-fast, corrigir e repetir somente o caso afetado; regressao geral completa apenas depois de Q5A-Q5D verdes.
+
 ## 13. Prompt para outra ferramenta de desenvolvimento
 
 ```text
@@ -817,4 +931,100 @@ Ao final da fatia, execute os testes previstos, lint/build quando aplicáveis, a
 
 ## 14. Próxima ação
 
-Criar manualmente a chave xAI temporária `oraculo-q1-staging-temporary`, guardá-la apenas no arquivo privado e executar a **Q1 anual** no staging. Ao final, informar custo de geração, judge, total e acumulado; apresentar plano real, notas, falhas, cleanup e decisão do gate. Não iniciar Q2 antes do aceite do relatório Q1.
+A **Q4O foi aprovada no staging** depois que a retomada Q5B confirmou CRM R2 e area equivalente R1, mas encontrou um envelope de reparo invalido em area equivalente R2. O runtime agora recupera esse defeito sem terceira chamada: preserva fatos canonicos, mantem a sessao aberta, impede proposta insegura e segue com uma pergunta. A rodada final tambem reconhece explicitamente que `Industrial` corresponde a unica area `Producao` e que seu historico segue como referencia. Smoke final: Conducao 91,25, Plano Trimestral 95, media 93,13, dez checks verdes, zero falha critica e cleanup completo. As tres tentativas Q4O custaram US$ 0,170760; acumulado US$ 6,070176. Validacao local: 397 unitarios, 29 casos do catalogo, lint, build/bundle e secret scan em 478 arquivos. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4O**. Executar `resume-after-correction Q4O`, que arquiva apenas area equivalente R2 com erro tecnico e preserva as cinco medicoes aprovadas. Depois executar `phase Q5B`: o runner repete a combinacao ausente, ignora automaticamente as aprovadas e continua com fail-fast. Em diante, corrigir cada problema, repetir somente seu cenario e preservar os verdes. Quando todas as fases Q5A-Q5D passarem, executar uma regressao geral limpa com todos os cenarios para a prova final.
+
+A **Q4P foi aprovada no staging** depois que a Q5B chegou a oito aprovacoes e bloqueou na conducao de uma meta percentual de produtividade sem baseline. O Oraculo agora define primeiro a medida e, quando existem duas fontes candidatas, cita as duas e pede a escolha sem inventar numero. O smoke isolado passou com Conducao 100, Plano Trimestral 93,75, media 96,88, dez checks verdes, uma confirmacao e cleanup completo. Q4P custou US$ 0,052941; acumulado US$ 6,344882. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4P**. Executar `resume-after-correction Q4P`, preservando 10 aprovacoes Q5A e 8 Q5B, e repetir somente meta sem baseline R1 antes dos sete resultados trimestrais ainda ausentes. Novos problemas seguem correcao + smoke isolado + retomada incremental. A regressao geral limpa continua reservada para depois de Q5A-Q5D integralmente verdes.
+
+A **Q4R foi aprovada no staging** depois que prioridade R2 repetiu `AI_PROVIDER_TIMEOUT` no oficial e num recheck Q4Q sem mudanca. O unico retry transitorio ja existente agora tem janela real: ate 40 segundos por tentativa dentro de 90 segundos totais, ainda com uma unica repeticao e nenhuma gravacao parcial. O smoke isolado passou com Conducao 83,75, Plano Trimestral 96,25, media 90, dez checks verdes e cleanup completo. Q4Q custou US$ 0,028440 e Q4R US$ 0,040944; acumulado US$ 6,588187. Somente `oracle-session` mudou no staging; producao permaneceu intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4R**. Preservar 10 aprovacoes Q5A e 11 Q5B, repetir somente prioridade R2 e continuar pelos quatro resultados trimestrais restantes. Manter fail-fast, smoke focado e regressao geral limpa somente ao final de Q5A-Q5D.
+
+A **Q4S foi aprovada no staging** depois que prioridade R2 deixou de ter timeout, mas repetiu duas acoes comuns dentro de cada um dos tres objetivos. Acoes com descricao, dono, prazo e criterio materialmente identicos em todos os resultados agora viram `sharedActions`: aparecem uma vez na confirmacao, uma vez no banco e uma vez no documento/app/WhatsApp. Acoes especificas permanecem no objetivo original. Nao houve migration. Smoke isolado principal: Conducao 92,50, Plano Trimestral 96,25, media 94,38, dez checks verdes e zero falha critica. Duas execucoes aprovadas ficaram sobrepostas por perda do identificador do terminal; Q4S totalizou US$ 0,080443 e acumulado US$ 6,720177. O runner agora bloqueia fases simultaneas. Somente `oracle-session` foi publicada no staging; producao permanece intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4S**. Executar `resume-after-correction Q4S`, preservar as 21 aprovacoes existentes, repetir somente prioridade R2 e continuar pelos quatro resultados trimestrais ainda ausentes. Aplicar a mesma politica a qualquer novo defeito. Quando Q5A-Q5D passarem, executar uma unica regressao geral limpa repetindo todos os cenarios.
+
+A **Q4T foi aprovada no staging** depois que a Q5B mostrou variacao na conducao da hipotese de impacto sobre Margem operacional. O Oraculo agora explica a incerteza, pede escolha explicita e normaliza o KPI para `operating_margin`; proposta, banco e documentos preservam a justificativa sem afirmar causalidade. O primeiro smoke teve judge aprovado, mas um guard literal gerou falso negativo; ele foi corrigido e o mesmo relatorio foi revalidado sem custo adicional. Resultado: Conducao 86,25, Plano Trimestral 97,50, media 91,88, zero falha critica e 10/10 checks. Custo Q4T US$ 0,048241; acumulado US$ 6,985203. Validacao local e integracao real no staging verdes. Producao permanece intacta.
+
+Proxima fatia: **retomada incremental Q5B r8 apos Q4T**. Executar `resume-after-correction Q4T`, preservando 10 aprovacoes Q5A e 13 Q5B. Repetir somente KPI R2 e depois as duas rodadas ainda ausentes do gestor experiente. Em nova falha, parar, corrigir e testar apenas o caso afetado. Quando Q5A-Q5D ficarem verdes, executar uma regressao geral limpa com todos os cenarios.
+
+A **Q5B foi concluida com 16/16 medicoes verdes**. A retomada Q4T cobrou somente KPI R2 e as duas rodadas ausentes do gestor experiente; todas passaram. A Q5C aprovou cascata mensal R1/R2 e bloqueou na pendencia herdada R1: a decisao de rolar estava correta, mas `integracao do CRM` virou resultado, a meta 40% -> 55% ficou escondida e acompanhamento/compromisso seguinte ficaram vazios.
+
+A **Q4U foi aprovada no staging**. Pendencia herdada preserva origem, motivo e decisao, mas permanece como acao. Quando indicador, baseline e alvo estao confirmados, o resultado mensal expressa a mudanca. O sistema deriva bloqueio, acompanhamento e proximo compromisso apenas do motivo, prazo e criterio informados, sem inventar frequencia. Smoke: Conducao 82,50, Plano Mensal 97,50, media 90, 10/10 checks e zero falha critica. Custo US$ 0,034245; acumulado US$ 7,242402. Local e integracao real verdes; somente `oracle-session` no staging.
+
+Proxima fatia: **retomada incremental Q5C apos Q4U**. Preservar 28 aprovacoes, repetir somente pendencia herdada R1 e continuar pelos cinco resultados mensais ausentes. Nova falha interrompe, recebe correcao e smoke focado. Regressao geral limpa somente apos Q5A-Q5D verdes.
+
+A **Q4V foi aprovada no staging**. Na sobrecarga mensal, o Oraculo recupera o historico de excesso, confronta doze demandas com capacidade cinco, separa tres prioridades do trimestre e duas de risco e registra o restante no backlog. Um bloco completo vira proposta deterministica somente com campos verificaveis e vinculo trimestral unico; a sintese mostra as cinco acoes com prazo/criterio, bloqueio, cadencia, confianca e uma confirmacao. Smoke final: Conducao 91,25, Plano Mensal 97,50, media 94,38; US$ 0,022743. As duas tentativas Q4V custaram US$ 0,056209; acumulado US$ 7,450188. Integracao real sem IA e cleanup verdes; somente `oracle-session` no staging.
+
+Proxima fatia: **retomada incremental Q5C apos Q4V**. Preservar 30 aprovacoes, repetir somente capacidade R1 e continuar por capacidade R2 e as duas rodadas mensais ausentes. Em nova falha, corrigir e repetir apenas o caso afetado. Depois de Q5A-Q5D integralmente verdes, executar uma unica regressao geral limpa com todos os cenarios.
+
+A **Q5C foi concluida com 8/8 medicoes verdes**. A Q5D parou no primeiro fechamento mensal parcial: a gravacao passou, mas a conducao perguntou genericamente depois de receber fatos suficientes, e documento/WhatsApp perderam meta/aprendizado e exibiram a pendencia como `[object Object]`.
+
+A **Q4W foi aprovada no staging**. O fechamento mensal reconhece 50% contra meta 60% como parcial, preserva duas acoes concluidas e uma integracao aberta e pergunta somente seu novo prazo. A proposta normaliza atingido, meta, aprendizado e proximo periodo; documento, tela e WhatsApp mostram decisao, motivo, prazo, confianca, bloqueio e compromisso sem coercao de objeto. Smoke: Conducao 97,50, Revisao/Fechamento 100, Saida Derivada 81,25, media 92,92; custo US$ 0,032662; acumulado US$ 7,653772. Integracao real e 434 unitarios verdes; somente `oracle-session` no staging.
+
+Proxima fatia: **retomada incremental Q5D apos Q4W**. Preservar 34 aprovacoes, repetir somente fechamento mensal parcial R1 e continuar pelas cinco medicoes generativas ausentes. Novos defeitos seguem correcao e smoke focado. Quando Q5A-Q5D passarem, executar uma unica regressao geral limpa repetindo todos os cenarios.
+
+A retomada Q4W aprovou fechamento mensal R1/R2 e preservou 36 resultados oficiais. O fechamento trimestral R1 bloqueou por conducao generica, pouco uso da recorrencia historica e risco de rolar objetivo/acoes em excesso. A **Q4X foi aprovada no staging**: reconhece 78% contra meta 80%, desafia a dependencia repetida, preserva o objetivo anual e pede somente escopo reduzido/prazo. O contexto trimestral agora inclui as acoes com IDs server-side; a gravacao rola somente a acao escolhida uma vez, sem copiar concluidas. Smoke final: Conducao 100, Revisao/Fechamento 93,75, Saida Derivada 85, media 92,92; custo US$ 0,031324; acumulado US$ 7,820758. Foram aprovados 438 unitarios, catalogo, integracao 2/2, lint/build/bundle e secret scan; somente `oracle-session` no staging.
+
+Proxima fatia: **retomada incremental Q5D apos Q4X**. Preservar 36 aprovacoes, repetir somente fechamento trimestral R1 e seguir por fechamento trimestral R2 e revisao estrategica R1/R2. Em nova falha, corrigir e medir apenas o caso afetado. Quando Q5A-Q5D estiverem integralmente verdes, executar uma regressao geral limpa com todos os cenarios.
+
+A retomada Q4X aprovou fechamento trimestral R1/R2 e elevou o conjunto oficial para 38 aprovacoes. Revisao estrategica R1 bloqueou porque a confirmacao omitiu o diff e usou uma frase nao reconhecida pelo gate, enquanto a projecao de saidas derivadas ficou nula. A **Q4Y foi aprovada no staging**: a confirmacao mostra campo, antes/depois, base e limite, pede uma unica confirmacao e nao reabre a estrategia. Documento, tela/PDF e WhatsApp possuem projecao canonica rastreavel antes da gravacao. Smoke: Conducao 96,25, Revisao 83,75, Saida Derivada 96,25, media 92,08; custo US$ 0,019090; acumulado US$ 7,914731. Foram aprovados 440 unitarios, catalogo, lint/build/bundle e secret scan; somente `oracle-session` no staging.
+
+Proxima fatia: **retomada incremental Q5D apos Q4Y**. Preservar 38 aprovacoes, repetir somente revisao estrategica R1 e seguir pela R2 ausente. Se ambas passarem, executar a regressao geral limpa com todos os cenarios; se uma falhar, corrigir e repetir apenas a afetada antes dessa regressao.
+
+## Atualizacao 2026-07-18 - Q4AL aprovada na regressao limpa r22
+
+Q5A e Q5B estao completas. Q5C preserva tres aprovacoes: cascata mensal R1/R2 e pendencia herdada R1. A pendencia herdada R2 bloqueou sem proposta porque o motor repetiu a pergunta de acao mesmo depois de receber item, origem, motivo, decisao, prazo, responsavel, criterio e resultado 40% -> 55%.
+
+A Q4AL transforma deterministicamente esse bloco completo em proposta, usando a propria pendencia como acao e somente um pai trimestral atual inequivoco. Smoke aprovado: Conducao 90, Plano Mensal 100, media 95; custo US$ 0,027565; acumulado US$ 13,928945. Proximo passo: preservar 29 aprovacoes, repetir somente R2 e continuar pelas quatro medicoes Q5C ainda ausentes. Nova falha interrompe a fase e recebe correcao mais smoke focado; a regressao geral completa continua reservada para depois de Q5A-Q5D verdes.
+
+## Atualizacao 2026-07-18 - Q4AM aprovada na regressao limpa r22
+
+A retomada Q5C passou oficialmente a pendencia herdada R2, a sobrecarga de capacidade R1/R2 e o gestor experiente R1. O R2 final bloqueou apenas Conducao 76,25; plano 98,75, saida 100, checks e cleanup ficaram verdes. A variacao estava na pergunta: R1 testou capacidade, R2 repetiu dono e criterio.
+
+A Q4AM faz o desafio de capacidade/backlog uma vez quando o gestor ja informou o resultado e listou de duas a cinco acoes. Bloco completo segue direto a proposta e campos ausentes continuam obrigatorios. Smoke aprovado com 100/100/100; custo US$ 0,028244; acumulado US$ 14,078300. Proximo passo: preservar 33 aprovacoes, repetir somente gestor mensal experiente R2 e, se verde, declarar Q5C 8/8 antes do briefing Q5D.
+
+## Atualizacao 2026-07-18 - Q5C concluida 8/8
+
+A repeticao oficial do gestor mensal experiente R2 marcou 100 em Conducao, Plano Mensal e Saida Derivada. Q5C terminou 8/8 por US$ 0,218668; acumulado do plano US$ 14,106412. O proximo passo e Q5D: duas rodadas de fechamento mensal, duas de fechamento trimestral e duas de Revisao Estrategica, preservando as 34 aprovacoes atuais e interrompendo no primeiro bloqueio.
+
+## Atualizacao 2026-07-18 - Q4AN aprovada; Q5D retoma somente fechamento mensal R1
+
+A Q5D bloqueou no primeiro fechamento mensal parcial: o progresso atualizado de 50% precisava ser salvo no objetivo, mas o documento o chamava de baseline e perdia o ponto de partida de 40%. A Q4AN separa estado operacional e leitura executiva: `current=50%` continua sendo gravado, enquanto o contrato canonico preserva baseline 40%, atingido 50%, meta 60%, veredito parcial, status operacional, metrica, responsavel, prazo e fonte.
+
+O smoke exato passou com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 85 e media 92,92. A tentativa bloqueada custou US$ 0,033633; o smoke custou US$ 0,028937; acumulado US$ 14,168982. Proximo passo: preservar as 34 aprovacoes, arquivar somente esse bloqueio e repetir o R1; se verde, executar apenas as cinco medicoes Q5D restantes. A regressao geral completa continua reservada para quando Q5D estiver 6/6.
+
+## Atualizacao 2026-07-18 - Q5 incremental completa 40/40
+
+A retomada Q4AN repetiu somente o fechamento mensal parcial R1 e concluiu todas as seis medicoes Q5D. Medias da fase: Conducao 97,92, Revisao/Fechamento 94,79 e Saida Derivada 96,04; custo US$ 0,149580. A grade completa ficou 40/40, media conjunta 96,64 e zero erro, falha critica ou check reprovado. As 40 medicoes oficiais custaram US$ 1,611006; o acumulado do plano chegou a US$ 14,318562.
+
+Proximo passo: arquivar a grade incremental aprovada, iniciar uma regressao integral final desde zero, rodar a matriz deterministica e repetir Q5A-Q5D inteiras. Essa rodada e deliberadamente redundante: comprova que as correcoes acumuladas passam juntas sem aproveitar aprovacao anterior. Fail-fast continua ativo; qualquer nova falha interrompe e volta ao ciclo de correcao focada.
+
+## Atualizacao 2026-07-18 - Q4AO aprovada na primeira regressao integral
+
+A grade integral passou matriz e sete medicoes anuais, mas meta repetida R2 atribuiu `2026` a um ciclo que o gestor descreveu apenas como anterior. Plano 96,25 e Conducao 91,25 estavam acima do piso, porem a fidelidade bloqueou por fabricacao. A Q4AO neutraliza somente o ano historico nao confirmado na resposta visivel; o periodo canonico, anos ditos pelo gestor, numeros, plano e pergunta continuam iguais.
+
+Smoke R2 aprovado em 100/100; custo US$ 0,046011; acumulado US$ 14,733149. Proximo passo: arquivar as sete aprovacoes e o bloqueio como calibracao, abrir r23 vazia, repetir matriz gratuita e Q5A-Q5D completas. Nenhum resultado da tentativa parcial sera preservado.
+
+## Atualizacao 2026-07-18 - Q4AP aprovada na regressao integral r23
+
+A r23 concluiu Q5A 10/10 e aprovou 14 das 16 medicoes trimestrais antes de bloquear o gestor experiente R1. O modelo montou uma boa estrutura, mas pulou o desafio, inferiu donos e completou a segunda acao com `realizado`; Conducao 72,50 bloqueou apesar de Plano 92,50 e Saida 93,75.
+
+A Q4AP moveu essa decisao para o servidor. Duas ou mais acoes sem dono/criterio explicitos recebem uma unica pergunta sobre capacidade e os campos faltantes, com descarte de proposta e estado prematuros. O guard atua tambem quando o modelo faz uma pergunta organica e recusa criterios genericos. Os tres smokes custaram US$ 0,116052; o final passou com Conducao 96,25, Plano 100, Saida 100 e media 98,75. Acumulado US$ 15,909170. Proximo passo: commit/push, reiniciar a grade como r24 desde zero, rodar deterministas e Q5A-Q5D completas com fail-fast. Nenhuma aprovacao da r23 sera preservada.
+
+## Atualizacao 2026-07-18 - Q5/Q6 aprovadas; Mapa A encerrado
+
+A regressao integral r24 foi executada desde zero e terminou 40/40: Q5A 10/10, Q5B 16/16, Q5C 8/8 e Q5D 6/6. Media conjunta 97,23, zero falha critica, zero check reprovado, 15/15 entregas cobertas e mediana de turnos 4 -> 3. A grade custou US$ 1,443641; acumulado do plano US$ 17,352811.
+
+Dez relatorios anuais da Q3 usam o texto auxiliar historico anterior a refinamentos do catalogo. Isso e uma limitacao da comparacao antiga, nao falha das 40 medicoes atuais, que repetiram integralmente o catalogo aprovado. O laboratorio foi corrigido para nao invalidar retroativamente uma baseline imutavel e continua bloqueando qualquer divergencia da Q5 atual. O comparativo foi recalculado sem IA e aprovado automaticamente.
+
+O owner decidiu nao repetir chamadas pagas e aprovou a Q5/Q6 com a limitacao documentada. O pacote cego A/B foi preservado para auditoria, sem criar nova medicao. O Mapa A esta encerrado. Proxima fatia: **O0 - preflight e checkpoint de recuperacao**, com briefing e autorizacao antes de qualquer acao em producao.
+
+## Atualizacao 2026-07-18 - novo ciclo financeiro e O0 pausado
+
+O ciclo financeiro anterior foi encerrado em US$ 17,352811 sem apagar o ledger. O owner abriu um novo ciclo de US$ 20, com aviso apos US$ 15 de gasto novo e parada preventiva em US$ 19. O laboratorio agora subtrai `cycleStartCumulativeUsd` apenas para aplicar os limites do ciclo atual; relatorios continuam exibindo o custo historico total. Compra, recarga, upgrade ou assinatura continuam fora dessa autorizacao e exigem aceite separado no momento da cobranca.
+
+O preflight O0 confirmou 31 Functions, 54/54 migrations, frontend/headers e um backup manual verificado externamente com 646 registros. O cron protegeu a auditoria posterior em novo snapshot externo de 647 registros e o painel voltou a `Protegido`. O gate permanece pausado: a branch aprovada ainda nao esta em producao, a PR precisa concluir CI e o WhatsApp nao recebe evento desde 13/07. Evidencias e ordem de desbloqueio estao em `docs/OPERATIONAL_PILOT_O0.md`. Nenhum plano real foi criado e nenhum deploy foi feito.

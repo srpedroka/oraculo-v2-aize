@@ -37,6 +37,7 @@ export interface ReferenceCase {
   rubrics: string[];
   criticalFailures: string[];
   input: {
+    areaName?: string | null;
     opening: string;
     facts: string[];
     upperLevelContext: string;
@@ -192,6 +193,9 @@ export function validateReferenceCaseCatalog(args: {
       assert(item.criticalFailures.every((failureId) => criticalFailureIds.has(failureId)), `${item.caseId}: falha critica desconhecida`);
 
       assert(item.input.opening.trim().length > 0, `${item.caseId}: abertura obrigatoria`);
+      if (item.input.areaName !== undefined && item.input.areaName !== null) {
+        assert(item.input.areaName.trim().length > 0, `${item.caseId}: areaName nao pode ser vazia`);
+      }
       nonEmptyStrings(item.input.facts, `${item.caseId}.input.facts`);
       assert(item.input.upperLevelContext.trim().length > 0, `${item.caseId}: contexto superior deve ser explicito, inclusive quando ausente`);
       assert(Array.isArray(item.input.histories), `${item.caseId}.input.histories deve ser lista`);

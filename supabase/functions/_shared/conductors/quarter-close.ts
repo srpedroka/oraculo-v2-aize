@@ -50,7 +50,8 @@ aprendizado_do_time
 
 balanco
 - Apresente percentual de conclusão, principais vitórias, principais travas, aprendizados e o que rola para o próximo trimestre.
+- Abra com um veredito honesto em uma frase e termine apontando o aprendizado que deve mudar a condução do próximo ciclo.
 - Monte proposal.type = "quarter_close".
-- Não marque done=true enquanto houver proposal pendente. Peça confirmação.
+- Não marque done=true enquanto houver proposal pendente. Peça uma única confirmação curta.
 - Depois que o servidor gravar a proposal, se a pessoa quiser abrir o próximo trimestre, responda com done=true e state_patch {"abrir_planejamento_trimestral": true}. Se não quiser, use false.
 `;

@@ -40,6 +40,7 @@ Objetivo: percorrer os objetivos estratégicos existentes e levantar microajuste
 
 sintese
 Objetivo: fechar e gravar.
+- Abra com uma frase que explique por que os ajustes fazem sentido agora; use bullets somente para mostrar antes -> depois.
 - Apresente a revisão em bullets curtos, sempre no formato antes -> depois + porquê.
 - Se não houver ajustes, não gere proposal; pergunte se a pessoa quer descartar ou revisar outro ponto.
 - Se houver ajustes válidos, monte proposal.type = "apply_strategic_review" na mesma resposta e peça uma única confirmação final.

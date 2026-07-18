@@ -17,6 +17,7 @@ type PlanPdfDocument = {
   title?: unknown;
   period?: unknown;
   version?: unknown;
+  origin?: unknown;
   created_at?: unknown;
   createdAt?: unknown;
   content?: unknown;
@@ -109,6 +110,12 @@ function documentTypeLabel(value: unknown) {
   return labels[asText(value)] ?? "Documento Oráculo";
 }
 
+function documentSourceLabel(value: unknown) {
+  return asText(value) === "proposta_confirmada" || asText(value) === "session"
+    ? "Proposta confirmada"
+    : "Documento do Oráculo";
+}
+
 function objectiveTypeLabel(value: unknown) {
   const normalized = slug(value);
   if (normalized === "evolucao" || normalized === "seed") return "Evolução";
@@ -146,6 +153,7 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
   const context = asArray<string>(content.contexto_rapido);
   const focus = asArray<string>(content.foco_aprendizado);
   const reference = asRecord(content.referencia);
+  const traceability = asRecord(content.rastreabilidade);
   const title = asText(document.title, documentTypeLabel(content.tipo));
   const metadata = [documentTypeLabel(content.tipo), asText(content.area, "Empresa"), asText(content.periodo, document.period)].filter(Boolean).join(" · ");
 
@@ -235,7 +243,7 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
   y -= 30;
   drawLines([title], { size: 23, lineHeight: 27, font: medium, color: COLORS.text, gapAfter: 3 });
   drawLines([metadata], { size: 9.5, lineHeight: 13, color: COLORS.secondary });
-  const version = `Versão ${Number(document.version ?? 1)} · Gerado pelo Oráculo`;
+  const version = `Versão ${Number(document.version ?? 1)} · Origem: ${documentSourceLabel(traceability.origem || document.origin)}`;
   page.drawText(supportedText(regular, version), { x: MARGIN, y: y - 2, size: 7.5, font: regular, color: COLORS.tertiary });
   y -= 25;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_WIDTH - MARGIN, y }, thickness: 0.8, color: COLORS.border });
@@ -252,32 +260,109 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
     y -= 12;
   }
 
-  drawSectionHeader(section++, content.tipo === "strategic" ? "Estrutura Estratégica" : "Referência");
-  const referenceStart = y;
-  const referenceItems = content.tipo === "strategic"
-    ? [
-      ["Propósito", asRecord(asRecord(content.strategic).direcionadores).proposito],
-      ["Visão", asRecord(asRecord(content.strategic).direcionadores).visao],
-      ["Temas", asArray<string>(asRecord(content.strategic).temas).join("; ")],
-      ["Renúncias", asArray<string>(asRecord(content.strategic).renuncias).join("; ")],
-      ["Riscos", asArray<string>(asRecord(content.strategic).riscos).join("; ")],
-      ["Decisões pendentes", asArray<string>(asRecord(content.strategic).decisoes_pendentes).join("; ")],
-      ["Aprendizados anteriores", asArray<string>(asRecord(content.strategic).aprendizados_historicos).join("; ")],
-    ]
-    : [
-      ["Objetivo anual", reference.objetivo_anual],
-      ["Objetivos do trimestre", asArray<string>(reference.objetivos_trimestre).join("; ")],
-    ];
-  const visibleReference = referenceItems.filter(([, value]) => asText(value));
-  const estimatedReferenceHeight = Math.max(42, visibleReference.reduce((sum, [, value]) => sum + wrapLine(regular, value, CONTENT_WIDTH - 34, 9.5).length * 13 + 12, 18));
-  ensure(estimatedReferenceHeight);
-  page.drawRectangle({ x: MARGIN, y: y - estimatedReferenceHeight + 10, width: CONTENT_WIDTH, height: estimatedReferenceHeight, color: COLORS.surface, borderColor: COLORS.border, borderWidth: 0.6 });
-  y -= 10;
-  for (const [label, value] of visibleReference) drawKeyValue(label, value, 14);
-  y = Math.min(y, referenceStart - estimatedReferenceHeight + 2) - 22;
+  if (["strategic", "quarterly", "monthly"].includes(asText(content.tipo))) {
+    drawSectionHeader(section++, content.tipo === "strategic" ? "Estrutura Estratégica" : "Referência");
+    const referenceStart = y;
+    const strategic = asRecord(content.strategic);
+    const strategicDrivers = asRecord(strategic.direcionadores);
+    const strategicSwot = asRecord(strategic.swot);
+    const referenceItems = content.tipo === "strategic"
+      ? [
+        ["Propósito", strategicDrivers.proposito],
+        ["Visão", strategicDrivers.visao],
+        ["Valores", asArray<string>(strategicDrivers.valores).join("; ")],
+        ["Temas", asArray<string>(strategic.temas).join("; ")],
+        ["Forças", asArray<string>(strategicSwot.forcas).join("; ")],
+        ["Fraquezas", asArray<string>(strategicSwot.fraquezas).join("; ")],
+        ["Oportunidades", asArray<string>(strategicSwot.oportunidades).join("; ")],
+        ["Ameaças", asArray<string>(strategicSwot.ameacas).join("; ")],
+        ["Renúncias", asArray<string>(strategic.renuncias).join("; ")],
+        ["Riscos", asArray<string>(strategic.riscos).join("; ")],
+        ["Decisões pendentes", asArray<string>(strategic.decisoes_pendentes).join("; ")],
+        ["Aprendizados anteriores", asArray<string>(strategic.aprendizados_historicos).join("; ")],
+        ["Rituais", asArray<string>(strategic.rituais).join("; ")],
+      ]
+      : [
+        ["Objetivo anual", reference.objetivo_anual],
+        ["Objetivos do trimestre", asArray<string>(reference.objetivos_trimestre).join("; ")],
+      ];
+    const visibleReference = referenceItems.filter(([, value]) => asText(value));
+    const estimatedReferenceHeight = Math.max(42, visibleReference.reduce((sum, [, value]) => sum + wrapLine(regular, value, CONTENT_WIDTH - 34, 9.5).length * 13 + 12, 18));
+    ensure(estimatedReferenceHeight);
+    page.drawRectangle({ x: MARGIN, y: y - estimatedReferenceHeight + 10, width: CONTENT_WIDTH, height: estimatedReferenceHeight, color: COLORS.surface, borderColor: COLORS.border, borderWidth: 0.6 });
+    y -= 10;
+    for (const [label, value] of visibleReference) drawKeyValue(label, value, 14);
+    y = Math.min(y, referenceStart - estimatedReferenceHeight + 2) - 22;
+  }
+
+  const strategicProjects = asArray<Record<string, unknown>>(asRecord(content.strategic).projetos);
+  if (content.tipo === "strategic" && strategicProjects.length) {
+    drawSectionHeader(section++, "Projetos Prioritários");
+    for (const project of strategicProjects) {
+      drawKeyValue("Projeto", project.nome);
+      drawKeyValue("Dono", project.responsavel, 14);
+      drawKeyValue("Prazo", project.prazo, 14);
+      drawKeyValue("Vínculo", project.vinculo, 14);
+      y -= 6;
+    }
+    y -= 10;
+  }
+
+  if (content.tipo === "quarterly") {
+    const quarterly = asRecord(content.quarterly);
+    const role = asRecord(quarterly.papel_area);
+    const diagnosis = asRecord(quarterly.diagnostico);
+    const alignment = asRecord(quarterly.alinhamento_anual);
+    drawSectionHeader(section++, "Decisões do Trimestre");
+    drawKeyValue("Papel da área", role.missao);
+    drawKeyValue("Contribuição", asArray<string>(role.contribuicao).join("; "));
+    drawKeyValue("Alinhamento anual", alignment.objetivo);
+    drawKeyValue("Justificativa", alignment.justificativa);
+    drawKeyValue("Forças", asArray<string>(diagnosis.forcas).join("; "));
+    drawKeyValue("Gargalos", asArray<string>(diagnosis.gargalos).join("; "));
+    drawKeyValue("Riscos", asArray<string>(quarterly.riscos).join("; "));
+    drawKeyValue("Escolhas e renúncias", asArray<string>(quarterly.trade_offs).join("; "));
+    drawKeyValue("Acompanhamento", quarterly.cadencia);
+    y -= 12;
+  }
+
+  if (content.tipo === "monthly") {
+    const monthly = asRecord(content.monthly);
+    const alignment = asRecord(monthly.alinhamento_trimestral);
+    const capacity = asRecord(monthly.capacidade);
+    const pending = asArray<Record<string, unknown>>(monthly.decisoes_pendentes)
+      .map((item) => [asText(item.item), asText(item.decisao)].filter(Boolean).join(" -> "))
+      .filter(Boolean);
+    drawSectionHeader(section++, "Decisões do Mês");
+    drawKeyValue("Alinhamento trimestral", alignment.objetivo);
+    drawKeyValue("Justificativa", alignment.justificativa);
+    if (capacity.acoes_comprometidas !== undefined) {
+      drawKeyValue("Capacidade", `${capacity.acoes_comprometidas}/${capacity.maximo_acoes_comprometidas} ações comprometidas`);
+    }
+    drawKeyValue("Pendências", pending.join("; "));
+    drawKeyValue("Backlog", asArray<string>(monthly.backlog).join("; "));
+    drawKeyValue("Riscos", asArray<string>(monthly.riscos).join("; "));
+    drawKeyValue("Bloqueios", asArray<string>(monthly.bloqueios).join("; "));
+    drawKeyValue("Acompanhamento", monthly.cadencia);
+    drawKeyValue("Próximo compromisso", monthly.proximo_compromisso);
+    y -= 12;
+  }
+
+  if (content.tipo === "strategic_review") {
+    const adjustments = asArray<Record<string, unknown>>(content.ajustes);
+    drawSectionHeader(section++, "Ajustes da Revisão");
+    drawKeyValue("Motivo", content.motivo_revisao);
+    for (const adjustment of adjustments) {
+      drawKeyValue("Objetivo", adjustment.titulo);
+      drawKeyValue("Alteração", `${asText(adjustment.campo)}: ${asText(adjustment.de)} -> ${asText(adjustment.para)}`, 14);
+      drawKeyValue("Justificativa", adjustment.porque, 14);
+      y -= 6;
+    }
+    y -= 10;
+  }
 
   if (objectives.length) {
-    drawSectionHeader(section++, "Objetivos e Ações");
+    drawSectionHeader(section++, asText(content.tipo).includes("close") ? "Revisão dos Objetivos" : "Objetivos e Ações");
     for (const [objectiveIndex, objective] of objectives.entries()) {
       ensure(92);
       if (objectiveIndex > 0) {
@@ -293,12 +378,17 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
       const meta = [
         objectiveTypeLabel(objective.tipo),
         asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
+        asText(objective.atingido) ? `Atingido: ${asText(objective.atingido)}` : "",
         asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
         asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
+        asText(objective.prazo) ? `Prazo: ${asText(objective.prazo)}` : "",
         asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
+        asText(objective.veredito) ? `Veredito: ${asText(objective.veredito)}` : "",
+        asText(objective.status_final) ? `${asText(objective.veredito) ? "Status operacional" : "Status final"}: ${asText(objective.status_final)}` : "",
+        objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
       ].filter(Boolean).join(" · ");
       drawLines([meta], { x: objectiveX, width: objectiveWidth, size: 7.8, lineHeight: 11, font: medium, color: COLORS.tertiary, gapAfter: 8 });
-      drawKeyValue("Resultado esperado", objective.resultado, 58);
+      drawKeyValue(asText(objective.atingido) ? "Resultado apurado" : "Resultado esperado", objective.resultado, 58);
       drawKeyValue("Fonte", objective.fonte, 58);
       drawKeyValue("Vínculo", objective.vinculo, 58);
 
@@ -342,8 +432,21 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
         y = Math.min(y, actionBottom - 12);
       }
       drawKeyValue("Evidência", objective.evidencia, 58);
+      drawKeyValue("Decisão", objective.decisao, 58);
       y -= 18;
     }
+  }
+
+  const close = asRecord(content.fechamento);
+  if (Object.keys(close).length) {
+    drawSectionHeader(section++, "Fechamento");
+    drawKeyValue("Resumo", close.resumo);
+    if (close.percentual !== null && close.percentual !== undefined) drawKeyValue("Conclusão", `${close.percentual}%`);
+    drawKeyValue("Aprendizados", asArray<string>(close.aprendizados).join("; "));
+    drawKeyValue("Pendências", asArray<string>(close.pendencias).join("; "));
+    drawKeyValue("Decisões", asArray<string>(close.decisoes).join("; "));
+    drawKeyValue("Próximo período", close.proximo_periodo);
+    y -= 12;
   }
 
   if (focus.length) {

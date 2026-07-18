@@ -65,6 +65,8 @@ export interface EvaluationCostPolicy {
   authorizedLimitUsd: number;
   warningAtUsd: number;
   preventiveStopAtUsd: number;
+  cycleStartCumulativeUsd?: number;
+  cycleStartedAt?: string;
 }
 
 export interface UsageLike {
@@ -90,9 +92,40 @@ export interface EvaluationReportLike {
 export interface StrategicQualityGateResult {
   status: "approved" | "blocked";
   reasons: string[];
-  rubricScores: Array<{ rubricId: string; score: number; judgeReportedScore: number | null }>;
+  rubricScores: Array<{
+    rubricId: string;
+    score: number;
+    judgeReportedScore: number | null;
+    criterionRatings: Array<{
+      criterionId: string;
+      rating: number;
+      source: "judge" | "deterministic";
+      sourceCheckIds: string[];
+    }>;
+  }>;
   jointAverage: number | null;
   criticalFailureCandidates: string[];
+}
+
+interface CheckLike {
+  id: string;
+  status: string;
+}
+
+export function deterministicCriterionRatings(checks: CheckLike[]): Map<string, {
+  rating: number;
+  sourceCheckIds: string[];
+}> {
+  const byId = new Map(checks.map((item) => [item.id, item]));
+  const scope = byId.get("DET-SESSION-SCOPE-001");
+  const ratings = new Map<string, { rating: number; sourceCheckIds: string[] }>();
+  if (scope?.status === "pass" || scope?.status === "fail") {
+    ratings.set("COND-SCOPE-001", {
+      rating: scope.status === "pass" ? 4 : 0,
+      sourceCheckIds: [scope.id],
+    });
+  }
+  return ratings;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -269,6 +302,7 @@ export function buildStrategicQualityGate(params: {
   applicableRubric: unknown;
   minimumPerRubric: number;
   minimumJointAverage: number;
+  deterministicChecks?: CheckLike[];
 }): StrategicQualityGateResult {
   const reasons: string[] = [];
   const rubricScores: StrategicQualityGateResult["rubricScores"] = [];
@@ -282,6 +316,7 @@ export function buildStrategicQualityGate(params: {
     const expectedRubrics = Array.isArray(rubric.rubrics) ? rubric.rubrics.map(asRecord) : [];
     const judgedRubrics = Array.isArray(judge.rubricScores) ? judge.rubricScores.map(asRecord) : [];
     const judgedById = new Map(judgedRubrics.map((item) => [String(item.rubricId ?? ""), item]));
+    const deterministicRatings = deterministicCriterionRatings(params.deterministicChecks ?? []);
 
     for (const expected of expectedRubrics) {
       const rubricId = String(expected.id ?? "");
@@ -295,22 +330,30 @@ export function buildStrategicQualityGate(params: {
       const criteriaById = new Map(judgedCriteria.map((item) => [String(item.id ?? ""), item]));
       let weightedScore = 0;
       let valid = true;
+      const criterionRatings: StrategicQualityGateResult["rubricScores"][number]["criterionRatings"] = [];
       for (const criterion of expectedCriteria) {
         const criterionId = String(criterion.id ?? "");
         const judgedCriterion = criteriaById.get(criterionId);
-        const rating = Number(judgedCriterion?.rating);
+        const deterministic = deterministicRatings.get(criterionId);
+        const rating = deterministic?.rating ?? Number(judgedCriterion?.rating);
         const weight = Number(criterion.weight);
-        if (!judgedCriterion || !Number.isInteger(rating) || rating < 0 || rating > 4 || !Number.isFinite(weight)) {
+        if ((!judgedCriterion && !deterministic) || !Number.isInteger(rating) || rating < 0 || rating > 4 || !Number.isFinite(weight)) {
           reasons.push(`judge devolveu criterio invalido ou ausente: ${criterionId}`);
           valid = false;
           continue;
         }
+        criterionRatings.push({
+          criterionId,
+          rating,
+          source: deterministic ? "deterministic" : "judge",
+          sourceCheckIds: deterministic?.sourceCheckIds ?? [],
+        });
         weightedScore += (rating / 4) * weight;
       }
       if (!valid) continue;
       const score = Number(weightedScore.toFixed(2));
       const judgeReportedScore = Number.isFinite(Number(judged.score)) ? Number(judged.score) : null;
-      rubricScores.push({ rubricId, score, judgeReportedScore });
+      rubricScores.push({ rubricId, score, judgeReportedScore, criterionRatings });
       if (score < params.minimumPerRubric) reasons.push(`${rubricId} abaixo de ${params.minimumPerRubric}: ${score}`);
     }
 
@@ -363,9 +406,16 @@ export function assertBudgetAllowsNextCall(params: {
   reserveUsd: number;
   policy: EvaluationCostPolicy;
 }): void {
-  const projectedPlan = params.cumulativePlanCostUsd + params.currentCaseCostUsd + params.reserveUsd;
-  if (projectedPlan >= params.policy.preventiveStopAtUsd) throw new Error("RECUSADO: parada preventiva de custo atingida");
-  if (projectedPlan > params.policy.authorizedLimitUsd) throw new Error("RECUSADO: teto financeiro do plano atingido");
+  const projectedCycleSpend = budgetCycleSpendUsd(
+    params.cumulativePlanCostUsd + params.currentCaseCostUsd + params.reserveUsd,
+    params.policy,
+  );
+  if (projectedCycleSpend >= params.policy.preventiveStopAtUsd) throw new Error("RECUSADO: parada preventiva de custo atingida");
+  if (projectedCycleSpend > params.policy.authorizedLimitUsd) throw new Error("RECUSADO: teto financeiro do plano atingido");
+}
+
+export function budgetCycleSpendUsd(cumulativePlanCostUsd: number, policy: EvaluationCostPolicy): number {
+  return Math.max(0, cumulativePlanCostUsd - Math.max(0, Number(policy.cycleStartCumulativeUsd) || 0));
 }
 
 export function buildSessionRequests(

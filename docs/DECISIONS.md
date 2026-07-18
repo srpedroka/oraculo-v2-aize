@@ -1,5 +1,85 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Baseline de qualidade e evidencia imutavel
+
+Decisao: relatorios historicos da Q3 permanecem imutaveis e uma evolucao posterior do catalogo e registrada como limitacao, nao como falha retroativa da baseline. O gate continua bloqueando qualquer rodada Q5 que divergir do catalogo aprovado no momento da execucao. Comparacoes de nota informam explicitamente quando as entradas historicas nao sao literalmente identicas.
+
+Motivo: dez rodadas anuais da Q3 preservavam o texto auxiliar anterior aos rotulos estruturais adicionados depois. Recalcular a Q3 contra o arquivo novo gerou um bloqueio artificial, apesar de a r24 atual ter passado 40/40 e repetido o catalogo vigente.
+
+Consequencias: nao se apaga, reescreve ou simula evidencia antiga; deriva historica fica visivel no relatorio. O owner pode aceitar a limitacao sem nova chamada paga, como ocorreu na Q5 r24. Mudancas futuras no input atual continuam exigindo nova medicao ou decisao humana explicita.
+
+## 2026-07-18 - Fidelidade das acoes trimestrais e validada antes da proposta
+
+Decisao: quando o gestor lista duas ou mais acoes e nao explicita dono e criterio verificavel para cada uma, o servidor mantem a sessao aberta com uma unica pergunta que testa capacidade e solicita somente os campos faltantes. A regra atua tanto se o modelo tentar propor quanto se fizer uma pergunta organica. Proposta prematura e `state_patch` gerado nesse turno sao descartados; `realizado`, `feito`, `concluido` e `finalizado` nao contam como criterio de conclusao.
+
+Motivo: o mesmo modelo variou entre um placeholder ruim, uma inferencia plausivel e uma pergunta estrategica adequada. Judge e prompt nao bastam para garantir fidelidade em todas as amostras. O contrato precisa pertencer ao servidor, sem aumentar a burocracia quando as acoes ja estao completas.
+
+Consequencias: planos trimestrais completos continuam indo direto para a sintese e uma confirmacao; planos parciais recebem no maximo uma pergunta combinada. Nao ha tabela, migration, frontend ou mudanca de permissao. A Q4AP foi validada somente no staging e producao permanece inalterada.
+
+## 2026-07-18 - Anos historicos nao confirmados tambem sao neutralizados na conversa
+
+Decisao: em sessoes estrategicas, o servidor normaliza anos absolutos da resposta visivel quando eles nao aparecem na conversa nem correspondem ao periodo canonico da sessao. Em contexto de meta repetida ou ciclo anterior, o ano vira `no ciclo anterior`; o plano, os numeros, a pergunta e os anos confirmados permanecem iguais.
+
+Motivo: a Q4AB ja protegia `historicalLessons`, mas a regressao integral mostrou a mesma atribuicao indevida numa fala intermediaria: `tentada em 2026`. O plano final estava correto e verificavel, mas a frase reduziu fidelidade e acionou `CRIT-FABRICATION-001`.
+
+Consequencias: nao existe nova etapa nem pergunta para o gestor. A Q4AO age depois da geracao e antes de validar/exibir a mensagem, sem alterar dados ou aceitar proposta insegura. Smoke exato R2: Conducao 100, Plano Anual 100, media 100; custo US$ 0,046011; acumulado US$ 14,733149.
+
+## 2026-07-18 - Fechamento separa estado operacional de leitura executiva
+
+Decisao: fechamentos preservam o valor atingido em `review.current` porque esse campo atualiza o progresso operacional do objetivo. Para documentos e canais, o contrato explicita separadamente `baseline`, `achieved` e `verdict`; `statusFinal` continua sendo o estado operacional aceito pelo banco. A interface, o PDF e o WhatsApp nao podem chamar o atingido de baseline.
+
+Motivo: a primeira medicao Q5D da regressao limpa estava tecnicamente correta e gravava 50%, mas o documento rotulava esse mesmo valor como `Baseline 50%`, apagando o ponto de partida informado de 40%. A ausencia de `verdict=partial` e de metrica, responsavel e prazo tambem reduziu a Saida Derivada para 71,25.
+
+Consequencias: o fechamento mensal parcial agora mostra baseline 40%, atingido 50%, meta 60%, veredito parcial e status operacional em banco, tela/PDF e WhatsApp. A Q4AN passou o smoke exato com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 85 e media 92,92; custo US$ 0,028937, acumulado US$ 14,168982. Nao houve migration ou alteracao da regra de gravacao.
+
+## 2026-07-18 - Lista mensal de gestor experiente recebe um desafio de capacidade
+
+Decisao: quando o gestor mensal ja informou o resultado e lista de duas a cinco acoes depois de declarar que o pacote possui datas e criterios, usar a proxima pergunta para testar capacidade real e backlog. O desafio ocorre no maximo uma vez, nao intercepta bloco completo e nao substitui a validacao dos campos obrigatorios.
+
+Motivo: duas rodadas materialmente iguais variaram apenas na pergunta intermediaria. A aprovada testou capacidade; a bloqueada repetiu dono e criterio, ficou com Conducao 76,25 e exigiu uma terceira chamada de geracao, apesar de produzir depois um plano 98,75 e saidas 100. O defeito era variancia de orquestracao, nao capacidade estrategica do modelo.
+
+Consequencias: a conversa fica mais executiva sem gravar dado incompleto. O gestor responde sobre o que cabe e o que sai; se o bloco seguinte ainda omitir dono, prazo ou criterio, a validacao continua fechada. A pergunta nao se repete e a confirmacao final permanece unica.
+
+## 2026-07-18 - Bloco mensal completo de pendencia vira proposta sem reentrevista
+
+Decisao: reconhecer deterministicamente uma pendencia mensal herdada quando a mensagem confirma item, origem, motivo, decisao de rolar, prazo, responsavel, criterio de conclusao e resultado mensuravel. Nesse caso, a pendencia e a propria acao; o servidor monta a proposta com uma confirmacao e usa apenas um objetivo trimestral atual inequivoco como pai.
+
+Motivo: o modelo recebeu todos os fatos do caso, mas perguntou a acao novamente duas vezes e caiu no fallback sem proposta. A falha nao era falta de capacidade do provedor para entender estrategia; era a ausencia de uma transicao deterministica entre fatos completos e o contrato mensal.
+
+Consequencias: o gestor nao ganha uma etapa nova. Blocos completos encerram a entrevista mais cedo; se faltar qualquer campo obrigatorio ou houver mais de um pai possivel, o fluxo adaptativo continua perguntando. Nenhum valor e inventado e nenhum vinculo ambiguo e escolhido automaticamente.
+
+## 2026-07-18 - Vinculo com KPI exige escolha explicita do gestor
+
+Decisao: tratar `kpiLinks` como decisao autorizada, nao como conteudo livre da IA. Em sessao trimestral, um KPI conhecido permanece somente quando a mensagem do gestor nomeia e confirma o vinculo ou quando uma resposta afirmativa curta sucede uma pergunta explicita que nomeia o KPI. Sem essa evidencia, o servidor remove o link antes da confirmacao.
+
+Motivo: o modelo vinculou Margem operacional a um plano de previsibilidade comercial sem qualquer sugestao ou aceite na conversa. A chave era valida e passou pela validacao anterior, mas o ato de vincular era fabricado. Isso derrubou fidelidade da conducao e das saidas, embora o restante do plano estivesse forte.
+
+Consequencias: o gestor nao recebe nova etapa. Sugestoes confirmadas continuam funcionando, inclusive `sim` natural depois da pergunta; links nao escolhidos nao chegam ao banco, documento, PDF ou WhatsApp. Chaves desconhecidas continuam sujeitas ao bloqueio existente em vez de serem silenciosamente aceitas.
+
+## 2026-07-18 - Riscos estruturados sao normalizados na fronteira server-side
+
+Decisao: aceitar risco como texto ou como objeto com aliases de descricao e mitigacao, mas converter sempre para texto canonico antes da confirmacao e da geracao de documentos. A normalizacao e compartilhada pelos planos anual, trimestral e mensal e tambem protege importacoes prontas e projecoes diretas.
+
+Motivo: um plano trimestral materialmente correto recebeu risco como `{ descricao, mitigacao }`. O documento concatenou o objeto como string e exibiu `[object Object]`, derrubando fidelidade e legibilidade da Saida Derivada para 68,75 apesar de Conducao e Plano aprovados. O modelo produziu informacao util; faltava um contrato de dados no servidor.
+
+Consequencias: nao ha nova pergunta, tela, campo, tabela ou confirmacao. Riscos textuais continuam iguais; objetos conhecidos preservam descricao e mitigacao; objetos desconhecidos falham fechados e nao poluem PDF, tela ou WhatsApp. Testes cobrem proposta, documento canonico e renderizacao.
+
+## 2026-07-18 - Desafio trimestral proporcional a prontidao
+
+Decisao: exigir um desafio curto somente quando um bloco trimestral ainda nao testou a decisao. Se o gestor ja informou resultado verificavel, acoes, risco, mitigacao e foco de aprendizado, a sessao segue para sintese e uma unica confirmacao. Se os dados suficientes chegam antes do bloco suplementar da fixture, o fechamento antecipado tambem e valido desde que proposta, banco e saidas passem os contratos.
+
+Motivo: a Q5B mostrou Plano Trimestral e Saida Derivada com nota 100, mas Conducao 75 porque o Oraculo pediu evidencia intermediaria depois de o gestor ja ter refletido sobre risco e aprendizado. A protecao contra planos superficiais estava correta, mas sua aplicacao indiscriminada transformava qualidade em burocracia.
+
+Consequencias: nao ha nova tela, campo, tabela ou confirmacao. Gestores que trazem pouca informacao continuam recebendo diagnostico e desafio; gestores experientes avancam mais rapido. O guard server-side recusa pergunta adicional no bloco ja testado e orienta um unico reparo interno, sem permitir gravacao antes da confirmacao.
+
+## 2026-07-18 - Modelo sugere conteúdo; servidor possui o contrato da sessão
+
+Decisão: usar JSON Schema nas respostas de planejamento e do judge, mantendo no servidor a autoridade sobre escopo, período, prontidão adaptativa e confirmação. xAI usa schema estrito; OpenAI usa o mesmo schema sem `strict` para acomodar os objetos internos variáveis e continua sujeito à validação fail-closed. No laboratório, `COND-SCOPE-001` passa a receber nota efetiva do check `DET-SESSION-SCOPE-001`; critérios sem prova objetiva continuam com o judge.
+
+Motivo: a regressão Q5 mostrou que envelopes livres geravam reparos por forma, que o modelo podia repetir metadados internos inconsistentes e que o judge às vezes penalizava um escopo que o banco já havia provado correto. Isso misturava defeito real, variação probabilística e erro da fixture, elevando custo e número de reinícios.
+
+Consequências: a conversa e a proposta visível não ganham etapas nem confirmações. O modelo continua extraindo e redigindo os fatos de negócio, mas campos técnicos são normalizados antes da validação e da persistência. Relatórios registram a fonte de cada nota efetiva. A comparação Grok 4.3 x 4.5 é paga, separada, cega e nunca troca o modelo automaticamente; exige autorização explícita no comando.
+
 ## 2026-07-14 - Concorrencia otimista nas edicoes de alto valor
 
 Decisao: usar `updated_at` como versao de compare-and-swap em objetivos e configuracoes criticas, e uma RPC SQL unica para salvar definicao e meses de KPI. Conflitos retornam resultado controlado, preservam o rascunho local e exigem recarregar a versao atual antes de tentar novamente.
@@ -813,6 +893,14 @@ Motivo: 67 deploys de produção consumiram 1.005 créditos do ciclo Netlify, pa
 
 Consequências: agentes devem informar custo antes da ação, nunca inferir autorização financeira e agrupar publicações. O saldo de serviços deve entrar no preflight operacional.
 
+## 2026-07-18 - Ciclos financeiros preservam o acumulado historico
+
+Decisao: ao renovar o orçamento de testes, encerrar o ciclo anterior sem zerar ou reescrever o ledger. O novo limite e aplicado ao delta entre o custo acumulado atual e o acumulado no inicio do ciclo. O owner abriu um segundo ciclo de US$ 20 a partir de US$ 17,352811 historicos, com aviso em US$ 15 novos e parada preventiva em US$ 19 novos.
+
+Motivo: apagar o acumulado esconderia o custo real do desenvolvimento; aplicar o novo teto diretamente ao total antigo bloquearia uma autorizacao valida antes da primeira chamada. Separar auditoria historica de disponibilidade do ciclo resolve os dois problemas.
+
+Consequencias: relatorios e ledger continuam exibindo o total historico; gates financeiros usam `cycleStartCumulativeUsd`; compras, recargas, upgrades e assinaturas nunca sao autorizados por esse limite de consumo e exigem confirmacao explicita separada no momento da cobranca.
+
 ## 2026-07-16 - Conducao adaptativa orientada a decisao e acao
 
 Decisao: sessoes de planejamento nao devem funcionar como formularios fase a fase. O Oraculo aproveita todos os fatos de uma resposta, pula etapas ja satisfeitas e pergunta somente a primeira lacuna que muda uma decisao. Quando a resposta for vaga, oferece duas ou tres possibilidades concretas e neutras; quando estiver completa, segue para sintese e uma unica confirmacao.
@@ -820,3 +908,67 @@ Decisao: sessoes de planejamento nao devem funcionar como formularios fase a fas
 Motivo: a baseline Q3 mostrou que 19/40 rodadas nao chegaram a proposta. Trimestrais que chegaram tiveram media 84,17 e fechamentos/revisoes 82,50, indicando que a rigidez da conversa e a principal causa das notas baixas. Repetir a mesma pergunta ou exigir campos nao bloqueantes prejudica gestores experientes e nao ajuda quem ainda precisa organizar o pensamento.
 
 Consequencias: cada pergunta deve partir da resposta anterior e aproximar resultado, escolha, meta ou acao executavel. O tom visivel e casual, tranquilo e objetivo; nomes de fase, estado interno e chaves de schema nunca aparecem. Trimestral e mensal podem registrar excecao consciente de alinhamento em vez de mudar de ritual. A implementacao e os testes seguem `docs/STRATEGIC_QUALITY_CORRECTIONS_Q4.md` e dependem de aprovacao explicita antes de alterar runtime.
+
+Estado da Q4A: o owner aprovou o briefing e autorizou a primeira fatia. A politica foi implementada como validador server-side separado, com uma tentativa de reparo contabilizada e fallback deterministico; proposta prematura e removida. O smoke descartavel 15/15 foi publicado apenas no staging. Regras especificas do trimestral, mensal, fechamentos e saidas continuam separadas nas Q4B-Q4E.
+
+Estado da Q4B: o owner aprovou o briefing e autorizou staging. O plano trimestral ganhou contrato server-side proprio: de um a tres resultados verificaveis, atividade subordinada como acao, alinhamento anual real ou excecao consciente e nenhuma troca de ritual. A gravacao deixou de criar pai anual generico e passou a preservar baseline, fonte, prazo e acoes na mesma transacao. O smoke descartavel passou 21/21 antes e depois do reforco final; as duas validacoes custaram US$ 0,124095 e mantiveram producao e WhatsApp real intocados. Q4C mensal exige briefing separado.
+
+Estado da Q4C: o owner aprovou e autorizou staging. O mes sempre deriva seu trimestre do periodo solicitado; objetivos trimestrais existentes sao usados sem reconfirmacao e nunca sao criados automaticamente. O contrato limita de um a tres resultados e cinco acoes no plano inteiro, exige decisao explicita para pendencias e permite excecao trimestral apenas com justificativa. O primeiro smoke encontrou fallback generico e foi preservado como falha; o fallback server-side passou a oferecer rolar, renegociar, cortar ou backlog. Tres rodadas posteriores passaram 22/22; a ultima validou o codigo final com compatibilidade para periodos legados `YYYY-MM`. Q4C totalizou US$ 0,169574, levou o acumulado a US$ 2,337748 e manteve producao/WhatsApp real intocados. Q4D exige briefing separado.
+
+Estado da Q4D: o owner aprovou e autorizou staging. Naturalidade virou contrato server-side, nao apenas instrucao de prompt: bordao/parafrase, pergunta solta, resposta comum longa, atividade anual aceita como objetivo, meta autodeclarada pequena sem desafio e salto de causa concreta para direcionadores sao reparados ou recebem fallback seguro. Texto visivel seguro pode sobreviver a erro apenas interno; proposta e estado continuam sob validacao. Mensal/Revisao usam confirmacao especifica e fechamentos preservam veredito, aprendizado e proxima decisao. O judge final nao apontou falha critica e atribuiu `4,3,4,4,4,4,4`. Como a rubrica Q4D omite memoria e seus pesos originais somavam 85, os pesos aplicaveis sao normalizados para 100 antes do gate; o relatorio original permanece imutavel e o derivado recalcula 95,59 sem provider. Q4D custou US$ 0,553094, acumulado US$ 2,890842. Producao e WhatsApp real seguem intocados; Q4E exige briefing separado.
+
+## 2026-07-17 - Retry de IA limitado por requisicao e reparo deterministico de envelope
+
+Decisao: o planejamento possui no maximo uma repeticao transitoria compartilhada por toda a mensagem, inclusive entre geracao e reparo adaptativo. Timeout, rede, rate limit e 5xx recebem codigos sanitizados; autenticacao, modelo, formato e validacao nao repetem. A requisicao reserva tempo para responder antes do timeout do cliente. Quando a IA ja devolveu uma proposta e os defeitos sao apenas de envelope, estado adaptativo, fase ou texto de confirmacao, o servidor preserva o conteudo e normaliza esses campos sem nova chamada.
+
+Motivo: a Q5 mostrou `INTERNAL_ERROR` em timeout, e os dois primeiros smokes Q4G provaram que repetir por chamada ou regenerar uma proposta longa podia ultrapassar o cliente mesmo com resposta de conteudo ja produzida. Regenerar tudo aumentava latencia, custo e variacao sem melhorar a decisao estrategica.
+
+Consequencias: erros tecnicos ficam identificaveis sem detalhes brutos do provedor; uma proposta valida nao e descartada por higiene de envelope; defeitos semanticos e regras trimestrais/mensais continuam exigindo reparo real. O smoke final anual passou com Conducao 85, Plano Anual 100, uma confirmacao, zero gravacao prematura e cleanup. A politica nao adiciona clique ou etapa para o gestor.
+
+## 2026-07-17 - Documento canonico como fonte unica das saidas
+
+Decisao: proposta confirmada, banco e `plan_documents.content` preservam um contrato semantico verificavel; tela, PDF e WhatsApp devem renderizar esse mesmo conteudo, sem nova chamada de IA e sem mutacao. O documento registra origem, versao e rastreabilidade da sessao, enquanto a apresentacao executiva mostra apenas origem/versao e os fatos de negocio relevantes.
+
+Motivo: a Q3 apontou baixa fidelidade e pouca evidencia entre canais. Manter renderizadores independentes sem teste de igualdade permitiria perder prazo, alinhamento, decisoes mensais ou detalhes de fechamento em apenas uma saida, mesmo com banco correto.
+
+Consequencias: a Q4E compara por objeto proposal/banco/documento, calcula fingerprint e exige 18 fatos materiais em tela, PDF e WhatsApp. Renderizacao nao pode criar nova revisao, custo ou log de IA. O identificador da sessao permanece dado privado sob o RLS de `plan_documents` e nao e exibido como texto executivo. A prova usa staging descartavel; producao exige gate separado.
+
+## 2026-07-17 - Q4F reutiliza os gates existentes
+
+Decisao: o aceite integrado Q4F usa as suites unitarias, fixtures, catalogo, integracao, RLS, E2E e build ja obrigatorias, complementadas por auditoria independente de residuos. Nao foi criado um segundo runner que duplicasse comandos, nem foi republicado runtime sem mudanca.
+
+Motivo: a Q4F precisa provar que as correcoes funcionam juntas, nao introduzir outra camada de infraestrutura de teste. Duplicar a orquestracao aumentaria manutencao e poderia divergir do CI real.
+
+Consequencias: `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md` e a evidencia consolidada. Skips opt-in precisam de justificativa e cobertura alternativa explicita. Q4 termina com custo zero e Q5 continua separada porque repete casos generativos pagos e exige revisao humana.
+
+## 2026-07-17 - Trade-off anual e escopo canonico na avaliacao
+
+Decisao: quando receita, margem e capacidade ja formam uma tensao explicita, o condutor anual deve pedir a prioridade e a renuncia, nao repetir o mesmo menu. Se um plano completo ja ocupa a capacidade, a confirmacao final deriva uma sintese executiva da proposta valida e explicita o risco de sobrecarga sem regenerar o plano. O judge recebe tipo, periodo e area canonicos da sessao; um rejudge preserva o parecer anterior, nao acessa o banco e contabiliza apenas a nova avaliacao.
+
+Motivo: os smokes Q4H mostraram que regenerar uma proposta longa para corrigir apenas a sintese causa timeout, custo e variacao. A Q5A tambem produziu um falso positivo de fabricacao porque o judge nao sabia que `2027` ja era o periodo da sessao. Penalizar um gestor por enviar um bloco completo ainda incentivava burocracia contraria ao produto.
+
+Consequencias: a sintese deterministica nunca inventa fatos, pois le apenas a proposal ja validada; defeitos reais de conteudo continuam bloqueados. O protocolo de avaliacao trata blocos confirmados como respostas do gestor, separa nota do artefato da quantidade de turnos e registra `judgeHistory`. Q4H passou 5/5 e Q5A passou 10/10; Q5B continua separada.
+
+## 2026-07-17 - Diagnostico trimestral antes de campos e fail-fast por qualidade
+
+Decisao: uma abertura trimestral vaga deve investigar situacao, causa, impacto e mudanca desejada antes de perguntar resultado, prazo, responsavel, acao ou alinhamento anual. Cadencia so pode ser copiada para a proposta quando a conversa combina uma acao explicita de acompanhamento com uma frequencia explicita. No laboratorio pago, qualquer gate de qualidade bloqueado encerra a fase depois de persistir relatorio, custo e cleanup, da mesma forma que um erro tecnico.
+
+Motivo: a primeira Q5B produziu um plano materialmente forte, mas a conducao recebeu 75 porque ofereceu um menu generico cedo demais; tambem perdeu uma revisao semanal explicitamente informada. O runner chegou a iniciar a rodada seguinte porque distinguia falha tecnica de falha qualitativa, consumindo risco e custo sem utilidade.
+
+Consequencias: o gestor recebe uma conversa mais inteligente sem etapa adicional; ausencia de plano anual nao impede entender o problema da area; e rotina nao e inventada a partir de frases ambiguas. O smoke Q4I passou com Conducao 96,25, Plano Trimestral 97,50, media 96,88 e custo US$ 0,034506. A Q5B foi reiniciada preservando Q5A e a medicao bloqueada para auditoria; producao permaneceu inalterada.
+
+## 2026-07-17 - Pai anual canonico sem redundancia da IA
+
+Decisao: a gravacao trimestral nao depende de a IA repetir em `annualObjectives` um objetivo anual que ja esta salvo. Quando houver alinhamento vinculado, o aplicador pode reutilizar `area_plans.main_annual_objective_id` somente apos validar empresa, area, nivel, ano, arquivamento e correspondencia com o vinculo estrategico ou titulo confirmado. Excecao anual nunca usa esse fallback.
+
+Motivo: duas rodadas semanticamente equivalentes do caso CRM divergiram apenas porque uma repetiu o objetivo anual e outra nao. O banco ja possuia a hierarquia correta; transformar redundancia de envelope em requisito de integridade criou uma falha estocastica depois de uma conversa e um plano validos.
+
+Consequencias: nao ha nova pergunta, confirmacao ou objetivo criado; referencia cruzada continua falhando fechada. A integracao Q4J passou 7/7 e o smoke confirmou a gravacao, mas o gate Q4J continua bloqueado por uma falha independente de conducao da atividade CRM. Q5B nao foi reiniciada.
+
+## 2026-07-17 - Atividade trimestral deve ser reenquadrada pelo resultado
+
+Decisao: quando uma abertura trimestral curta apresenta implantacao, instalacao, contratacao, configuracao ou adocao como objetivo, o contrato server-side exige uma pergunta sobre resultado empresarial, adocao, efeito ou mudanca mensuravel. Um menu generico de campos e invalido; a atividade permanece como acao. O fallback faz uma unica pergunta contextual.
+
+Motivo: o prompt trimestral ja continha essa orientacao, mas o caso CRM variou entre rodadas e recebeu Conducao 65 quando o modelo caiu no menu generico. Uma regra importante de qualidade nao pode depender apenas da aderencia probabilistica ao prompt.
+
+Consequencias: a conversa ganha direcao sem etapa adicional; respostas contextuais boas passam intactas. O smoke Q4K passou com Conducao 81,25, Plano Trimestral 93,75 e media 87,50. A Q5B r4 foi arquivada como calibracao e a fase r6 ficou pronta, sem publicar producao.

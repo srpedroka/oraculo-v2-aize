@@ -191,6 +191,7 @@
       "rubrics": ["RUBRIC-CONDUCTION", "RUBRIC-QUARTERLY-PLAN"],
       "criticalFailures": ["CRIT-VERIFIABILITY-001", "CRIT-FABRICATION-001"],
       "input": {
+        "areaName": "Producao",
         "opening": "Quero aumentar a produtividade em vinte por cento neste trimestre.",
         "facts": [
           "O gestor ainda nao sabe qual medida de produtividade sera usada.",

@@ -4,9 +4,12 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { serviceClient } from "../tests/helpers/staging.ts";
+import { buildPlanDocumentPreview } from "../supabase/functions/_shared/plan-documents.ts";
+import { renderPlanForWhatsApp } from "../supabase/functions/_shared/plan-render.ts";
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
+  budgetCycleSpendUsd,
   buildStrategicQualityGate,
   sanitizeEvaluationText,
   sanitizeEvaluationValue,
@@ -33,15 +36,18 @@ import {
 } from "./strategic-eval.ts";
 import {
   aggregateBaseline,
+  baselineRunKey,
   blockPathForPhase,
   buildBaselineChecks,
   buildManagerTurns,
   classifyDefects,
+  compareStrategicRegression,
   countConfirmationPrompts,
   expectedPeriod,
   expectedProposalType,
   isGenerativeCase,
   proposalShouldExist,
+  phaseRunStopReason,
   selectRubricForCase,
   type BaselineRunSummary,
 } from "./strategic-baseline-lib.ts";
@@ -52,24 +58,44 @@ import {
   type ReferenceCaseManifest,
   type ReferencePhase,
 } from "./strategic-reference-cases.ts";
+import { acquireStrategicPhaseLock } from "./strategic-run-lock.ts";
 
 const PRIVATE_DIR = resolve(".agents-private");
 const LEDGER_PATH = resolve(PRIVATE_DIR, "strategic-eval-ledger.json");
-const PROGRESS_PATH = resolve(PRIVATE_DIR, "strategic-q3-progress.json");
-const SUMMARY_PATH = resolve(PRIVATE_DIR, "strategic-q3-baseline-summary.json");
+const REQUESTED_COHORT = String(process.env.ORACULO_STRATEGIC_COHORT ?? "q3").toLowerCase();
+if (!["q3", "q5"].includes(REQUESTED_COHORT)) throw new Error("ORACULO_STRATEGIC_COHORT deve ser q3 ou q5");
+const EVALUATION_COHORT = REQUESTED_COHORT as "q3" | "q5";
+const COHORT_LABEL = EVALUATION_COHORT.toUpperCase();
+const COHORT_VERSION = EVALUATION_COHORT === "q5" ? "2026-07-17.q5-regression" : "2026-07-16.q3-baseline";
+const PROGRESS_PATH = resolve(PRIVATE_DIR, `strategic-${EVALUATION_COHORT}-progress.json`);
+const SUMMARY_PATH = resolve(PRIVATE_DIR, EVALUATION_COHORT === "q5" ? "strategic-q5-regression-summary.json" : "strategic-q3-baseline-summary.json");
+const DETERMINISTIC_PATH = resolve(PRIVATE_DIR, `strategic-${EVALUATION_COHORT}-deterministic-evidence.json`);
+const HUMAN_REVIEW_PATH = resolve(PRIVATE_DIR, `strategic-${EVALUATION_COHORT}-human-review.md`);
+const Q3_PROGRESS_PATH = resolve(PRIVATE_DIR, "strategic-q3-progress.json");
+const Q5_COMPARISON_PATH = resolve(PRIVATE_DIR, "strategic-q5-comparison.json");
+const Q5_HUMAN_KEY_PATH = resolve(PRIVATE_DIR, "strategic-q5-human-review-key.json");
 const RUBRIC_PATH = resolve("tests/evals/strategic-quality/rubric.json");
 const CATALOG_PATH = resolve("tests/evals/strategic-quality/cases/q2-catalog.json");
 const COVERAGE_PATH = resolve("tests/evals/strategic-quality/deliverable-coverage.json");
 const PLANNING_RESERVE_USD = 0.15;
 const JUDGE_RESERVE_USD = 0.1;
 
-interface Q3Progress {
+interface StrategicProgress {
   schemaVersion: 1;
   baselineVersion: string;
   startedAt: string;
   initialCumulativeCostUsd: number;
   runs: BaselineRunSummary[];
   calibrationRuns?: Array<BaselineRunSummary & { calibrationReason: string; archivedAt: string }>;
+  restarts?: Array<{
+    correctionReference: string;
+    archivedAt: string;
+    previousBaselineVersion: string;
+    previousStartedAt: string;
+    previousInitialCumulativeCostUsd: number;
+    archivedRunCount: number;
+    archivedDeterministicCount: number;
+  }>;
   deterministic: Array<{
     caseId: string;
     status: "pass" | "fail" | "pending-human";
@@ -84,36 +110,72 @@ interface SeededContext {
   monthlyObjectiveId: string | null;
 }
 
-const Q3_TO_Q2: Record<string, ReferencePhase> = {
-  Q3A: "Q2A",
-  Q3B: "Q2B",
-  Q3C: "Q2C",
-  Q3D: "Q2D",
-  Q3E: "Q2E",
+interface ExecuteCaseOptions {
+  runLabel?: string;
+  reportVersion?: string;
+  ledgerLabel?: string;
+}
+
+function derivedOutputEvidence(item: ReferenceCase, proposal: Record<string, any> | null, sessionId: string) {
+  if (!proposal || !item.rubrics.includes("RUBRIC-DERIVED-OUTPUT")) return null;
+  const content = buildPlanDocumentPreview(proposal, {
+    organizationName: "ORG_FIXTURE_A",
+    areaName: item.sessionType === "strategic" || item.sessionType === "strategic_review" ? null : "AREA_FIXTURE_A",
+    managerName: "PERSON_FIXTURE_A",
+    sessionId,
+    sessionType: item.sessionType,
+    period: expectedPeriod(item),
+  });
+  if (!content) return null;
+  const canonicalFingerprint = createHash("sha256").update(JSON.stringify(content)).digest("hex");
+  return {
+    evidenceType: "deterministic-pre-confirmation-projection",
+    canonicalDocument: content,
+    webProjection: { source: "canonicalDocument", canonicalFingerprint },
+    pdfProjection: { source: "canonicalDocument", renderer: "plan-pdf", canonicalFingerprint },
+    whatsappRender: renderPlanForWhatsApp(content, { version: 1, origin: "session" }),
+    auditProjection: (content as any).rastreabilidade ?? null,
+  };
+}
+
+const PHASE_SUFFIX_TO_REFERENCE: Record<string, ReferencePhase> = {
+  A: "Q2A",
+  B: "Q2B",
+  C: "Q2C",
+  D: "Q2D",
+  E: "Q2E",
 };
 
 function errorMessage(error: unknown) {
   return sanitizeEvaluationText(error instanceof Error ? error.message : String(error));
 }
 
-async function readProgress(initialCostUsd: number): Promise<Q3Progress> {
+async function readProgress(initialCostUsd: number, path = PROGRESS_PATH): Promise<StrategicProgress> {
   try {
-    const parsed = await readJson(PROGRESS_PATH) as Q3Progress;
+    const parsed = await readJson(path) as StrategicProgress;
     if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.runs) || !Array.isArray(parsed.deterministic)) {
-      throw new Error("progresso Q3 invalido");
+      throw new Error(`progresso ${COHORT_LABEL} invalido`);
     }
     return parsed;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return {
       schemaVersion: 1,
-      baselineVersion: "2026-07-16.q3-baseline",
+      baselineVersion: COHORT_VERSION,
       startedAt: new Date().toISOString(),
       initialCumulativeCostUsd: initialCostUsd,
       runs: [],
       deterministic: [],
     };
   }
+}
+
+async function readRequiredProgress(path: string, label: string): Promise<StrategicProgress> {
+  const parsed = await readJson(path) as StrategicProgress;
+  if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.runs) || !Array.isArray(parsed.deterministic)) {
+    throw new Error(`${label} invalido ou incompleto`);
+  }
+  return parsed;
 }
 
 async function loadCatalog() {
@@ -125,7 +187,7 @@ async function loadCatalog() {
   const rubric = await readJson(RUBRIC_PATH) as Record<string, any>;
   const coverage = await readJson(COVERAGE_PATH) as any;
   validateReferenceCaseCatalog({ manifest, blocks, rubric, coverage });
-  if (manifest.gateStatus !== "owner-approved") throw new Error("Q3 exige catalogo Q2 aprovado pelo owner");
+  if (manifest.gateStatus !== "owner-approved") throw new Error(`${COHORT_LABEL} exige catalogo Q2 aprovado pelo owner`);
   return { manifest, blocks, rubric };
 }
 
@@ -136,6 +198,8 @@ async function must<T>(operation: PromiseLike<{ data: T; error: any }>, label: s
 }
 
 function areaNameForCase(item: ReferenceCase) {
+  const explicitAreaName = item.input.areaName?.trim();
+  if (explicitAreaName) return explicitAreaName;
   const text = `${item.caseId} ${item.input.opening}`.toLowerCase();
   if (text.includes("equivalent-area") || text.includes("industrial") || text.includes("producao")) return "Producao";
   if (text.includes("marketing")) return "Marketing";
@@ -380,7 +444,7 @@ async function canonicalDocumentCount(handle: EvaluationOrg, sessionId: string) 
   return Number(result.count ?? 0);
 }
 
-async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" | "blocked") {
+async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" | "blocked", ledgerLabel = COHORT_LABEL) {
   const ledger = await readLedger();
   const totalCostUsd = run.generationCostUsd + run.judgeCostUsd;
   const next: CostLedger = {
@@ -388,7 +452,7 @@ async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" |
     cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCostUsd,
     runs: [...ledger.runs, {
       runId: run.reportPath.split("-").slice(-2).join("-").replace(/\.json$/, ""),
-      caseId: `${run.caseId}-R${run.round}`,
+      caseId: `${ledgerLabel}:${run.caseId}-R${run.round}`,
       totalCostUsd,
       completedAt: new Date().toISOString(),
       status: qualityStatus,
@@ -398,7 +462,13 @@ async function appendLedger(run: BaselineRunSummary, qualityStatus: "approved" |
   return { before: ledger.cumulativePlanCostUsd, after: next.cumulativePlanCostUsd };
 }
 
-async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: number, rubric: Record<string, any>): Promise<BaselineRunSummary> {
+export async function executeCase(
+  item: ReferenceCase,
+  phase: ReferencePhase,
+  round: number,
+  rubric: Record<string, any>,
+  options: ExecuteCaseOptions = {},
+): Promise<BaselineRunSummary> {
   assertEvaluationEnvironment(process.env);
   const config = runtimeConfiguration();
   const ledgerAtStart = await readLedger();
@@ -406,7 +476,9 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
   assertBudgetAllowsNextCall({ cumulativePlanCostUsd: ledgerAtStart.cumulativePlanCostUsd, currentCaseCostUsd: 0, reserveUsd: PLANNING_RESERVE_USD, policy });
 
   const id = runId();
-  const reportPath = resolve(PRIVATE_DIR, `strategic-q3-${phase.toLowerCase()}-${item.caseId.toLowerCase()}-r${round}-${id}.json`);
+  const runLabel = String(options.runLabel ?? EVALUATION_COHORT).toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!runLabel) throw new Error("rotulo da execucao estrategica invalido");
+  const reportPath = resolve(PRIVATE_DIR, `strategic-${runLabel}-${phase.toLowerCase()}-${item.caseId.toLowerCase()}-r${round}-${id}.json`);
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
   let handle: EvaluationOrg | null = null;
@@ -414,7 +486,15 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
   let transcript: TranscriptMessage[] = [];
   let proposal: Record<string, any> | null = null;
   let proposalSequence = Number.MAX_SAFE_INTEGER;
-  let generation = { promptTokens: 0, completionTokens: 0, totalTokens: 0, totalCostUsd: 0 };
+  let generation = {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    totalCostUsd: 0,
+    callCount: 0,
+    adaptiveAttemptCounts: {} as Record<string, number>,
+    adaptiveRepairReasonCounts: {} as Record<string, number>,
+  };
   let judge: { status: "completed" | "error"; result?: any; error?: string; usage?: any } = { status: "error", error: "judge nao executado" };
   let judgeCostUsd = 0;
   let sessionScopeMatches = false;
@@ -430,6 +510,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
   const shouldCreateProposal = proposalShouldExist(item);
 
   try {
+    // Preserve the synthetic organization identity used by Q3 so the model input remains comparable.
     handle = await createEvaluationOrg(`q3-${phase.toLowerCase()}-r${round}`);
     await configureDisposableAi(handle, config);
     await seedCaseContext(handle, item);
@@ -443,7 +524,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
       type: item.sessionType,
       period,
       channel: "web",
-    }, `strategic-q3-${id}-start`);
+    }, `strategic-${runLabel}-${id}-start`);
     sessionId = String(start.session?.id ?? "");
     if (!sessionId) throw new Error("oracle-session nao devolveu sessionId");
     sessionScopeMatches = start.session?.org_id === handle.orgId
@@ -466,7 +547,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
         sessionId,
         message: turn,
         channel: "web",
-      }, `strategic-q3-${id}-message-${transcript.length}`);
+      }, `strategic-${runLabel}-${id}-message-${transcript.length}`);
       transcript.push({ sequence: transcript.length + 1, role: "oracle", content: String(response.reply ?? "") });
       if (response.pendingProposal && typeof response.pendingProposal === "object") {
         proposal = response.pendingProposal as Record<string, any>;
@@ -491,8 +572,14 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
         provider: config.provider,
         model: config.judgeModel,
         evaluationCase: item,
+        sessionScope: {
+          type: item.sessionType,
+          period,
+          area: item.sessionType === "strategic" || item.sessionType === "strategic_review" ? null : handle.areaId,
+        },
         transcript,
         proposal: proposal ?? { status: "not-generated", reason: shouldCreateProposal ? "missing" : "blocking-gap-preserved" },
+        derivedOutputs: derivedOutputEvidence(item, proposal, sessionId),
         rubric: selectRubricForCase(rubric, item),
       });
       judge = { status: "completed", result: judged.result, usage: judged.usage };
@@ -506,7 +593,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     if (proposal && shouldCreateProposal) {
       const beforeConfirmHash = await businessSnapshotHash(handle);
       confirmationCallCount += 1;
-      await callFunction("oracle-session", token, { action: "confirm", sessionId, channel: "web" }, `strategic-q3-${id}-confirm`);
+      await callFunction("oracle-session", token, { action: "confirm", sessionId, channel: "web" }, `strategic-${runLabel}-${id}-confirm`);
       databaseChangedAfterConfirmation = beforeConfirmHash !== await businessSnapshotHash(handle);
       canonicalDocumentCreated = await canonicalDocumentCount(handle, sessionId) === 1;
     }
@@ -551,6 +638,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: checks,
   });
   const criticalFailureCandidates = qualityGate.criticalFailureCandidates;
   const summary: BaselineRunSummary = {
@@ -558,6 +646,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     caseId: item.caseId,
     round,
     status: executionError ? "execution-error" : "measured",
+    qualityStatus: qualityGate.status,
     rubricScores: qualityGate.rubricScores.map((entry) => ({ rubricId: entry.rubricId, score: entry.score })),
     criticalFailureCandidates,
     failedChecks: checks.filter((check) => check.status === "fail").map((check) => check.id),
@@ -569,7 +658,7 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
   };
   const report = {
     schemaVersion: 1,
-    reportVersion: "2026-07-16.q3-baseline",
+    reportVersion: options.reportVersion ?? COHORT_VERSION,
     catalogVersion: "2026-07-16.q2",
     phase,
     caseId: item.caseId,
@@ -580,6 +669,12 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     generator: { provider: config.provider, model: config.planningModel },
     judgeRuntime: { provider: config.provider, model: config.judgeModel, access: "provider-only-no-database" },
     expectedProposal: shouldCreateProposal,
+    evaluationParameters: {
+      syntheticManagerTurns: buildManagerTurns(item).length,
+      stopAtFirstProposal: true,
+      planningReserveUsd: PLANNING_RESERVE_USD,
+      judgeReserveUsd: JUDGE_RESERVE_USD,
+    },
     transcript,
     proposal,
     deterministicChecks: checks,
@@ -599,16 +694,22 @@ async function executeCase(item: ReferenceCase, phase: ReferencePhase, round: nu
     defectClasses: summary.defectClasses,
   };
   await writePrivateJson(reportPath, sanitizeEvaluationValue(report));
-  const ledgerMove = await appendLedger(summary, qualityGate.status);
+  const ledgerMove = await appendLedger(summary, qualityGate.status, options.ledgerLabel ?? COHORT_LABEL);
   console.log(`${item.caseId} R${round}: ${summary.status}; qualidade ${qualityGate.status}; US$ ${(generation.totalCostUsd + judgeCostUsd).toFixed(6)}; acumulado US$ ${ledgerMove.before.toFixed(6)} -> US$ ${ledgerMove.after.toFixed(6)}`);
-  if (!cleanupSucceeded) throw new Error(`${item.caseId}: cleanup descartavel falhou; Q3 interrompida`);
+  if (!cleanupSucceeded) throw new Error(`${item.caseId}: cleanup descartavel falhou; ${COHORT_LABEL} interrompida`);
   return summary;
 }
 
-async function runPhase(q3Phase: string) {
+async function runPhase(requestedPhase: string) {
   assertEvaluationEnvironment(process.env);
-  const phase = Q3_TO_Q2[q3Phase.toUpperCase()];
-  if (!phase || phase === "Q2E") throw new Error("Use Q3A, Q3B, Q3C ou Q3D para casos generativos");
+  const normalizedPhase = requestedPhase.toUpperCase();
+  if (!normalizedPhase.startsWith(COHORT_LABEL) || normalizedPhase.length !== 3) {
+    throw new Error(`Use ${COHORT_LABEL}A, ${COHORT_LABEL}B, ${COHORT_LABEL}C ou ${COHORT_LABEL}D para casos generativos`);
+  }
+  const releasePhaseLock = await acquireStrategicPhaseLock(PRIVATE_DIR, EVALUATION_COHORT, normalizedPhase);
+  try {
+  const phase = PHASE_SUFFIX_TO_REFERENCE[normalizedPhase.slice(-1)];
+  if (!phase || phase === "Q2E") throw new Error(`Use ${COHORT_LABEL}A, ${COHORT_LABEL}B, ${COHORT_LABEL}C ou ${COHORT_LABEL}D para casos generativos`);
   const { blocks, rubric } = await loadCatalog();
   const block = blocks.find((entry) => entry.phase === phase);
   if (!block) throw new Error(`bloco ${phase} ausente`);
@@ -625,12 +726,21 @@ async function runPhase(q3Phase: string) {
       const summary = await executeCase(item, phase, round, rubric);
       progress.runs.push(summary);
       await writePrivateJson(PROGRESS_PATH, progress);
-      if (summary.status === "execution-error") {
-        throw new Error(`${item.caseId} R${round}: erro tecnico registrado; fase interrompida antes da proxima chamada`);
+      const stopReason = phaseRunStopReason(summary);
+      if (stopReason) {
+        throw new Error(`${item.caseId} R${round}: ${stopReason}; fase interrompida antes da proxima chamada`);
       }
     }
   }
-  console.log(`${q3Phase.toUpperCase()} concluida: ${cases.length * 2} medicoes previstas; ${progress.runs.filter((run) => run.phase === phase).length} registradas.`);
+  const phaseRuns = progress.runs.filter((run) => run.phase === phase);
+  const generationCostUsd = phaseRuns.reduce((sum, run) => sum + run.generationCostUsd, 0);
+  const judgeCostUsd = phaseRuns.reduce((sum, run) => sum + run.judgeCostUsd, 0);
+  const finalLedger = await readLedger();
+  console.log(`${normalizedPhase} concluida: ${cases.length * 2} medicoes previstas; ${phaseRuns.length} registradas.`);
+  console.log(`Custo ${normalizedPhase}: geracao US$ ${generationCostUsd.toFixed(6)}; judge US$ ${judgeCostUsd.toFixed(6)}; total US$ ${(generationCostUsd + judgeCostUsd).toFixed(6)}; acumulado US$ ${finalLedger.cumulativePlanCostUsd.toFixed(6)}.`);
+  } finally {
+    await releasePhaseLock();
+  }
 }
 
 async function writeSummary() {
@@ -655,7 +765,8 @@ async function writeSummary() {
     generatedAt: new Date().toISOString(),
     initialCumulativeCostUsd: progress.initialCumulativeCostUsd,
     finalCumulativeCostUsd: ledger.cumulativePlanCostUsd,
-    q3IncrementalCostUsd: ledger.cumulativePlanCostUsd - progress.initialCumulativeCostUsd,
+    cohort: EVALUATION_COHORT,
+    incrementalCostUsd: ledger.cumulativePlanCostUsd - progress.initialCumulativeCostUsd,
     aggregate,
     deterministic: progress.deterministic,
     calibration: {
@@ -670,16 +781,19 @@ async function writeSummary() {
       ),
     },
     gate: {
-      status: "pending-owner-review",
-      reasons: ["revisao humana cega da amostra representativa ainda nao foi registrada"],
+      status: EVALUATION_COHORT === "q5" ? "pending-comparison-and-owner-review" : "pending-owner-review",
+      reasons: [EVALUATION_COHORT === "q5"
+        ? "comparacao automatica e revisao humana cega ainda nao foram registradas"
+        : "revisao humana cega da amostra representativa ainda nao foi registrada"],
     },
   };
   await writePrivateJson(SUMMARY_PATH, sanitizeEvaluationValue(summary));
-  console.log(`Resumo Q3: ${SUMMARY_PATH}`);
+  console.log(`Resumo ${COHORT_LABEL}: ${SUMMARY_PATH}`);
   console.log(`Medicoes generativas: ${aggregate.runCount}; custo incremental registrado: US$ ${(ledger.cumulativePlanCostUsd - progress.initialCumulativeCostUsd).toFixed(6)}`);
 }
 
 async function archiveCalibration() {
+  if (EVALUATION_COHORT !== "q3") throw new Error("archive-calibration e exclusivo da baseline Q3");
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   if (!progress.runs.length) throw new Error("nenhuma medicao oficial para arquivar como calibracao");
@@ -696,6 +810,7 @@ async function archiveCalibration() {
 }
 
 async function archiveExecutionErrors() {
+  if (EVALUATION_COHORT !== "q3") throw new Error("erros da Q5 exigem diagnostico e parada; nao podem ser arquivados automaticamente");
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   const failed = progress.runs.filter((run) => run.status === "execution-error");
@@ -709,6 +824,256 @@ async function archiveExecutionErrors() {
   progress.runs = progress.runs.filter((run) => run.status !== "execution-error");
   await writePrivateJson(PROGRESS_PATH, progress);
   console.log(`${failed.length} erro(s) tecnico(s) arquivado(s); as combinacoes podem ser repetidas sem apagar o custo.`);
+}
+
+async function restartQ5AfterCorrection(correctionReference: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("restart-after-correction e exclusivo da regressao Q5");
+  const normalizedReference = correctionReference.toUpperCase();
+  if (!(["Q4G", "Q4H", "Q4I", "Q4J", "Q4K", "Q4L", "Q4M"] as string[]).includes(normalizedReference)) {
+    throw new Error("reinicio Q5 exige uma referencia de correcao aprovada (Q4G, Q4H, Q4I, Q4J, Q4K, Q4L ou Q4M)");
+  }
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  if (!progress.runs.length) throw new Error("Q5 ja esta sem medicoes oficiais; reinicio recusado para evitar sobrescrita");
+  const archivedAt = new Date().toISOString();
+  if (["Q4I", "Q4J", "Q4K", "Q4L", "Q4M"].includes(normalizedReference)) {
+    const affectedRuns = progress.runs.filter((run) => run.phase === "Q2B");
+    if (!affectedRuns.length) throw new Error(`Q5B nao possui medicao para reiniciar apos ${normalizedReference}`);
+    const calibrationReason = `medicoes Q5B preservadas antes do reinicio trimestral apos aprovacao da correcao ${normalizedReference}`;
+    progress.calibrationRuns = [
+      ...(progress.calibrationRuns ?? []),
+      ...affectedRuns.map((run) => ({ ...run, calibrationReason, archivedAt })),
+    ];
+    progress.restarts = [
+      ...(progress.restarts ?? []),
+      {
+        correctionReference: normalizedReference,
+        archivedAt,
+        previousBaselineVersion: progress.baselineVersion,
+        previousStartedAt: progress.startedAt,
+        previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+        archivedRunCount: affectedRuns.length,
+        archivedDeterministicCount: 0,
+      },
+    ];
+    progress.runs = progress.runs.filter((run) => run.phase !== "Q2B");
+    progress.baselineVersion = normalizedReference === "Q4M"
+      ? "2026-07-17.q5-regression-r8"
+      : normalizedReference === "Q4L"
+      ? "2026-07-17.q5-regression-r7"
+      : normalizedReference === "Q4K"
+      ? "2026-07-17.q5-regression-r6"
+      : normalizedReference === "Q4J"
+        ? "2026-07-17.q5-regression-r5"
+        : "2026-07-17.q5-regression-r4";
+    await writePrivateJson(PROGRESS_PATH, progress);
+    console.log(`Q5B reiniciada apos ${normalizedReference}: ${affectedRuns.length} medicao(oes) trimestral(is) preservada(s); Q5A e matriz deterministica mantidas; custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
+    return;
+  }
+  const calibrationReason = `tentativas Q5A preservadas antes do reinicio completo apos aprovacao da correcao ${normalizedReference}`;
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: normalizedReference,
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: progress.runs.length,
+      archivedDeterministicCount: progress.deterministic.length,
+    },
+  ];
+  progress.runs = [];
+  progress.deterministic = [];
+  progress.baselineVersion = normalizedReference === "Q4H"
+    ? "2026-07-17.q5-regression-r3"
+    : "2026-07-17.q5-regression-r2";
+  progress.startedAt = archivedAt;
+  progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Q5 reiniciada apos ${normalizedReference}: ${progress.calibrationRuns.length} medicao(oes) preservada(s); custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}; matriz deterministica pendente.`);
+}
+
+async function resumeQ5AfterCorrection(correctionReference: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("resume-after-correction e exclusivo da regressao Q5");
+  const normalizedReference = correctionReference.toUpperCase();
+  if (!(["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH", "Q4AI", "Q4AJ", "Q4AK", "Q4AL", "Q4AM", "Q4AN"] as string[]).includes(normalizedReference)) {
+    throw new Error("retomada incremental Q5 exige uma correcao ou recheck aprovado (Q4N a Q4Y ou Q4AG a Q4AN)");
+  }
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  const targetPhase = ["Q4W", "Q4X", "Q4Y", "Q4AN"].includes(normalizedReference)
+    ? "Q2D"
+    : ["Q4U", "Q4V", "Q4AL", "Q4AM"].includes(normalizedReference)
+      ? "Q2C"
+      : "Q2B";
+  const targetLabel = targetPhase === "Q2D" ? "Q5D" : targetPhase === "Q2C" ? "Q5C" : "Q5B";
+  const failedRuns = progress.runs.filter((run) => run.phase === targetPhase && (
+    run.status === "execution-error" || run.qualityStatus === "blocked"
+  ));
+  if (!failedRuns.length) throw new Error(`${targetLabel} nao possui medicao bloqueada para retomar apos ${normalizedReference}`);
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = `medicao ${targetLabel} bloqueada preservada antes da retomada incremental apos aprovacao da correcao ${normalizedReference}`;
+  const archivedReportPaths = new Set((progress.calibrationRuns ?? []).map((run) => run.reportPath));
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...failedRuns
+      .filter((run) => !archivedReportPaths.has(run.reportPath))
+      .map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  if (!(progress.restarts ?? []).some((restart) => restart.correctionReference === normalizedReference)) {
+    progress.restarts = [
+      ...(progress.restarts ?? []),
+      {
+        correctionReference: normalizedReference,
+        archivedAt,
+        previousBaselineVersion: progress.baselineVersion,
+        previousStartedAt: progress.startedAt,
+        previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+        archivedRunCount: failedRuns.length,
+        archivedDeterministicCount: 0,
+      },
+    ];
+  }
+  const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath));
+  progress.runs = progress.runs.filter((run) => !failedReportPaths.has(run.reportPath));
+  progress.baselineVersion = normalizedReference === "Q4AN"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4an"
+    : normalizedReference === "Q4AM"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4am"
+    : normalizedReference === "Q4AL"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4al"
+    : normalizedReference === "Q4AK"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4ak"
+    : normalizedReference === "Q4AJ"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4aj"
+    : normalizedReference === "Q4AI"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4ai"
+    : normalizedReference === "Q4AH"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4ah"
+    : normalizedReference === "Q4AG"
+    ? "2026-07-18.q5-clean-regression-r22-incremental-q4ag"
+    : normalizedReference === "Q4Y"
+    ? "2026-07-18.q5-regression-r14-incremental-q4y"
+    : normalizedReference === "Q4X"
+    ? "2026-07-18.q5-regression-r13-incremental-q4x"
+    : normalizedReference === "Q4W"
+      ? "2026-07-18.q5-regression-r12-incremental-q4w"
+    : normalizedReference === "Q4V"
+      ? "2026-07-18.q5-regression-r11-incremental-q4v"
+    : normalizedReference === "Q4U"
+      ? "2026-07-18.q5-regression-r10-incremental-q4u"
+    : normalizedReference === "Q4T"
+      ? "2026-07-18.q5-regression-r9-incremental-q4t"
+      : normalizedReference === "Q4S"
+        ? "2026-07-18.q5-regression-r8-incremental-q4s"
+        : normalizedReference === "Q4R"
+          ? "2026-07-18.q5-regression-r8-incremental-q4r"
+          : normalizedReference === "Q4Q"
+            ? "2026-07-18.q5-regression-r8-incremental-q4q"
+            : normalizedReference === "Q4P"
+              ? "2026-07-18.q5-regression-r8-incremental-q4p"
+              : normalizedReference === "Q4O"
+                ? "2026-07-18.q5-regression-r8-incremental-q4o"
+                : "2026-07-17.q5-regression-r8-incremental-q4n";
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`${targetLabel} pronta para retomada incremental apos ${normalizedReference}: ${failedRuns.length} medicao(oes) bloqueada(s) arquivada(s); ${progress.runs.length} medicao(oes) aprovada(s) preservada(s); custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
+}
+
+async function startCleanQ5Regression() {
+  if (EVALUATION_COHORT !== "q5") throw new Error("start-clean-regression e exclusivo da regressao Q5");
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  const { blocks } = await loadCatalog();
+  const expectedRuns = blocks
+    .filter((block) => ["Q2A", "Q2B", "Q2C", "Q2D"].includes(block.phase))
+    .flatMap((block) => block.cases.filter(isGenerativeCase))
+    .length * 2;
+  const uniqueRuns = new Set(progress.runs.map(baselineRunKey));
+  const blockedRuns = progress.runs.filter((run) => phaseRunStopReason(run));
+  if (progress.runs.length !== expectedRuns || uniqueRuns.size !== expectedRuns || blockedRuns.length) {
+    throw new Error(`regressao limpa exige ${expectedRuns} medicoes completas, unicas e sem bloqueio; atual: ${progress.runs.length}, unicas: ${uniqueRuns.size}, bloqueadas: ${blockedRuns.length}`);
+  }
+
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = "rodada incremental Q5 integralmente aprovada antes da regressao geral limpa";
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: "Q5-CLEAN-REGRESSION",
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: progress.runs.length,
+      archivedDeterministicCount: progress.deterministic.length,
+    },
+  ];
+  const previousRunCostUsd = progress.runs.reduce((sum, run) => sum + run.generationCostUsd + run.judgeCostUsd, 0);
+  progress.runs = [];
+  progress.deterministic = [];
+  progress.baselineVersion = "2026-07-18.q5-clean-regression-r15";
+  progress.startedAt = archivedAt;
+  progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Regressao geral limpa aberta: ${expectedRuns} medicoes anteriores preservadas; matriz deterministica zerada; custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}; referencia de custo US$ ${previousRunCostUsd.toFixed(6)}.`);
+}
+
+async function restartCleanQ5AfterCorrection(correctionReference: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("restart-clean-after-correction e exclusivo da regressao Q5");
+  const normalizedReference = correctionReference.toUpperCase();
+  const cleanBaselineByCorrection: Record<string, string> = {
+    Q4Z: "2026-07-18.q5-clean-regression-r16-q4z",
+    Q4AA: "2026-07-18.q5-clean-regression-r17-q4aa",
+    Q4AB: "2026-07-18.q5-clean-regression-r18-q4ab",
+    Q4AC: "2026-07-18.q5-clean-regression-r19-q4ac",
+    Q4AD: "2026-07-18.q5-clean-regression-r20-q4ad",
+    Q4AE: "2026-07-18.q5-clean-regression-r21-q4ae",
+    Q4AF: "2026-07-18.q5-clean-regression-r22-q4af",
+    Q4AO: "2026-07-18.q5-clean-regression-r23-q4ao",
+    Q4AP: "2026-07-18.q5-clean-regression-r24-q4ap",
+  };
+  const nextBaseline = cleanBaselineByCorrection[normalizedReference];
+  if (!nextBaseline) throw new Error("a retomada limpa atual exige a correcao Q4Z, Q4AA, Q4AB, Q4AC, Q4AD, Q4AE, Q4AF, Q4AO ou Q4AP aprovada");
+  const ledger = await readLedger();
+  const progress = await readProgress(ledger.cumulativePlanCostUsd);
+  if (!progress.baselineVersion.includes("q5-clean-regression")) throw new Error("nao existe regressao geral limpa ativa para reiniciar");
+  const failedRuns = progress.runs.filter((run) => phaseRunStopReason(run));
+  if (!progress.runs.length || !failedRuns.length) throw new Error("a regressao limpa nao possui medicao bloqueada para arquivar");
+  const archivedAt = new Date().toISOString();
+  const calibrationReason = `tentativa de regressao geral limpa interrompida antes da correcao ${normalizedReference}`;
+  progress.calibrationRuns = [
+    ...(progress.calibrationRuns ?? []),
+    ...progress.runs.map((run) => ({ ...run, calibrationReason, archivedAt })),
+  ];
+  progress.restarts = [
+    ...(progress.restarts ?? []),
+    {
+      correctionReference: normalizedReference,
+      archivedAt,
+      previousBaselineVersion: progress.baselineVersion,
+      previousStartedAt: progress.startedAt,
+      previousInitialCumulativeCostUsd: progress.initialCumulativeCostUsd,
+      archivedRunCount: progress.runs.length,
+      archivedDeterministicCount: progress.deterministic.length,
+    },
+  ];
+  const archivedRunCount = progress.runs.length;
+  progress.runs = [];
+  progress.deterministic = [];
+  progress.baselineVersion = nextBaseline;
+  progress.startedAt = archivedAt;
+  progress.initialCumulativeCostUsd = ledger.cumulativePlanCostUsd;
+  await writePrivateJson(PROGRESS_PATH, progress);
+  console.log(`Regressao geral limpa reiniciada apos ${normalizedReference}: ${archivedRunCount} medicoes da tentativa interrompida preservadas; grade ativa zerada; custo inicial US$ ${progress.initialCumulativeCostUsd.toFixed(6)}.`);
 }
 
 async function cleanupStaleFixtures() {
@@ -728,7 +1093,7 @@ async function cleanupStaleFixtures() {
       if (deleted.error) throw deleted.error;
     }
   }
-  console.log(`${stale.data?.length ?? 0} fixture(s) Q3 removida(s) do staging; nenhuma outra organizacao foi consultada para exclusao.`);
+  console.log(`${stale.data?.length ?? 0} fixture(s) de avaliacao removida(s) do staging; nenhuma outra organizacao foi consultada para exclusao.`);
 }
 
 async function runCommand(label: string, args: string[]) {
@@ -808,7 +1173,7 @@ async function runDeterministicBaseline() {
     const command = byLabel.get(label);
     return `${label}: ${command?.passed ? "pass" : "fail"} (${command?.durationMs ?? 0} ms)`;
   };
-  const deterministic: Q3Progress["deterministic"] = [
+  const deterministic: StrategicProgress["deterministic"] = [
     {
       caseId: "Q2D-QUICK-UPDATE-AMBIGUOUS-004",
       status: passed("staging-integration") ? "pass" : "fail",
@@ -859,8 +1224,9 @@ async function runDeterministicBaseline() {
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   progress.deterministic = deterministic;
   await writePrivateJson(PROGRESS_PATH, progress);
-  await writePrivateJson(resolve(PRIVATE_DIR, "strategic-q3-deterministic-evidence.json"), sanitizeEvaluationValue({
+  await writePrivateJson(DETERMINISTIC_PATH, sanitizeEvaluationValue({
     schemaVersion: 1,
+    cohort: EVALUATION_COHORT,
     generatedAt: new Date().toISOString(),
     commands,
     sourceContracts: { pulseContracts, canonicalContracts, uxContracts },
@@ -876,56 +1242,234 @@ async function writeHumanReviewPacket() {
   const ledger = await readLedger();
   const progress = await readProgress(ledger.cumulativePlanCostUsd);
   const targets = [
-    ["Q2A-ANNUAL-EXPERIENCED-OWNER-005", 2],
-    ["Q2B-QUARTERLY-EXPERIENCED-MANAGER-008", 2],
-    ["Q2C-MONTHLY-EXPERIENCED-MANAGER-004", 2],
-    ["Q2D-MONTH-CLOSE-PARTIAL-001", 1],
-    ["Q2D-STRATEGIC-REVIEW-BOUNDARY-003", 1],
+    ["Q2A-ANNUAL-EXPERIENCED-OWNER-005", 2, "planejamento anual"],
+    ["Q2B-QUARTERLY-EXPERIENCED-MANAGER-008", 2, "planejamento trimestral"],
+    ["Q2C-MONTHLY-EXPERIENCED-MANAGER-004", 2, "planejamento mensal"],
+    ["Q2D-MONTH-CLOSE-PARTIAL-001", 1, "fechamento mensal"],
+    ["Q2D-STRATEGIC-REVIEW-BOUNDARY-003", 1, "revisao estrategica"],
   ] as const;
   const sections: string[] = [
-    "# Revisao humana cega - baseline Q3",
+    EVALUATION_COHORT === "q5" ? "# Revisao humana cega A/B - regressao Q5" : "# Revisao humana cega - baseline Q3",
     "",
-    "Este pacote contem somente casos sinteticos. As notas do judge, falhas detectadas e status foram omitidos para nao influenciar a avaliacao.",
+    "Este pacote contem somente casos sinteticos. Versoes, notas do judge, falhas detectadas e status foram omitidos para nao influenciar a avaliacao.",
     "",
     "Para cada amostra, avalie de 0 a 4: naturalidade da conducao, fidelidade aos fatos, objetividade, qualidade da entrega e confianca para uso por um gestor.",
     "Registre tambem qualquer invencao, troca de area/periodo/nivel, repeticao desnecessaria ou confirmacao duplicada.",
   ];
-  for (const [caseId, round] of targets) {
-    const run = progress.runs.find((item) => item.caseId === caseId && item.round === round);
-    if (!run) throw new Error(`amostra humana ausente: ${caseId} R${round}`);
-    const report = await readJson(run.reportPath) as Record<string, any>;
-    sections.push(
-      "",
-      `## Amostra ${caseId} - rodada ${round}`,
-      "",
-      "### Conversa",
-      "",
-      ...(Array.isArray(report.transcript) ? report.transcript.map((message: any) =>
-        `**${message.role === "oracle" ? "Oraculo" : "Gestor"}:** ${String(message.content ?? "").replace(/\n/g, "  \n")}`
-      ) : ["Transcricao indisponivel."]),
-      "",
-      "### Proposta final",
-      "",
-      "```json",
-      JSON.stringify(sanitizeEvaluationValue(report.proposal), null, 2),
-      "```",
-      "",
-      "### Avaliacao do owner",
-      "",
-      "- Naturalidade (0-4):",
-      "- Fidelidade (0-4):",
-      "- Objetividade (0-4):",
-      "- Qualidade da entrega (0-4):",
-      "- Confianca para uso (0-4):",
-      "- Falha critica observada:",
-      "- Comentario:",
-    );
+  const renderVersion = (label: string, report: Record<string, any>) => [
+    "",
+    `### Versao ${label}`,
+    "",
+    "#### Conversa",
+    "",
+    ...(Array.isArray(report.transcript) ? report.transcript.map((message: any) =>
+      `**${message.role === "oracle" ? "Oraculo" : "Gestor"}:** ${String(message.content ?? "").replace(/\n/g, "  \n")}`
+    ) : ["Transcricao indisponivel."]),
+    "",
+    "#### Proposta final",
+    "",
+    "```json",
+    JSON.stringify(sanitizeEvaluationValue(report.proposal), null, 2),
+    "```",
+  ];
+  const reviewFields = (label: string) => [
+    "",
+    `### Avaliacao da versao ${label}`,
+    "",
+    "- Naturalidade (0-4):",
+    "- Fidelidade (0-4):",
+    "- Objetividade (0-4):",
+    "- Qualidade da entrega (0-4):",
+    "- Confianca para uso (0-4):",
+    "- Falha critica observada:",
+    "- Comentario:",
+  ];
+
+  if (EVALUATION_COHORT === "q5") {
+    const baseline = await readRequiredProgress(Q3_PROGRESS_PATH, "baseline Q3");
+    const key: Array<{ sample: number; caseId: string; round: number; versionA: "q3" | "q5"; versionB: "q3" | "q5" }> = [];
+    for (const [index, [caseId, round, scenario]] of targets.entries()) {
+      const q3Run = baseline.runs.find((item) => item.caseId === caseId && item.round === round);
+      const q5Run = progress.runs.find((item) => item.caseId === caseId && item.round === round);
+      if (!q3Run || !q5Run) throw new Error(`par humano ausente: ${caseId} R${round}`);
+      const q3Report = await readJson(q3Run.reportPath) as Record<string, any>;
+      const q5Report = await readJson(q5Run.reportPath) as Record<string, any>;
+      const q5First = index % 2 === 1;
+      const reportA = q5First ? q5Report : q3Report;
+      const reportB = q5First ? q3Report : q5Report;
+      key.push({ sample: index + 1, caseId, round, versionA: q5First ? "q5" : "q3", versionB: q5First ? "q3" : "q5" });
+      sections.push(
+        "",
+        `## Amostra ${index + 1} - ${scenario}`,
+        ...renderVersion("A", reportA),
+        ...reviewFields("A"),
+        ...renderVersion("B", reportB),
+        ...reviewFields("B"),
+        "",
+        "### Preferencia",
+        "",
+        "- Melhor versao (A/B/empate):",
+        "- Motivo principal:",
+      );
+    }
+    await writePrivateJson(Q5_HUMAN_KEY_PATH, sanitizeEvaluationValue({ schemaVersion: 1, generatedAt: new Date().toISOString(), key }));
+  } else {
+    for (const [caseId, round, scenario] of targets) {
+      const run = progress.runs.find((item) => item.caseId === caseId && item.round === round);
+      if (!run) throw new Error(`amostra humana ausente: ${caseId} R${round}`);
+      const report = await readJson(run.reportPath) as Record<string, any>;
+      sections.push("", `## Amostra - ${scenario}`, ...renderVersion("unica", report), ...reviewFields("unica"));
+    }
   }
-  const path = resolve(PRIVATE_DIR, "strategic-q3-human-review.md");
+  const path = HUMAN_REVIEW_PATH;
   await mkdir(PRIVATE_DIR, { recursive: true });
   await writeFile(path, `${sections.join("\n")}\n`, { encoding: "utf8", mode: 0o600 });
   await chmod(path, 0o600);
   console.log(`Pacote privado de revisao humana: ${path}`);
+}
+
+async function readRunEvidence(progress: StrategicProgress, casesById: Map<string, ReferenceCase>) {
+  const managerTurns: Record<string, number> = {};
+  const inputMismatches: string[] = [];
+  const cleanupFailures: string[] = [];
+  const runtimeByRun: Record<string, string> = {};
+  const catalogVersions = new Set<string>();
+  for (const run of progress.runs) {
+    const key = baselineRunKey(run);
+    const item = casesById.get(run.caseId);
+    if (!item) {
+      inputMismatches.push(`${key}:caso-ausente`);
+      continue;
+    }
+    const report = await readJson(run.reportPath) as Record<string, any>;
+    const transcript = Array.isArray(report.transcript) ? report.transcript : [];
+    const actualManagerTurns = transcript
+      .filter((message: any) => message.role === "manager")
+      .map((message: any) => String(message.content ?? ""));
+    const expectedManagerTurns = buildManagerTurns(item);
+    managerTurns[key] = actualManagerTurns.length;
+    if (actualManagerTurns.length > expectedManagerTurns.length
+      || actualManagerTurns.some((turn: string, index: number) => turn !== expectedManagerTurns[index])) {
+      inputMismatches.push(key);
+    }
+    if (!report.cleanup?.disposableOrganizationRemoved || !report.cleanup?.providerKeyRemovedWithOrganization) {
+      cleanupFailures.push(key);
+    }
+    runtimeByRun[key] = JSON.stringify({
+      generator: report.generator ?? null,
+      judge: report.judgeRuntime ? {
+        provider: report.judgeRuntime.provider,
+        model: report.judgeRuntime.model,
+        access: report.judgeRuntime.access,
+      } : null,
+    });
+    catalogVersions.add(String(report.catalogVersion ?? "missing"));
+  }
+  return { managerTurns, inputMismatches, cleanupFailures, runtimeByRun, catalogVersions: [...catalogVersions].sort() };
+}
+
+async function compareQ5Regression() {
+  if (EVALUATION_COHORT !== "q5") throw new Error("compare e exclusivo da regressao Q5");
+  assertEvaluationEnvironment(process.env);
+  const { manifest, blocks, rubric } = await loadCatalog();
+  const ledger = await readLedger();
+  const baseline = await readRequiredProgress(Q3_PROGRESS_PATH, "baseline Q3");
+  const current = await readRequiredProgress(PROGRESS_PATH, "regressao Q5");
+  const allCases = blocks.flatMap((block) => block.cases);
+  const generativeCases = allCases.filter(isGenerativeCase);
+  const deterministicCases = allCases.filter((item) => !isGenerativeCase(item));
+  const casesById = new Map(allCases.map((item) => [item.caseId, item]));
+  const expectedRunKeys = generativeCases.flatMap((item) => [1, 2].map((round) => `${item.caseId}:R${round}`));
+  const baselineEvidence = await readRunEvidence(baseline, casesById);
+  const currentEvidence = await readRunEvidence(current, casesById);
+  // The historical Q3 reports are immutable evidence. Catalog refinements made
+  // after Q3 must be disclosed, but cannot retroactively invalidate that run.
+  // The active Q5 cohort still has to match the current approved catalog.
+  const historicalBaselineCatalogDrift = baselineEvidence.inputMismatches
+    .map((item) => `Q3:${item}`);
+  const runtimeMismatches = expectedRunKeys.filter((key) =>
+    !baselineEvidence.runtimeByRun[key]
+      || !currentEvidence.runtimeByRun[key]
+      || baselineEvidence.runtimeByRun[key] !== currentEvidence.runtimeByRun[key]
+  );
+  if (baselineEvidence.catalogVersions.length !== 1 || baselineEvidence.catalogVersions[0] !== manifest.catalogVersion) {
+    runtimeMismatches.push("Q3:catalog-version");
+  }
+  if (currentEvidence.catalogVersions.length !== 1 || currentEvidence.catalogVersions[0] !== manifest.catalogVersion) {
+    runtimeMismatches.push("Q5:catalog-version");
+  }
+
+  const currentRunKeys = new Set(current.runs.filter((run) => run.status === "measured").map(baselineRunKey));
+  const deterministicById = new Map(current.deterministic.map((item) => [item.caseId, item.status]));
+  const coveredDeliveryIds = [...new Set(allCases.flatMap((item) => {
+    if (isGenerativeCase(item)) {
+      return [1, 2].every((round) => currentRunKeys.has(`${item.caseId}:R${round}`)) ? [item.deliveryId] : [];
+    }
+    const status = deterministicById.get(item.caseId);
+    return status && status !== "fail" ? [item.deliveryId] : [];
+  }))].sort();
+  const expectedDeliveryIds = [...new Set(allCases.map((item) => item.deliveryId))].sort();
+  const comparison = compareStrategicRegression({
+    baselineRuns: baseline.runs,
+    currentRuns: current.runs,
+    baselineManagerTurns: baselineEvidence.managerTurns,
+    currentManagerTurns: currentEvidence.managerTurns,
+    expectedRunKeys,
+    deterministic: current.deterministic,
+    expectedDeterministicCaseIds: deterministicCases.map((item) => item.caseId),
+    coveredDeliveryIds,
+    expectedDeliveryIds,
+    cleanupFailures: currentEvidence.cleanupFailures,
+    inputMismatches: currentEvidence.inputMismatches.map((item) => `Q5:${item}`),
+    runtimeMismatches,
+    cumulativeCostUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, rubric.costPolicy),
+    authorizedLimitUsd: Number(rubric.costPolicy.authorizedLimitUsd),
+    minimumPerRubric: Number(rubric.thresholds.minimumPerRubric),
+    minimumJointAverage: Number(rubric.thresholds.minimumJointAverage),
+    maximumRubricRegression: 5,
+    maximumMedianTurnIncreaseRatio: 0.25,
+  });
+  const result = sanitizeEvaluationValue({
+    schemaVersion: 1,
+    comparisonVersion: "2026-07-17.q5",
+    generatedAt: new Date().toISOString(),
+    environment: "staging",
+    catalogVersion: manifest.catalogVersion,
+    modelsMatchQ3: runtimeMismatches.length === 0,
+    exactSyntheticInputs: baselineEvidence.inputMismatches.length === 0 && currentEvidence.inputMismatches.length === 0,
+    currentSyntheticInputsMatchCatalog: currentEvidence.inputMismatches.length === 0,
+    historicalBaselineCatalogDrift,
+    comparisonLimitations: historicalBaselineCatalogDrift.length
+      ? [
+        `${historicalBaselineCatalogDrift.length} rodada(s) da Q3 preservam a entrada historica anterior a refinamentos do catalogo; a Q5 foi validada integralmente contra o catalogo atual.`,
+      ]
+      : [],
+    expectedRunCount: expectedRunKeys.length,
+    expectedDeterministicCount: deterministicCases.length,
+    expectedDeliveryCount: expectedDeliveryIds.length,
+    coveredDeliveryIds,
+    cumulativeCostUsd: ledger.cumulativePlanCostUsd,
+    automaticGate: comparison,
+    humanReview: { status: "pending-owner-blind-review", packetPath: HUMAN_REVIEW_PATH },
+  });
+  await writePrivateJson(Q5_COMPARISON_PATH, result);
+  try {
+    const summary = await readJson(SUMMARY_PATH) as Record<string, any>;
+    summary.comparison = {
+      status: comparison.status,
+      reportPath: Q5_COMPARISON_PATH,
+      reasons: comparison.reasons,
+    };
+    summary.gate = comparison.status === "approved-automatic"
+      ? { status: "pending-owner-review", reasons: ["revisao humana cega A/B ainda nao foi registrada"] }
+      : { status: "blocked", reasons: comparison.reasons };
+    await writePrivateJson(SUMMARY_PATH, sanitizeEvaluationValue(summary));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  console.log(`Comparacao Q5: ${comparison.status}; media conjunta ${comparison.current.jointAverage ?? "n/a"}; turnos ${comparison.managerTurns.baselineMedian} -> ${comparison.managerTurns.currentMedian}.`);
+  console.log(`Cobertura: ${coveredDeliveryIds.length}/${expectedDeliveryIds.length} entregas; custo acumulado US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}.`);
+  if (comparison.status === "blocked") throw new Error(`gate automatico Q5 bloqueado: ${comparison.reasons.join("; ")}`);
 }
 
 async function repairExecutionChecks() {
@@ -965,6 +1509,98 @@ async function repairExecutionChecks() {
   console.log(`${repaired} relatorio(s) de erro tecnico reclassificado(s) sem alterar custo, transcricao ou resposta.`);
 }
 
+async function rejudgeReportWithCanonicalScope(reportPathValue: string) {
+  if (EVALUATION_COHORT !== "q5") throw new Error("rejudge-report e exclusivo da regressao Q5");
+  assertEvaluationEnvironment(process.env);
+  const reportPath = resolve(reportPathValue);
+  if (!reportPath.startsWith(`${PRIVATE_DIR}/strategic-q5-q2`) || !reportPath.endsWith(".json")) {
+    throw new Error("rejudge-report aceita somente relatorio generativo Q5 privado");
+  }
+  const report = await readJson(reportPath) as Record<string, any>;
+  if (!report.cleanup?.disposableOrganizationRemoved) throw new Error("rejudge recusado: cleanup anterior incompleto");
+  if (!Array.isArray(report.transcript) || !report.proposal || typeof report.proposal !== "object") {
+    throw new Error("rejudge recusado: relatorio sem transcricao ou proposta reutilizavel");
+  }
+  const { blocks, rubric } = await loadCatalog();
+  const item = blocks.flatMap((block) => block.cases).find((candidate) => candidate.caseId === report.caseId);
+  if (!item) throw new Error("rejudge recusado: caso fora do catalogo aprovado");
+  const applicableRubric = selectRubricForCase(rubric, item);
+  const config = runtimeConfiguration();
+  const ledger = await readLedger();
+  assertBudgetAllowsNextCall({
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
+    currentCaseCostUsd: 0,
+    reserveUsd: JUDGE_RESERVE_USD,
+    policy: rubric.costPolicy,
+  });
+
+  const period = expectedPeriod(item);
+  const judged = await runJudge({
+    apiKey: config.apiKey,
+    provider: config.provider,
+    model: config.judgeModel,
+    evaluationCase: item,
+    sessionScope: { type: item.sessionType, period, area: item.sessionType === "strategic" ? null : "synthetic-area" },
+    transcript: report.transcript as TranscriptMessage[],
+    proposal: report.proposal as Record<string, unknown>,
+    rubric: applicableRubric,
+  });
+  const newJudgeCostUsd = usageCostUsd(judged.usage, config.judgePricing);
+  const qualityGate = buildStrategicQualityGate({
+    technicalGateStatus: report.technicalStatus === "approved" ? "approved" : "blocked",
+    judgeStatus: "completed",
+    judgeResult: judged.result,
+    applicableRubric,
+    minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
+    minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: Array.isArray(report.deterministicChecks) ? report.deterministicChecks : [],
+  });
+  const completedAt = new Date().toISOString();
+  report.judgeHistory = [
+    ...(Array.isArray(report.judgeHistory) ? report.judgeHistory : []),
+    {
+      archivedAt: completedAt,
+      reason: "reavaliacao com periodo e tipo canonicos da sessao explicitos",
+      judge: report.judge,
+      qualityGate: report.qualityGate,
+    },
+  ];
+  report.sessionScope = { type: item.sessionType, period, area: item.sessionType === "strategic" ? null : "synthetic-area" };
+  report.judge = { status: "completed", result: judged.result, usage: judged.usage };
+  report.qualityGate = qualityGate;
+  report.cost = {
+    ...(report.cost && typeof report.cost === "object" ? report.cost : {}),
+    judgeCostUsd: Number(report.cost?.judgeCostUsd ?? 0) + newJudgeCostUsd,
+    totalCostUsd: Number(report.cost?.totalCostUsd ?? 0) + newJudgeCostUsd,
+    lastJudgeExecution: { completedAt, judgeCostUsd: newJudgeCostUsd, reason: "canonical-session-scope" },
+  };
+
+  const progress = await readRequiredProgress(PROGRESS_PATH, "regressao Q5");
+  const run = progress.runs.find((candidate) => candidate.reportPath === reportPath);
+  if (!run) throw new Error("rejudge recusado: relatorio nao pertence ao progresso Q5 atual");
+  run.qualityStatus = qualityGate.status;
+  run.rubricScores = qualityGate.rubricScores.map((entry) => ({ rubricId: entry.rubricId, score: entry.score }));
+  run.criticalFailureCandidates = qualityGate.criticalFailureCandidates;
+  run.judgeCostUsd += newJudgeCostUsd;
+  run.defectClasses = qualityGate.status === "approved" ? [] : run.defectClasses;
+
+  const nextLedger: CostLedger = {
+    schemaVersion: 1,
+    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + newJudgeCostUsd,
+    runs: [...ledger.runs, {
+      runId: runId(),
+      caseId: `Q5-REJUDGE:${item.caseId}-R${run.round}`,
+      totalCostUsd: newJudgeCostUsd,
+      completedAt,
+      status: qualityGate.status,
+    }],
+  };
+  await writePrivateJson(reportPath, sanitizeEvaluationValue(report));
+  await writePrivateJson(PROGRESS_PATH, progress);
+  await writePrivateJson(LEDGER_PATH, nextLedger);
+  console.log(`Rejudge ${item.caseId} R${run.round}: ${qualityGate.status}; custo US$ ${newJudgeCostUsd.toFixed(6)}; acumulado US$ ${nextLedger.cumulativePlanCostUsd.toFixed(6)}.`);
+}
+
 async function preflight() {
   assertEvaluationEnvironment(process.env);
   const { manifest, blocks, rubric } = await loadCatalog();
@@ -982,10 +1618,24 @@ async function preflight() {
   const stale = await staging.from("organizations").select("id,name").like("name", "EVAL Oraculo %");
   if (stale.error) throw stale.error;
   if ((stale.data ?? []).length) throw new Error(`preflight encontrou ${(stale.data ?? []).length} organizacao(oes) descartavel(is) sem cleanup`);
+  if (EVALUATION_COHORT === "q5") {
+    const baseline = await readRequiredProgress(Q3_PROGRESS_PATH, "baseline Q3");
+    const baselineKeys = new Set(baseline.runs.map(baselineRunKey));
+    if (baseline.runs.length !== 40 || baselineKeys.size !== 40) {
+      throw new Error("Q5 exige baseline Q3 completa com 40 rodadas unicas");
+    }
+    const baselineReport = await readJson(baseline.runs[0].reportPath) as Record<string, any>;
+    const generatorMatches = baselineReport.generator?.provider === config.provider
+      && baselineReport.generator?.model === config.planningModel;
+    const judgeMatches = baselineReport.judgeRuntime?.provider === config.provider
+      && baselineReport.judgeRuntime?.model === config.judgeModel;
+    if (!generatorMatches || !judgeMatches) throw new Error("modelos configurados para Q5 divergem dos modelos registrados na Q3");
+    console.log("Baseline Q3 completa: 40 rodadas, incluindo falhas observadas; modelos da regressao conferem com a referencia.");
+  }
   console.log(`Catalogo ${manifest.catalogVersion}: ${blocks.reduce((sum, block) => sum + block.cases.length, 0)} casos; gate owner-approved.`);
   console.log(`Staging acessivel; nenhuma organizacao de avaliacao pendente.`);
   console.log(`Gerador ${config.provider}/${config.planningModel}; judge ${config.provider}/${config.judgeModel}; chave descartavel presente e nao exibida.`);
-  console.log(`Custo acumulado atual: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}; limite US$ ${Number(rubric.costPolicy.authorizedLimitUsd).toFixed(2)}.`);
+  console.log(`Custo acumulado historico: US$ ${ledger.cumulativePlanCostUsd.toFixed(6)}; consumo do ciclo atual: US$ ${budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, rubric.costPolicy).toFixed(6)} de US$ ${Number(rubric.costPolicy.authorizedLimitUsd).toFixed(2)}.`);
 }
 
 export async function main(args = process.argv.slice(2)) {
@@ -994,14 +1644,20 @@ export async function main(args = process.argv.slice(2)) {
   if (command === "preflight") await preflight();
   else if (command === "archive-calibration") await archiveCalibration();
   else if (command === "archive-errors") await archiveExecutionErrors();
+  else if (command === "restart-after-correction" && value) await restartQ5AfterCorrection(value);
+  else if (command === "resume-after-correction" && value) await resumeQ5AfterCorrection(value);
+  else if (command === "start-clean-regression") await startCleanQ5Regression();
+  else if (command === "restart-clean-after-correction" && value) await restartCleanQ5AfterCorrection(value);
   else if (command === "cleanup-stale") await cleanupStaleFixtures();
   else if (command === "deterministic") await runDeterministicBaseline();
   else if (command === "human-packet") await writeHumanReviewPacket();
   else if (command === "repair-execution-checks") await repairExecutionChecks();
+  else if (command === "rejudge-report" && value) await rejudgeReportWithCanonicalScope(value);
   else if (command === "phase" && value) await runPhase(value);
   else if (command === "summary") await writeSummary();
+  else if (command === "compare") await compareQ5Regression();
   else {
-    console.error("Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | cleanup-stale | deterministic | human-packet | repair-execution-checks | phase Q3A|Q3B|Q3C|Q3D | summary");
+    console.error(`Uso: strategic-baseline.ts preflight | archive-calibration | archive-errors | restart-after-correction Q4G|Q4H|Q4I|Q4J|Q4K|Q4L|Q4M | resume-after-correction Q4N|Q4O|Q4P|Q4Q|Q4R|Q4S|Q4T|Q4U|Q4V|Q4W|Q4X|Q4Y|Q4AG|Q4AH|Q4AI|Q4AJ|Q4AK|Q4AL|Q4AM|Q4AN | start-clean-regression | restart-clean-after-correction Q4Z|Q4AA|Q4AB|Q4AC|Q4AD|Q4AE|Q4AF|Q4AO|Q4AP | cleanup-stale | deterministic | human-packet | repair-execution-checks | rejudge-report <arquivo> | phase ${COHORT_LABEL}A|${COHORT_LABEL}B|${COHORT_LABEL}C|${COHORT_LABEL}D | summary | compare`);
     process.exitCode = 2;
   }
 }

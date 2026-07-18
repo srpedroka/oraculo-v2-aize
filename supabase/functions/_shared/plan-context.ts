@@ -1,3 +1,4 @@
+import { quarterPeriodForMonth } from "./periods.ts";
 import { formatUntrustedDocument } from "./untrusted-content.ts";
 
 type Client = any;
@@ -76,6 +77,27 @@ function currentPeriods(date = new Date()) {
   };
 }
 
+export function planContextPeriods(
+  focus: PlanContextFocus,
+  requestedPeriod: string | null | undefined,
+  date = new Date(),
+) {
+  const periods = currentPeriods(date);
+  const periodInFocus = String(requestedPeriod ?? "").trim();
+  const explicitQuarter = Boolean(periodInFocus && /^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus));
+  const quarterInFocus = explicitQuarter
+    ? periodInFocus.replace(/^Q/i, "T")
+    : focus === "monthly" && periodInFocus
+    ? quarterPeriodForMonth(periodInFocus, date)
+    : periods.quarterDisplay;
+
+  return {
+    quarterLabels: [quarterInFocus, quarterInFocus.replace(/^T/i, "Q")],
+    quarterDisplay: quarterInFocus,
+    monthDisplay: periodInFocus && !explicitQuarter ? periodInFocus : periods.month,
+  };
+}
+
 function periodMatches(value: unknown, accepted: string[]) {
   const normalized = String(value ?? "").trim().toLowerCase();
   return accepted.some((period) => normalized === period.toLowerCase());
@@ -94,8 +116,12 @@ function typeLabel(type: unknown) {
 }
 
 export function objectiveLine(objective: any) {
+  const objectiveIdLabel = objective.level === "area_annual" ? "id do objetivo anual da área" : "id";
   const details = [
-    objective.id ? `id: ${objective.id}` : "",
+    objective.id ? `${objectiveIdLabel}: ${objective.id}` : "",
+    objective.level === "area_annual" && objective.parent_id
+      ? `id estratégico vinculado: ${objective.parent_id}`
+      : "",
     `${levelLabel(objective.level)}`,
     `${typeLabel(objective.type)}`,
     objective.period ? `período: ${objective.period}` : "",
@@ -176,6 +202,7 @@ export function historicalMemoryLines(
   const lines = [
     "MEMÓRIA ESTRATÉGICA (planos passados — referência):",
     "Antes de propor um plano novo, use estes documentos para recuperar decisões, metas e tentativas anteriores. Não trate como prova de resultado; quando inferir repetição ou trava, transforme em pergunta construtiva.",
+    "Metadados de período ajudam a localizar o documento, mas não mudam o texto-fonte: se o conteúdo disser apenas 'ciclo anterior', preserve essa expressão e não invente um ano no aprendizado.",
   ];
 
   for (const document of relevant) {
@@ -214,12 +241,7 @@ export async function buildPlanContext(
 ) {
   const focus = options.focus ?? (options.areaId ? "area" : "org");
   const periods = currentPeriods();
-  const periodInFocus = String(options.period ?? "").trim();
-  const quarterLabels = periodInFocus && /^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus)
-    ? [periodInFocus.replace(/^Q/i, "T"), periodInFocus.replace(/^T/i, "Q")]
-    : periods.quarterLabels;
-  const quarterDisplay = quarterLabels[0] ?? periods.quarterDisplay;
-  const monthDisplay = periodInFocus && !/^[TQ][1-4]\s+20\d{2}$/i.test(periodInFocus) ? periodInFocus : periods.month;
+  const { quarterLabels, quarterDisplay, monthDisplay } = planContextPeriods(focus, options.period);
   let historicalDocumentsQuery = client
     .from("plan_documents")
     .select("id, area_id, type, period, title, content, version, created_at")
@@ -364,7 +386,15 @@ export async function buildPlanContext(
   if (focus === "quarterly" || focus === "monthly" || focus === "area") {
     lines.push(`  TRIMESTRE EM FOCO (${quarterDisplay}):`);
     if (quarterlyObjectives.length) {
-      lines.push(...quarterlyObjectives.map(objectiveLine));
+      for (const objective of quarterlyObjectives) {
+        lines.push(objectiveLine(objective));
+        const actions = allActions.filter((action: any) => action.objective_id === objective.id);
+        if (actions.length) {
+          lines.push("    AÇÕES-CHAVE:", ...actions.map(keyActionLine));
+        } else {
+          lines.push("    AÇÕES-CHAVE: nenhuma ação-chave cadastrada para este objetivo.");
+        }
+      }
     } else {
       lines.push("  - Nenhum objetivo trimestral cadastrado para o período vigente.");
     }

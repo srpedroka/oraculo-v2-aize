@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   assertBudgetAllowsNextCall,
   assertEvaluationEnvironment,
+  budgetCycleSpendUsd,
   buildStrategicQualityGate,
   buildDeterministicChecks,
   buildSessionRequests,
   comparisonFingerprint,
+  deterministicCriterionRatings,
   hasOnlyGroundedYears,
   q1Gate,
   sanitizeEvaluationValue,
@@ -26,6 +28,24 @@ describe("strategic evaluation runner Q1", () => {
     expect(evaluationCase.turns).toHaveLength(10);
     expect(evaluationCase.planType).toBe("strategic");
     expect(evaluationCase.expected.proposalType).toBe("save_strategic_plan");
+  });
+
+  it("starts a renewed budget cycle without erasing historical spend", () => {
+    const renewedPolicy = { ...policy, cycleStartCumulativeUsd: 17.35281075 };
+    expect(budgetCycleSpendUsd(17.35281075, renewedPolicy)).toBe(0);
+    expect(budgetCycleSpendUsd(18.85281075, renewedPolicy)).toBeCloseTo(1.5, 8);
+    expect(() => assertBudgetAllowsNextCall({
+      cumulativePlanCostUsd: 17.35281075,
+      currentCaseCostUsd: 0,
+      reserveUsd: 0.15,
+      policy: renewedPolicy,
+    })).not.toThrow();
+    expect(() => assertBudgetAllowsNextCall({
+      cumulativePlanCostUsd: 36.25281075,
+      currentCaseCostUsd: 0,
+      reserveUsd: 0.15,
+      policy: renewedPolicy,
+    })).toThrow(/parada preventiva/);
   });
 
   it("hard-blocks production and requires an explicitly disposable key", () => {
@@ -152,6 +172,39 @@ describe("strategic evaluation runner Q1", () => {
     expect(gate.reasons).toContain("RUBRIC-CONDUCTION abaixo de 80: 50");
   });
 
+  it("uses server-proven session scope instead of a contradictory judge rating", () => {
+    const rubric = JSON.parse(readFileSync(resolve(process.cwd(), "tests/evals/strategic-quality/rubric.json"), "utf8"));
+    const applicable = selectApplicableRubric(rubric, evaluationCase.planType);
+    const rubricScores = (applicable.rubrics as Array<any>).map((item) => ({
+      rubricId: item.id,
+      score: 75,
+      criteria: item.criteria.map((criterion: any) => ({ id: criterion.id, rating: 3 })),
+    }));
+    const humanCriticalFailureCandidates = (applicable.criticalFailures as Array<any>).map((item) => ({
+      id: item.id,
+      occurred: false,
+    }));
+    const deterministicChecks = [{ id: "DET-SESSION-SCOPE-001", status: "pass", evidence: "scope canonico" }];
+    const gate = buildStrategicQualityGate({
+      technicalGateStatus: "approved",
+      judgeStatus: "completed",
+      judgeResult: { rubricScores, humanCriticalFailureCandidates },
+      applicableRubric: applicable,
+      minimumPerRubric: 0,
+      minimumJointAverage: 0,
+      deterministicChecks,
+    });
+    const scope = gate.rubricScores[0].criterionRatings.find((item) => item.criterionId === "COND-SCOPE-001");
+    expect(scope).toEqual({
+      criterionId: "COND-SCOPE-001",
+      rating: 4,
+      source: "deterministic",
+      sourceCheckIds: ["DET-SESSION-SCOPE-001"],
+    });
+    expect(gate.rubricScores[0].score).toBe(78.75);
+    expect(deterministicCriterionRatings(deterministicChecks).get("COND-SCOPE-001")?.rating).toBe(4);
+  });
+
   it("redacts identifiers and secret-shaped values from reports", () => {
     const sanitized = sanitizeEvaluationValue({
       orgId: "123e4567-e89b-42d3-a456-426614174000",
@@ -207,6 +260,14 @@ describe("strategic evaluation runner Q1", () => {
     expect(judgeSource).toContain("await fetch(");
     expect(source).toContain("const JUDGE_TIMEOUT_MS = 180_000");
     expect(judgeSource).not.toMatch(/serviceClient|anonClient|callFunction|\.from\(|\.rpc\(/);
+  });
+
+  it("calibrates the judge for complete manager blocks without rewarding bureaucracy", () => {
+    const source = readFileSync(resolve(process.cwd(), "scripts/strategic-eval.ts"), "utf8");
+    expect(source).toContain("nao exija que o Oraculo repita a entrevista campo a campo");
+    expect(source).toContain("quantidade de turnos nao e qualidade");
+    expect(source).toContain("Nao reduza a nota do artefato apenas porque os dados vieram em uma resposta completa do gestor");
+    expect(source).toContain("O sessionScope recebido e contexto canonico do servidor");
   });
 
   it("can retry only the judge without regenerating or touching staging data", () => {

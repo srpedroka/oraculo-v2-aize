@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { historicalMemoryLines, objectiveLine } from "./plan-context.ts";
+import { historicalMemoryLines, objectiveLine, planContextPeriods } from "./plan-context.ts";
 
 describe("memória estratégica no contexto", () => {
   const areas = [{ id: "comercial", name: "Comercial" }, { id: "producao", name: "Produção" }];
@@ -13,7 +13,7 @@ describe("memória estratégica no contexto", () => {
     ];
     const lines = historicalMemoryLines(documents, areas, { focus: "quarterly", areaId: "comercial" });
     const output = lines.join("\n");
-    expect(lines).toHaveLength(7);
+    expect(lines).toHaveLength(8);
     expect(output).toContain("Meta comercial");
     expect(output).toContain("Direção anual");
     expect(output).not.toContain("Meta industrial");
@@ -49,5 +49,26 @@ describe("memória estratégica no contexto", () => {
     expect(line).toContain("atual: 55%");
     expect(line).toContain("meta: 80%");
     expect(line).toContain("prazo: 2026-12-31");
+  });
+
+  it("distingue o id anual da area do id estrategico vinculado", () => {
+    const line = objectiveLine({
+      id: "area-annual-id",
+      parent_id: "strategic-id",
+      level: "area_annual",
+      title: "Elevar confiabilidade",
+      status: "on_track",
+    });
+
+    expect(line).toContain("id do objetivo anual da área: area-annual-id");
+    expect(line).toContain("id estratégico vinculado: strategic-id");
+  });
+
+  it("usa o trimestre do mês solicitado em vez do trimestre do relógio", () => {
+    expect(planContextPeriods("monthly", "Mai 2027", new Date(2026, 6, 16))).toEqual({
+      quarterLabels: ["T2 2027", "Q2 2027"],
+      quarterDisplay: "T2 2027",
+      monthDisplay: "Mai 2027",
+    });
   });
 });

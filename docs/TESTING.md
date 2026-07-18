@@ -116,6 +116,105 @@ pnpm run eval:strategic:q3 -- human-packet
 
 Transcricoes, propostas, ledger e pacote humano ficam em `.agents-private/` com permissao `600`. O relatorio sanitizado e versionado fica em `docs/STRATEGIC_QUALITY_BASELINE_Q3.md`. Nao use `archive-calibration`, `archive-errors`, `cleanup-stale` ou `repair-execution-checks` fora de um incidente documentado do laboratorio.
 
+O mesmo executor isola a regressao Q5 da baseline Q3. A Q5 exige autorizacao paga propria, para em erro tecnico e nao permite arquivar uma falha para continuar silenciosamente:
+
+```bash
+pnpm run eval:strategic:q5 -- preflight
+pnpm run eval:strategic:q5 -- deterministic
+pnpm run eval:strategic:q5 -- phase Q5A
+pnpm run eval:strategic:q5 -- phase Q5B
+pnpm run eval:strategic:q5 -- phase Q5C
+pnpm run eval:strategic:q5 -- phase Q5D
+pnpm run eval:strategic:q5 -- summary
+pnpm run eval:strategic:q5 -- compare
+pnpm run eval:strategic:q5 -- human-packet
+```
+
+`compare` exige as mesmas 40 combinacoes, nove resultados deterministas, 15 entregas cobertas, modelos iguais aos registrados na Q3, inputs sinteticos equivalentes, cleanup, notas minimas, regressao por dimensao, mediana de turnos e custo. `human-packet` monta cinco pares A/B e guarda o gabarito em arquivo privado separado. Em 2026-07-17, a Q4H aprovou os cinco riscos anuais e a Q5A concluiu 10/10 medicoes, sem erro, falha critica ou check reprovado. O runner tambem aceita `rejudge-report <arquivo>` somente para relatorio Q5 privado com cleanup concluido; ele reutiliza transcricao/proposta, envia o escopo canonico ao judge, preserva o parecer anterior e registra apenas o novo custo. Depois do bloqueio inicial da Q5B, o runner passou a encerrar a fase tambem quando `qualityGate=blocked`, sempre depois de persistir relatorio/custo e concluir cleanup; rejudge mantem `qualityStatus` sincronizado. Detalhes em `docs/STRATEGIC_QUALITY_REGRESSION_Q5.md`.
+
+A Q4A possui 15 testes unitarios em `_shared/session-adaptive.test.ts` e um smoke pago, opt-in e restrito ao staging:
+
+```bash
+pnpm run eval:strategic:q4a
+```
+
+O smoke cria uma empresa e usuario descartaveis, copia apenas a chave temporaria do laboratorio, testa bloco completo, resposta vaga e anti-loop, recusa mutacao pre-confirmacao, registra custo no ledger privado e remove org/usuario/chave. A rodada aprovada em 2026-07-16 passou 15/15; somente `oracle-session` de staging foi publicada. O comando nunca pertence ao CI comum e exige a mesma autorizacao financeira do plano.
+
+A Q4B acrescenta dez testes puros em `_shared/quarterly-guidance.test.ts` e um smoke pago, opt-in e restrito ao staging:
+
+```bash
+pnpm run eval:strategic:q4b
+```
+
+O runner usa duas empresas descartaveis para cobrir plano anual presente e ausente. Ele testa gestor completo, resposta vaga, excesso de prioridades, atividade como falso objetivo e excecao anual; confirma somente o caso completo e compara proposta, objetivo, acoes e documento canonico. Em 2026-07-16, passou 21/21 antes e depois do reforco final. A rodada final custou US$ 0,066221; as duas validacoes Q4B somaram US$ 0,124095 e removeram empresas, usuarios e chaves. Producao e WhatsApp real nao participam.
+
+A Q4C acrescenta doze testes puros em `_shared/monthly-guidance.test.ts`, testes de periodo/contexto/importacao e um smoke pago, opt-in e restrito ao staging:
+
+```bash
+pnpm run eval:strategic:q4c
+```
+
+O runner usa duas empresas descartaveis para cobrir mes futuro ligado ao trimestre correto e ausencia de plano trimestral. Ele testa bloco completo, uma confirmacao, limite global de cinco acoes, pendencia herdada, capacidade/backlog, excecao consciente, zero mutacao antes da confirmacao e correspondencia entre proposta, banco e documento. A primeira rodada reprovou apenas o fallback de pendencia em 21/22 e custou US$ 0,042510. Depois da correcao server-side, tres rodadas passaram 22/22: US$ 0,041647, US$ 0,042509 e a prova final apos compatibilidade `YYYY-MM` por US$ 0,042908. Q4C totalizou US$ 0,169574; o acumulado do plano ficou US$ 2,337748. Cleanup foi confirmado nas quatro rodadas; producao e WhatsApp real nao participam.
+
+A Q4D acrescenta testes de naturalidade em `_shared/session-adaptive.test.ts`, `_shared/natural-conversation.test.ts`, a rubrica aplicavel normalizada e um smoke pago opt-in no staging:
+
+```bash
+pnpm run eval:strategic:q4d
+pnpm run eval:strategic:q4d:recompute .agents-private/<relatorio-q4d>.json
+```
+
+O runner executa anual, trimestral, mensal, Revisao Estrategica e fechamentos mensal/trimestral em uma empresa descartavel. Checa uma pergunta, resposta curta, ausencia de bordao/estado tecnico, pergunta ancorada, proposta mensal, zero mutacao e cleanup; o judge avalia escopo, diagnostico, pergunta, desafio, naturalidade, fidelidade e fechamento. `ORACULO_Q4D_DIAGNOSTIC=1` e `ORACULO_Q4D_CASES=ANNUAL|MONTHLY` isolam defeitos sem chamar judge. O recálculo e somente leitura: preserva o relatorio original, normaliza os pesos aplicaveis para 100 e nao chama provider nem staging. Gate final: 95,59, zero candidato critico. Q4D total US$ 0,553094; acumulado US$ 2,890842. Os relatorios bloqueados e erros transitórios foram preservados; todas as empresas, usuarios e chaves descartaveis foram removidos.
+
+A Q4E adiciona testes unitarios dos tres renderizadores e uma integracao opt-in restrita ao staging:
+
+```bash
+pnpm run eval:strategic:q4e
+```
+
+O teste cria empresa e usuario descartaveis, confirma uma proposta trimestral pela `oracle-session`, compara os objetos semanticos da proposta, banco e documento canonico e procura os mesmos 18 fatos materiais na tela, PDF e WhatsApp. Tambem verifica fingerprint igual, zero mutacao durante a renderizacao, zero `ai_usage_logs` e cleanup. O relatorio opcional fica privado em `.agents-private/strategic-q4e-output-equality-*.json`. Em 2026-07-17, a prova final passou 18/18 sem chamar IA; custo Q4E US$ 0 e acumulado US$ 2,890842.
+
+A Q4F reutiliza os gates existentes em vez de criar uma segunda orquestracao. O aceite executa, nesta ordem, unitarios/fixtures/catalogo, integracao completa no staging, RLS/seguranca, E2E staging desktop/mobile, lint, build/bundle, secret scan e auditoria independente de residuos. Resultado de 2026-07-17: 350 unitarios, 122 integracoes, 7 testes de seguranca e 11 E2E aprovados; zero organizacao/usuario descartavel remanescente. Skips opt-in e justificativas ficam registrados no relatorio `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`. Custo Q4F US$ 0.
+
+A Q4G reproduz exatamente o primeiro caso anual que bloqueou a Q5, sem alterar o progresso da regressao:
+
+```bash
+pnpm run eval:strategic:q4g
+```
+
+O motor oferece caminhos contextuais para aspiracoes vagas, classifica falhas do provedor sem expor resposta bruta e compartilha uma unica repeticao transitoria por requisicao. Cada mensagem tem teto inferior ao timeout do cliente. Quando uma proposta completa ja existe e a falha e somente de envelope, estado, fase ou confirmacao, o servidor normaliza esses campos deterministicamente; defeitos de conteudo continuam no reparo por IA. As duas primeiras rodadas bloqueadas foram preservadas (US$ 0,032266 e US$ 0,027390). A rodada final passou com Conducao 85, Plano Anual 100, media 92,50, confirmacao 1/1, zero gravacao prematura, documento canonico e cleanup. Custou US$ 0,040492; Q4G total US$ 0,100148 e acumulado US$ 3,053653. Somente `oracle-session` de staging foi publicada.
+
+A Q4H repete os cinco riscos anuais com parada no primeiro gate reprovado:
+
+```bash
+pnpm run eval:strategic:q4h
+```
+
+Ela exige nota minima 80 em cada rubrica, media 85, zero candidato critico e zero check reprovado. A rodada aprovada custou US$ 0,263934 e liberou o reinicio limpo da Q5. O judge recebe `sessionScope` com tipo, periodo e area canonicos; um rejudge Q5 nunca regenera o plano nem acessa staging.
+
+A Q4I repete somente o caso trimestral vago que bloqueou a Q5B:
+
+```bash
+pnpm run eval:strategic:q4i
+```
+
+O smoke exige notas minimas 80, media conjunta 85, zero candidato critico, dez checks deterministas e cleanup completo. Ele verifica diagnostico de situacao/causa/impacto, ausencia de menu generico prematuro e preservacao conservadora de cadencia explicitamente informada. A rodada aprovada obteve Conducao 96,25, Plano Trimestral 97,50 e media 96,88; custou US$ 0,034506 e levou o acumulado a US$ 4,612626. Somente `oracle-session` de staging foi publicada.
+
+A Q4J repete o caso CRM que revelou a resolucao fragil do pai anual:
+
+```bash
+pnpm run eval:strategic:q4j
+```
+
+Antes do smoke pago, `tests/integration/proposal-atomicity.test.ts` precisa provar no endpoint real que o pai anual canonico e reutilizado e que outra area/empresa continua recusada. Em 2026-07-17, os sete testes passaram e o smoke confirmou a correcao tecnica, mas bloqueou por Conducao 65; portanto `restart-after-correction Q4J` nao foi executado. O comando de reinicio existe apenas para depois de um gate Q4J aprovado e preserva Q5A/matriz, arquivando somente Q5B.
+
+A Q4K repete o mesmo caso CRM depois de tornar deterministico o desafio da atividade:
+
+```bash
+pnpm run eval:strategic:q4k
+```
+
+O gate exige notas minimas 80, media 85, zero candidato critico, checks deterministas e cleanup. A rodada aprovada obteve Conducao 81,25, Plano Trimestral 93,75 e media 87,50; custou US$ 0,049289. `restart-after-correction Q4K` foi executado somente depois desse aceite e abriu Q5B `r6`, preservando Q5A, matriz, custo e relatorios anteriores.
+
 O gate real usa `pnpm run eval:strategic:q1` e começa obrigatoriamente pelo Plano Estratégico Anual. Ele exige primeiro o aceite da Q0 R2 e depois credenciais de staging e uma chave de provedor exclusiva/temporária em `.agents-private/strategic-eval-env`. A ausência da chave bloqueia antes da criação de dados. Produção, chaves operacionais e WhatsApp real são recusados pelo desenho do runner.
 
 Não há teto isolado por execução. O runner controla somente o orçamento acumulado de US$ 20, com aviso em US$ 15 e parada preventiva em US$ 19. Toda execução informa separadamente geração do plano, judge, total e acumulado antes/depois.

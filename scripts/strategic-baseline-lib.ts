@@ -13,6 +13,7 @@ export interface BaselineRunSummary {
   caseId: string;
   round: number;
   status: "measured" | "execution-error";
+  qualityStatus?: "approved" | "blocked";
   rubricScores: Array<{ rubricId: string; score: number }>;
   criticalFailureCandidates: string[];
   failedChecks: string[];
@@ -21,6 +22,56 @@ export interface BaselineRunSummary {
   latencyMs: number;
   defectClasses: string[];
   reportPath: string;
+}
+
+export function phaseRunStopReason(run: BaselineRunSummary) {
+  if (run.status === "execution-error") return "erro tecnico registrado";
+  if (run.qualityStatus === "blocked") return "gate de qualidade bloqueado";
+  return null;
+}
+
+export interface RegressionDeterministicResult {
+  caseId: string;
+  status: "pass" | "fail" | "pending-human";
+}
+
+export interface RegressionComparisonInput {
+  baselineRuns: BaselineRunSummary[];
+  currentRuns: BaselineRunSummary[];
+  baselineManagerTurns: Record<string, number>;
+  currentManagerTurns: Record<string, number>;
+  expectedRunKeys: string[];
+  deterministic: RegressionDeterministicResult[];
+  expectedDeterministicCaseIds: string[];
+  coveredDeliveryIds: string[];
+  expectedDeliveryIds: string[];
+  cleanupFailures: string[];
+  inputMismatches: string[];
+  runtimeMismatches: string[];
+  cumulativeCostUsd: number;
+  authorizedLimitUsd: number;
+  minimumPerRubric: number;
+  minimumJointAverage: number;
+  maximumRubricRegression: number;
+  maximumMedianTurnIncreaseRatio: number;
+}
+
+export interface RegressionComparisonResult {
+  status: "approved-automatic" | "blocked";
+  reasons: string[];
+  baseline: ReturnType<typeof aggregateBaseline>;
+  current: ReturnType<typeof aggregateBaseline>;
+  rubricComparison: Array<{
+    rubricId: string;
+    baselineAverage: number | null;
+    currentAverage: number | null;
+    delta: number | null;
+  }>;
+  managerTurns: {
+    baselineMedian: number;
+    currentMedian: number;
+    increaseRatio: number | null;
+  };
 }
 
 const SESSION_PROPOSAL_TYPES: Record<string, string> = {
@@ -79,21 +130,25 @@ export function buildManagerTurns(item: ReferenceCase): string[] {
 
 function annualSupplement(item: ReferenceCase) {
   const specificObjective = item.riskId === "ANNUAL-ACTIVITY-AS-STRATEGY"
-    ? "Objetivo 3: reduzir o fechamento de 12 para 5 dias e elevar areas com dados padronizados de 30% para 90% ate 31/10/2027; fontes: relatorio mensal e log de uso; responsavel: PERSON_FIXTURE_MANAGER; estrategias: padronizar processo e governanca de dados. Projeto vinculado: implantar sistema de gestao ate 30/06/2027, com aceite por integracao validada e 90% das areas treinadas."
+    ? "Objetivo 3: reduzir o fechamento de 12 para 5 dias e elevar areas com dados padronizados de 30% para 90% ate 31/10/2027; fontes: relatorio mensal e log de uso; responsavel: PERSON_FIXTURE_MANAGER; estrategias: padronizar processo e governanca de dados."
     : item.riskId === "ANNUAL-REPEATED-GOAL"
       ? "Objetivo 3: elevar entregas no prazo de 81% para 95% ate 31/12/2027; fonte: relatorio de expedicao; responsavel: PERSON_FIXTURE_MANAGER; estrategias: planejar capacidade por gargalo e revisar fornecedores criticos mensalmente."
       : "Objetivo 3: elevar entregas no prazo de 82% para 94% ate 31/12/2027; fonte: relatorio de expedicao; responsavel: PERSON_FIXTURE_MANAGER; estrategias: planejar capacidade por gargalo e revisar fornecedores criticos.";
+  const projects = item.riskId === "ANNUAL-ACTIVITY-AS-STRATEGY"
+    ? "- Projetos (4): disciplina comercial ate 30/06/2027 ligado ao Objetivo 1; programa de margem ate 30/09/2027 ligado ao Objetivo 2; implantar sistema de gestao ate 30/06/2027 ligado ao Objetivo 3, com aceite por integracao validada e 90% das areas treinadas; placar gerencial ate 31/10/2027 ligado ao Objetivo 4. Todos possuem os mesmos responsaveis dos objetivos e criterio de aceite documentado."
+    : "- Projetos (4): disciplina comercial ate 30/06/2027 ligado ao Objetivo 1; programa de margem ate 30/09/2027 ligado ao Objetivo 2; capacidade por gargalo ate 31/08/2027 ligado ao Objetivo 3; placar gerencial ate 31/10/2027 ligado ao Objetivo 4. Todos possuem os mesmos responsaveis dos objetivos e criterio de aceite documentado.";
   return [
     "Dados concretos adicionais confirmados pelo gestor sintetico para completar o plano anual:",
     "- Perfil: empresa industrial B2B, receita anual atual de R$ 120 milhoes, margem operacional de 8% e capacidade de entrega limitada.",
     "- Proposito: simplificar operacoes criticas dos clientes. Visao: crescer com previsibilidade ate 2029. Valores: clareza, responsabilidade e melhoria continua.",
     "- SWOT: forcas equipe tecnica e carteira recorrente; fraquezas margem instavel e dados fragmentados; oportunidades padronizacao e expansao na carteira; ameacas gargalos de fornecedor e excesso de prioridades.",
     "- Tema 2027: crescer com previsibilidade e disciplina.",
+    "- Objetivos (4):",
     "- Objetivo 1: elevar receita anual de R$ 120 milhoes para R$ 132 milhoes ate 31/12/2027; fonte DRE mensal; responsavel PERSON_FIXTURE_OWNER; estrategias aumentar receita na base e disciplinar funil.",
     "- Objetivo 2: elevar margem operacional de 8% para 10% ate 31/12/2027; fonte DRE mensal; responsavel PERSON_FIXTURE_OWNER; estrategias revisar mix e reduzir perdas de processo.",
     `- ${specificObjective}`,
     "- Objetivo 4: elevar decisoes gerenciais com dados padronizados de 30% para 90% ate 31/10/2027; fonte auditoria mensal; responsavel PERSON_FIXTURE_MANAGER; estrategias padronizar indicadores e instituir reuniao de desempenho.",
-    "- Projetos: disciplina comercial ate 30/06/2027 ligado ao Objetivo 1; programa de margem ate 30/09/2027 ligado ao Objetivo 2; capacidade por gargalo ate 31/08/2027 ligado ao Objetivo 3; placar gerencial ate 31/10/2027 ligado ao Objetivo 4. Todos possuem os mesmos responsaveis dos objetivos e criterio de aceite documentado.",
+    projects,
     "- Riscos: adesao desigual e dependencia de fornecedores. Renuncias: adiar novo canal e reforma ampla da operacao. Rituais: revisao mensal, fechamento trimestral e revisao estrategica sob demanda.",
     "- Aprendizado historico: muitas prioridades simultaneas reduziram foco; a nova abordagem limita quatro objetivos e quatro projetos.",
   ].join("\n");
@@ -317,5 +372,96 @@ export function aggregateBaseline(runs: BaselineRunSummary[]) {
     totalJudgeCostUsd: runs.reduce((sum, run) => sum + run.judgeCostUsd, 0),
     totalCostUsd,
     averageLatencyMs: runs.length ? Math.round(runs.reduce((sum, run) => sum + run.latencyMs, 0) / runs.length) : 0,
+  };
+}
+
+export function baselineRunKey(run: Pick<BaselineRunSummary, "caseId" | "round">) {
+  return `${run.caseId}:R${run.round}`;
+}
+
+export function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+export function compareStrategicRegression(input: RegressionComparisonInput): RegressionComparisonResult {
+  const reasons: string[] = [];
+  const expectedRunKeys = [...new Set(input.expectedRunKeys)].sort();
+  const baselineRunKeys = input.baselineRuns.map(baselineRunKey).sort();
+  const currentRunKeys = input.currentRuns.map(baselineRunKey).sort();
+  if (JSON.stringify(baselineRunKeys) !== JSON.stringify(expectedRunKeys)) {
+    reasons.push("a baseline Q3 nao contem exatamente todas as rodadas esperadas");
+  }
+  if (JSON.stringify(currentRunKeys) !== JSON.stringify(expectedRunKeys)) {
+    reasons.push("a regressao Q5 nao contem exatamente todas as rodadas esperadas");
+  }
+  if (input.currentRuns.some((run) => run.status !== "measured" || run.failedChecks.length > 0)) {
+    reasons.push("a Q5 possui erro de execucao ou check deterministico reprovado");
+  }
+  if (input.currentRuns.some((run) => run.criticalFailureCandidates.length > 0)) {
+    reasons.push("a Q5 possui candidato a falha critica");
+  }
+
+  const belowMinimum = input.currentRuns.flatMap((run) => run.rubricScores
+    .filter((score) => score.score < input.minimumPerRubric)
+    .map((score) => `${baselineRunKey(run)}:${score.rubricId}=${score.score}`));
+  if (belowMinimum.length) {
+    reasons.push(`${belowMinimum.length} nota(s) aplicavel(is) ficaram abaixo de ${input.minimumPerRubric}`);
+  }
+
+  const deterministicById = new Map(input.deterministic.map((item) => [item.caseId, item.status]));
+  const missingDeterministic = input.expectedDeterministicCaseIds.filter((caseId) => !deterministicById.has(caseId));
+  if (missingDeterministic.length) reasons.push(`${missingDeterministic.length} caso(s) deterministico(s) estao sem resultado`);
+  if (input.deterministic.some((item) => item.status === "fail")) reasons.push("a matriz deterministica da Q5 possui falha");
+
+  const missingDeliveries = input.expectedDeliveryIds.filter((deliveryId) => !input.coveredDeliveryIds.includes(deliveryId));
+  if (missingDeliveries.length) reasons.push(`${missingDeliveries.length} entrega(s) estao sem resultado de qualidade`);
+  if (input.cleanupFailures.length) reasons.push(`${input.cleanupFailures.length} fixture(s) nao comprovaram cleanup`);
+  if (input.inputMismatches.length) reasons.push(`${input.inputMismatches.length} rodada(s) nao repetiram o roteiro sintetico da Q3`);
+  if (input.runtimeMismatches.length) reasons.push(`${input.runtimeMismatches.length} rodada(s) divergem dos modelos registrados na Q3`);
+  if (input.cumulativeCostUsd >= input.authorizedLimitUsd) reasons.push("o custo acumulado atingiu ou ultrapassou o limite autorizado");
+
+  const baseline = aggregateBaseline(input.baselineRuns);
+  const current = aggregateBaseline(input.currentRuns);
+  if (current.jointAverage === null || current.jointAverage < input.minimumJointAverage) {
+    reasons.push(`a media conjunta da Q5 ficou abaixo de ${input.minimumJointAverage}`);
+  }
+  const baselineByRubric = new Map(baseline.rubricScores.map((item) => [item.rubricId, item.average]));
+  const currentByRubric = new Map(current.rubricScores.map((item) => [item.rubricId, item.average]));
+  const rubricIds = [...new Set([...baselineByRubric.keys(), ...currentByRubric.keys()])].sort();
+  const rubricComparison = rubricIds.map((rubricId) => {
+    const baselineAverage = baselineByRubric.get(rubricId) ?? null;
+    const currentAverage = currentByRubric.get(rubricId) ?? null;
+    const delta = baselineAverage === null || currentAverage === null
+      ? null
+      : Number((currentAverage - baselineAverage).toFixed(2));
+    return { rubricId, baselineAverage, currentAverage, delta };
+  });
+  if (rubricComparison.some((item) => item.delta === null || item.delta < -input.maximumRubricRegression)) {
+    reasons.push(`uma ou mais dimensoes pioraram mais de ${input.maximumRubricRegression} pontos ou ficaram sem comparacao`);
+  }
+
+  const baselineMedian = median(expectedRunKeys.map((key) => input.baselineManagerTurns[key] ?? 0));
+  const currentMedian = median(expectedRunKeys.map((key) => input.currentManagerTurns[key] ?? 0));
+  const increaseRatio = baselineMedian > 0 ? (currentMedian - baselineMedian) / baselineMedian : null;
+  if (increaseRatio === null ? currentMedian > 0 : increaseRatio > input.maximumMedianTurnIncreaseRatio) {
+    reasons.push(`a mediana de turnos do gestor aumentou mais de ${Math.round(input.maximumMedianTurnIncreaseRatio * 100)}%`);
+  }
+
+  return {
+    status: reasons.length ? "blocked" : "approved-automatic",
+    reasons,
+    baseline,
+    current,
+    rubricComparison,
+    managerTurns: {
+      baselineMedian,
+      currentMedian,
+      increaseRatio: increaseRatio === null ? null : Number(increaseRatio.toFixed(4)),
+    },
   };
 }

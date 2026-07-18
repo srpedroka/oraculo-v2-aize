@@ -262,6 +262,7 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
   const diagnosis = asRecord(proposal.diagnosis);
   const annualObjectives = asRecordArray(proposal.annualObjectives);
   const quarterlyObjectives = asRecordArray(proposal.quarterlyObjectives ?? proposal.objetivos_trimestre);
+  const sharedActions = asRecordArray(proposal.sharedActions ?? proposal.acoesTransversais);
   const learningFocus = asTextArray(proposal.learningFocus ?? proposal.foco_aprendizado);
 
   return (
@@ -323,6 +324,22 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
               </div>
             );
           })}
+        </div>
+      ) : null}
+
+      {sharedActions.length ? (
+        <div className="space-y-2 rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
+          <p className="font-semibold text-[#1D1D1F]">Ações transversais ({sharedActions.length})</p>
+          {sharedActions.map((action, index) => (
+            <p key={`${asText(action.description ?? action.descricao)}-${index}`}>
+              <span className="font-medium text-[#1D1D1F]">{asText(action.description ?? action.descricao)}</span>
+              {[asText(action.owner ?? action.responsavel), asText(action.deadline ?? action.prazo)]
+                .filter(Boolean).length ? ` · ${[
+                  asText(action.owner ?? action.responsavel) ? `Dono: ${asText(action.owner ?? action.responsavel)}` : "",
+                  asText(action.deadline ?? action.prazo) ? `Prazo: ${asText(action.deadline ?? action.prazo)}` : "",
+                ].filter(Boolean).join(" · ")}` : ""}
+            </p>
+          ))}
         </div>
       ) : null}
 

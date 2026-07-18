@@ -90,9 +90,19 @@ function probeBody(provider: Provider, model: string) {
 
 export function classifyModelError(error: unknown): ProbeResult {
   const message = error instanceof Error ? error.message : String(error ?? "");
-  const statusMatch = message.match(/\b(400|401|403|404|429|5\d\d)\b/);
-  const httpStatus = statusMatch ? Number(statusMatch[1]) : undefined;
-  const status = httpStatus ? classifyBody(httpStatus, message) : message.toLowerCase().includes("tempo limite") ? "timeout" : "provider_error";
+  const nativeCode = error && typeof error === "object" && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const nativeStatus = error && typeof error === "object" && "httpStatus" in error
+    ? Number((error as { httpStatus?: unknown }).httpStatus ?? 0) || undefined
+    : undefined;
+  const statusMatch = message.match(/\b(400|401|403|404|408|429|5\d\d)\b/);
+  const httpStatus = nativeStatus ?? (statusMatch ? Number(statusMatch[1]) : undefined);
+  const status: ProbeStatus = nativeCode === "AI_PROVIDER_TIMEOUT" ? "timeout"
+    : nativeCode === "AI_PROVIDER_RATE_LIMIT" ? "rate_limited"
+    : nativeCode === "AI_PROVIDER_AUTH" ? "invalid_key"
+    : nativeCode === "AI_PROVIDER_UNKNOWN_MODEL" ? "unknown_model"
+    : httpStatus ? classifyBody(httpStatus, message)
+    : message.toLowerCase().includes("tempo limite") ? "timeout"
+    : "provider_error";
   return { status, httpStatus, detail: sanitizeDetail(message) };
 }
 

@@ -3,6 +3,7 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ModelUsage, Provider } from "../supabase/functions/_shared/model.ts";
+import { structuredOutputRequestFields } from "../supabase/functions/_shared/model-structured-output.ts";
 import { resolveKnownPricing } from "../supabase/functions/_shared/pricing.ts";
 import { anonClient, assertStaging, serviceClient } from "../tests/helpers/staging.ts";
 import {
@@ -10,6 +11,7 @@ import {
   assertEvaluationEnvironment,
   buildStrategicQualityGate,
   buildDeterministicChecks,
+  budgetCycleSpendUsd,
   comparisonFingerprint,
   hasOnlyGroundedYears,
   parseJsonObject,
@@ -22,6 +24,7 @@ import {
   type EvaluationCheck,
   type StrategicEvaluationCase,
 } from "./strategic-eval-lib.ts";
+import { STRATEGIC_JUDGE_OUTPUT } from "./strategic-judge-schema.ts";
 
 const PRIVATE_DIR = resolve(".agents-private");
 const LEDGER_PATH = resolve(PRIVATE_DIR, "strategic-eval-ledger.json");
@@ -30,6 +33,7 @@ const BASELINE_PATH = resolve("tests/evals/strategic-quality/baseline.json");
 const PLANNING_CALL_RESERVE_USD = 0.15;
 const JUDGE_CALL_RESERVE_USD = 0.1;
 const JUDGE_TIMEOUT_MS = 180_000;
+const FUNCTION_TIMEOUT_MS = 105_000;
 
 export interface TranscriptMessage {
   sequence: number;
@@ -134,7 +138,7 @@ export async function callFunction(
   const url = String(process.env.SUPABASE_STAGING_URL);
   const anonKey = String(process.env.SUPABASE_STAGING_ANON_KEY);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000);
+  const timeout = setTimeout(() => controller.abort(), FUNCTION_TIMEOUT_MS);
   try {
     const response = await fetch(`${url}/functions/v1/${slug}`, {
       method: "POST",
@@ -148,7 +152,10 @@ export async function callFunction(
       signal: controller.signal,
     });
     const payload = await response.json() as Record<string, any>;
-    if (!response.ok) throw new Error(`${slug} falhou (${response.status}): ${String(payload.error ?? "erro desconhecido")}`);
+    if (!response.ok) {
+      const errorCode = String(payload.errorCode ?? "UNKNOWN").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 80);
+      throw new Error(`${slug} falhou (${response.status}/${errorCode}): ${String(payload.error ?? "erro desconhecido")}`);
+    }
     return payload;
   } finally {
     clearTimeout(timeout);
@@ -358,16 +365,43 @@ export async function ownerToken(handle: EvaluationOrg) {
 export async function generationUsage(handle: EvaluationOrg, startedAt: string) {
   const result = await serviceClient()
     .from("ai_usage_logs")
-    .select("prompt_tokens,completion_tokens,total_tokens,total_cost_usd")
+    .select("prompt_tokens,completion_tokens,total_tokens,total_cost_usd,metadata")
     .eq("org_id", handle.orgId)
     .gte("created_at", startedAt);
   if (result.error) throw result.error;
-  return (result.data ?? []).reduce((total, item) => ({
-    promptTokens: total.promptTokens + Number(item.prompt_tokens ?? 0),
-    completionTokens: total.completionTokens + Number(item.completion_tokens ?? 0),
-    totalTokens: total.totalTokens + Number(item.total_tokens ?? 0),
-    totalCostUsd: total.totalCostUsd + Number(item.total_cost_usd ?? 0),
-  }), { promptTokens: 0, completionTokens: 0, totalTokens: 0, totalCostUsd: 0 });
+  return (result.data ?? []).reduce((total, item) => {
+    const metadata = item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+      ? item.metadata as Record<string, unknown>
+      : {};
+    const attempt = Number(metadata.adaptiveAttempt);
+    const attemptKey = Number.isInteger(attempt) && attempt > 0 ? String(attempt) : "unclassified";
+    const repairReasons = Array.isArray(metadata.adaptiveRepairReasons)
+      ? metadata.adaptiveRepairReasons.map(String).filter(Boolean)
+      : [];
+    return {
+      promptTokens: total.promptTokens + Number(item.prompt_tokens ?? 0),
+      completionTokens: total.completionTokens + Number(item.completion_tokens ?? 0),
+      totalTokens: total.totalTokens + Number(item.total_tokens ?? 0),
+      totalCostUsd: total.totalCostUsd + Number(item.total_cost_usd ?? 0),
+      callCount: total.callCount + 1,
+      adaptiveAttemptCounts: {
+        ...total.adaptiveAttemptCounts,
+        [attemptKey]: (total.adaptiveAttemptCounts[attemptKey] ?? 0) + 1,
+      },
+      adaptiveRepairReasonCounts: repairReasons.reduce((counts, reason) => ({
+        ...counts,
+        [reason]: (counts[reason] ?? 0) + 1,
+      }), total.adaptiveRepairReasonCounts),
+    };
+  }, {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    totalCostUsd: 0,
+    callCount: 0,
+    adaptiveAttemptCounts: {} as Record<string, number>,
+    adaptiveRepairReasonCounts: {} as Record<string, number>,
+  });
 }
 
 async function targetPlanState(handle: EvaluationOrg, evaluationCase: StrategicEvaluationCase) {
@@ -489,6 +523,8 @@ export async function runJudge(params: {
   evaluationCase: unknown;
   transcript: TranscriptMessage[];
   proposal: Record<string, unknown>;
+  derivedOutputs?: unknown;
+  sessionScope?: unknown;
   rubric: unknown;
 }) {
   const systemPrompt = [
@@ -499,16 +535,24 @@ export async function runJudge(params: {
     "Formato: {\"summary\":\"\",\"rubricScores\":[{\"rubricId\":\"\",\"criteria\":[{\"id\":\"\",\"rating\":0,\"justification\":\"\"}],\"score\":0}],\"humanCriticalFailureCandidates\":[{\"id\":\"\",\"occurred\":false,\"justification\":\"\"}]}.",
     "Rating deve ser inteiro de 0 a 4. Nao aprove o gate; apenas forneca evidencia para revisao humana.",
     "Avalie todos os criterios e todas as falhas criticas humanas recebidas. Use justificativas objetivas de no maximo 20 palavras.",
+    "PROTOCOLO DOS CASOS SINTETICOS: mensagens com 'Informacoes confirmadas' ou 'Dados concretos adicionais confirmados' sao respostas explicitas do gestor, nao preenchimento automatico do sistema.",
+    "Quando o gestor acelerar e enviar um bloco completo, nao exija que o Oraculo repita a entrevista campo a campo. Avalie se ele absorveu o bloco, preservou fidelidade, fez os desafios de alto valor cabiveis e fechou sem burocracia.",
+    "Na rubrica do plano, avalie a qualidade objetiva da proposal e das saidas derivadas. Nao reduza a nota do artefato apenas porque os dados vieram em uma resposta completa do gestor.",
+    "Na conducao, quantidade de turnos nao e qualidade: uma pergunta diagnostica ou um desafio forte pode ser suficiente quando a resposta seguinte ja resolve as lacunas. Penalize repeticao, superficialidade real ou ausencia de escolha, nao concisao adaptativa.",
+    "O sessionScope recebido e contexto canonico do servidor. Citar exatamente seu periodo, tipo ou area nao e fabricacao, mesmo que o gestor nao repita esses dados na conversa.",
   ].join("\n");
   const input = sanitizeEvaluationValue({
     evaluationCase: params.evaluationCase,
+    sessionScope: params.sessionScope ?? null,
     transcript: params.transcript,
     proposal: params.proposal,
+    derivedOutputs: params.derivedOutputs ?? null,
     rubric: params.rubric,
   });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("Tempo limite do judge atingido"), JUDGE_TIMEOUT_MS);
   const baseUrl = params.provider === "xai" ? "https://api.x.ai/v1" : "https://api.openai.com/v1";
+  const structuredOutput = structuredOutputRequestFields(params.provider, STRATEGIC_JUDGE_OUTPUT);
   let response: Response;
   try {
     response = await fetch(`${baseUrl}/${params.provider === "openai" ? "responses" : "chat/completions"}`, {
@@ -520,6 +564,7 @@ export async function runJudge(params: {
         input: [{ role: "user", content: JSON.stringify(input) }],
         max_output_tokens: 2_000,
         store: false,
+        ...structuredOutput,
       } : {
         model: params.model,
         messages: [
@@ -527,6 +572,7 @@ export async function runJudge(params: {
           { role: "user", content: JSON.stringify(input) },
         ],
         max_tokens: 2_000,
+        ...structuredOutput,
       }),
       signal: controller.signal,
     });
@@ -659,6 +705,7 @@ export async function executeLiveCase(casePath: string) {
         provider: config.provider,
         model: config.judgeModel,
         evaluationCase,
+        sessionScope: { type: evaluationCase.planType, period: evaluationCase.period, channel: evaluationCase.channel },
         transcript,
         proposal: proposal as Record<string, unknown>,
         rubric: applicableRubric,
@@ -720,7 +767,7 @@ export async function executeLiveCase(casePath: string) {
     judgeStatus: judge.status,
     checks,
     cleanupSucceeded,
-    cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+    cumulativePlanCostUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd + totalCaseCostUsd, policy),
     authorizedLimitUsd: policy.authorizedLimitUsd,
   });
   if (executionError) technicalGate.reasons.unshift(sanitizeEvaluationText(executionError.message));
@@ -732,6 +779,7 @@ export async function executeLiveCase(casePath: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: checks,
   });
 
   const report: Record<string, unknown> = {
@@ -765,6 +813,10 @@ export async function executeLiveCase(casePath: string) {
       totalCaseCostUsd,
       cumulativePlanCostBeforeUsd: ledger.cumulativePlanCostUsd,
       cumulativePlanCostAfterUsd: ledger.cumulativePlanCostUsd + totalCaseCostUsd,
+      cycleStartedAt: policy.cycleStartedAt ?? null,
+      cycleStartCumulativeUsd: Number(policy.cycleStartCumulativeUsd) || 0,
+      cycleSpendBeforeUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, policy),
+      cycleSpendAfterUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd + totalCaseCostUsd, policy),
       warningAtUsd: policy.warningAtUsd,
       preventiveStopAtUsd: policy.preventiveStopAtUsd,
       authorizedLimitUsd: policy.authorizedLimitUsd,
@@ -850,6 +902,7 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
       provider: config.provider,
       model: config.judgeModel,
       evaluationCase,
+      sessionScope: { type: evaluationCase.planType, period: evaluationCase.period, channel: evaluationCase.channel },
       transcript: report.transcript as TranscriptMessage[],
       proposal: report.proposal as Record<string, unknown>,
       rubric: applicableRubric,
@@ -872,7 +925,7 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
     judgeStatus: judge.status,
     checks,
     cleanupSucceeded: true,
-    cumulativePlanCostUsd: cumulativePlanCostAfterUsd,
+    cumulativePlanCostUsd: budgetCycleSpendUsd(cumulativePlanCostAfterUsd, policy),
     authorizedLimitUsd: policy.authorizedLimitUsd,
   });
   const qualityGate = buildStrategicQualityGate({
@@ -882,6 +935,7 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: checks,
   });
   const completedAt = new Date().toISOString();
   report.runtime = {
@@ -902,6 +956,10 @@ export async function retryJudge(reportPathValue: string, casePath: string) {
     judgeCostUsd,
     totalCaseCostUsd,
     cumulativePlanCostAfterUsd,
+    cycleStartedAt: policy.cycleStartedAt ?? null,
+    cycleStartCumulativeUsd: Number(policy.cycleStartCumulativeUsd) || 0,
+    cycleSpendBeforeUsd: budgetCycleSpendUsd(ledger.cumulativePlanCostUsd, policy),
+    cycleSpendAfterUsd: budgetCycleSpendUsd(cumulativePlanCostAfterUsd, policy),
     judgeUsage: judge.usage ?? null,
     lastJudgeExecution: {
       judgeCostUsd: newJudgeCostUsd,
@@ -955,6 +1013,7 @@ export async function recomputeReportGate(reportPathValue: string) {
     applicableRubric,
     minimumPerRubric: Number(rubric.thresholds?.minimumPerRubric ?? 80),
     minimumJointAverage: Number(rubric.thresholds?.minimumJointAverage ?? 85),
+    deterministicChecks: Array.isArray(report.deterministicChecks) ? report.deterministicChecks : [],
   });
   report.qualityGate = qualityGate;
   report.comparisonFingerprint = comparisonFingerprint(report as any);

@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0 R2 e Q1 aprovadas e publicadas; catalogo Q2 aprovado pelo owner; proximo gate e o briefing/autorizacao da Q3.
+Status: Q0-Q4 concluidas; a incremental r22 comprovou 40/40. A regressao integral r23 aprovou Q5A 10/10 e Q5B 14/16 antes de revelar proposta trimestral prematura. A Q4AP foi aprovada no smoke exato; a proxima grade r24 reinicia matriz e Q5A-Q5D sem preservar resultados.
 
 ## Objetivo
 
@@ -12,6 +12,15 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 
 - `scripts/strategic-eval.ts`: runner real, fabrica minima, judge e cleanup.
 - `scripts/strategic-eval-lib.ts`: schema, sanitizacao, custo, checks e fingerprint comparavel.
+- `scripts/strategic-judge-schema.ts`: contrato JSON Schema estrito do judge.
+- `scripts/strategic-q4ah-smoke.ts`: smoke trimestral da fronteira estruturada e da nota objetiva de escopo.
+- `scripts/strategic-q4ai-smoke.ts`: smoke do fechamento trimestral sem pergunta redundante para gestor experiente.
+- `scripts/strategic-q4aj-smoke.ts`: smoke da normalizacao legivel de risco estruturado na proposta, documento e WhatsApp.
+- `scripts/strategic-q4ak-smoke.ts`: smoke do bloqueio server-side de KPI trimestral nao escolhido pelo gestor.
+- `scripts/strategic-q4al-smoke.ts`: smoke do bloco mensal completo com pendencia herdada, continuidade e confirmacao unica.
+- `scripts/strategic-q4am-smoke.ts`: smoke do desafio de capacidade sem repeticao de campos para gestor mensal experiente.
+- `scripts/strategic-q4ap-smoke.ts`: smoke da barreira de fidelidade para varias acoes trimestrais incompletas, desafio unico e confirmacao unica.
+- `scripts/strategic-model-ab.ts`: comparação paga e cega entre Grok 4.3/4.5, com trava de autorização e sem troca automática.
 - `tests/evals/strategic-quality/cases/q1-minimal-annual.json`: primeiro caso sintetico, obrigatoriamente anual.
 - `src/test/strategic-eval-runner.test.ts`: guardas e falhas seguras.
 - `tests/evals/strategic-quality/cases/q2-catalog.json`: manifesto dos 29 casos Q2A-Q2E.
@@ -31,7 +40,7 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - cria um owner, uma empresa e uma area totalmente sinteticos;
 - grava a chave apenas na empresa descartavel de staging;
 - o judge chama somente o provedor e nao recebe cliente, endpoint ou credencial Supabase;
-- o judge recebe apenas as rubricas aplicaveis e falhas criticas humanas; checks deterministas nao sao reenviados para avaliacao subjetiva;
+- o judge recebe apenas as rubricas aplicaveis e falhas criticas humanas; checks deterministas nao sao reenviados como fatos para a avaliação subjetiva, mas podem substituir a nota efetiva de um critério totalmente objetivo, com fonte registrada no relatório;
 - timeout e retomada judge-only pertencem ao laboratorio e nao alteram o timeout do app em producao;
 - snapshots antes/depois comprovam que o judge nao alterou o dominio;
 - relatorio remove UUID, email, telefone, chave, token e referencia de producao;
@@ -76,6 +85,8 @@ pnpm run eval:strategic:q1
 ```
 
 O runner usa Grok 4.3 no condutor e Grok 4.5 no judge quando `ORACULO_EVAL_PROVIDER=xai`. Ambos compartilham apenas a chave temporaria dessa fatia. A Q3 continua responsavel por medir o baseline oficial com a configuracao definida para a comparacao.
+
+O A/B exploratório dos modelos fica bloqueado por padrão. Mesmo com as credenciais carregadas, ele só executa com `ORACULO_MODEL_AB_AUTHORIZED=true`; as propostas saem como A/B em arquivo privado e a chave de correspondência fica separada. Como os judges são cruzados, as notas servem como sinal exploratório, não como autorização automática de troca de modelo.
 
 Se somente o judge falhar depois de cleanup completo, retomar o relatorio sem regenerar o plano ou acessar o banco:
 

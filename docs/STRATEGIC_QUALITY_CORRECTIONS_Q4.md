@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **candidato para aprovacao do owner; nenhuma correcao funcional executada**
+Status: **Q4A-Q4F concluidas; gate tecnico aprovado no staging**
 
 ## O que vai mudar para o gestor
 
@@ -49,6 +49,8 @@ Cinco das seis rodadas com proposta tiveram media 82,50. O polimento e localizad
 - Bloquear repeticao semantica da ultima pergunta e manter uma unica confirmacao final.
 - Adicionar testes que reproduzem os loops da Q3 antes da correcao.
 
+Estado em 2026-07-16: concluida no staging. O novo `_shared/session-adaptive.ts` exige classificacao `vague|partial|ready`, valida os fatos declarados contra o estado real da sessao, impede avancar sem evidencia, bloqueia regressao e repeticao semantica e recusa proposta prematura. Uma resposta invalida recebe uma unica tentativa de reparo; se continuar invalida, o servidor usa resposta curta e deterministica sem mutar plano. O smoke `pnpm run eval:strategic:q4a` aprovou 15/15 checks com bloco completo, resposta vaga e anti-loop, sem gravacao prematura e com cleanup. Custo incremental da Q4A, incluindo as rodadas diagnosticas: US$ 0,093434; acumulado do plano: US$ 2,044079. Somente `oracle-session` foi publicada no staging; producao, frontend e WhatsApp real nao mudaram.
+
 ### Q4B - Conducao e plano trimestral
 
 - Tornar forcas/gargalos proporcionais ao caso, nao uma lista obrigatoria.
@@ -56,6 +58,8 @@ Cinco das seis rodadas com proposta tiveram media 82,50. O polimento e localizad
 - Reenquadrar atividade como meio para um resultado e ajudar a reduzir excesso de prioridades.
 - Incluir baseline, alvo, fonte, dono, acoes, riscos, aprendizado e cadencia quando informados.
 - Fazer perguntas curtas com opcoes concretas quando o gestor estiver vago.
+
+Estado em 2026-07-16: concluida no staging. `_shared/quarterly-guidance.ts` valida de 1 a 3 resultados, indicador, baseline, alvo, fonte, prazo, dono, acao completa e alinhamento anual real ou excecao justificada. O condutor deixou forcas/gargalos proporcionais, reenquadra atividade como meio e registra trade-offs. A confirmacao nao cria mais pai anual generico e recusa a contradicao de excecao acompanhada por novo vinculo; preserva baseline, fonte, prazo e acoes estruturadas no banco e no documento. Dez testes puros foram adicionados e a suite completa passou 311/311. O smoke `pnpm run eval:strategic:q4b` aprovou 21/21 checks em cinco cenarios antes e depois do reforco final, sempre com cleanup. Rodada final US$ 0,066221; total Q4B US$ 0,124095; acumulado US$ 2,168174. Somente `oracle-session` foi publicada no staging; producao, frontend e WhatsApp real nao mudaram.
 
 ### Q4C - Conducao e plano mensal
 
@@ -65,6 +69,8 @@ Cinco das seis rodadas com proposta tiveram media 82,50. O polimento e localizad
 - Tratar capacidade e backlog como decisao: manter, adiar, renegociar ou cortar.
 - Gravar acompanhamento, confianca, bloqueio e compromisso seguinte no plano mensal.
 
+Estado em 2026-07-16: concluida no staging. O contexto deriva o trimestre do mes solicitado; `_shared/monthly-guidance.ts` valida 1 a 3 resultados, no maximo 5 acoes totais, campos verificaveis, datas dentro do mes, vinculo trimestral real ou excecao justificada e decisao explicita para pendencias. A confirmacao nao cria mais pai trimestral generico e o documento preserva capacidade, backlog, riscos, bloqueios, cadencia e proximo compromisso. O parser mensal aceita tanto `Jul 2026` quanto o formato legado `2026-07`, evitando recusa de sessoes antigas. A primeira rodada detectou fallback generico para pendencia (21/22); apos a correcao deterministica, tres rodadas passaram 22/22. A ultima executou o codigo final republicado no staging, com cleanup completo. Q4C custou US$ 0,169574 nas quatro rodadas; acumulado US$ 2,337748. Somente `oracle-session` foi publicada no staging; producao, frontend e WhatsApp real nao mudaram.
+
 ### Q4D - Naturalidade e polimento dos rituais
 
 - Respostas normais com uma a tres frases antes de resumos; listas somente quando ajudam a decidir.
@@ -73,6 +79,8 @@ Cinco das seis rodadas com proposta tiveram media 82,50. O polimento e localizad
 - Fechamentos preservam veredito honesto, aprendizado e ponte para o proximo ciclo.
 - Nenhum texto tecnico como `base_confirmada`, nomes de fases ou chaves de schema chega ao gestor.
 
+Estado em 2026-07-17: concluida no staging. Persona, condutores e `_shared/session-adaptive.ts` passaram a limitar respostas comuns, remover bordoes, bloquear pergunta sem contexto e preservar a fala segura quando apenas o envelope interno precisa de reparo. O anual reenquadra atividade como meio, confronta meta autodeclarada pequena e nao abandona causa concreta para perguntar proposito/visao. Mensal e Revisao Estrategica usam resumo especifico na confirmacao; fechamentos preservam veredito, aprendizado e proxima decisao. O runner cobre os seis rituais, zero mutacao antes da confirmacao, contexto autorizado, diagnostico isolado e cleanup. O ultimo judge atribuiu `4,3,4,4,4,4,4`, sem falha critica. O relatorio original ficou 81,25 por pesos aplicaveis somando 85; a normalizacao auditavel para 100 recalculou os mesmos ratings em 95,59, custo adicional zero. Todas as tentativas bloqueadas permanecem privadas. Q4D custou US$ 0,553094 e levou o acumulado a US$ 2,890842. Somente `oracle-session` mudou no staging; producao, frontend e WhatsApp real permanecem anteriores.
+
 ### Q4E - Saidas e rastreabilidade
 
 - Comparar proposta confirmada, banco, documento canonico, resumo WhatsApp e PDF no laboratorio.
@@ -80,12 +88,16 @@ Cinco das seis rodadas com proposta tiveram media 82,50. O polimento e localizad
 - Garantir hierarquia anual, trimestral e mensal e igualdade material entre canais.
 - Manter precisao numerica e os testes deterministas que ja passaram.
 
+Estado em 2026-07-17: concluida no staging. Toda proposta confirmada agora carrega rastreabilidade deterministica de sessao/tipo/origem no documento canonico, sem nova tabela e sem expor esse identificador como texto executivo. Tela, PDF e WhatsApp renderizam a mesma estrutura canonica e preservam versao/origem, prazo do objetivo, alinhamentos anual/trimestral, decisoes de capacidade, revisoes e fechamentos completos. O smoke `pnpm run eval:strategic:q4e` criou uma empresa descartavel, confirmou uma proposta trimestral pela Function real, comparou proposta, banco e documento por objeto semantico e verificou 18 fatos materiais nas tres saidas; o fingerprint foi identico, a renderizacao causou zero mutacao, houve zero chamada de IA e o cleanup foi completo. Foram publicados somente `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker` no staging porque compartilham os renderizadores alterados. Producao, Netlify, migrations e WhatsApp real nao mudaram. Q4E custou US$ 0 e o acumulado permanece US$ 2,890842. Proxima fatia: apresentar o briefing Q4F de integracao e aceite tecnico.
+
 ### Q4F - Integracao e aceite tecnico
 
 - Executar testes unitarios por defeito, integracao de sessao/proposta e paridade app/WhatsApp.
 - Rodar memoria relevante e irrelevante, area/periodo, confirmacao unica e documento canonico.
 - Validar desktop e mobile, lint, build, secret scan e CI.
 - Publicar primeiro no staging. Producao e Q5 exigem gates separados.
+
+Estado em 2026-07-17: concluida no staging sem mudanca funcional nem novo deploy. A matriz existente executou 350 unitarios, 3 fixtures, 29 casos de referencia, 122 testes em 27 arquivos de integracao, 7 testes de RLS/seguranca e 11 E2E desktop/mobile. Area/periodo, uma confirmacao, atomicidade, memoria, documento canonico, WhatsApp duravel e igualdade das saidas passaram. Lint, build, bundle de 134,5 KB gzip e secret scan em 465 arquivos ficaram verdes. Dois testes pagos/automaticos permaneceram opt-in de forma deliberada; suas fronteiras possuem cobertura deterministica e provas anteriores. Auditoria independente confirmou zero organizacoes e zero usuarios descartaveis criados pela Q4F. Custo US$ 0; acumulado US$ 2,890842. Relatorio em `docs/STRATEGIC_QUALITY_ACCEPTANCE_Q4.md`. Q4 encerrada tecnicamente; Q5 exige briefing e autorizacao separados.
 
 ## Gate da Q4
 

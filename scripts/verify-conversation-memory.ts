@@ -34,6 +34,7 @@ const memory = historicalMemoryLines(documents, [{ id: "production", name: "Prod
   focus: "monthly",
   areaId: "production",
 });
+assert(memory.some((line) => line.includes("não invente um ano no aprendizado")));
 const memoryText = memory.join("\n");
 assert.ok(memoryText.includes("MEMÓRIA ESTRATÉGICA"));
 assert.ok(memoryText.includes("Histórico 6"));

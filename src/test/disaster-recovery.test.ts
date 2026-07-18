@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/20260715220000_disaster_recovery.sql", "utf8");
@@ -46,7 +46,8 @@ describe("Fatia 6F — recuperação de desastre", () => {
   });
 
   it("atualiza a contagem esperada de migrations do monitor", () => {
-    expect(healthFunction).toContain("EXPECTED_MIGRATION_COUNT = 49");
+    const migrationCount = readdirSync("supabase/migrations").filter((file) => file.endsWith(".sql")).length;
+    expect(healthFunction).toContain(`EXPECTED_MIGRATION_COUNT = ${migrationCount}`);
   });
 
   it("atualiza o seletor de empresas ao criar ou remover o clone", () => {
