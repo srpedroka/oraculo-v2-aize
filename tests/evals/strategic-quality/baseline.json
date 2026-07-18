@@ -164,6 +164,11 @@
       "date": "2026-07-18",
       "gate": "Q4AM",
       "reason": "Quando um gestor mensal experiente ja informou o resultado e listou de duas a cinco acoes, a proxima pergunta testa capacidade e backlog uma vez em vez de repetir a coleta dos mesmos campos."
+    },
+    {
+      "date": "2026-07-18",
+      "gate": "Q4AN",
+      "reason": "Fechamentos preservam separadamente baseline, atingido e veredito nas saidas derivadas, enquanto current continua sendo o valor atingido usado na atualizacao operacional."
     }
   ],
   "runtimeAssignments": [
@@ -213,10 +218,10 @@
     { "path": "supabase/functions/_shared/model.ts", "sha256": "308c34138e9d0ec74b42ce6b90bfa13f2a75233e9df4d4918a77770608da0896" },
     { "path": "supabase/functions/_shared/model-structured-output.ts", "sha256": "6bea8c60171081ec8e5d6e770a4ede02c0cdc2b3caa8a00a0165440b809ac6e2" },
     { "path": "supabase/functions/_shared/proposals.ts", "sha256": "2f2bc94b0d5f614cdafc3e9eeb41bc474e51ca6faa86ce6b241c851fc2d45279" },
-    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "3d6a909574e3d386ce772da4515ac103b4061453b633107e71b62b7c76bafe9f" },
+    { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "be0283059e765c71c4dbb49cd0534465e28dbb13e5baa3f21bc1dd817a14389c" },
     { "path": "supabase/functions/_shared/risk-normalization.ts", "sha256": "2dc10a4e8306653f06e049b0ec9e1283ee94dd999d7b419f4fc00734d09628b5" },
-    { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "482ccf7f87f67cf579a8323be11ea1ee0cae61fffdb989aec68d8d869ab6313b" },
-    { "path": "supabase/functions/_shared/close-quality.ts", "sha256": "282de2b9ca4ea1ef76f1149ff4d96cfea453d50a3f334a7a10b2d64ddde527d6" },
+    { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "a3b066c89e7391a84002cea3f053795dba1107fac043aff0906996303e7d296a" },
+    { "path": "supabase/functions/_shared/close-quality.ts", "sha256": "eef20c057951ac26611abe234dc0d639e35a3da6a494f0f2f3211a889748eb6e" },
     { "path": "supabase/functions/_shared/periods.ts", "sha256": "ff0b89f58abbd4929b4fae20eede319aebe1ee1b3632a10152574f3e33e98792" },
     { "path": "supabase/functions/_shared/monthly-guidance.ts", "sha256": "03d7d8628da88a7909221598b8b587ceb60a7ff0ced24590ecc09b9b5c84f403" },
     { "path": "supabase/functions/_shared/monthly-continuity.ts", "sha256": "17156ee1844ae314a213ee7dda2db7e36163b9284d4f0dbba5562f6461cb6cf3" },

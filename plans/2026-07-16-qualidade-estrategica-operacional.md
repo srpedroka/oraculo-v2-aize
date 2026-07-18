@@ -990,3 +990,9 @@ A Q4AM faz o desafio de capacidade/backlog uma vez quando o gestor ja informou o
 ## Atualizacao 2026-07-18 - Q5C concluida 8/8
 
 A repeticao oficial do gestor mensal experiente R2 marcou 100 em Conducao, Plano Mensal e Saida Derivada. Q5C terminou 8/8 por US$ 0,218668; acumulado do plano US$ 14,106412. O proximo passo e Q5D: duas rodadas de fechamento mensal, duas de fechamento trimestral e duas de Revisao Estrategica, preservando as 34 aprovacoes atuais e interrompendo no primeiro bloqueio.
+
+## Atualizacao 2026-07-18 - Q4AN aprovada; Q5D retoma somente fechamento mensal R1
+
+A Q5D bloqueou no primeiro fechamento mensal parcial: o progresso atualizado de 50% precisava ser salvo no objetivo, mas o documento o chamava de baseline e perdia o ponto de partida de 40%. A Q4AN separa estado operacional e leitura executiva: `current=50%` continua sendo gravado, enquanto o contrato canonico preserva baseline 40%, atingido 50%, meta 60%, veredito parcial, status operacional, metrica, responsavel, prazo e fonte.
+
+O smoke exato passou com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 85 e media 92,92. A tentativa bloqueada custou US$ 0,033633; o smoke custou US$ 0,028937; acumulado US$ 14,168982. Proximo passo: preservar as 34 aprovacoes, arquivar somente esse bloqueio e repetir o R1; se verde, executar apenas as cinco medicoes Q5D restantes. A regressao geral completa continua reservada para quando Q5D estiver 6/6.

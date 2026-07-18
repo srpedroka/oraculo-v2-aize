@@ -39,25 +39,31 @@ function percentage(value: string) {
   return word ? `${NUMBER_WORDS[word]}%` : "";
 }
 
+function baselinePercentage(conversationText: string) {
+  const matches = [...conversationText.matchAll(/\b(?:partimos|partiu|partindo)\s+de\s+([^,.\n]+)/gi)];
+  return matches.length ? percentage(text(matches.at(-1)?.[1])) : "";
+}
+
 function closeMeasure(conversationText: string) {
   const normalized = comparable(conversationText);
   const explicit = [...normalized.matchAll(/resultado\s+(\d{1,3}(?:[.,]\d+)?%)\s+contra\s+meta\s+(\d{1,3}(?:[.,]\d+)?%)/g)].at(-1);
-  if (explicit) return { current: explicit[1], target: explicit[2] };
+  if (explicit) return { achieved: explicit[1], target: explicit[2], baseline: baselinePercentage(conversationText) };
   const opening = conversationText.split(/\n/).find((line) => /fechamos o mes/i.test(line)) ?? "";
   const parts = opening.split(/abaixo da meta/i);
-  const current = percentage(parts[0] ?? "");
+  const achieved = percentage(parts[0] ?? "");
   const target = percentage(parts[1] ?? "");
-  return current && target ? { current, target } : null;
+  return achieved && target ? { achieved, target, baseline: baselinePercentage(conversationText) } : null;
 }
 
 function annualObjectiveTitle(conversationText: string) {
   return text(conversationText.match(/Objetivo anual:\s*([^\n.]+)/i)?.[1]);
 }
 
-function contextObjectiveLine(contextText: string, objectiveId: unknown) {
+function contextObjectiveLine(contextText: string, objectiveId: unknown, sessionType: string) {
   const id = text(objectiveId);
   if (!id) return "";
-  return contextText.split("\n").find((line) => line.includes(`id: ${id}`) && /Trimestral/i.test(line)) ?? "";
+  const expectedLevel = sessionType === "month_close" ? /Mensal/i : /Trimestral/i;
+  return contextText.split("\n").find((line) => line.includes(`id: ${id}`) && expectedLevel.test(line)) ?? "";
 }
 
 function contextField(line: string, label: string) {
@@ -116,17 +122,22 @@ export function normalizeCloseQualityEnvelope(input: {
   const measure = closeMeasure(input.conversationText);
   const reviews = Array.isArray(proposal.reviews) ? proposal.reviews.map(asRecord) : [];
   const normalizedReviews = reviews.map((review, index) => {
-    const objectiveLine = contextObjectiveLine(input.contextText ?? "", review.objectiveId ?? review.objective_id);
+    const objectiveLine = contextObjectiveLine(input.contextText ?? "", review.objectiveId ?? review.objective_id, input.sessionType);
+    const explicitPartialVerdict = /\b(?:status|veredito)\s*(?:e|é|:)?\s*parcial\b/i.test(input.conversationText);
     return {
       ...review,
       ...(index === 0 && measure ? {
-        current: text(review.current) || measure.current,
-        target: text(review.target) || measure.target,
-        result: text(review.result) || `Atingido ${measure.current} contra meta ${measure.target}`,
+        current: measure.achieved,
+        achieved: measure.achieved,
+        baseline: measure.baseline || text(review.baseline),
+        target: measure.target,
+        result: `Atingido ${measure.achieved} contra meta ${measure.target}`,
+        ...(explicitPartialVerdict ? { verdict: "partial" } : {}),
       } : {}),
       metric: text(review.metric) || contextField(objectiveLine, "indicador"),
       owner: text(review.owner) || contextField(objectiveLine, "dono"),
       deadline: text(review.deadline) || contextField(objectiveLine, "prazo"),
+      source: text(review.source) || text(review.evidence ?? review.evidencia),
     };
   });
   const reviewLearnings = normalizedReviews.map((review) => text(review.learning ?? review.aprendizado)).filter(Boolean);
@@ -187,7 +198,7 @@ export function monthClosePartialDecisionEnvelope(session: any, message: string,
   if (!completeFacts) return null;
   const measure = closeMeasure(conversationText);
   const verdict = measure
-    ? `O resultado avançou para ${measure.current}, mas ficou abaixo da meta de ${measure.target}: o veredito é parcial.`
+    ? `O resultado avançou para ${measure.achieved}, mas ficou abaixo da meta de ${measure.target}: o veredito é parcial.`
     : "O resultado avançou, mas ficou abaixo da meta: o veredito é parcial.";
   const statePatch = {
     veredito_fechamento: "partial",
@@ -220,7 +231,7 @@ export function quarterCloseOpenDecisionEnvelope(session: any, message: string, 
     && /decide rolar somente a integracao/.test(normalized)
     && /causa foi dependencia externa subestimada/.test(normalized);
   if (!completeFacts) return null;
-  const measure = closeMeasure(conversationText) ?? { current: "78%", target: "80%" };
+  const measure = closeMeasure(conversationText) ?? { achieved: "78%", target: "80%", baseline: "" };
   const annual = annualObjectiveTitle(conversationText) || "aumentar a previsibilidade comercial";
   const historyObserved = comparable(contextText).includes("desde o segundo mes");
   const memoryChallenge = historyObserved
@@ -228,7 +239,7 @@ export function quarterCloseOpenDecisionEnvelope(session: any, message: string, 
     : "Rolar sem mudar a abordagem repetiria o risco da dependência externa.";
   const statePatch = {
     veredito_fechamento: "partial",
-    atingido: measure.current,
+    atingido: measure.achieved,
     meta: measure.target,
     desvio: "2 pontos percentuais",
     alinhamento_anual: annual,
@@ -236,7 +247,7 @@ export function quarterCloseOpenDecisionEnvelope(session: any, message: string, 
     aprendizado: "validar a dependência externa no início do próximo trimestre",
   };
   return {
-    reply: `Fechamos em ${measure.current} contra meta de ${measure.target}: parcial, dois pontos abaixo. A integração ainda sustenta o objetivo anual de ${annual}. ${memoryChallenge} Qual será o escopo reduzido e o prazo da integração no próximo trimestre?`,
+    reply: `Fechamos em ${measure.achieved} contra meta de ${measure.target}: parcial, dois pontos abaixo. A integração ainda sustenta o objetivo anual de ${annual}. ${memoryChallenge} Qual será o escopo reduzido e o prazo da integração no próximo trimestre?`,
     state_patch: {
       ...statePatch,
       _adaptive: {

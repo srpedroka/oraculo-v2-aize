@@ -200,7 +200,12 @@ describe("canonical plan document preview", () => {
         title: "Qualidade do funil",
         result: "Atingido 50% contra meta 60%",
         current: "50%",
+        baseline: "40%",
+        achieved: "50%",
         target: "60%",
+        verdict: "partial",
+        statusFinal: "at_risk",
+        progressFinal: 50,
         learning: "Envolver o fornecedor no início",
       }],
       pendencies: [{ kind: "action", decision: "renegotiate", reason: "dependência externa", newDeadline: "2027-07-20" }],
@@ -213,12 +218,23 @@ describe("canonical plan document preview", () => {
       period: "Jun 2027",
     }) as any;
 
-    expect(content.objetivos[0]).toMatchObject({ atual: "50%", meta: "60%" });
+    expect(content.objetivos[0]).toMatchObject({
+      atual: "40%",
+      atingido: "50%",
+      meta: "60%",
+      veredito: "partial",
+      status_final: "at_risk",
+      progresso_final: 50,
+    });
     expect(content.fechamento.aprendizados).toEqual(["Envolver o fornecedor no início"]);
     expect(content.fechamento.pendencias[0]).toContain("renegociar");
     expect(content.fechamento.pendencias[0]).not.toContain("[object Object]");
     expect(content.fechamento.pulso_gestao).toMatchObject({ confianca: "yellow", bloqueio: "dependência externa" });
     const whatsapp = renderPlanForWhatsApp(content);
+    expect(whatsapp).toContain("Baseline: 40%");
+    expect(whatsapp).toContain("Atingido: 50%");
+    expect(whatsapp).toContain("Veredito: partial");
+    expect(whatsapp).not.toContain("Baseline: 50%");
     expect(whatsapp).toContain("Meta: 60%");
     expect(whatsapp).toContain("Confiança: yellow");
     expect(whatsapp).not.toContain("[object Object]");
@@ -255,7 +271,7 @@ describe("canonical plan document preview", () => {
       objetivo_anual: "Aumentar previsibilidade comercial",
       objetivos_trimestre: ["Elevar adoção do processo"],
     });
-    expect(content.objetivos[0]).toMatchObject({ atual: "78%", meta: "80%", responsavel: "PERSON_FIXTURE_MANAGER" });
+    expect(content.objetivos[0]).toMatchObject({ atual: "", atingido: "78%", meta: "80%", responsavel: "PERSON_FIXTURE_MANAGER" });
     expect(content.fechamento.pendencias[0]).toContain("integração principal");
     expect(content.fechamento.pendencias[0]).toContain("novo prazo: 2027-07-31");
     const whatsapp = renderPlanForWhatsApp(content);

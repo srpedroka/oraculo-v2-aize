@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40. Na regressao limpa r22, Q5A esta 10/10, Q5B 16/16 e Q5C 8/8. A proxima fase e Q5D, com seis medicoes de fechamento mensal, fechamento trimestral e Revisao Estrategica.
+Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40. Na regressao limpa r22, Q5A esta 10/10, Q5B 16/16 e Q5C 8/8. A Q5D preserva 34 aprovacoes e repetira somente o fechamento mensal parcial R1 apos a Q4AN; depois segue pelas cinco medicoes ainda ausentes.
 
 ## Objetivo
 

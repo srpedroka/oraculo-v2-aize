@@ -378,13 +378,17 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
       const meta = [
         objectiveTypeLabel(objective.tipo),
         asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
+        asText(objective.atingido) ? `Atingido: ${asText(objective.atingido)}` : "",
         asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
         asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
         asText(objective.prazo) ? `Prazo: ${asText(objective.prazo)}` : "",
         asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
+        asText(objective.veredito) ? `Veredito: ${asText(objective.veredito)}` : "",
+        asText(objective.status_final) ? `${asText(objective.veredito) ? "Status operacional" : "Status final"}: ${asText(objective.status_final)}` : "",
+        objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
       ].filter(Boolean).join(" · ");
       drawLines([meta], { x: objectiveX, width: objectiveWidth, size: 7.8, lineHeight: 11, font: medium, color: COLORS.tertiary, gapAfter: 8 });
-      drawKeyValue("Resultado esperado", objective.resultado, 58);
+      drawKeyValue(asText(objective.atingido) ? "Resultado apurado" : "Resultado esperado", objective.resultado, 58);
       drawKeyValue("Fonte", objective.fonte, 58);
       drawKeyValue("Vínculo", objective.vinculo, 58);
 

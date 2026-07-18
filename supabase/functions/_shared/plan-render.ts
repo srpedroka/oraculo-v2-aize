@@ -41,14 +41,16 @@ function objectiveBlock(objective: any) {
   const meta = [
     asText(objective.tipo) ? `Tipo: ${asText(objective.tipo)}` : "",
     asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
+    asText(objective.atingido) ? `Atingido: ${asText(objective.atingido)}` : "",
     asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
     asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
     asText(objective.prazo) ? `Prazo: ${asText(objective.prazo)}` : "",
     asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
-    asText(objective.status_final) ? `Status final: ${asText(objective.status_final)}` : "",
+    asText(objective.veredito) ? `Veredito: ${asText(objective.veredito)}` : "",
+    asText(objective.status_final) ? `${asText(objective.veredito) ? "Status operacional" : "Status final"}: ${asText(objective.status_final)}` : "",
     objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
   ].filter(Boolean);
-  const result = asText(objective.resultado) ? [`Resultado esperado: ${asText(objective.resultado)}`] : [];
+  const result = asText(objective.resultado) ? [`${asText(objective.atingido) ? "Resultado apurado" : "Resultado esperado"}: ${asText(objective.resultado)}`] : [];
   const source = asText(objective.fonte) ? [`Fonte: ${asText(objective.fonte)}`] : [];
   const link = asText(objective.vinculo) ? [`Vínculo: ${asText(objective.vinculo)}`] : [];
   const kpiLinks = asArray<any>(objective.vinculos_kpi).map((item) =>

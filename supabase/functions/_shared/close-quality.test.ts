@@ -32,7 +32,7 @@ describe("close quality Q4W", () => {
     })).toEqual([]);
   });
 
-  it("preserves achieved, target, learning and next period in the close proposal", () => {
+  it("preserves baseline, achieved, target, learning and next period in the close proposal", () => {
     const normalized = normalizeCloseQualityEnvelope({
       envelope: {
         proposal: {
@@ -44,12 +44,42 @@ describe("close quality Q4W", () => {
       },
       sessionType: "month_close",
       period: "Jun 2027",
-      conversationText: "Resultado 50% contra meta 60%: status parcial.",
+      conversationText: "Partimos de 40%. Resultado 50% contra meta 60%: status parcial.",
     }) as any;
 
-    expect(normalized.proposal.reviews[0]).toMatchObject({ current: "50%", target: "60%", result: "Atingido 50% contra meta 60%" });
+    expect(normalized.proposal.reviews[0]).toMatchObject({
+      baseline: "40%",
+      current: "50%",
+      achieved: "50%",
+      target: "60%",
+      verdict: "partial",
+      result: "Atingido 50% contra meta 60%",
+    });
     expect(normalized.proposal.learnings).toEqual(["Envolver o fornecedor no início"]);
     expect(normalized.proposal.nextPeriod).toBe("Jul 2027");
+  });
+
+  it("loads monthly metric, owner and deadline from the matching monthly objective", () => {
+    const objectiveId = "00000000-0000-0000-0000-000000000111";
+    const normalized = normalizeCloseQualityEnvelope({
+      envelope: {
+        proposal: {
+          type: "month_close",
+          reviews: [{ objectiveId, progressFinal: 50, evidence: "relatorio semanal" }],
+        },
+      },
+      sessionType: "month_close",
+      period: "Jun 2027",
+      conversationText: "Partimos de 40%. Resultado 50% contra meta 60%: status parcial.",
+      contextText: `- [Em risco] Qualidade do funil (id: ${objectiveId}; Mensal; Resultado; indicador: Oportunidades com proxima acao; meta: 60%; atual: 40%; prazo: 2027-06-30; dono: PERSON_FIXTURE_MANAGER; progresso: 40%)`,
+    }) as any;
+
+    expect(normalized.proposal.reviews[0]).toMatchObject({
+      metric: "Oportunidades com proxima acao",
+      owner: "PERSON_FIXTURE_MANAGER",
+      deadline: "2027-06-30",
+      source: "relatorio semanal",
+    });
   });
 
   it("uses quarterly memory, alignment and asks only for scope and deadline", () => {

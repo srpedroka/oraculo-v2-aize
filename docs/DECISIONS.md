@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Fechamento separa estado operacional de leitura executiva
+
+Decisao: fechamentos preservam o valor atingido em `review.current` porque esse campo atualiza o progresso operacional do objetivo. Para documentos e canais, o contrato explicita separadamente `baseline`, `achieved` e `verdict`; `statusFinal` continua sendo o estado operacional aceito pelo banco. A interface, o PDF e o WhatsApp nao podem chamar o atingido de baseline.
+
+Motivo: a primeira medicao Q5D da regressao limpa estava tecnicamente correta e gravava 50%, mas o documento rotulava esse mesmo valor como `Baseline 50%`, apagando o ponto de partida informado de 40%. A ausencia de `verdict=partial` e de metrica, responsavel e prazo tambem reduziu a Saida Derivada para 71,25.
+
+Consequencias: o fechamento mensal parcial agora mostra baseline 40%, atingido 50%, meta 60%, veredito parcial e status operacional em banco, tela/PDF e WhatsApp. A Q4AN passou o smoke exato com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 85 e media 92,92; custo US$ 0,028937, acumulado US$ 14,168982. Nao houve migration ou alteracao da regra de gravacao.
+
 ## 2026-07-18 - Lista mensal de gestor experiente recebe um desafio de capacidade
 
 Decisao: quando o gestor mensal ja informou o resultado e lista de duas a cinco acoes depois de declarar que o pacote possui datas e criterios, usar a proxima pergunta para testar capacidade real e backlog. O desafio ocorre no maximo uma vez, nao intercepta bloco completo e nao substitui a validacao dos campos obrigatorios.

@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 8/8; proxima fase Q5D**
+Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 8/8; Q5D em retomada apos Q4AN**
 
 ## Objetivo
 
@@ -17,6 +17,12 @@ Repetir exatamente as 40 rodadas generativas e os nove casos deterministas da Q3
 - A matriz determinista terminou com oito `pass`, um `pending-human` de UX e zero `fail`.
 
 ## Resultado da tentativa
+
+### Q5D e Q4AN
+
+A Q5D parou no primeiro caso, `Q2D-MONTH-CLOSE-PARTIAL-001` R1. A proposta e a gravacao estavam corretas com `current=50%`, mas documento e WhatsApp rotulavam o valor atingido como baseline; o ponto inicial de 40% desaparecia, o veredito parcial nao era explicito e a saida mensal omitia metrica, responsavel e prazo. Conducao 97,50 e Revisao/Fechamento 93,75 passaram, mas Saida Derivada 71,25 bloqueou o gate. Custo US$ 0,033633; fail-fast evitou as cinco medicoes seguintes.
+
+A Q4AN preserva `current=50%` para atualizar o objetivo e adiciona `baseline=40%`, `achieved=50%` e `verdict=partial` ao contrato de fechamento. O contexto mensal passou a carregar metrica, responsavel, prazo e fonte; documento, tela/PDF e WhatsApp usam os mesmos campos canonicos. O smoke exato passou com Conducao 93,75, Revisao/Fechamento 100, Saida Derivada 85 e media 92,92. Custo US$ 0,028937; acumulado US$ 14,168982. Proximo fluxo: `resume-after-correction Q4AN` preserva as 34 aprovacoes e arquiva apenas o bloqueio; `phase Q5D` repete R1 e, se verde, executa somente as cinco medicoes ausentes.
 
 ### Q5C e Q4AL
 

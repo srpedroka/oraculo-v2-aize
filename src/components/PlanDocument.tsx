@@ -85,11 +85,13 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
   const meta = [
     asText(objective.tipo),
     asText(objective.atual) ? `Baseline: ${asText(objective.atual)}` : "",
+    asText(objective.atingido) ? `Atingido: ${asText(objective.atingido)}` : "",
     asText(objective.indicador) ? `Indicador: ${asText(objective.indicador)}` : "",
     asText(objective.meta) ? `Meta: ${asText(objective.meta)}` : "",
     asText(objective.prazo) ? `Prazo: ${asText(objective.prazo)}` : "",
     asText(objective.responsavel) ? `Responsável: ${asText(objective.responsavel)}` : "",
-    asText(objective.status_final) ? `Status final: ${asText(objective.status_final)}` : "",
+    asText(objective.veredito) ? `Veredito: ${asText(objective.veredito)}` : "",
+    asText(objective.status_final) ? `${asText(objective.veredito) ? "Status operacional" : "Status final"}: ${asText(objective.status_final)}` : "",
     objective.progresso_final !== null && objective.progresso_final !== undefined ? `Progresso: ${objective.progresso_final}%` : "",
   ].filter(Boolean);
 
@@ -101,7 +103,7 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
           <h3 className="text-xl font-semibold leading-7 text-text">{asText(objective.titulo, "Objetivo")}</h3>
           {meta.length ? <p className="mt-2 text-xs font-medium leading-5 text-text-tertiary">{meta.join(" · ")}</p> : null}
         </div>
-        <KeyValue label="Resultado esperado" value={objective.resultado} />
+        <KeyValue label={asText(objective.atingido) ? "Resultado apurado" : "Resultado esperado"} value={objective.resultado} />
         <KeyValue label="Fonte" value={objective.fonte} />
         <KeyValue label="Vínculo" value={objective.vinculo} />
         <KeyValue
