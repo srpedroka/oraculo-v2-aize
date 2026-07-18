@@ -1,5 +1,13 @@
 # Decisoes tecnicas
 
+## 2026-07-18 - Lista mensal de gestor experiente recebe um desafio de capacidade
+
+Decisao: quando o gestor mensal ja informou o resultado e lista de duas a cinco acoes depois de declarar que o pacote possui datas e criterios, usar a proxima pergunta para testar capacidade real e backlog. O desafio ocorre no maximo uma vez, nao intercepta bloco completo e nao substitui a validacao dos campos obrigatorios.
+
+Motivo: duas rodadas materialmente iguais variaram apenas na pergunta intermediaria. A aprovada testou capacidade; a bloqueada repetiu dono e criterio, ficou com Conducao 76,25 e exigiu uma terceira chamada de geracao, apesar de produzir depois um plano 98,75 e saidas 100. O defeito era variancia de orquestracao, nao capacidade estrategica do modelo.
+
+Consequencias: a conversa fica mais executiva sem gravar dado incompleto. O gestor responde sobre o que cabe e o que sai; se o bloco seguinte ainda omitir dono, prazo ou criterio, a validacao continua fechada. A pergunta nao se repete e a confirmacao final permanece unica.
+
 ## 2026-07-18 - Bloco mensal completo de pendencia vira proposta sem reentrevista
 
 Decisao: reconhecer deterministicamente uma pendencia mensal herdada quando a mensagem confirma item, origem, motivo, decisao de rolar, prazo, responsavel, criterio de conclusao e resultado mensuravel. Nesse caso, a pendencia e a propria acao; o servidor monta a proposta com uma confirmacao e usa apenas um objetivo trimestral atual inequivoco como pai.

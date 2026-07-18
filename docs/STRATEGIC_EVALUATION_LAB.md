@@ -2,7 +2,7 @@
 
 Versao: `2026-07-16.q2`
 
-Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40. Na regressao limpa r22, Q5A esta 10/10, Q5B 16/16 e Q5C preserva tres aprovacoes. A Q4AL corrigiu o unico bloqueio mensal atual; o proximo passo e repetir somente esse caso e continuar Q5C.
+Status: Q0-Q4 concluidas; Q5 incremental ja comprovou 40/40. Na regressao limpa r22, Q5A esta 10/10, Q5B 16/16 e Q5C preserva sete aprovacoes. A Q4AM corrigiu o unico bloqueio mensal atual; o proximo passo e repetir somente gestor experiente R2 para fechar Q5C 8/8.
 
 ## Objetivo
 
@@ -18,6 +18,7 @@ O laboratorio executa casos sinteticos contra o Supabase de staging, captura a c
 - `scripts/strategic-q4aj-smoke.ts`: smoke da normalizacao legivel de risco estruturado na proposta, documento e WhatsApp.
 - `scripts/strategic-q4ak-smoke.ts`: smoke do bloqueio server-side de KPI trimestral nao escolhido pelo gestor.
 - `scripts/strategic-q4al-smoke.ts`: smoke do bloco mensal completo com pendencia herdada, continuidade e confirmacao unica.
+- `scripts/strategic-q4am-smoke.ts`: smoke do desafio de capacidade sem repeticao de campos para gestor mensal experiente.
 - `scripts/strategic-model-ab.ts`: comparação paga e cega entre Grok 4.3/4.5, com trava de autorização e sem troca automática.
 - `tests/evals/strategic-quality/cases/q1-minimal-annual.json`: primeiro caso sintetico, obrigatoriamente anual.
 - `src/test/strategic-eval-runner.test.ts`: guardas e falhas seguras.

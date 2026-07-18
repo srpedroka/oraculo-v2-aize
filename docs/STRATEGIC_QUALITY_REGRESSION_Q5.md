@@ -2,7 +2,7 @@
 
 Data: 2026-07-17  
 Ambiente: staging `bijbdsvejdzhpgyiykpi`  
-Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C com 3 aprovacoes preservadas; Q4AL aprovada para repetir somente o bloqueio mensal**
+Status: **regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C com 7/8 aprovacoes preservadas; Q4AM aprovada para repetir somente gestor mensal experiente R2**
 
 ## Objetivo
 
@@ -23,6 +23,12 @@ Repetir exatamente as 40 rodadas generativas e os nove casos deterministas da Q3
 Q5C aprovou as duas rodadas de cascata mensal e a primeira rodada de pendencia herdada. A segunda rodada recebeu todos os fatos necessarios, mas repetiu a pergunta de acao e encerrou sem proposta; o fail-fast impediu as quatro medicoes seguintes. A Q4AL adicionou uma transicao deterministica para esse bloco completo, sem mudar o comportamento quando faltam dados ou o pai trimestral e ambiguo.
 
 O smoke do mesmo caso passou com Conducao 90, Plano Mensal 100, media 95, uma confirmacao e zero conteudo sintetico. Custo US$ 0,027565; acumulado US$ 13,928945. Proximo fluxo: `resume-after-correction Q4AL` preserva 29 aprovacoes e arquiva apenas o bloqueio; `phase Q5C` repete R2 e, se verde, executa somente as quatro medicoes mensais ainda ausentes.
+
+### Q5C e Q4AM
+
+A retomada Q4AL aprovou oficialmente a pendencia herdada R2 e seguiu pelas quatro medicoes ausentes. Sobrecarga de capacidade R1/R2 e gestor experiente R1 passaram. Gestor experiente R2 produziu Plano Mensal 98,75 e Saida Derivada 100, mas bloqueou Conducao 76,25: repetiu a cobranca de dono/criterio depois da lista e nao fez o desafio executivo de capacidade observado no R1.
+
+A Q4AM estabiliza essa passagem no servidor. O smoke exato fez uma coleta das acoes, um desafio de capacidade/backlog e uma confirmacao; Conducao, Plano Mensal e Saida Derivada marcaram 100. Custo US$ 0,028244; acumulado US$ 14,078300. Proximo fluxo: `resume-after-correction Q4AM` preserva 33 aprovacoes e arquiva apenas o bloqueio; `phase Q5C` repete somente R2 para fechar a fase 8/8.
 
 A execucao foi interrompida automaticamente no segundo de 40 casos pagos. Continuar consumindo IA nao mudaria o gate ja reprovado e esconderia dois defeitos objetivos.
 

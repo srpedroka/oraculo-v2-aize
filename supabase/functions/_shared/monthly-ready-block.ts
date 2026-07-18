@@ -324,6 +324,40 @@ export async function monthlyInheritedPendingEnvelope(client: Client, session: a
   };
 }
 
+export function monthlyExperiencedActionsChallengeEnvelope(
+  session: any,
+  message: string,
+  conversationText: string,
+) {
+  if (session.type !== "monthly" || parseCompleteMonthlyReadyBlock(message, session.period)) return null;
+  const actionLines = message.split(/\r?\n/)
+    .map((line) => stripBullet(line.trim()))
+    .filter((line) => /^a[cç][aã]o\s+(?:\d+|um|dois|duas|tr[eê]s|quatro|cinco)\s*:/i.test(line));
+  if (actionLines.length < 2 || actionLines.length > 5) return null;
+
+  const managerClaimedReadyActions = /\btenho\b[\s\S]{0,60}\ba[cç][oõ]es?\b[\s\S]{0,100}\b(?:datas?|prazos?)\b[\s\S]{0,100}\bcrit[eé]rios?\b/i
+    .test(conversationText);
+  const capacityWasChallenged = /\b(?:capacidade|cabem|cabe|apertar|sobrecarga)\b[\s\S]{0,100}\b(?:time|equipe|backlog|sai|fica|impacto)\b/i
+    .test(conversationText);
+  if (!managerClaimedReadyActions || capacityWasChallenged) return null;
+
+  const listedActions = actionLines.map((line) => text(line.replace(/^a[cç][aã]o\s+(?:\d+|um|dois|duas|tr[eê]s|quatro|cinco)\s*:\s*/i, "")));
+  return {
+    reply: `Você já trouxe ${listedActions.length === 2 ? "duas" : listedActions.length} ações. Antes de fechar: elas cabem na capacidade real do time, e o que fica no backlog se a execução apertar?`,
+    state_patch: {
+      acoes_listadas: listedActions,
+      _adaptive: {
+        readiness: "partial",
+        confirmed_facts: ["acoes_listadas"],
+        blocking_gap: "teste de capacidade e renuncia",
+        question_goal: "proteger a meta mensal dentro da capacidade real",
+        action_direction: "confirmar o que permanece comprometido e o que vai ao backlog",
+      },
+    },
+    next_phase: "capacidade",
+  };
+}
+
 export async function completeMonthlyReadyEnvelope(client: Client, session: any, message: string) {
   if (session.type !== "monthly") return null;
   const block = parseCompleteMonthlyReadyBlock(message, session.period);

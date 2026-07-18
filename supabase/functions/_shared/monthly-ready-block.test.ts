@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   matchingQuarterlyObjective,
   monthlyCapacityDecisionEnvelope,
+  monthlyExperiencedActionsChallengeEnvelope,
   monthlyInheritedPendingEnvelope,
   parseCompleteMonthlyReadyBlock,
   parseInheritedMonthlyPendingBlock,
@@ -22,6 +23,15 @@ const inheritedBlock = `Decisao concreta do gestor para completar o plano mensal
 - Rolar a integracao do CRM para Jul 2027, preservando a origem de Jun 2027 e registrando dependencia do fornecedor como motivo.
 - Novo prazo: 20/07/2027. Responsavel: PERSON_FIXTURE_MANAGER. Criterio: integracao validada em ambiente produtivo e aceite registrado.
 - Resultado mensal vinculado ao trimestre: elevar oportunidades com proxima acao de 40% para 55%; fonte relatorio semanal.`;
+
+const experiencedActionList = `Informacoes confirmadas para este caso:
+- Acao um: publicar padrao do funil ate dia cinco.
+- Acao dois: revisar carteira ativa ate dia quinze.
+- Acao tres: auditar vinte oportunidades ate dia vinte e cinco.
+- O acompanhamento sera semanal, com confianca e bloqueio.`;
+
+const experiencedConversation = `manager: Para este mes, quero elevar oportunidades de quarenta para cinquenta e cinco por cento. Tenho tres acoes com datas e criterios completos.
+oracle: Quais sao as tres acoes, com dono, prazo e criterio de conclusao?`;
 
 describe("complete monthly ready block Q4V", () => {
   it("extracts a complete capacity choice without inventing fields", () => {
@@ -144,5 +154,38 @@ describe("complete monthly ready block Q4V", () => {
       sessionPeriod: "Jul 2027",
       userMessage: inheritedBlock,
     })).toEqual([]);
+  });
+
+  it("challenges capacity once after an experienced manager lists the actions", () => {
+    const envelope = monthlyExperiencedActionsChallengeEnvelope(
+      { type: "monthly", period: "Jul 2027" },
+      experiencedActionList,
+      experiencedConversation,
+    ) as any;
+
+    expect(envelope).toMatchObject({
+      next_phase: "capacidade",
+      state_patch: {
+        _adaptive: {
+          readiness: "partial",
+          blocking_gap: "teste de capacidade e renuncia",
+        },
+      },
+    });
+    expect(envelope.reply).toMatch(/capacidade real do time/i);
+    expect(envelope.reply).toMatch(/backlog/i);
+  });
+
+  it("does not repeat the capacity challenge or intercept a complete block", () => {
+    expect(monthlyExperiencedActionsChallengeEnvelope(
+      { type: "monthly", period: "Jul 2027" },
+      experiencedActionList,
+      `${experiencedConversation}\noracle: Elas cabem na capacidade real do time, e o que fica no backlog?`,
+    )).toBeNull();
+    expect(monthlyExperiencedActionsChallengeEnvelope(
+      { type: "monthly", period: "Jul 2027" },
+      completeBlock,
+      experiencedConversation,
+    )).toBeNull();
   });
 });

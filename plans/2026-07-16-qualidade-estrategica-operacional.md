@@ -2,7 +2,7 @@
 
 Data: 2026-07-16
 
-Status: **em execucao; regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C em retomada incremental apos Q4AL**
+Status: **em execucao; regressao limpa r22 com Q5A 10/10, Q5B 16/16 e Q5C 7/8 em retomada incremental apos Q4AM**
 
 Plano anterior concluído: `plans/2026-07-12-hardening-confiabilidade-escala.md`
 
@@ -980,3 +980,9 @@ Proxima fatia: **retomada incremental Q5D apos Q4Y**. Preservar 38 aprovacoes, r
 Q5A e Q5B estao completas. Q5C preserva tres aprovacoes: cascata mensal R1/R2 e pendencia herdada R1. A pendencia herdada R2 bloqueou sem proposta porque o motor repetiu a pergunta de acao mesmo depois de receber item, origem, motivo, decisao, prazo, responsavel, criterio e resultado 40% -> 55%.
 
 A Q4AL transforma deterministicamente esse bloco completo em proposta, usando a propria pendencia como acao e somente um pai trimestral atual inequivoco. Smoke aprovado: Conducao 90, Plano Mensal 100, media 95; custo US$ 0,027565; acumulado US$ 13,928945. Proximo passo: preservar 29 aprovacoes, repetir somente R2 e continuar pelas quatro medicoes Q5C ainda ausentes. Nova falha interrompe a fase e recebe correcao mais smoke focado; a regressao geral completa continua reservada para depois de Q5A-Q5D verdes.
+
+## Atualizacao 2026-07-18 - Q4AM aprovada na regressao limpa r22
+
+A retomada Q5C passou oficialmente a pendencia herdada R2, a sobrecarga de capacidade R1/R2 e o gestor experiente R1. O R2 final bloqueou apenas Conducao 76,25; plano 98,75, saida 100, checks e cleanup ficaram verdes. A variacao estava na pergunta: R1 testou capacidade, R2 repetiu dono e criterio.
+
+A Q4AM faz o desafio de capacidade/backlog uma vez quando o gestor ja informou o resultado e listou de duas a cinco acoes. Bloco completo segue direto a proposta e campos ausentes continuam obrigatorios. Smoke aprovado com 100/100/100; custo US$ 0,028244; acumulado US$ 14,078300. Proximo passo: preservar 33 aprovacoes, repetir somente gestor mensal experiente R2 e, se verde, declarar Q5C 8/8 antes do briefing Q5D.

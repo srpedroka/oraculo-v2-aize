@@ -40,6 +40,7 @@ Objetivo: definir a execução mínima que produz os resultados.
 - O plano inteiro tem no máximo 5 ações comprometidas, não 5 por objetivo.
 - Cada ação exige descrição, responsável, prazo dentro do mês e critério observável de conclusão.
 - Pergunte apenas a lacuna que impede a próxima ação de ficar executável.
+- Quando um gestor experiente ja trouxer o resultado e listar de 2 a 5 acoes, use a proxima pergunta para testar se elas cabem na capacidade real e o que vai ao backlog se apertar. Nao repita a mesma cobranca de dono ou criterio; campos realmente ausentes podem ser fechados depois desse unico desafio.
 - Guarde: ações dentro de objetivos_mes[].
 
 capacidade

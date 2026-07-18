@@ -373,8 +373,20 @@ describe("Q3 strategic baseline", () => {
     expect(smoke).toContain('runLabel: "q4al"');
     expect(smoke).toContain('ledgerLabel: "Q4AL"');
     expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
-    expect(runner).toContain('["Q4U", "Q4V", "Q4AL"].includes(normalizedReference)');
+    expect(runner).toContain('["Q4U", "Q4V", "Q4AL", "Q4AM"].includes(normalizedReference)');
     expect(runner).toContain("incremental-q4al");
+  });
+
+  it("repete na Q4AM somente o gestor mensal experiente R2", () => {
+    const smoke = readFileSync("scripts/strategic-q4am-smoke.ts", "utf8");
+    const runner = readFileSync("scripts/strategic-baseline.ts", "utf8");
+    expect(smoke).toContain('CASE_ID = "Q2C-MONTHLY-EXPERIENCED-MANAGER-004"');
+    expect(smoke).toContain('executeCase(item, "Q2C", 2');
+    expect(smoke).toContain('runLabel: "q4am"');
+    expect(smoke).toContain('ledgerLabel: "Q4AM"');
+    expect(smoke).not.toContain("bkswkfazkjilwfzwzthz");
+    expect(runner).toContain('["Q4U", "Q4V", "Q4AL", "Q4AM"].includes(normalizedReference)');
+    expect(runner).toContain("incremental-q4am");
   });
 
   it("mantem o caso de produtividade no escopo industrial declarado pela fixture", () => {
@@ -515,7 +527,7 @@ describe("Q3 strategic baseline", () => {
 
   it("retoma Q5 arquivando somente a medicao bloqueada e preservando as aprovacoes", () => {
     const source = readFileSync("scripts/strategic-baseline.ts", "utf8");
-    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH", "Q4AI", "Q4AJ", "Q4AK", "Q4AL"]');
+    expect(source).toContain('["Q4N", "Q4O", "Q4P", "Q4Q", "Q4R", "Q4S", "Q4T", "Q4U", "Q4V", "Q4W", "Q4X", "Q4Y", "Q4AG", "Q4AH", "Q4AI", "Q4AJ", "Q4AK", "Q4AL", "Q4AM"]');
     expect(source).toContain('run.status === "execution-error" || run.qualityStatus === "blocked"');
     expect(source).toContain("const failedReportPaths = new Set(failedRuns.map((run) => run.reportPath))");
     expect(source).toContain("!failedReportPaths.has(run.reportPath)");
@@ -537,7 +549,8 @@ describe("Q3 strategic baseline", () => {
     expect(source).toContain('normalizedReference === "Q4AJ"');
     expect(source).toContain('normalizedReference === "Q4AK"');
     expect(source).toContain('normalizedReference === "Q4AL"');
-    expect(source).toContain('["Q4U", "Q4V", "Q4AL"].includes(normalizedReference)');
+    expect(source).toContain('normalizedReference === "Q4AM"');
+    expect(source).toContain('["Q4U", "Q4V", "Q4AL", "Q4AM"].includes(normalizedReference)');
     expect(source).toContain("medicao(oes) aprovada(s) preservada(s)");
     expect(source).toContain('command === "resume-after-correction"');
   });
