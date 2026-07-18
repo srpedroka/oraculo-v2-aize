@@ -465,7 +465,14 @@ export function useStoreDispatch({
           action: "confirm",
           sessionId: action.sessionId,
           channel: "web",
-        }).then(() => invalidateDomains(PLANNING_MUTATION_DOMAINS));
+        })
+          .then(() => {
+            invalidateDomains(PLANNING_MUTATION_DOMAINS);
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível gravar o plano.");
+          });
         return;
       }
 

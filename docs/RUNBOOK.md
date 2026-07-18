@@ -514,6 +514,15 @@ limit 20;
 
 Se nao grava, confira se a proposta tem IDs reais de objetivos/acoes. O contexto enviado por `_shared/plan-context.ts` precisa incluir IDs. Se o owner pedir fechamento sem area, use o cartao do Dashboard/Execucao ou informe o departamento.
 
+## Problema: confirmacao fica em `Gravando...` ou retorna erro
+
+1. Nao clique novamente enquanto a chamada estiver em voo.
+2. Confira `oracle-session` em Functions > Invocations e Logs; diferencie timeout de uma resposta HTTP 400 rapida.
+3. Recarregue a tela e confirme se `pending_proposal` continua presente e se nenhum objetivo/documento novo foi criado.
+4. O painel deve exibir a mensagem devolvida pela Function e liberar o botao apos a rejeicao. Se continuar preso, o frontend publicado ainda nao possui a recuperacao de erro.
+5. Corrija a proposta pela conversa quando a mensagem indicar validacao de negocio. Retry da mesma proposta e protegido pela chave idempotente da sessao.
+6. Nunca repita a conducao completa nem altere o banco manualmente para contornar a validacao.
+
 ## Problema: documento padrao nao aparece ou nao exporta PDF
 
 Fluxo esperado da Fase 6:

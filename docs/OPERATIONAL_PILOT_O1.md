@@ -6,7 +6,7 @@ Ambiente: producao para observacao inicial; staging descartavel para a correcao
 
 Empresa do piloto: Gaam/Aize
 
-Estado do gate: **pausado antes da gravacao; correcao aprovada no staging e publicacao em producao pendente**
+Estado do gate: **conducao concluida; confirmacao pausada sem gravacao por erro 400 recuperavel**
 
 ## Resumo executivo
 
@@ -16,6 +16,10 @@ A causa foi reproduzida no codigo: uma `planning_session` ativa ainda apontava p
 
 A correcao preserva o estado da sessao e, antes da primeira mensagem, valida status, limite ocioso de quatro horas, empresa, pessoa e canal. Vinculo ausente, arquivado, vencido ou fora de escopo e trocado pela conversa ativa. Nenhum roteiro, regra de qualidade, confirmacao ou conteudo do plano foi alterado.
 
+A PR #11 foi mesclada em `9f8287a` e o release protegido #32 publicou somente `oracle-session` em producao. A retomada real passou: mensagem e resposta apareceram no episodio ativo, a conversa permaneceu no Comercial T3 2026 e chegou a uma proposta unica. Antes de confirmar, o owner ajustou o vinculo para o objetivo anual canonico da area e preservou a terceira acao de migracao da base.
+
+A confirmacao unica retornou HTTP 400 em 579 ms e nao gravou objetivo, acao ou documento. O frontend nao tratava a rejeicao do `callEdgeFunction`, por isso mantinha o botao em `Gravando...` indefinidamente mesmo com a Function ja encerrada. A proposta continua pendente e nenhuma segunda confirmacao foi enviada. A correcao em andamento mostra a mensagem real no painel, libera nova tentativa e preserva a idempotencia server-side.
+
 ## Evidencias
 
 - Baseline de producao: Comercial, T3 2026, objetivo anual de reorganizacao da area; zero objetivo trimestral e zero documento canonico do periodo.
@@ -24,16 +28,19 @@ A correcao preserva o estado da sessao e, antes da primeira mensagem, valida sta
 - Suite local: 520/520 testes unitarios, lint, build e bundle verdes.
 - Staging: `oracle-session` publicada no projeto descartavel, sem migration ou frontend.
 - Regressao real: sessao apontando para episodio arquivado foi religada ao episodio ativo antes da mensagem; 1/1 aprovado e cleanup concluido.
+- Producao: CI da `main` `29660743221` verde; release protegido `29660983334` verde, com migration ignorada e somente `oracle-session` publicada.
+- Retomada real: conversa visivel no episodio ativo, escopo Comercial T3 2026 preservado e proposta unica preparada.
+- Confirmacao real: uma tentativa, HTTP 400 em 579 ms, zero gravacao e proposta pendente preservada; log estruturado `00391ed0-5dde-4f4e-996b-a7df46d8d697`.
+- Recuperacao de frontend: erro da Function passa a aparecer no painel e libera retry seguro; 520/520 unitarios, lint, build e bundle verdes.
 - Tentativa real invisivel: uma chamada de planejamento `gpt-5.4`, 8.882 tokens e US$ 0,023930; nenhuma chamada de judge.
 - IA no teste da correcao: nenhuma chamada; custo US$ 0.
 - Consumo acumulado do novo ciclo: US$ 0,025465 de US$ 20; aviso em US$ 15 e parada preventiva em US$ 19.
 
 ## Proximo gate
 
-1. Commit, push, PR e CI obrigatorio.
-2. Revisao e autorizacao explicita do owner para mesclar e publicar somente `oracle-session` em producao.
-3. Repetir a abertura do O1 no app.
-4. Confirmar que a conversa aparece no episodio ativo.
-5. Conduzir o plano trimestral ate uma unica confirmacao e seguir para o gate O2.
+1. Publicar a recuperacao de erro do frontend apos PR e CI.
+2. Repetir somente a confirmacao da proposta pendente e capturar a mensagem de validacao exata.
+3. Corrigir a causa server-side sem recriar nem reconduzir o plano.
+4. Confirmar uma unica gravacao, sem duplicatas, e seguir para o gate O2.
 
-Se a publicacao nao for autorizada, o O1 permanece pausado e nenhum dado precisa de rollback.
+Enquanto a correcao nao estiver publicada, o O1 permanece pausado e nenhum dado precisa de rollback.

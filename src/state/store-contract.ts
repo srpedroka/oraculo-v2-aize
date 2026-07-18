@@ -118,7 +118,12 @@ export type AppAction =
   | { type: "research_company_profile"; links?: string[]; onSuccess?: (suggestion: CompanyProfileSuggestion) => void; onError?: (message: string) => void }
   | { type: "confirm_company_profile"; summary: string; sources: CompanyProfileSource[]; queries: string[]; links: string[]; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "send_session_message"; sessionId: string; text: string }
-  | { type: "confirm_session_proposal"; sessionId: string }
+  | {
+      type: "confirm_session_proposal";
+      sessionId: string;
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | { type: "abandon_session"; sessionId: string }
   | { type: "add_evidence"; evidence: Evidence }
   | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[]; token: string; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
