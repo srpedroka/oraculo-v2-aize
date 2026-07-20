@@ -3,54 +3,92 @@ import { Building2, FileKey2, Settings, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { fieldControlClassName } from "../components/ui/Field";
+import { InlineFeedback, type InlineFeedbackTone } from "../components/ui/InlineFeedback";
 import { restorePortableBackup } from "../features/backups/api";
 import { decryptBackupFile } from "../features/backups/backupCrypto";
+import { recoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
+
+type OnboardingFeedback = {
+  tone: InlineFeedbackTone;
+  title: string;
+  description?: string;
+  occurrenceId?: string;
+};
 
 export function Onboarding() {
   const { dispatch } = useAppState();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [subtitle, setSubtitle] = useState("");
-  const [createMessage, setCreateMessage] = useState("");
+  const [createFeedback, setCreateFeedback] = useState<OnboardingFeedback | null>(null);
+  const [creatingOrganization, setCreatingOrganization] = useState(false);
   const createOrgTokenRef = useRef(crypto.randomUUID());
   const [backupPassword, setBackupPassword] = useState("");
-  const [backupMessage, setBackupMessage] = useState("");
+  const [backupFeedback, setBackupFeedback] = useState<OnboardingFeedback | null>(null);
+  const [backupRetryFile, setBackupRetryFile] = useState<File | null>(null);
   const [restoringBackup, setRestoringBackup] = useState(false);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!name.trim()) return;
-    setCreateMessage("");
+  function createOrganization() {
+    if (!name.trim() || creatingOrganization) return;
+    setCreatingOrganization(true);
+    setCreateFeedback(null);
     dispatch({
       type: "create_organization",
       name: name.trim(),
       subtitle: subtitle.trim() || undefined,
       token: createOrgTokenRef.current,
-      onSuccess: () => { createOrgTokenRef.current = crypto.randomUUID(); },
-      onError: (message) => setCreateMessage(message),
+      onSuccess: () => {
+        createOrgTokenRef.current = crypto.randomUUID();
+        setCreatingOrganization(false);
+      },
+      onError: (message) => {
+        const feedback = recoverableFeedback(
+          message,
+          "Não consegui criar a empresa agora.",
+          "Nome e subtítulo continuam preenchidos. Tente novamente.",
+          "ORGANIZATION_CREATE_FAILED",
+        );
+        setCreatingOrganization(false);
+        setCreateFeedback({ ...feedback, title: "Não consegui criar a empresa agora.", tone: "error" });
+      },
     });
   }
 
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    createOrganization();
+  }
+
   async function restoreBackup(file: File) {
+    if (restoringBackup) return;
+    setBackupRetryFile(file);
     if (backupPassword.length < 10) {
-      setBackupMessage("Informe a senha usada para proteger o pacote.");
+      setBackupFeedback({ tone: "warning", title: "Informe a senha usada para proteger o pacote." });
       return;
     }
     if (file.size > 30 * 1024 * 1024) {
-      setBackupMessage("O pacote ultrapassa o limite de 30 MB para importação pelo navegador.");
+      setBackupRetryFile(null);
+      setBackupFeedback({ tone: "warning", title: "O pacote ultrapassa o limite de 30 MB para importação pelo navegador." });
       return;
     }
     setRestoringBackup(true);
-    setBackupMessage("");
+    setBackupFeedback(null);
     try {
       const decrypted = await decryptBackupFile(await file.text(), backupPassword);
       const result = await restorePortableBackup(null, JSON.parse(decrypted) as unknown);
       window.localStorage.setItem("oraculo.activeOrgId", result.targetOrgId);
       window.location.reload();
     } catch (error) {
-      setBackupMessage(error instanceof Error ? error.message : "Não foi possível restaurar o pacote.");
+      const feedback = recoverableFeedback(
+        error,
+        "Não consegui restaurar o pacote.",
+        "O arquivo e a senha continuam disponíveis nesta tela. Confira a senha e tente novamente.",
+        "PORTABLE_BACKUP_RESTORE_FAILED",
+      );
+      setBackupFeedback({ ...feedback, title: "Não consegui restaurar o pacote.", tone: "error" });
     } finally {
       setRestoringBackup(false);
       if (backupInputRef.current) backupInputRef.current.value = "";
@@ -78,7 +116,7 @@ export function Onboarding() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Ex: GAAM"
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+              className={[fieldControlClassName, "h-11"].join(" ")}
               required
             />
           </label>
@@ -88,16 +126,22 @@ export function Onboarding() {
               value={subtitle}
               onChange={(event) => setSubtitle(event.target.value)}
               placeholder="Ex: Aize"
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+              className={[fieldControlClassName, "h-11"].join(" ")}
             />
           </label>
-          <Button type="submit" icon={Building2} className="w-full">
+          <Button type="submit" icon={Building2} loading={creatingOrganization} className="w-full">
             Criar empresa
           </Button>
-          {createMessage ? (
-            <p role="alert" className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
-              {createMessage}
-            </p>
+          {createFeedback ? (
+            <InlineFeedback
+              tone={createFeedback.tone}
+              title={createFeedback.title}
+              description={createFeedback.description}
+              occurrenceId={createFeedback.occurrenceId}
+              actionLabel="Tentar novamente"
+              onAction={createOrganization}
+              actionLoading={creatingOrganization}
+            />
           ) : null}
         </form>
 
@@ -117,7 +161,7 @@ export function Onboarding() {
               autoComplete="new-password"
               onChange={(event) => setBackupPassword(event.target.value)}
               placeholder="Mínimo de 10 caracteres"
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+              className={[fieldControlClassName, "h-11"].join(" ")}
             />
           </label>
           <input
@@ -140,10 +184,17 @@ export function Onboarding() {
           >
             Importar pacote de backup
           </Button>
-          {backupMessage ? (
-            <p role="alert" className="mt-3 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-700">
-              {backupMessage}
-            </p>
+          {backupFeedback ? (
+            <InlineFeedback
+              className="mt-3"
+              tone={backupFeedback.tone}
+              title={backupFeedback.title}
+              description={backupFeedback.description}
+              occurrenceId={backupFeedback.occurrenceId}
+              actionLabel={backupRetryFile ? "Tentar novamente" : undefined}
+              onAction={backupRetryFile ? () => void restoreBackup(backupRetryFile) : undefined}
+              actionLoading={restoringBackup}
+            />
           ) : null}
         </div>
       </Card>

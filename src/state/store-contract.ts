@@ -62,10 +62,10 @@ export type AppAction =
   | { type: "restore_organization"; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "delete_organization"; confirmName: string; finalConfirmation: true; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "add_chat_message"; message: ChatMessage }
-  | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string }
-  | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string }
-  | { type: "import_ready_strategic_plan"; period: string; text: string; fileName?: string | null }
-  | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null }
+  | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "import_ready_strategic_plan"; period: string; text: string; fileName?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
+  | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | {
       type: "suggest_historical_metadata";
       rawText?: string;
@@ -117,14 +117,14 @@ export type AppAction =
     }
   | { type: "research_company_profile"; links?: string[]; onSuccess?: (suggestion: CompanyProfileSuggestion) => void; onError?: (message: string) => void }
   | { type: "confirm_company_profile"; summary: string; sources: CompanyProfileSource[]; queries: string[]; links: string[]; onSuccess?: () => void; onError?: (message: string) => void }
-  | { type: "send_session_message"; sessionId: string; text: string }
+  | { type: "send_session_message"; sessionId: string; text: string; onSuccess?: () => void; onError?: (message: string) => void }
   | {
       type: "confirm_session_proposal";
       sessionId: string;
       onSuccess?: () => void;
       onError?: (message: string) => void;
     }
-  | { type: "abandon_session"; sessionId: string }
+  | { type: "abandon_session"; sessionId: string; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "add_evidence"; evidence: Evidence }
   | { type: "add_objective"; objective: Objective; keyActions?: KeyAction[]; token: string; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }
   | { type: "update_objective"; objective: Objective; onSuccess?: (objectiveId: string) => void; onError?: (message: string) => void }

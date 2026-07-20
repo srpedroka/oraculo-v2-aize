@@ -5,7 +5,9 @@ import { AsyncDialogFallback } from "../components/AsyncDialogFallback";
 import { PlanDocumentView } from "../components/PlanDocument";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { InlineFeedback } from "../components/ui/InlineFeedback";
 import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
+import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
 import { usePaginatedPlanDocuments } from "../state/use-paginated-records";
 import type { PlanDocument, PlanDocumentOrigin, PlanDocumentType } from "../types";
@@ -41,7 +43,7 @@ export function Documents() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
-  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<RecoverableFeedback | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [reopenBackup, setReopenBackup] = useState<Record<string, unknown> | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -60,6 +62,17 @@ export function Documents() {
     areaId: areaFilter === "all" ? null : areaFilter,
     period: periodFilter,
   });
+  const queryFeedback = useMemo(
+    () => documentsQuery.error
+      ? recoverableFeedback(
+          documentsQuery.error,
+          "Não consegui carregar os documentos.",
+          "A lista não foi tratada como vazia. Tente novamente para recuperar os documentos salvos.",
+          "DOCUMENTS_LOAD_FAILED",
+        )
+      : null,
+    [documentsQuery.error],
+  );
   const filteredDocuments = documentsQuery.items;
 
   const selectedDocument = filteredDocuments.find((document) => document.id === selectedId) ?? filteredDocuments[0] ?? null;
@@ -97,7 +110,12 @@ export function Documents() {
       },
       onError: (message) => {
         setArchiveBusy(false);
-        setArchiveError(message);
+        setArchiveError(recoverableFeedback(
+          message,
+          "Não consegui arquivar este documento.",
+          "O documento continua na lista. Tente novamente.",
+          "DOCUMENT_ARCHIVE_FAILED",
+        ));
       },
     });
   }
@@ -166,7 +184,22 @@ export function Documents() {
         </div>
       </div>
 
-      {statusMessage ? <p className="text-sm leading-6 text-[#1D7A3E]">{statusMessage}</p> : null}
+      {statusMessage ? <InlineFeedback tone="success" title={statusMessage} /> : null}
+
+      {queryFeedback ? (
+        <InlineFeedback
+          tone="error"
+          title={queryFeedback.title}
+          description={queryFeedback.description}
+          occurrenceId={queryFeedback.occurrenceId}
+          actionLabel="Tentar novamente"
+          onAction={() => {
+            if (documentsQuery.isFetchNextPageError) void documentsQuery.fetchNextPage();
+            else void documentsQuery.refetch();
+          }}
+          actionLoading={documentsQuery.isFetching}
+        />
+      ) : null}
 
       <Card>
         <div className="grid gap-3 md:grid-cols-3">
@@ -244,7 +277,7 @@ export function Documents() {
                 variant="ghost"
                 className="w-full"
                 loading={documentsQuery.isFetchingNextPage}
-                onClick={() => documentsQuery.fetchNextPage()}
+                onClick={() => void documentsQuery.fetchNextPage()}
               >
                 Carregar mais
               </Button>
@@ -258,7 +291,7 @@ export function Documents() {
         <Card className="text-center">
           <p className="text-sm text-text-secondary">Carregando documentos...</p>
         </Card>
-      ) : (
+      ) : documentsQuery.isError ? null : (
         <Card className="text-center">
           <p className="text-base font-semibold text-text">Nenhum documento padrão ainda.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">

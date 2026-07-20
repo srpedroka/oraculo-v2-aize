@@ -3,10 +3,12 @@ import { CalendarCheck, Pencil, Plus, Sprout } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { AsyncDialogFallback } from "../components/AsyncDialogFallback";
 import { Card } from "../components/ui/Card";
+import { InlineFeedback } from "../components/ui/InlineFeedback";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { Button } from "../components/ui/Button";
 import { KpiResultBlock } from "../features/kpi/KpiResultBlock";
+import { useSessionLauncher } from "../hooks/useSessionLauncher";
 import { Link, useNavigate } from "react-router-dom";
 import { previousMonthPeriod } from "../lib/periods";
 import { buildTrackItems, summarize } from "../lib/execution";
@@ -35,6 +37,7 @@ export function Dashboard() {
   const [kpiEditorScanHistory, setKpiEditorScanHistory] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const closePeriod = previousMonthPeriod();
+  const sessionLauncher = useSessionLauncher(dispatch);
   const hasData = state.objectives.length > 0;
   const seedObjectives = state.objectives.filter((objective) => objective.type === "seed");
   const executiveSeeds = seedObjectives.filter((objective) => objective.level === "strategic");
@@ -67,6 +70,18 @@ export function Dashboard() {
         </p>
         <h1 className="text-2xl font-semibold text-text">Dashboard executivo</h1>
       </div>
+
+      {sessionLauncher.error ? (
+        <InlineFeedback
+          tone="error"
+          title={sessionLauncher.error.title}
+          description={sessionLauncher.error.description}
+          occurrenceId={sessionLauncher.error.occurrenceId}
+          actionLabel="Tentar novamente"
+          onAction={sessionLauncher.retry}
+          actionLoading={sessionLauncher.pending}
+        />
+      ) : null}
 
       {execSummary.total ? (
         <Link
@@ -121,7 +136,8 @@ export function Dashboard() {
                   variant="ghost"
                   size="sm"
                   icon={CalendarCheck}
-                  onClick={() => dispatch({ type: "start_session", sessionType: "month_close", areaId: area.id, period: closePeriod })}
+                  loading={sessionLauncher.isStarting({ sessionType: "month_close", areaId: area.id, period: closePeriod })}
+                  onClick={() => sessionLauncher.startSession({ sessionType: "month_close", areaId: area.id, period: closePeriod })}
                 >
                   Fechar {area.name}
                 </Button>

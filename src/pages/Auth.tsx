@@ -3,9 +3,28 @@ import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { fieldControlClassName } from "../components/ui/Field";
+import { InlineFeedback } from "../components/ui/InlineFeedback";
+import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
 
 type AuthMode = "signin" | "signup";
+type AuthFeedback = (RecoverableFeedback & { tone: "error" }) | { tone: "success"; title: string; description: string };
+
+function authErrorFeedback(error: unknown, mode: AuthMode) {
+  const rawMessage = error instanceof Error ? error.message.toLowerCase() : "";
+  const fallbackTitle = mode === "signin" ? "Não consegui entrar agora." : "Não consegui criar o acesso agora.";
+  const feedback = recoverableFeedback(
+    error,
+    fallbackTitle,
+    "Seus dados continuam preenchidos. Confira as informações e tente novamente.",
+    mode === "signin" ? "AUTH_SIGN_IN_FAILED" : "AUTH_SIGN_UP_FAILED",
+  );
+  if (rawMessage.includes("invalid login credentials")) return { ...feedback, title: "Email ou senha não conferem." };
+  if (rawMessage.includes("email not confirmed")) return { ...feedback, title: "Confirme seu email antes de entrar." };
+  if (rawMessage.includes("already registered")) return { ...feedback, title: "Este email já possui cadastro." };
+  return { ...feedback, title: fallbackTitle };
+}
 
 export function Auth() {
   const { signIn, signUp } = useAppState();
@@ -14,26 +33,35 @@ export function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function performAuth() {
+    if (busy) return;
     setBusy(true);
-    setMessage("");
+    setFeedback(null);
 
     try {
       if (mode === "signup") {
         await signUp(email, password, fullName);
-        setMessage("Cadastro iniciado. Se pedirmos confirmação por email, confirme e entre novamente.");
+        setFeedback({
+          tone: "success",
+          title: "Cadastro iniciado",
+          description: "Se pedirmos confirmação por email, confirme e entre novamente.",
+        });
       } else {
         await signIn(email, password);
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível acessar agora.");
+      setFeedback({ tone: "error", ...authErrorFeedback(error, mode) });
     } finally {
       setBusy(false);
     }
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void performAuth();
   }
 
   return (
@@ -53,7 +81,7 @@ export function Auth() {
               <input
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className={[fieldControlClassName, "h-11"].join(" ")}
                 required
               />
             </label>
@@ -65,7 +93,7 @@ export function Auth() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+              className={[fieldControlClassName, "h-11"].join(" ")}
               required
             />
           </label>
@@ -77,14 +105,14 @@ export function Auth() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 pr-11 text-sm"
+                className={[fieldControlClassName, "h-11 pr-11"].join(" ")}
                 minLength={6}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((current) => !current)}
-                className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[10px] text-text-secondary hover:bg-[#F0F0F2]"
+                className="absolute right-0.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-control text-text-secondary transition-colors duration-fast hover:bg-fill-hover motion-reduce:transition-none"
                 aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -100,13 +128,19 @@ export function Auth() {
             </div>
           ) : null}
 
-          {message ? (
-            <p role="status" aria-live="polite" className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
-              {message}
-            </p>
+          {feedback ? (
+            <InlineFeedback
+              tone={feedback.tone}
+              title={feedback.title}
+              description={feedback.description}
+              occurrenceId={"occurrenceId" in feedback ? feedback.occurrenceId : undefined}
+              actionLabel={feedback.tone === "error" ? "Tentar novamente" : undefined}
+              onAction={feedback.tone === "error" ? () => void performAuth() : undefined}
+              actionLoading={busy}
+            />
           ) : null}
 
-          <Button type="submit" className="w-full" icon={mode === "signin" ? LogIn : UserPlus} disabled={busy}>
+          <Button type="submit" className="w-full" icon={mode === "signin" ? LogIn : UserPlus} loading={busy}>
             {busy ? "Aguarde" : mode === "signin" ? "Entrar" : "Criar acesso"}
           </Button>
         </form>
@@ -115,7 +149,7 @@ export function Auth() {
           type="button"
           onClick={() => {
             setMode(mode === "signin" ? "signup" : "signin");
-            setMessage("");
+            setFeedback(null);
           }}
           className="mt-5 w-full text-center text-sm font-medium text-accent"
         >

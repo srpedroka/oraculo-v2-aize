@@ -3,7 +3,17 @@ import { Eye, EyeOff, KeyRound, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { fieldControlClassName } from "../components/ui/Field";
+import { InlineFeedback, type InlineFeedbackTone } from "../components/ui/InlineFeedback";
+import { recoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
+
+type PasswordFeedback = {
+  tone: InlineFeedbackTone;
+  title: string;
+  description?: string;
+  occurrenceId?: string;
+};
 
 export function PasswordRecovery() {
   const { session, resetPasswordForEmail, updatePassword } = useAppState();
@@ -13,43 +23,68 @@ export function PasswordRecovery() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<PasswordFeedback | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function requestReset(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function performResetRequest() {
+    if (busy) return;
     setBusy(true);
-    setMessage("");
+    setFeedback(null);
 
     try {
       await resetPasswordForEmail(email.trim());
-      setMessage("Enviamos um link para redefinir sua senha. Abra o email e siga para criar a nova senha.");
+      setFeedback({
+        tone: "success",
+        title: "Link enviado",
+        description: "Abra o email e siga o link para criar uma nova senha.",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível enviar o link agora.");
+      const recovered = recoverableFeedback(
+        error,
+        "Não consegui enviar o link agora.",
+        "O email continua preenchido. Confira o endereço e tente novamente.",
+        "PASSWORD_RESET_REQUEST_FAILED",
+      );
+      setFeedback({ ...recovered, title: "Não consegui enviar o link agora.", tone: "error" });
     } finally {
       setBusy(false);
     }
   }
 
-  async function savePassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function performPasswordSave() {
+    if (busy) return;
+    if (password !== confirmPassword) {
+      setFeedback({ tone: "warning", title: "As senhas precisam ser iguais." });
+      return;
+    }
     setBusy(true);
-    setMessage("");
+    setFeedback(null);
 
     try {
-      if (password !== confirmPassword) {
-        setMessage("As senhas precisam ser iguais.");
-        return;
-      }
-
       await updatePassword(password);
-      setMessage("Senha atualizada.");
+      setFeedback({ tone: "success", title: "Senha atualizada." });
       navigate("/", { replace: true });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível atualizar a senha agora.");
+      const recovered = recoverableFeedback(
+        error,
+        "Não consegui atualizar a senha agora.",
+        "Os dois campos continuam preenchidos. Tente novamente.",
+        "PASSWORD_UPDATE_FAILED",
+      );
+      setFeedback({ ...recovered, title: "Não consegui atualizar a senha agora.", tone: "error" });
     } finally {
       setBusy(false);
     }
+  }
+
+  function requestReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void performResetRequest();
+  }
+
+  function savePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void performPasswordSave();
   }
 
   return (
@@ -72,14 +107,14 @@ export function PasswordRecovery() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 pr-11 text-sm"
+                  className={[fieldControlClassName, "h-11 pr-11"].join(" ")}
                   minLength={6}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[10px] text-text-secondary hover:bg-[#F0F0F2]"
+                  className="absolute right-0.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-control text-text-secondary transition-colors duration-fast hover:bg-fill-hover motion-reduce:transition-none"
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -94,14 +129,14 @@ export function PasswordRecovery() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 pr-11 text-sm"
+                  className={[fieldControlClassName, "h-11 pr-11"].join(" ")}
                   minLength={6}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((current) => !current)}
-                  className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[10px] text-text-secondary hover:bg-[#F0F0F2]"
+                  className="absolute right-0.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-control text-text-secondary transition-colors duration-fast hover:bg-fill-hover motion-reduce:transition-none"
                   aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -109,13 +144,19 @@ export function PasswordRecovery() {
               </div>
             </label>
 
-            {message ? (
-              <p role="status" aria-live="polite" className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
-                {message}
-              </p>
+            {feedback ? (
+              <InlineFeedback
+                tone={feedback.tone}
+                title={feedback.title}
+                description={feedback.description}
+                occurrenceId={feedback.occurrenceId}
+                actionLabel={feedback.tone === "error" ? "Tentar novamente" : undefined}
+                onAction={feedback.tone === "error" ? () => void performPasswordSave() : undefined}
+                actionLoading={busy}
+              />
             ) : null}
 
-            <Button type="submit" className="w-full" icon={KeyRound} disabled={busy}>
+            <Button type="submit" className="w-full" icon={KeyRound} loading={busy}>
               {busy ? "Salvando" : "Salvar nova senha"}
             </Button>
           </form>
@@ -127,18 +168,24 @@ export function PasswordRecovery() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm"
+                className={[fieldControlClassName, "h-11"].join(" ")}
                 required
               />
             </label>
 
-            {message ? (
-              <p role="status" aria-live="polite" className="rounded-xl border border-border bg-[#FAFAFB] px-3 py-2 text-sm leading-6 text-text-secondary">
-                {message}
-              </p>
+            {feedback ? (
+              <InlineFeedback
+                tone={feedback.tone}
+                title={feedback.title}
+                description={feedback.description}
+                occurrenceId={feedback.occurrenceId}
+                actionLabel={feedback.tone === "error" ? "Tentar novamente" : undefined}
+                onAction={feedback.tone === "error" ? () => void performResetRequest() : undefined}
+                actionLoading={busy}
+              />
             ) : null}
 
-            <Button type="submit" className="w-full" icon={Mail} disabled={busy}>
+            <Button type="submit" className="w-full" icon={Mail} loading={busy}>
               {busy ? "Enviando" : "Enviar link por email"}
             </Button>
           </form>

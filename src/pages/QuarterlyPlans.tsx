@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, FileText, Loader2, Plus, Upload, Waypoints } from "lucide-react";
+import { ArrowRight, Building2, Loader2, Plus, Upload, Waypoints } from "lucide-react";
 import { ChangeEvent, FormEvent, useState } from "react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { InlineFeedback, type InlineFeedbackTone } from "../components/ui/InlineFeedback";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { currentQuarterPeriod } from "../lib/periods";
+import { recoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
 import type { Status } from "../types";
 
@@ -16,8 +18,17 @@ const IMPORT_TEXT_LIMIT = 24000;
 
 type ImportStatus = {
   areaId: string;
-  kind: "success" | "error";
+  tone: InlineFeedbackTone;
+  title: string;
+  description?: string;
+  occurrenceId?: string;
+};
+
+type QuarterlyImportPayload = {
+  areaId: string;
+  period: string;
   text: string;
+  fileName: string;
 };
 
 export function QuarterlyPlans() {
@@ -26,6 +37,7 @@ export function QuarterlyPlans() {
   const [builderAreaId, setBuilderAreaId] = useState<string | null>(null);
   const [importingAreaId, setImportingAreaId] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
+  const [retryImport, setRetryImport] = useState<QuarterlyImportPayload | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
 
   function createArea(event: FormEvent<HTMLFormElement>) {
@@ -43,10 +55,53 @@ export function QuarterlyPlans() {
     );
   }
 
+  function sendQuarterlyImport(payload: QuarterlyImportPayload) {
+    if (importingAreaId) return;
+    setImportingAreaId(payload.areaId);
+    setImportStatus({
+      areaId: payload.areaId,
+      tone: "info",
+      title: "Enviando plano ao Oráculo",
+      description: "O conteúdo extraído está preservado enquanto a proposta é preparada.",
+    });
+
+    dispatch({
+      type: "import_ready_quarterly_plan",
+      ...payload,
+      onSuccess: () => {
+        setImportingAreaId(null);
+        setRetryImport(null);
+        setImportStatus({
+          areaId: payload.areaId,
+          tone: "success",
+          title: "Plano enviado ao Oráculo",
+          description: `O conteúdo de “${payload.fileName}” está pronto para conferência no painel lateral.`,
+        });
+      },
+      onError: (message) => {
+        const feedback = recoverableFeedback(
+          message,
+          "Não consegui enviar o plano ao Oráculo.",
+          "O conteúdo extraído continua preservado. Tente novamente sem selecionar o arquivo outra vez.",
+          "QUARTERLY_IMPORT_SEND_FAILED",
+        );
+        setImportingAreaId(null);
+        setRetryImport(payload);
+        setImportStatus({ areaId: payload.areaId, tone: "error", ...feedback });
+      },
+    });
+  }
+
   async function processQuarterlyPlanFile(areaId: string, file: File | undefined) {
-    if (!file) return;
+    if (!file || importingAreaId) return;
     setImportingAreaId(areaId);
-    setImportStatus(null);
+    setRetryImport(null);
+    setImportStatus({
+      areaId,
+      tone: "info",
+      title: "Lendo o arquivo",
+      description: "Aguarde enquanto o conteúdo do plano é extraído.",
+    });
 
     try {
       const imported = await importPlanFile(file);
@@ -54,27 +109,23 @@ export function QuarterlyPlans() {
         imported.text.length > IMPORT_TEXT_LIMIT
           ? `${imported.text.slice(0, IMPORT_TEXT_LIMIT)}\n\n[Texto cortado pelo limite de contexto. Se precisar, peça o restante do arquivo antes de gravar.]`
           : imported.text;
-
-      dispatch({
-        type: "import_ready_quarterly_plan",
+      const payload = {
         areaId,
         period: CURRENT_QUARTER_PERIOD,
         text: safeText,
         fileName: imported.fileName,
-      });
-      setImportStatus({
-        areaId,
-        kind: "success",
-        text: `Arquivo "${imported.fileName}" enviado ao Oráculo. Confira a proposta no painel lateral antes de gravar.`,
-      });
-    } catch (error) {
-      setImportStatus({
-        areaId,
-        kind: "error",
-        text: error instanceof Error ? error.message : "Não foi possível importar o arquivo.",
-      });
-    } finally {
+      };
       setImportingAreaId(null);
+      sendQuarterlyImport(payload);
+    } catch (error) {
+      const feedback = recoverableFeedback(
+        error,
+        "Não consegui ler este arquivo.",
+        "Nada foi enviado ou gravado. Confira o formato e selecione o arquivo novamente.",
+        "QUARTERLY_IMPORT_READ_FAILED",
+      );
+      setImportingAreaId(null);
+      setImportStatus({ areaId, tone: "error", ...feedback });
     }
   }
 
@@ -192,17 +243,15 @@ export function QuarterlyPlans() {
               </div>
 
               {importStatus?.areaId === area.id ? (
-                <p
-                  className={[
-                    "flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs leading-5",
-                    importStatus.kind === "success"
-                      ? "border-[#BFE6CE] bg-[#F3FBF6] text-[#1D7A3E]"
-                      : "border-[#F3C4C4] bg-[#FFF7F7] text-[#B42318]",
-                  ].join(" ")}
-                >
-                  <FileText aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{importStatus.text}</span>
-                </p>
+                <InlineFeedback
+                  tone={importStatus.tone}
+                  title={importStatus.title}
+                  description={importStatus.description}
+                  occurrenceId={importStatus.occurrenceId}
+                  actionLabel={retryImport?.areaId === area.id ? "Tentar novamente" : undefined}
+                  onAction={retryImport?.areaId === area.id ? () => sendQuarterlyImport(retryImport) : undefined}
+                  actionLoading={importingAreaId === area.id}
+                />
               ) : null}
 
               {plan ? (

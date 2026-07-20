@@ -3,8 +3,19 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "re
 import { useLocation } from "react-router-dom";
 import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { createMessageId, generateWeeklyReview } from "../lib/oracle";
+import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
 import { Button } from "./ui/Button";
+import { InlineFeedback } from "./ui/InlineFeedback";
+
+type ChatTarget =
+  | { kind: "session"; sessionId: string }
+  | { kind: "oracle"; context: string };
+
+type PendingChatMessage = ChatTarget & { text: string };
+type AttachmentRetry =
+  | { kind: "file"; file: File }
+  | { kind: "text"; payload: PendingChatMessage };
 
 const SESSION_TYPE_LABEL = {
   strategic: "Plano Estratégico",
@@ -419,11 +430,17 @@ export function OraclePanel() {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [selectedObjectiveId, setSelectedObjectiveId] = useState(state.objectives[0]?.id ?? "");
   const [evidenceText, setEvidenceText] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageError, setMessageError] = useState<RecoverableFeedback | null>(null);
+  const [failedMessage, setFailedMessage] = useState<PendingChatMessage | null>(null);
   const [attachmentLoading, setAttachmentLoading] = useState(false);
-  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [attachmentError, setAttachmentError] = useState<RecoverableFeedback | null>(null);
+  const [attachmentRetry, setAttachmentRetry] = useState<AttachmentRetry | null>(null);
   // Trava o botao de confirmar enquanto a gravacao esta em voo, evitando duplo submit.
   const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
-  const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [confirmationError, setConfirmationError] = useState<RecoverableFeedback | null>(null);
+  const [abandoningSessionId, setAbandoningSessionId] = useState<string | null>(null);
+  const [abandonError, setAbandonError] = useState<RecoverableFeedback | null>(null);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const mode = state.ui.oracleMode;
@@ -449,24 +466,15 @@ export function OraclePanel() {
     if (!activeSession?.pendingProposal) {
       setConfirmingSessionId(null);
       setConfirmationError(null);
+      setAbandoningSessionId(null);
+      setAbandonError(null);
     }
   }, [activeSession?.id, activeSession?.pendingProposal]);
 
   useEffect(() => {
     setConfirmationError(null);
+    setAbandonError(null);
   }, [activeSession?.id]);
-
-  useEffect(() => {
-    function syncNarrowMode() {
-      if (window.innerWidth < 1024 && state.ui.oracleMode === "normal") {
-        dispatch({ type: "set_oracle_mode", mode: "minimized" });
-      }
-    }
-
-    syncNarrowMode();
-    window.addEventListener("resize", syncNarrowMode);
-    return () => window.removeEventListener("resize", syncNarrowMode);
-  }, [dispatch, state.ui.oracleMode]);
 
   useEffect(() => {
     if (mode === "minimized") return;
@@ -481,23 +489,77 @@ export function OraclePanel() {
     dispatch({ type: "set_oracle_mode", mode: nextMode });
   }
 
+  function dispatchChatPayload(payload: PendingChatMessage, onSuccess: () => void, onError: (message: string) => void) {
+    if (payload.kind === "session") {
+      dispatch({ type: "send_session_message", sessionId: payload.sessionId, text: payload.text, onSuccess, onError });
+      return;
+    }
+    dispatch({ type: "send_oracle_message", text: payload.text, context: payload.context, onSuccess, onError });
+  }
+
+  function sendChatMessage(payload: PendingChatMessage) {
+    if (sendingMessage) return;
+    setSendingMessage(true);
+    setMessageError(null);
+    setFailedMessage(payload);
+    dispatchChatPayload(
+      payload,
+      () => {
+        setSendingMessage(false);
+        setFailedMessage(null);
+        setMessageError(null);
+        setMessage((current) => current.trim() === payload.text ? "" : current);
+      },
+      (errorMessage) => {
+        setSendingMessage(false);
+        setMessageError(recoverableFeedback(
+          errorMessage,
+          "Não consegui enviar sua mensagem.",
+          "Seu texto continua no campo. Tente novamente quando estiver pronto.",
+          "ORACLE_MESSAGE_SEND_FAILED",
+        ));
+      },
+    );
+  }
+
   function submitMessage(event: FormEvent) {
     event.preventDefault();
     const text = message.trim();
-    if (!text) return;
-    if (activeSession) {
-      dispatch({ type: "send_session_message", sessionId: activeSession.id, text });
-      setMessage("");
-      return;
-    }
-    dispatch({ type: "send_oracle_message", text, context: location.pathname });
-    setMessage("");
+    if (!text || sendingMessage) return;
+    const payload: PendingChatMessage = activeSession
+      ? { kind: "session", sessionId: activeSession.id, text }
+      : { kind: "oracle", context: location.pathname, text };
+    sendChatMessage(payload);
+  }
+
+  function sendAttachmentPayload(payload: PendingChatMessage) {
+    if (attachmentLoading) return;
+    setAttachmentLoading(true);
+    setAttachmentError(null);
+    setAttachmentRetry({ kind: "text", payload });
+    dispatchChatPayload(
+      payload,
+      () => {
+        setAttachmentLoading(false);
+        setAttachmentRetry(null);
+      },
+      (errorMessage) => {
+        setAttachmentLoading(false);
+        setAttachmentError(recoverableFeedback(
+          errorMessage,
+          "Não consegui enviar este arquivo ao Oráculo.",
+          "O conteúdo já extraído continua preservado. Tente novamente sem selecionar o arquivo outra vez.",
+          "ORACLE_ATTACHMENT_SEND_FAILED",
+        ));
+      },
+    );
   }
 
   async function processAttachment(file: File | undefined) {
-    if (!file) return;
+    if (!file || attachmentLoading) return;
     setAttachmentLoading(true);
     setAttachmentError(null);
+    setAttachmentRetry({ kind: "file", file });
 
     try {
       const imported = await importPlanFile(file);
@@ -512,23 +574,74 @@ export function OraclePanel() {
         "Texto extraído:",
         safeText,
       ].filter(Boolean).join("\n\n");
-
-      if (activeSession) {
-        dispatch({ type: "send_session_message", sessionId: activeSession.id, text });
-      } else {
-        dispatch({ type: "send_oracle_message", text, context: `arquivo:${location.pathname}` });
-      }
-    } catch (error) {
-      setAttachmentError(error instanceof Error ? error.message : "Não consegui ler esse arquivo.");
-    } finally {
+      const payload: PendingChatMessage = activeSession
+        ? { kind: "session", sessionId: activeSession.id, text }
+        : { kind: "oracle", context: `arquivo:${location.pathname}`, text };
       setAttachmentLoading(false);
+      sendAttachmentPayload(payload);
+    } catch (error) {
+      setAttachmentLoading(false);
+      setAttachmentError(recoverableFeedback(
+        error,
+        "Não consegui ler este arquivo.",
+        "Nada foi enviado ou gravado. Confira o formato e tente novamente.",
+        "ORACLE_ATTACHMENT_READ_FAILED",
+      ));
     }
+  }
+
+  function retryAttachment() {
+    if (!attachmentRetry) return;
+    if (attachmentRetry.kind === "file") void processAttachment(attachmentRetry.file);
+    else sendAttachmentPayload(attachmentRetry.payload);
   }
 
   function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     void processAttachment(file);
+  }
+
+  function confirmProposal(sessionId: string) {
+    if (confirmingSessionId || abandoningSessionId) return;
+    setConfirmationError(null);
+    setAbandonError(null);
+    setConfirmingSessionId(sessionId);
+    dispatch({
+      type: "confirm_session_proposal",
+      sessionId,
+      onSuccess: () => setConfirmingSessionId(null),
+      onError: (errorMessage) => {
+        setConfirmingSessionId(null);
+        setConfirmationError(recoverableFeedback(
+          errorMessage,
+          "Não consegui gravar esta proposta.",
+          "A proposta continua disponível e nada foi perdido. Tente novamente.",
+          "SESSION_PROPOSAL_CONFIRM_FAILED",
+        ));
+      },
+    });
+  }
+
+  function abandonProposal(sessionId: string) {
+    if (confirmingSessionId || abandoningSessionId) return;
+    setConfirmationError(null);
+    setAbandonError(null);
+    setAbandoningSessionId(sessionId);
+    dispatch({
+      type: "abandon_session",
+      sessionId,
+      onSuccess: () => setAbandoningSessionId(null),
+      onError: (errorMessage) => {
+        setAbandoningSessionId(null);
+        setAbandonError(recoverableFeedback(
+          errorMessage,
+          "Não consegui descartar esta proposta.",
+          "A proposta continua disponível. Tente novamente ou siga ajustando pela conversa.",
+          "SESSION_PROPOSAL_ABANDON_FAILED",
+        ));
+      },
+    });
   }
 
   function runWeeklyReview() {
@@ -639,6 +752,18 @@ export function OraclePanel() {
           ) : null}
 
           <div ref={messagesListRef} className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
+            {!state.chatMessages.length ? (
+              <div className="mx-auto mt-4 max-w-[280px] rounded-xl border border-black/5 bg-white/80 px-3 py-3 text-center shadow-sm">
+                <p className="text-sm font-semibold text-[#1D1D1F]">
+                  {activeSession ? "Condução pronta para continuar" : "Comece uma conversa com o Oráculo"}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[#5F6368]">
+                  {activeSession
+                    ? "Escreva sua resposta ou anexe um plano para seguir deste ponto."
+                    : "Conte o que você quer planejar, revisar ou atualizar."}
+                </p>
+              </div>
+            ) : null}
             {state.chatMessages.map((chatMessage) => (
               <div
                 key={chatMessage.id}
@@ -665,40 +790,48 @@ export function OraclePanel() {
                 <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
                 <StrategicReviewProposalPreview proposal={activeSession.pendingProposal} />
                 {confirmationError ? (
-                  <p role="alert" className="mt-3 rounded-xl bg-[#FFF1F0] px-3 py-2 text-xs leading-5 text-[#A12622]">
-                    {confirmationError}
-                  </p>
+                  <InlineFeedback
+                    className="mt-3"
+                    tone="error"
+                    title={confirmationError.title}
+                    description={confirmationError.description}
+                    occurrenceId={confirmationError.occurrenceId}
+                    actionLabel="Tentar novamente"
+                    onAction={() => confirmProposal(activeSession.id)}
+                    actionLoading={confirmingSessionId === activeSession.id}
+                  />
+                ) : null}
+                {abandonError ? (
+                  <InlineFeedback
+                    className="mt-3"
+                    tone="error"
+                    title={abandonError.title}
+                    description={abandonError.description}
+                    occurrenceId={abandonError.occurrenceId}
+                    actionLabel="Tentar novamente"
+                    onAction={() => abandonProposal(activeSession.id)}
+                    actionLoading={abandoningSessionId === activeSession.id}
+                  />
                 ) : null}
                 <div className="mt-3 grid gap-2">
                   <Button
                     type="button"
                     className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
-                    disabled={confirmingSessionId === activeSession.id}
-                    onClick={() => {
-                      if (confirmingSessionId === activeSession.id) return;
-                      setConfirmationError(null);
-                      setConfirmingSessionId(activeSession.id);
-                      dispatch({
-                        type: "confirm_session_proposal",
-                        sessionId: activeSession.id,
-                        onSuccess: () => setConfirmingSessionId(null),
-                        onError: (errorMessage) => {
-                          setConfirmingSessionId(null);
-                          setConfirmationError(errorMessage);
-                        },
-                      });
-                    }}
+                    loading={confirmingSessionId === activeSession.id}
+                    disabled={abandoningSessionId === activeSession.id}
+                    onClick={() => confirmProposal(activeSession.id)}
                   >
-                    {confirmingSessionId === activeSession.id ? "Gravando…" : "Confirmar e gravar"}
+                    Confirmar e gravar
                   </Button>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       type="button"
                       variant="ghost"
                       className="w-full"
-                      disabled={confirmingSessionId === activeSession.id}
+                      disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
                       onClick={() => {
                         setConfirmationError(null);
+                        setAbandonError(null);
                         setMessage("Quero ajustar: ");
                       }}
                     >
@@ -708,11 +841,9 @@ export function OraclePanel() {
                       type="button"
                       variant="ghost"
                       className="w-full"
+                      loading={abandoningSessionId === activeSession.id}
                       disabled={confirmingSessionId === activeSession.id}
-                      onClick={() => {
-                        setConfirmationError(null);
-                        dispatch({ type: "abandon_session", sessionId: activeSession.id });
-                      }}
+                      onClick={() => abandonProposal(activeSession.id)}
                     >
                       Descartar
                     </Button>
@@ -770,7 +901,33 @@ export function OraclePanel() {
           ) : null}
 
           <div className="border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
-            {attachmentError ? <p role="alert" className="mb-2 px-1 text-xs leading-5 text-[#B42318]">{attachmentError}</p> : null}
+            {attachmentError ? (
+              <InlineFeedback
+                className="mb-2"
+                tone="error"
+                title={attachmentError.title}
+                description={attachmentError.description}
+                occurrenceId={attachmentError.occurrenceId}
+                actionLabel="Tentar novamente"
+                onAction={retryAttachment}
+                actionLoading={attachmentLoading}
+              />
+            ) : null}
+            {sendingMessage ? (
+              <InlineFeedback className="mb-2" tone="info" title="Enviando sua mensagem" description="O texto continua preservado até o Oráculo receber." />
+            ) : null}
+            {messageError ? (
+              <InlineFeedback
+                className="mb-2"
+                tone="error"
+                title={messageError.title}
+                description={messageError.description}
+                occurrenceId={messageError.occurrenceId}
+                actionLabel="Tentar novamente"
+                onAction={failedMessage ? () => sendChatMessage(failedMessage) : undefined}
+                actionLoading={sendingMessage}
+              />
+            ) : null}
             <form onSubmit={submitMessage} className="flex items-center gap-2">
               <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} />
               <button
@@ -785,17 +942,24 @@ export function OraclePanel() {
               </button>
               <input
                 value={message}
-                onChange={(event) => setMessage(event.target.value)}
+                onChange={(event) => {
+                  setMessage(event.target.value);
+                  if (!sendingMessage) {
+                    setMessageError(null);
+                    setFailedMessage(null);
+                  }
+                }}
                 placeholder={activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
                 className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
               />
               <button
                 type="submit"
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!message.trim()}
+                disabled={!message.trim() || sendingMessage}
+                aria-busy={sendingMessage || undefined}
                 aria-label="Enviar mensagem"
               >
-                <Send className="h-4 w-4" />
+                {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
             </form>
           </div>
