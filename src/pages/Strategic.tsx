@@ -4,6 +4,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { InlineFeedback } from "../components/ui/InlineFeedback";
 import { LineageTag } from "../components/ui/LineageTag";
+import { Tabs, type TabItem } from "../components/ui/Tabs";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/fileImport";
@@ -15,13 +16,19 @@ import { useAppState } from "../state/store";
 
 type StrategicTab = "build" | "paste";
 
+const STRATEGIC_TABS: readonly TabItem<StrategicTab>[] = [
+  { value: "build", label: "Plano atual" },
+  { value: "paste", label: "Importar plano" },
+];
+
 function ListBlock({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
   return (
     <Card>
       <p className="mb-3 text-sm font-semibold text-text">{title}</p>
       <ul className="space-y-2 text-sm leading-6 text-text-secondary">
         {items.map((item) => (
-          <li key={item}>{item}</li>
+          <li key={item} className="break-words">{item}</li>
         ))}
       </ul>
     </Card>
@@ -211,24 +218,20 @@ export function Strategic() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-text-tertiary">
-            Planejamento anual da empresa{plan ? ` · ${plan.year}` : ""}
+            Origem da estratégia{plan ? ` · ${plan.year}` : ` · ${currentYear}`}
           </p>
           <h1 className="text-2xl font-semibold text-text">Plano Estratégico</h1>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">Direção anual que orienta os planos de cada área e trimestre.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button icon={Plus} loading={sessionLauncher.isStarting(strategicRequest)} onClick={startStrategicSession}>
-            Planejar o ano com o Oráculo
+        {isOwner && plan ? (
+          <Button icon={RefreshCw} loading={sessionLauncher.isStarting(reviewRequest)} onClick={startStrategicReviewSession}>
+            Revisar plano anual
           </Button>
-          {isOwner && plan ? (
-            <Button variant="ghost" icon={RefreshCw} loading={sessionLauncher.isStarting(reviewRequest)} onClick={startStrategicReviewSession}>
-              Revisão Estratégica
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
 
       {sessionLauncher.error ? (
@@ -243,31 +246,17 @@ export function Strategic() {
         />
       ) : null}
 
-      <div className="inline-flex rounded-xl border border-border bg-surface p-1 shadow-card">
-        <button
-          type="button"
-          onClick={() => setTab("build")}
-          className={[
-            "rounded-[10px] px-4 py-2 text-sm font-medium transition",
-            tab === "build" ? "bg-[#F0F7FF] text-accent" : "text-text-secondary hover:text-text",
-          ].join(" ")}
-        >
-          Construir com o Oráculo
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("paste")}
-          className={[
-            "rounded-[10px] px-4 py-2 text-sm font-medium transition",
-            tab === "paste" ? "bg-[#F0F7FF] text-accent" : "text-text-secondary hover:text-text",
-          ].join(" ")}
-        >
-          Colar plano pronto
-        </button>
-      </div>
+      <Tabs
+        ariaLabel="Formas de trabalhar o plano estratégico"
+        items={STRATEGIC_TABS.map((item) => item.value === "build" && !plan ? { ...item, label: "Construir com o Oráculo" } : item)}
+        value={tab}
+        onChange={setTab}
+        panelId="strategic-tab-panel"
+      />
 
+      <div id="strategic-tab-panel" role="tabpanel" className="min-w-0">
       {tab === "paste" ? (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card
             onDragOver={handlePlanDragOver}
             onDragLeave={handlePlanDragLeave}
@@ -386,6 +375,21 @@ export function Strategic() {
         </Card>
       ) : (
         <div className="space-y-6">
+          <section className="border-y border-border-subtle py-5" aria-labelledby="strategic-summary-title">
+            <p className="text-xs font-medium text-text-tertiary">Resumo do plano · {plan.year}</p>
+            <h2 id="strategic-summary-title" className="mt-1 text-lg font-semibold text-text">Direção executiva</h2>
+            <p className="mt-2 max-w-4xl break-words text-sm leading-6 text-text-secondary">{plan.executiveSummary}</p>
+            {plan.themes.length ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {plan.themes.map((theme) => (
+                  <span key={theme} className="rounded-full bg-status-neutral-bg px-2.5 py-1 text-xs font-medium text-status-neutral">
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
           <div className="grid gap-4 xl:grid-cols-2">
             <Card>
               <p className="mb-3 text-sm font-semibold text-text">Identificação e contexto</p>
@@ -407,7 +411,7 @@ export function Strategic() {
                   <dd className="font-medium text-text">{plan.profile.founded}</dd>
                 </div>
               </dl>
-              <p className="mt-4 text-sm leading-6 text-text-secondary">{plan.profile.mainPain}</p>
+              <p className="mt-4 break-words text-sm leading-6 text-text-secondary">{plan.profile.mainPain}</p>
             </Card>
 
             <Card>
@@ -438,17 +442,6 @@ export function Strategic() {
             <ListBlock title="Oportunidades" items={plan.swot.opportunities} />
             <ListBlock title="Ameaças" items={plan.swot.threats} />
           </div>
-
-          <Card>
-            <p className="mb-3 text-sm font-semibold text-text">Tema do ano</p>
-            <div className="flex flex-wrap gap-2">
-              {plan.themes.map((theme) => (
-                <span key={theme} className="rounded-xl bg-[#F0F7FF] px-3 py-2 text-sm font-medium text-accent">
-                  {theme}
-                </span>
-              ))}
-            </div>
-          </Card>
 
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -491,15 +484,12 @@ export function Strategic() {
             </div>
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+          <div className="max-w-2xl">
             <ListBlock title="Rituais de acompanhamento" items={plan.rituals} />
-            <Card>
-              <p className="mb-3 text-sm font-semibold text-text">Resumo executivo</p>
-              <p className="text-sm leading-6 text-text-secondary">{plan.executiveSummary}</p>
-            </Card>
           </div>
         </div>
       )}
+      </div>
 
       {builderOpen ? <ObjectiveBuilder level="strategic" onClose={() => setBuilderOpen(false)} /> : null}
     </div>

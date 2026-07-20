@@ -13,6 +13,14 @@ async function login(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
 }
 
+async function openSettingsSection(page: Page, projectName: string, label: string, value: string) {
+  if (projectName === "mobile") {
+    await page.getByRole("combobox", { name: "Seções das configurações" }).selectOption(value);
+    return;
+  }
+  await page.getByRole("tab", { name: label, exact: true }).click();
+}
+
 test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
   test.skip(!RUN, "Jornadas autenticadas rodam somente no staging descartável.");
 
@@ -161,6 +169,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
   });
 
   test("login real e módulos essenciais carregam dados da empresa", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
     if (!org) throw new Error("fixture ausente");
     await login(page, org.owner.email, org.owner.password);
     await expect(page.getByRole("heading", { name: "Dashboard executivo" })).toBeVisible();
@@ -181,18 +190,73 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     ] as const;
     for (const [path, heading] of routes) {
       await page.goto(path);
-      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible({ timeout: 30_000 });
     }
 
-    await page.getByRole("tab", { name: "IA do Oráculo" }).click();
+    await page.goto("/");
+    await expect(page.getByText("Meta: Meta:")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (testInfo.project.name === "desktop") {
+      const sidebar = page.getByRole("navigation", { name: "Menu principal" });
+      const sidebarLayout = await sidebar.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const firstLabel = element.querySelector("nav a span")?.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        return {
+          width: rect.width,
+          x: rect.x,
+          position: style.position,
+          transform: style.transform,
+          firstLabelLeft: firstLabel?.left ?? -1,
+          firstLabelRight: firstLabel?.right ?? -1,
+        };
+      });
+      expect(sidebarLayout.width).toBeGreaterThanOrEqual(220);
+      expect(sidebarLayout.x).toBeGreaterThanOrEqual(0);
+      expect(sidebarLayout.position).toBe("static");
+      expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(sidebarLayout.transform);
+      expect(sidebarLayout.firstLabelLeft).toBeGreaterThanOrEqual(sidebarLayout.x);
+      expect(sidebarLayout.firstLabelRight).toBeLessThanOrEqual(sidebarLayout.x + sidebarLayout.width);
+      const navigationFits = await sidebar.evaluate((element) => {
+        const labels = Array.from(element.querySelectorAll("nav a span"));
+        return labels.length === 8 && labels.every((label) => label.scrollWidth <= label.clientWidth);
+      });
+      expect(navigationFits).toBe(true);
+    } else {
+      await page.getByRole("button", { name: "Abrir menu" }).click();
+      await expect(page.getByRole("link", { name: "Plano Estratégico", exact: true })).toBeVisible();
+      await expect(page.getByText("Planejamento", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Fechar menu" }).click();
+    }
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`dashboard-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.goto("/estrategico");
+    await expect(page.getByText("Direção anual que orienta os planos de cada área e trimestre.")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`estrategia-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.goto("/planos-trimestrais");
+    await expect(page.getByText("Prioridades que cada área executa neste trimestre.")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`trimestral-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.goto("/configuracoes");
+
+    await openSettingsSection(page, testInfo.project.name, "IA do Oráculo", "ia");
     await expect(page.getByRole("heading", { name: "IA do Oráculo" })).toBeVisible();
     await expect(page.getByText("Chaves por provedor")).toBeVisible();
 
-    await page.getByRole("tab", { name: "WhatsApp" }).click();
+    await openSettingsSection(page, testInfo.project.name, "WhatsApp", "whatsapp");
     await expect(page.getByRole("heading", { name: "WhatsApp", exact: true })).toBeVisible();
     await expect(page.getByPlaceholder(/Chave da Evolution API/)).toBeVisible();
 
-    await page.getByRole("tab", { name: "Backups" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Backups", "backups");
     await expect(page.getByRole("heading", { name: "Recuperação de desastre" })).toBeVisible();
     await expect(page.getByText("Até 30 min")).toBeVisible();
     await expect(page.getByText("Até 4h")).toBeVisible();
@@ -215,7 +279,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
       await page.screenshot({ path: testInfo.outputPath(`recuperacao-${testInfo.project.name}.png`), fullPage: true });
     }
 
-    await page.getByRole("tab", { name: "Segurança" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Segurança", "seguranca");
     await expect(page.getByRole("heading", { name: "Saúde operacional" })).toBeVisible();
     await page.getByRole("button", { name: "Registrar incidente" }).click();
     await expect(page.getByText("Ocorrência", { exact: true })).toBeVisible();
@@ -223,15 +287,16 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await expect(page.getByText("Serviço principal", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
-    await page.getByRole("tab", { name: "Auditoria" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Auditoria", "auditoria");
     await expect(page.getByRole("heading", { name: "Auditoria administrativa" })).toBeVisible();
     await expect(page.getByText("Política de MFA alterada")).toBeVisible();
+    await expect(page.getByText("Request ID", { exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`auditoria-${testInfo.project.name}.png`), fullPage: true });
     }
 
-    await page.getByRole("tab", { name: "Privacidade" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Privacidade", "privacidade");
     await expect(page.getByRole("heading", { name: "Privacidade e uso de dados" })).toBeVisible();
     await expect(page.getByText("Owner da organização")).toBeVisible();
     await page.getByRole("button", { name: "Registrar ciência da versão 2026-07-15-r2" }).click();
@@ -239,7 +304,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.reload();
     await expect(page.getByText("Ciência registrada")).toBeVisible();
 
-    await page.getByRole("tab", { name: "Minha conta" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Minha conta", "conta");
     await expect(page.getByRole("heading", { name: "Minha conta", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Salvar perfil" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Baixar" })).toBeVisible();

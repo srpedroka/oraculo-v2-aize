@@ -1,6 +1,6 @@
 # Design System do Oraculo
 
-Status: **UX-P1, UX-P2, UX-C0 E UX-C1 APROVADOS EM 2026-07-19**
+Status: **UX-P1, UX-P2, UX-C0 E UX-C1 APROVADOS; UX-C2 EM REVISAO**
 
 Aplicacao UX-C0: os tokens e as primitivas `Button`, `Card`, `StatusBadge` e
 `Field` foram aprovados no draft da branch local `codex/ux-c0-foundation`.
@@ -12,6 +12,11 @@ Aplicacao UX-C1: `InlineFeedback` e o contrato de erro recuperavel foram
 aplicados aos fluxos criticos no draft da branch local
 `codex/ux-c1-feedback-recovery`. O owner aprovou o gate em 2026-07-19; o aceite
 nao autoriza producao, que permanece em gate separado.
+
+Aplicacao UX-C2: hierarquia, microcopy, navegacao agrupada, abas acessiveis,
+status semanticos e listas mais compactas foram aplicados ao caminho critico do
+gestor. O draft esta validado tecnicamente; o aceite do owner e a publicacao em
+producao continuam como gates separados.
 
 Fontes de decisao:
 

@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { KeyAction, Objective } from "../../types";
 import { TYPE_LABEL } from "../../types";
 import { formatDate, shortDate } from "../../lib/format";
-import { isOverdue } from "../../lib/execution";
+import { displayStatus, isOverdue } from "../../lib/execution";
 import { Card } from "../../components/ui/Card";
 import { ConcretenessMeter } from "../../components/ui/ConcretenessMeter";
 import { LineageTag } from "../../components/ui/LineageTag";
@@ -86,7 +86,7 @@ export function ObjectiveCard({ objective, parent, keyActions = [], highlighted 
                 <TypeIcon className="h-4 w-4" />
                 {TYPE_LABEL[objective.type]}
               </span>
-              <StatusBadge status={objective.status} />
+              <StatusBadge status={displayStatus(objective)} />
               {isOverdue(objective) && objective.status !== "late" ? (
                 <span className="rounded-full bg-status-danger-bg px-2 py-0.5 text-xs font-semibold text-status-danger">Atrasado</span>
               ) : null}

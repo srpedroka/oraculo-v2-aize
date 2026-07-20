@@ -11,7 +11,8 @@ import { KpiResultBlock } from "../features/kpi/KpiResultBlock";
 import { useSessionLauncher } from "../hooks/useSessionLauncher";
 import { Link, useNavigate } from "react-router-dom";
 import { previousMonthPeriod } from "../lib/periods";
-import { buildTrackItems, summarize } from "../lib/execution";
+import { buildTrackItems, displayStatus, summarize } from "../lib/execution";
+import { formatObjectiveTarget } from "../lib/format";
 import { useAppState } from "../state/store";
 import type { Objective } from "../types";
 
@@ -43,12 +44,14 @@ export function Dashboard() {
   const executiveSeeds = seedObjectives.filter((objective) => objective.level === "strategic");
   const activeSeeds = (executiveSeeds.length ? executiveSeeds : seedObjectives).filter((objective) => objective.status !== "done");
   const visibleEvolutionObjectives = activeSeeds.slice(0, 2);
-  const onTrackSeeds = activeSeeds.filter((objective) => objective.status === "on_track").length;
-  const attentionSeeds = activeSeeds.filter((objective) => ["at_risk", "late"].includes(objective.status)).length;
+  const onTrackSeeds = activeSeeds.filter((objective) => displayStatus(objective) === "on_track").length;
+  const attentionSeeds = activeSeeds.filter((objective) => ["at_risk", "late"].includes(displayStatus(objective))).length;
+  const unsetSeeds = activeSeeds.filter((objective) => displayStatus(objective) === "unset").length;
   const donutData = activeSeeds.length
     ? [
         { name: "No Prazo", value: onTrackSeeds, color: "#DDE7F3" },
         { name: "Em Risco", value: attentionSeeds, color: "#F2C28D" },
+        { name: "Sem avaliação", value: unsetSeeds, color: "#ECECEF" },
       ].filter((item) => item.value > 0)
     : [{ name: "Sem dados", value: 1, color: "#ECECEF" }];
   const canCreateStrategicObjective = state.currentMembership?.role === "owner";
@@ -65,10 +68,11 @@ export function Dashboard() {
     <div className="mx-auto max-w-[820px] space-y-8">
       <div>
         <p className="text-sm font-medium text-text-tertiary">
-          {state.organization?.name}
-          {state.organization?.subtitle ? ` · ${state.organization.subtitle}` : ""}
+          Visão geral da empresa
+          {state.organization?.name ? ` · ${state.organization.name}` : ""}
         </p>
         <h1 className="text-2xl font-semibold text-text">Dashboard executivo</h1>
+        <p className="mt-1 text-sm leading-6 text-text-secondary">Resultado, execução e pontos que pedem atenção agora.</p>
       </div>
 
       {sessionLauncher.error ? (
@@ -90,14 +94,16 @@ export function Dashboard() {
         >
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <span className="font-medium text-text">Execução</span>
-            {execSummary.late ? (
+            {execSummary.onTimePct === null ? (
+              <span className="font-medium text-status-neutral">Sem prazos avaliáveis</span>
+            ) : execSummary.late ? (
               <span className="font-semibold text-status-danger">
                 {execSummary.late} atrasado{execSummary.late === 1 ? "" : "s"}
               </span>
             ) : (
               <span className="font-medium text-[#1D7A3E]">nada atrasado</span>
             )}
-            <span className="text-text-secondary tabular-nums">{execOnTime} no prazo</span>
+            {execSummary.onTimePct === null ? null : <span className="text-text-secondary tabular-nums">{execOnTime} no prazo</span>}
           </div>
           <span className="text-sm font-medium text-accent">Ver painel →</span>
         </Link>
@@ -175,10 +181,10 @@ export function Dashboard() {
                   <div>
                     <p className="text-base font-medium text-text">{objective.title}</p>
                     <p className="mt-4 text-metric font-semibold text-text">{objective.progress ?? 0}%</p>
-                    <p className="mt-3 text-body text-text-secondary">Meta: {objective.target ?? "A definir"}</p>
+                    <p className="mt-3 text-body text-text-secondary">Meta: {formatObjectiveTarget(objective.target)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <StatusBadge status={objective.status} />
+                    <StatusBadge status={displayStatus(objective)} />
                     {canEditObjective(objective, state) ? (
                       <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditingObjective(objective)}>
                         Editar
@@ -213,9 +219,12 @@ export function Dashboard() {
                   <p className="mt-4 text-metric font-semibold text-text">{activeSeeds.length} Em Andamento</p>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <span className="text-body text-text-secondary">{onTrackSeeds} No Prazo</span>
-                    <span className="rounded-control bg-status-warning-bg px-3 py-1.5 text-sm font-medium text-status-warning">
-                      {attentionSeeds} Em Risco
-                    </span>
+                    {attentionSeeds ? (
+                      <span className="rounded-control bg-status-warning-bg px-3 py-1.5 text-sm font-medium text-status-warning">
+                        {attentionSeeds} Em Risco
+                      </span>
+                    ) : null}
+                    {unsetSeeds ? <span className="text-body text-status-neutral">{unsetSeeds} Sem avaliação</span> : null}
                   </div>
                 </div>
                 <div className="h-28 w-28">

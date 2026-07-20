@@ -1,5 +1,21 @@
 # Changelog
 
+- A UX-C2 foi implementada e publicada somente no draft
+  `https://6a5dfa113c90387d0905fc6e--oraculo-v2-aize.netlify.app`. Dashboard,
+  origem anual, desdobramento trimestral, Documentos, navegacao, abas e
+  auditoria ganharam hierarquia e linguagem mais claras, sem nova funcao ou
+  regra de negocio. A validacao passou 541 unitarios, lint, build, bundle,
+  secret scan, jornada autenticada e smoke publico desktop/mobile, alem de 31
+  Functions e 54/54 migrations coerentes. Zero backend, dado, WhatsApp ou IA
+  paga; producao e progresso permanecem inalterados ate o gate do owner.
+
+- O release acumulado UX-C0/UX-C1 foi autorizado e publicado em 2026-07-20.
+  A PR #15 passou o CI #101 completo, foi mesclada em `330190a` e publicada no
+  Netlify `6a5de9e76733af06c6887d56`. `production:verify`, login publico
+  desktop/mobile e smoke autenticado das rotas criticas ficaram verdes. A
+  publicacao alterou somente o frontend, custou US$ 0 em IA/API e nao modifica
+  o progresso: geral 39%, Plano 3 em 40%. Proxima fatia: briefing UX-C2.
+
 - O owner aprovou o gate da UX-C1 em 2026-07-19. A Calibracao pre-beta passa de
   20% para 40% e o plano geral de 37% para 39%. A aprovacao valida feedback,
   preservacao de rascunho, retry e bloqueio de duplo clique no draft, mas nao

@@ -56,6 +56,7 @@ import { WhatsAppSettingsSection } from "./WhatsAppSettingsSection";
 import { GovernanceSettingsSections } from "./GovernanceSettingsSections";
 import { PersonalAccountCard } from "../account/PersonalAccountCard";
 import { AdministrativeAuditSection } from "./AdministrativeAuditSection";
+import { Tabs } from "../../components/ui/Tabs";
 
 export function SettingsView({ scope }: { scope: SettingsController }) {
   const { organizationName, setOrganizationName, organizationSubtitle, setOrganizationSubtitle, organizationMessage, setOrganizationMessage, areaName, setAreaName, memberEmail, setMemberEmail, memberName, setMemberName, memberPhone, setMemberPhone, memberNotify, setMemberNotify, memberAreaId, setMemberAreaId, memberMessage, setMemberMessage, memberToRemove, setMemberToRemove, memberRemovalBusy, setMemberRemovalBusy, memberRemovalError, setMemberRemovalError, areaToArchive, setAreaToArchive, areaLifecycleBusy, setAreaLifecycleBusy, areaLifecycleError, setAreaLifecycleError, areaMessage, setAreaMessage, providerApiKeys, setProviderApiKeys, aiFunctionDrafts, setAiFunctionDrafts, aiMessage, setAiMessage, aiMessageTone, setAiMessageTone, savingProvider, setSavingProvider, testingProvider, setTestingProvider, savingFunction, setSavingFunction, testingFunction, setTestingFunction, toneDraft, setToneDraft, toneMessage, setToneMessage, savingTone, setSavingTone, whatsappInstanceUrl, setWhatsappInstanceUrl, whatsappInstanceName, setWhatsappInstanceName, whatsappConnectedNumber, setWhatsappConnectedNumber, whatsappApiKey, setWhatsappApiKey, whatsappWebhookSecret, setWhatsappWebhookSecret, whatsappEnabled, setWhatsappEnabled, weeklyPulseEnabled, setWeeklyPulseEnabled, weeklyPulseWeekday, setWeeklyPulseWeekday, weeklyPulseHour, setWeeklyPulseHour, whatsappMessage, setWhatsappMessage, roleSavingId, setRoleSavingId, memberInviteBusyId, setMemberInviteBusyId, memberAreaBusyId, setMemberAreaBusyId, memberEditId, setMemberEditId, memberEditName, setMemberEditName, memberEditPhone, setMemberEditPhone, memberEditBusy, setMemberEditBusy, profileLinksText, setProfileLinksText, profileError, setProfileError, profileResearching, setProfileResearching, profileConfirming, setProfileConfirming, profilePreview, setProfilePreview, activeSection, setActiveSection, iaTab, setIaTab, state, dispatch, signOut, saveAiProviderKey, saveAiFunctionSetting, testAiProviderKey, testAiFunction, saveOrgTone, createOrgTokenRef, isOwner, companyProfile, companyProfileSummary, companyProfileLinks, SECTIONS, visibleSections, currentSection, showSection, supabaseUrl, whatsappWebhookUrl, coordinators, allAreas, ownerCount, impactedMemberAreas, archiveImpact, usageSummary, recentUsage, tonePreview, createOrganization, normalizeProfileLink, parseProfileLinks, researchCompanyProfile, confirmCompanyProfile, createArea, archiveArea, restoreArea, inviteChannelMessage, inviteMember, resendInvite, assignMemberArea, openMemberEdit, saveMemberEdit, changeMemberRole, openMemberRemoval, removeMember, saveProviderKey, testProvider, saveAiFunction, testFunction, selectTonePreset, saveTone, saveWhatsApp } = scope;
@@ -71,34 +72,21 @@ export function SettingsView({ scope }: { scope: SettingsController }) {
         </Button>
       </div>
 
-      <nav
-        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-x-visible"
-        role="tablist"
-        aria-label="Seções das configurações"
-        data-testid="settings-sections"
-      >
-        {visibleSections.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            role="tab"
-            aria-selected={currentSection === section.id}
-            onClick={() => {
-              setActiveSection(section.id);
-              window.history.replaceState(null, "", `#${section.id}`);
-            }}
-            className={[
-              "shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none",
-              currentSection === section.id
-                ? "bg-[#1D1D1F] text-white"
-                : "border border-border bg-surface text-text-secondary hover:bg-fill-hover hover:text-text",
-            ].join(" ")}
-          >
-            {section.label}
-          </button>
-        ))}
-      </nav>
+      <div data-testid="settings-sections">
+        <Tabs
+          ariaLabel="Seções das configurações"
+          items={visibleSections.map((section) => ({ value: section.id, label: section.label }))}
+          value={currentSection}
+          onChange={(sectionId) => {
+            setActiveSection(sectionId);
+            window.history.replaceState(null, "", `#${sectionId}`);
+          }}
+          panelId="settings-panel"
+          collapseOnMobile
+        />
+      </div>
 
+      <div id="settings-panel" role="tabpanel" className="space-y-6">
       {showSection("conta") ? <PersonalAccountCard /> : null}
 
       <OrganizationSettingsSection scope={scope} />
@@ -112,6 +100,7 @@ export function SettingsView({ scope }: { scope: SettingsController }) {
       <GovernanceSettingsSections scope={scope} />
 
       {showSection("auditoria") && state.activeOrgId ? <AdministrativeAuditSection orgId={state.activeOrgId} /> : null}
+      </div>
 
       {areaToArchive ? (
         <AreaArchiveDialog

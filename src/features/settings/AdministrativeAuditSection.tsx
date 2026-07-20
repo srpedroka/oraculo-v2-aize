@@ -34,7 +34,35 @@ const ACTION_LABELS: Record<string, string> = {
   backup_policy_updated: "Política de backup alterada",
   organization_restored: "Empresa restaurada",
   retention_policy_baseline: "Política de retenção registrada",
+  recovery_drill_completed: "Teste de recuperação concluído",
+  recovery_drill_cleaned: "Ambiente do teste de recuperação removido",
+  recovery_incident_opened: "Incidente de recuperação aberto",
+  recovery_incident_resolved: "Incidente de recuperação resolvido",
+  company_research: "Perfil da empresa pesquisado",
 };
+
+const FIELD_LABELS: Record<string, string> = {
+  requireMfaForCriticalActions: "Segundo fator em ações críticas",
+  require_mfa_for_critical_actions: "Segundo fator em ações críticas",
+  role: "Papel",
+  areaId: "Área",
+  area_id: "Área",
+  enabled: "Ativo",
+  provider: "Provedor",
+  model: "Modelo",
+  scheduleHour: "Horário",
+  schedule_hour: "Horário",
+};
+
+function humanizeIdentifier(value: string) {
+  const known = FIELD_LABELS[value];
+  if (known) return known;
+  const words = value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return words ? `${words[0].toUpperCase()}${words.slice(1)}` : "Alteração";
+}
 
 function formatAuditDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -50,7 +78,11 @@ function valueLabel(value: unknown): string {
   if (value == null || value === "") return "Não informado";
   if (typeof value === "boolean") return value ? "Sim" : "Não";
   if (Array.isArray(value)) return value.map(valueLabel).join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, nestedValue]) => `${humanizeIdentifier(key)}: ${valueLabel(nestedValue)}`)
+      .join(" · ");
+  }
   return String(value);
 }
 
@@ -63,7 +95,7 @@ function Snapshot({ title, data }: { title: string; data: Record<string, unknown
       <dl className="space-y-1.5">
         {entries.map(([key, value]) => (
           <div key={key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3 text-sm">
-            <dt className="break-words text-text-tertiary">{key}</dt>
+            <dt className="break-words text-text-tertiary">{humanizeIdentifier(key)}</dt>
             <dd className="break-words text-text">{valueLabel(value)}</dd>
           </div>
         ))}
@@ -77,7 +109,7 @@ function AuditEventRow({ event }: { event: AdministrativeAuditEvent }) {
     <article className="border-b border-border py-4 last:border-b-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium text-text">{ACTION_LABELS[event.action] ?? event.action}</p>
+          <p className="font-medium text-text">{ACTION_LABELS[event.action] ?? humanizeIdentifier(event.action)}</p>
           <p className="mt-1 break-words text-sm text-text-secondary">
             {event.actorName} · {event.targetLabel || event.targetType}
           </p>
@@ -87,13 +119,14 @@ function AuditEventRow({ event }: { event: AdministrativeAuditEvent }) {
         </time>
       </div>
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer font-medium text-text-secondary hover:text-text">Ver detalhes</summary>
+        <summary className="cursor-pointer font-medium text-text-secondary hover:text-text">Ver alterações</summary>
         <div className="mt-3 grid gap-4 rounded-control bg-surface-muted p-4 sm:grid-cols-2">
           <Snapshot title="Antes" data={event.beforeData} />
           <Snapshot title="Depois" data={event.afterData} />
-          <div className="sm:col-span-2">
-            <p className="text-xs text-text-tertiary">Request ID: {event.requestId}</p>
-          </div>
+          <details className="sm:col-span-2">
+            <summary className="cursor-pointer text-xs font-medium text-text-tertiary hover:text-text-secondary">Detalhes técnicos</summary>
+            <p className="mt-2 break-all text-xs text-text-tertiary">Código da operação: {event.requestId}</p>
+          </details>
         </div>
       </details>
     </article>
