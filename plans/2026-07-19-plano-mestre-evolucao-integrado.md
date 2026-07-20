@@ -1194,12 +1194,15 @@ continuam abertas sem risco critico.
 
 ## 24. Proximo passo
 
-UX-C2, UX-C3, UX-C4 e R1A foram aprovadas. O pacote conjunto recebeu autorizacao
-explicita do owner para release em producao em 2026-07-20. A evidencia da
+UX-C2, UX-C3, UX-C4 e R1A foram aprovadas. O pacote conjunto foi publicado em
+producao em 2026-07-20 pela PR #16, merge `688707b`, release protegido
+`29771409862` e Netlify `6a5e7543f33863cd34980d37`. A verificacao confirmou
+31 Functions, 54/54 migrations, HTTP 200, headers/cache e smoke publico em
+desktop/mobile. A evidencia da
 calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: concluir o release protegido e iniciar a R1B em producao. O
-owner conduz a revisao real com o Plano Anual e seus relatorios de T1/T2,
+Proximo passo: iniciar a R1B em producao. O owner conduz a revisao real com o
+Plano Anual e seus relatorios de T1/T2,
 avalia a conversa e as duas secoes do pacote antes de uma unica confirmacao.

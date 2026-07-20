@@ -118,7 +118,10 @@ R1A foi implementada, validada no staging e aprovada em 2026-07-20:
   desktop/mobile verdes, alem de lint, build, bundle e secret scan;
 - teste pago opt-in foi pulado sem custo porque a chave temporaria nao estava no
   ambiente; o owner decidiu fazer a prova qualitativa na R1B real em producao;
-- release conjunto de UX-C2/C3/C4 e R1A autorizado pelo owner;
+- release conjunto de UX-C2/C3/C4 e R1A concluido: PR #16, merge `688707b`,
+  Actions `29771409862` e Netlify `6a5e7543f33863cd34980d37`;
+- verificacao de producao verde com 31 Functions, 54/54 migrations, HTTP 200,
+  headers/cache e smoke publico desktop/mobile;
 - Plano 4 passa de 0% para 50% e o geral de 45% para 52,5%.
 
 ## 2. Os oito planos
