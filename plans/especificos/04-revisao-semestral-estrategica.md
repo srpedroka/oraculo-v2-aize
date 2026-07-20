@@ -2,11 +2,11 @@
 
 Peso no plano geral: **15%**
 
-Progresso especifico: **0%**
+Progresso especifico: **50%**
 
-Contribuicao atual ao geral: **0,0%**
+Contribuicao atual ao geral: **7,5%**
 
-Status: **BRIEFING R1A PRONTO - EXECUCAO NAO AUTORIZADA**
+Status: **R1A APROVADA - RELEASE AUTORIZADO; R1B SERA O TESTE REAL DO OWNER**
 
 ## Objetivo
 
@@ -18,9 +18,9 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 
 | Fatia | Pontos | Estado | Gate |
 | --- | ---: | --- | --- |
-| R1A. Preflight e contrato para o ciclo real | 50 | Briefing revisado | Contexto real em leitura, contrato e testes aprovados |
-| R1B. Revisao e novo planejamento reais com owner | 50 | Nao iniciado | Dois documentos, uma confirmacao e qualidade aprovados |
-| **Total** | **100** | **Nao iniciado** | **0%** |
+| R1A. Preflight e contrato para o ciclo real | 50 | Aprovada em 2026-07-20 | Contexto semestral, contrato e testes aprovados |
+| R1B. Revisao e novo planejamento reais com owner | 50 | Nao iniciado | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
+| **Total** | **100** | **Em andamento** | **50%** |
 
 ## Entregas
 
@@ -37,3 +37,20 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 Fonte: secao 10, R1A e R1B do plano mestre.
 
 Briefing executavel: `plans/ddr/R1A-prontidao-contrato-briefing.md`.
+
+## Evidencia R1A
+
+- roteamento separa criacao anual de `strategic_review` no app e WhatsApp;
+- pergunta lateral e oferta de arquivo preservam fase, estado e proposta;
+- contexto `semester_review` agrega Plano Anual, T1/T2, janeiro-junho, todas as
+  areas, KPIs, evidencias, check-ins e documentos pertinentes;
+- um pacote canonico contem Revisao do Primeiro Semestre e Plano do Segundo
+  Semestre, com a mesma fonte para tela, PDF e WhatsApp;
+- teste real de banco preservou integralmente o objetivo anual quando nao havia
+  ajuste explicito e nao duplicou documento no retry;
+- 563 unitarios, 31 arquivos de integracao, 7 verificacoes de seguranca, 11 E2E
+  desktop/mobile, lint, build, bundle e secret scan verdes;
+- teste opt-in com modelo real foi pulado por ausencia da chave temporaria no
+  ambiente; custo desta fatia ate o gate: US$ 0;
+- por decisao do owner, naturalidade e qualidade estrategica serao avaliadas na
+  conversa real R1B em producao, sem substituir essa prova por ensaio sintetico.

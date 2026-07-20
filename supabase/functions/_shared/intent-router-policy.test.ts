@@ -25,4 +25,9 @@ describe("política determinística de início de planejamento", () => {
   it("mantém pedido genérico para o sistema perguntar o tipo", () => {
     expect(enforceIntentPolicies("Quero planejar", aiStart)).toMatchObject({ intent: "start_planning", planning_type: null });
   });
+
+  it("protege a revisão anual mesmo quando a IA classifica como criação", () => {
+    expect(enforceIntentPolicies("Quero revisar o plano estratégico anual com base no primeiro semestre", aiStart))
+      .toMatchObject({ intent: "start_planning", planning_type: "strategic_review", confidence: 1 });
+  });
 });

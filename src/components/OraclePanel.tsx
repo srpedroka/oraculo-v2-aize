@@ -25,7 +25,7 @@ const SESSION_TYPE_LABEL = {
   monthly: "Plano Mensal",
   month_close: "Fechamento do Mês",
   quarter_close: "Fechamento do Trimestre",
-  strategic_review: "Revisão Estratégica",
+  strategic_review: "Revisão Semestral",
 };
 
 const SESSION_PHASES = {
@@ -34,7 +34,7 @@ const SESSION_PHASES = {
   monthly: ["abertura", "relembrar", "objetivos_do_mes", "acoes_chave", "realismo", "sintese"],
   month_close: ["abertura", "revisao", "pendencias", "pulso", "resumo", "ponte"],
   quarter_close: ["abertura", "revisao_trimestre", "aprendizado_do_time", "balanco"],
-  strategic_review: ["abertura", "revisao_objetivos", "sintese"],
+  strategic_review: ["abertura", "contexto_semestre", "leitura_resultados", "decisoes_segundo_semestre", "sintese"],
 };
 
 const PHASE_LABEL: Record<string, string> = {
@@ -74,7 +74,7 @@ function proposalTitle(proposal: Record<string, unknown> | null) {
   if (type === "save_monthly_plan") return "Plano Mensal";
   if (type === "month_close") return "Fechamento do Mês";
   if (type === "quarter_close") return "Fechamento do Trimestre";
-  if (type === "apply_strategic_review") return "Revisão Estratégica";
+  if (type === "apply_strategic_review") return "Revisão Semestral";
   return "Proposta";
 }
 
@@ -519,18 +519,40 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
 
   const adjustments = asRecordArray(proposal.adjustments ?? proposal.ajustes);
   const unchanged = asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual);
+  const semesterReview = asRecord(proposal.semester_review ?? proposal.revisao_semestre);
+  const secondSemesterPlan = asRecord(proposal.second_semester_plan ?? proposal.plano_segundo_semestre);
+  const advances = asTextArray(semesterReview.confirmedAdvances ?? semesterReview.confirmed_advances ?? semesterReview.avancos_confirmados);
+  const gaps = asTextArray(semesterReview.gaps ?? semesterReview.lacunas);
+  const priorities = asRecordArray(secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades);
 
   return (
     <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será ajustado</p>
-        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Estratégica {asText(proposal.period ?? proposal.periodo)}</p>
+        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Semestral {asText(proposal.period ?? proposal.periodo)}</p>
         <p className="text-[12px] text-text-tertiary">
-          Só objetivos estratégicos existentes serão ajustados depois da sua confirmação.
+          O plano anual original será preservado. Só ajustes explícitos abaixo alteram objetivos existentes após sua confirmação.
         </p>
       </div>
 
       <DetailLine label="Motivo" value={proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason} />
+      <DetailLine label="Leitura executiva" value={semesterReview.executiveSummary ?? semesterReview.executive_summary ?? semesterReview.resumo_executivo} />
+      <DetailLine label="Avanços confirmados" value={advances.join("; ")} />
+      <DetailLine label="Lacunas" value={gaps.join("; ")} />
+
+      {priorities.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Prioridades do segundo semestre</p>
+          {priorities.map((priority, index) => (
+            <div key={`${asText(priority.title ?? priority.titulo)}-${index}`} className="border-t border-black/10 pt-2 first:border-t-0 first:pt-0">
+              <p className="font-semibold text-[#1D1D1F]">{asText(priority.title ?? priority.titulo) || `Prioridade ${index + 1}`}</p>
+              <DetailLine label="Resultado" value={priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado} />
+              <DetailLine label="Responsável" value={priority.owner ?? priority.responsavel} />
+              <DetailLine label="Primeira ação" value={priority.firstAction ?? priority.first_action ?? priority.primeira_acao} />
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {adjustments.length ? (
         <div className="space-y-2">
@@ -546,9 +568,7 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
             </div>
           ))}
         </div>
-      ) : (
-        <p className="rounded-xl bg-[#FFF8E8] px-3 py-2 text-[#7A4E12]">Nenhum ajuste estruturado ainda.</p>
-      )}
+      ) : <p className="rounded-xl bg-[#F0F7F2] px-3 py-2 text-[#295C3A]">Nenhum objetivo anual será alterado nesta gravação.</p>}
 
       <div className="border-t border-border-subtle pt-2">
         <p className="font-semibold text-text">Permanece igual</p>

@@ -596,17 +596,18 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - O plano mestre vigente e `plans/2026-07-19-plano-mestre-evolucao-integrado.md`,
   com porcentagens oficiais em `plans/2026-07-19-painel-progresso-geral.md`.
   UX-C0/UX-C1 foram aprovadas e publicadas em 2026-07-20 pela PR #15, CI #101,
-  merge `330190a` e deploy Netlify `6a5de9e76733af06c6887d56`. Verificacao e
-  smokes ficaram verdes. UX-C2, UX-C3 e UX-C4 foram aprovadas no draft. A UX-C4
-  validou foco/teclado, dialogs, viewport dinamico, safe area, toque e contraste
-  AA em desktop e dois celulares; producao permanece inalterada. Evidencia:
-  `plans/ddr/UX-C4-mobile-acessibilidade.md`. Progresso oficial atual: geral 45%
-  e Plano 3 concluido em 100%. O owner decidiu que a prova R1 sera pratica: R1A
-  faz inventario real somente em leitura e preflight no staging; R1B conduz a
-  revisao real no Oraculo e gera tambem o Plano Estrategico do Segundo Semestre.
-  Proximo passo: aprovar o briefing revisado
-  `plans/ddr/R1A-prontidao-contrato-briefing.md`. Release e R1B exigem gate
-  posterior explicito.
+  merge `330190a` e deploy Netlify `6a5de9e76733af06c6887d56`. UX-C2, UX-C3 e
+  UX-C4 foram aprovadas no draft. A R1A foi implementada e aprovada no staging:
+  revisão semestral AI-first, contexto janeiro-junho, interrupcoes naturais,
+  arquivo transitorio e pacote canonico com Revisao do Primeiro Semestre +
+  Plano do Segundo Semestre, preservando o plano anual sem ajuste explicito.
+  Gate: 563 unitarios, 31 arquivos de integracao, 7 verificacoes de seguranca,
+  11 E2E desktop/mobile, lint/build/bundle/secret scan verdes; IA paga US$ 0.
+  O owner autorizou publicar o pacote conjunto UX-C2/C3/C4 + R1A em producao.
+  Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Proximo passo:
+  R1B real com o owner em producao. Fontes:
+  `plans/ddr/UX-C4-mobile-acessibilidade.md` e
+  `plans/ddr/R1A-prontidao-contrato-briefing.md`.
 - Principio conversacional aprovado pelo owner: a IA possui a conversa e o
   servidor possui a gravacao. Guias sao referencias de raciocinio/qualidade,
   nao scripts de formulario. Fases nao podem absorver perguntas laterais nem

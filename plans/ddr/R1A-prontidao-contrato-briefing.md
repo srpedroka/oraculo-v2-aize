@@ -2,13 +2,16 @@
 
 Data: 2026-07-20
 
-Status: **REVISADO PELO OWNER - AGUARDA AUTORIZACAO DE EXECUCAO**
+Status: **GATE TECNICO APROVADO - RELEASE AUTORIZADO EM 2026-07-20**
 
-Progresso atual: **Plano geral 45% | Plano 4 0%**
+Progresso atual: **Plano geral 52,5% | Plano 4 50%**
 
 Marco tecnico se R1A for aprovada: **Plano geral 52,5% | Plano 4 50%**
 
 Marco do ciclo real se R1B for aprovada: **Plano geral 60% | Plano 4 100%**
+
+Resultado do gate: **R1A aprovada; progresso oficial 52,5% geral e 50% no
+Plano 4. A R1B real em producao permanece pendente.**
 
 ## 1. Resumo para o owner
 
@@ -23,11 +26,12 @@ Ela nao tenta substituir a avaliacao humana com uma empresa ficticia. Logo
 depois, mediante gate de release explicito, a R1B executa a revisao real com o
 owner em producao.
 
-O ciclo deve entregar dois resultados ligados e distintos:
+O ciclo deve entregar dois resultados ligados e distintos dentro de um unico
+pacote canonico, evitando versoes divergentes entre canais:
 
-1. `Revisao Semestral do Plano Estrategico Anual`, com o que aconteceu em T1/T2;
-2. `Plano Estrategico do Segundo Semestre`, com prioridades, ajustes e decisoes
-   para julho-dezembro, sempre derivado da revisao aprovada.
+1. secao `Revisao Semestral do Plano Estrategico Anual`, com o que aconteceu em T1/T2;
+2. secao `Plano Estrategico do Segundo Semestre`, com prioridades, ajustes e
+   decisoes para julho-dezembro, sempre derivada da revisao aprovada.
 
 ## 1.1 Diagnostico observado no WhatsApp real
 
@@ -130,10 +134,9 @@ usado apenas quando identificado como contexto historico.
 9. prioridades recomendadas;
 10. lista explicita de `evidencia insuficiente` onde faltarem fatos.
 
-O primeiro documento canonico deve se chamar `Revisao Semestral do Plano
-Estrategico Anual`. Depois do aceite do diagnostico e dos ajustes, o segundo
-deve se chamar `Plano Estrategico do Segundo Semestre`. Ambos devem permanecer
-materialmente coerentes na tela, PDF e resumo do WhatsApp.
+O documento canonico deve se chamar `Revisao Semestral e Plano do Segundo
+Semestre <ano>` e conter as duas secoes com titulos proprios. A fonte unica
+garante coerencia material na tela, PDF e resumo do WhatsApp.
 
 ## 5. Fatias internas de execucao
 
@@ -224,7 +227,7 @@ materialmente coerentes na tela, PDF e resumo do WhatsApp.
 
 - owner ajusta a proposta sem reiniciar a sessao;
 - uma conferencia final apresenta tudo que sera gravado;
-- uma confirmacao grava o lote e os dois documentos;
+- uma confirmacao grava o lote e as duas secoes do pacote canonico;
 - comparar banco, tela, PDF e WhatsApp;
 - avaliar a conversa e as saidas pelas rubricas;
 - preservar backup, fingerprints, versoes e trilha antes/depois.
@@ -308,4 +311,5 @@ abertura do beta para gestores.
 
 Frase de gate sugerida:
 
-`Aprovo o briefing revisado do ciclo real R1 e autorizo iniciar a R1A.`
+Autorizacoes registradas em 2026-07-20: executar a R1A e publicar todo o pacote
+em producao para o owner realizar o teste pratico R1B.

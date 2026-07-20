@@ -623,6 +623,17 @@ cada conclusao relevante.
 Staging verde, estrutura aprovada pelo owner, rubricas individuais >= 80, media
 >= 85 e zero falha critica.
 
+Status em 2026-07-20: R1A tecnicamente aprovada. O modelo de sessao agora e
+AI-first, `strategic_review` possui roteamento proprio, interrupcoes naturais
+preservam o estado, arquivos entram como contexto transitorio e o recorte
+janeiro-junho agrega T1/T2, areas, KPIs, evidencias, check-ins e documentos. A
+confirmacao real de banco preservou o plano anual sem ajuste explicito e foi
+idempotente. O pacote canonico unico possui duas secoes, Revisao do Primeiro
+Semestre e Plano do Segundo Semestre, mantendo tela, PDF e WhatsApp coerentes.
+O teste pago opt-in foi pulado sem custo por ausencia da chave temporaria; por
+decisao do owner, a prova qualitativa ocorre na R1B real em producao. Progresso:
+Plano 4 em 50% e geral em 52,5%.
+
 ## R1B - Execucao real com o owner
 
 ### Preparacao
@@ -1183,13 +1194,12 @@ continuam abertas sem risco critico.
 
 ## 24. Proximo passo
 
-UX-C0/UX-C1 estao em producao. UX-C2, UX-C3 e UX-C4 foram aprovadas no draft.
-A evidencia final da calibracao esta em
-`plans/ddr/UX-C4-mobile-acessibilidade.md`. O Plano 3 foi concluido em 100% e o
-progresso geral chegou a 45%. Producao exige autorizacao separada e permanece
-inalterada.
+UX-C2, UX-C3, UX-C4 e R1A foram aprovadas. O pacote conjunto recebeu autorizacao
+explicita do owner para release em producao em 2026-07-20. A evidencia da
+calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
+em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
+Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: o owner revisar o briefing revisado
-`plans/ddr/R1A-prontidao-contrato-briefing.md` e autorizar ou ajustar a R1A. A
-execucao comeca pelo inventario real somente em leitura e pelo staging. Depois
-do gate tecnico, o release e a R1B real exigem autorizacao explicita.
+Proximo passo: concluir o release protegido e iniciar a R1B em producao. O
+owner conduz a revisao real com o Plano Anual e seus relatorios de T1/T2,
+avalia a conversa e as duas secoes do pacote antes de uma unica confirmacao.

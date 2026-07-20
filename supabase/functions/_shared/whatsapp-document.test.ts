@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sendWhatsAppDocument } from "./whatsapp.ts";
+import { inferWhatsAppDocumentType } from "./whatsapp-document-routing.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("envio de documento no WhatsApp", () => {
+  it("recupera o documento da revisão semestral sem confundir com fechamento mensal", () => {
+    expect(inferWhatsAppDocumentType("Me manda o documento da revisão semestral do plano estratégico anual"))
+      .toBe("strategic_review");
+  });
+
   it("usa o endpoint de mídia do Evo Go com PDF em base64", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "media-1" }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

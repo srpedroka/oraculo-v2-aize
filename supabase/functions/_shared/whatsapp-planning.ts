@@ -1,7 +1,14 @@
 import { matchAreaCandidate, type NamedAreaCandidate } from "./area-matching.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
 
-export type CorePlanningType = "strategic" | "quarterly" | "monthly";
+export type CorePlanningType = "strategic" | "quarterly" | "monthly" | "strategic_review";
+
+export function isStrategicReviewRequest(message: string) {
+  const normalized = normalizeTextForRouting(message);
+  const namesAnnualPlan = /\b(plano|planejamento)\s+(?:estrategico\s+)?anual\b|\bplano\s+estrategico\b|\bplanejamento\s+estrategico\b/.test(normalized);
+  const asksReview = /\b(revisar|revisao|reavaliar|ajustar|atualizar)\b/.test(normalized);
+  return namesAnnualPlan && asksReview;
+}
 
 export function isExplicitPlanningRequest(message: string) {
   const normalized = normalizeTextForRouting(message);
@@ -13,6 +20,7 @@ export function isExplicitPlanningRequest(message: string) {
 
 export function explicitPlanningRequest(message: string): CorePlanningType | null {
   if (!isExplicitPlanningRequest(message)) return null;
+  if (isStrategicReviewRequest(message)) return "strategic_review";
   return inferPlanningType(message);
 }
 

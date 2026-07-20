@@ -1084,6 +1084,28 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
   const type = text(value.type);
   if (type === "apply_strategic_review") {
     const adjustments = Array.isArray(value.adjustments) ? value.adjustments.map(asRecord) : [];
+    const semesterReview = asRecord(value.semester_review ?? value.revisao_semestre);
+    const secondSemesterPlan = asRecord(value.second_semester_plan ?? value.plano_segundo_semestre);
+    const priorities = Array.isArray(secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades)
+      ? (secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades as unknown[]).map(asRecord)
+      : [];
+    const reviewSummary = text(semesterReview.executiveSummary ?? semesterReview.executive_summary ?? semesterReview.resumo_executivo);
+    if (reviewSummary || priorities.length) {
+      const priorityLines = priorities.slice(0, 5).map((priority, index) =>
+        `${index + 1}. ${text(priority.title ?? priority.titulo) || "Prioridade"}${text(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado) ? `: ${text(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado)}` : ""}`
+      );
+      const adjustmentLine = adjustments.length
+        ? `${adjustments.length} ajuste(s) explícito(s) no plano anual aparecem abaixo e só serão aplicados após esta confirmação.`
+        : "O plano anual original será preservado sem alteração de objetivos.";
+      return [
+        `**Revisão do primeiro semestre ${text(value.period)}**`,
+        reviewSummary,
+        "**Plano do segundo semestre**",
+        ...priorityLines,
+        adjustmentLine,
+        "Confirma gravar esta revisão e o direcionamento do segundo semestre?",
+      ].filter(Boolean).join("\n");
+    }
     if (adjustments.length > 0) {
       const fieldLabels: Record<string, string> = {
         current: "valor atual",
@@ -1432,5 +1454,5 @@ export function adaptiveFallbackReply(
   }
   const strategicFallback = strategicDecisionFallback(text(context.userMessage), text(context.sessionType));
   if (strategicFallback) return strategicFallback;
-  return "Já temos uma parte importante definida e falta transformar isso na próxima decisão. O que destrava o avanço agora: fechar o resultado, o prazo, o responsável ou a primeira ação?";
+  return "Não consegui acompanhar este último ponto com segurança e prefiro não empurrar a conversa para uma pergunta desconectada. A sessão ficou salva; pode repetir esse ponto em outras palavras?";
 }

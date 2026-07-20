@@ -4,7 +4,7 @@ import { parseJsonObject } from "./json.ts";
 import { inferPlanningType, normalizeTextForRouting } from "./periods.ts";
 import { hasConcreteQuickUpdateSignal, isNonMutatingAcknowledgement } from "./quick-update-policy.ts";
 import { recordAiUsage } from "./usage.ts";
-import { explicitPlanningRequest, isExplicitPlanningRequest } from "./whatsapp-planning.ts";
+import { explicitPlanningRequest, isExplicitPlanningRequest, isStrategicReviewRequest, type CorePlanningType } from "./whatsapp-planning.ts";
 
 type Client = any;
 
@@ -19,7 +19,7 @@ export type OracleIntent =
 
 export interface IntentClassification {
   intent: OracleIntent;
-  planning_type: "strategic" | "quarterly" | "monthly" | null;
+  planning_type: CorePlanningType | null;
   period_hint: string | null;
   confidence: number;
 }
@@ -51,7 +51,7 @@ export function enforceIntentPolicies(message: string, classification: IntentCla
 
 function fallbackIntent(message: string): IntentClassification {
   const normalized = normalizeTextForRouting(message);
-  const planningType = inferPlanningType(message);
+  const planningType = isStrategicReviewRequest(message) ? "strategic_review" : inferPlanningType(message);
 
   if (/^(oi|ola|bom dia|boa tarde|boa noite|teste|obrigad)/.test(normalized) && normalized.length < 60) {
     return { intent: "smalltalk", planning_type: null, period_hint: null, confidence: 0.72 };
@@ -85,13 +85,14 @@ export async function classifyOracleIntent(
   if (!aiRoute) return enforceIntentPolicies(params.message, fallbackIntent(params.message));
 
   const systemPrompt = [
-    'Você classifica a intenção de uma mensagem enviada ao Oráculo, assistente estratégico, pelo WhatsApp. Responda somente JSON válido: {"intent": "smalltalk|status|quick_update|start_planning|close_period|document_question|other", "planning_type": "strategic|quarterly|monthly|null", "period_hint": "string|null", "confidence": 0.0}',
+    'Você classifica a intenção de uma mensagem enviada ao Oráculo, assistente estratégico. Responda somente JSON válido: {"intent": "smalltalk|status|quick_update|start_planning|close_period|document_question|other", "planning_type": "strategic|strategic_review|quarterly|monthly|null", "period_hint": "string|null", "confidence": 0.0}',
     "Definições:",
     "- smalltalk: saudação, teste, agradecimento, papo leve.",
     "- status: pergunta sobre andamento de plano, objetivos, metas, indicadores, área ou empresa.",
     "- quick_update: a pessoa informa claramente um avanço pontual (concluiu uma ação, atualizou um número, quer registrar uma evidência curta).",
     "- Respostas curtas de confirmação, como ok, sim, recebido, piloto ok ou teste ok, são smalltalk e nunca quick_update.",
     "- start_planning: pede para criar ou revisar plano (do ano, do trimestre ou do mês).",
+    "- strategic_review: revisão do plano estratégico anual existente, inclusive revisão semestral com evidências do primeiro semestre. Não confunda com criação de strategic.",
     "- close_period: quer fazer o fechamento ou check-in do mês ou do trimestre.",
     "- document_question: pergunta sobre um documento ou plano gravado (quer receber, resumir).",
     "- other: nada acima.",
@@ -122,8 +123,8 @@ export async function classifyOracleIntent(
     const parsed = parseJsonObject(result.text) as any;
     const fallback = fallbackIntent(params.message);
     const intent = VALID_INTENTS.has(parsed?.intent) ? parsed.intent as OracleIntent : fallback.intent;
-    const planningType = ["strategic", "quarterly", "monthly"].includes(parsed?.planning_type)
-      ? parsed.planning_type as "strategic" | "quarterly" | "monthly"
+    const planningType = ["strategic", "strategic_review", "quarterly", "monthly"].includes(parsed?.planning_type)
+      ? parsed.planning_type as CorePlanningType
       : fallback.planning_type;
     return enforceIntentPolicies(params.message, {
       intent,

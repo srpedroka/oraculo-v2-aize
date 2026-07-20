@@ -92,7 +92,7 @@ describe("PlanDocumentView", () => {
 
     render(<PlanDocumentView document={document} />);
 
-    expect(screen.getByText("Ajustes da Revisão")).toBeInTheDocument();
+    expect(screen.getByText("Revisão do Semestre e Próximo Ciclo")).toBeInTheDocument();
     expect(screen.getByText("Fechamento validou uma nova linha de base")).toBeInTheDocument();
     expect(screen.getByText(/current: 52% → 45%/)).toBeInTheDocument();
     expect(screen.getByText("O relatório semanal consolidou o resultado")).toBeInTheDocument();

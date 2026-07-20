@@ -24,6 +24,70 @@ function asTextArray(value: unknown) {
   return asArray(value).map((item) => asText(item)).filter(Boolean);
 }
 
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function normalizeSemesterReview(value: unknown) {
+  const review = asRecord(value);
+  return {
+    resumo_executivo: asText(review.executiveSummary ?? review.executive_summary ?? review.resumo_executivo ?? review.resumo),
+    avancos_confirmados: asTextArray(review.confirmedAdvances ?? review.confirmed_advances ?? review.avancos_confirmados ?? review.avancos),
+    lacunas: asTextArray(review.gaps ?? review.lacunas),
+    padroes_repetidos: asTextArray(review.repeatedPatterns ?? review.repeated_patterns ?? review.padroes_repetidos),
+    aprendizados: asTextArray(review.lessons ?? review.aprendizados),
+    riscos: asTextArray(review.risks ?? review.riscos),
+    lacunas_evidencia: asTextArray(review.evidenceGaps ?? review.evidence_gaps ?? review.lacunas_evidencia),
+    resultados_por_area: asArray(review.resultsByArea ?? review.results_by_area ?? review.resultados_por_area).map((item) => {
+      const area = asRecord(item);
+      return {
+        area: asText(area.area ?? area.name ?? area.nome),
+        avancos: asTextArray(area.advances ?? area.avancos),
+        lacunas: asTextArray(area.gaps ?? area.lacunas),
+        evidencias: asTextArray(area.evidence ?? area.evidences ?? area.evidencias),
+      };
+    }).filter((item) => item.area || item.avancos.length || item.lacunas.length || item.evidencias.length),
+  };
+}
+
+function normalizeSecondSemesterPlan(value: unknown, objectivesById: Map<string, any>) {
+  const plan = asRecord(value);
+  return {
+    foco: asText(plan.focus ?? plan.foco),
+    prioridades: asArray(plan.priorities ?? plan.prioridades).map((item) => {
+      const priority = asRecord(item);
+      const requestedObjectiveId = asText(priority.linkedObjectiveId ?? priority.linked_objective_id ?? priority.objetivo_vinculado_id);
+      const linkedObjective = requestedObjectiveId ? objectivesById.get(requestedObjectiveId) : null;
+      return {
+        titulo: asText(priority.title ?? priority.titulo),
+        justificativa: asText(priority.rationale ?? priority.justificativa),
+        objetivo_vinculado_id: linkedObjective?.id ?? null,
+        objetivo_vinculado: linkedObjective ? asText(linkedObjective.title) : asText(priority.linkedObjective ?? priority.objetivo_vinculado),
+        resultado_esperado: asText(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado),
+        indicador: asText(priority.metric ?? priority.indicador),
+        meta: asText(priority.target ?? priority.meta),
+        prazo: asText(priority.deadline ?? priority.prazo),
+        responsavel: asText(priority.owner ?? priority.responsavel),
+        primeira_acao: asText(priority.firstAction ?? priority.first_action ?? priority.primeira_acao),
+      };
+    }).filter((item) => item.titulo || item.resultado_esperado),
+    decisoes: asTextArray(plan.decisions ?? plan.decisoes),
+    renuncias: asTextArray(plan.renunciations ?? plan.renuncias),
+    riscos: asTextArray(plan.risks ?? plan.riscos),
+    cadencia: asTextArray(plan.cadence ?? plan.cadencia),
+  };
+}
+
+function hasSemesterReviewContent(review: ReturnType<typeof normalizeSemesterReview>) {
+  return Boolean(review.resumo_executivo || review.avancos_confirmados.length || review.lacunas.length
+    || review.padroes_repetidos.length || review.aprendizados.length || review.riscos.length
+    || review.lacunas_evidencia.length || review.resultados_por_area.length);
+}
+
+function hasSecondSemesterPlanContent(plan: ReturnType<typeof normalizeSecondSemesterPlan>) {
+  return Boolean(plan.foco || plan.prioridades.length || plan.decisoes.length || plan.renuncias.length || plan.riscos.length || plan.cadencia.length);
+}
+
 function asObjectiveType(value: unknown) {
   const text = asText(value).toLowerCase();
   if (text === "seed" || text.includes("plantio") || text.includes("evolu")) return "seed";
@@ -961,7 +1025,11 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
 
   const objectivesById = new Map((strategicObjectives ?? []).map((objective: any) => [objective.id, objective]));
   const rawAdjustments = asArray<any>(proposal.adjustments ?? proposal.ajustes);
-  if (!rawAdjustments.length) throw new Error("Revisão estratégica exige pelo menos um ajuste");
+  const semesterReview = normalizeSemesterReview(proposal.semester_review ?? proposal.revisao_semestre);
+  const secondSemesterPlan = normalizeSecondSemesterPlan(proposal.second_semester_plan ?? proposal.plano_segundo_semestre, objectivesById);
+  if (!rawAdjustments.length && !hasSemesterReviewContent(semesterReview) && !hasSecondSemesterPlanContent(secondSemesterPlan)) {
+    throw new Error("A revisão precisa conter diagnóstico do semestre, plano do segundo semestre ou ajuste explícito");
+  }
 
   const updatesByObjective = new Map<string, Record<string, unknown>>();
   const normalizedAdjustments = [];
@@ -1048,6 +1116,10 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
       tipo_sessao: "strategic_review",
     },
     motivo_revisao: asText(proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason),
+    plano_anual_original_preservado: true,
+    revisao_semestre: semesterReview,
+    plano_segundo_semestre: secondSemesterPlan,
+    permanece_igual: asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual),
     ajustes: normalizedAdjustments,
     antes: before,
     depois: (updatedObjectives ?? []).map(snapshotStrategicObjective),
@@ -1062,7 +1134,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
       type: "strategic_review",
       origin: "session",
       period,
-      title: `Revisão Estratégica ${period}`,
+      title: `Revisão Semestral e Plano do Segundo Semestre ${period}`,
       content,
       version,
       created_by: userId,
@@ -1071,7 +1143,10 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .single();
   if (documentError) throw documentError;
 
-  return `Revisão estratégica gravada com ${normalizedAdjustments.length} ajuste(s). Documento gerado: ${document.title} (v${document.version}).`;
+  const adjustmentSummary = normalizedAdjustments.length
+    ? `${normalizedAdjustments.length} ajuste(s) explícito(s) aplicado(s)`
+    : "plano anual original preservado sem alteração de objetivo";
+  return `Revisão semestral gravada, com ${adjustmentSummary}. Documento gerado: ${document.title} (v${document.version}).`;
 }
 
 export async function applyProposal(client: Client, session: any, proposal: any, userId: string) {

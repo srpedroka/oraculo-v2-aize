@@ -12,11 +12,11 @@ custo. A soma dos oito pesos e 100 pontos.
 
 ## 1. Progresso atual
 
-**Plano geral: 45,0%**
+**Plano geral: 52,5%**
 
-**Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 0,0%**
+**Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: aprovar o briefing revisado e iniciar o preflight R1A do ciclo real**
+**Proxima acao: R1B - owner executar a revisao semestral real em producao**
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -106,6 +106,21 @@ UX-C4 foi executada no draft e aprovada pelo owner em 2026-07-20:
 - Plano 3 passa de 80% para 100% e o geral de 43% para 45%;
 - producao continua inalterada e exige autorizacao separada.
 
+R1A foi implementada, validada no staging e aprovada em 2026-07-20:
+
+- a IA interpreta o turno; guias passaram a ser referencia interna e o servidor
+  continua autoridade para escopo, proposta, confirmacao e gravacao;
+- `strategic_review` agrega o primeiro semestre e gera um pacote canonico com
+  Revisao Semestral e Plano do Segundo Semestre;
+- plano anual original e preservado, salvo ajuste explicito na unica proposta
+  confirmada; retry nao duplica documento nem mutacao;
+- 563 unitarios, 31 arquivos de integracao, 7 testes de seguranca e 11 E2E
+  desktop/mobile verdes, alem de lint, build, bundle e secret scan;
+- teste pago opt-in foi pulado sem custo porque a chave temporaria nao estava no
+  ambiente; o owner decidiu fazer a prova qualitativa na R1B real em producao;
+- release conjunto de UX-C2/C3/C4 e R1A autorizado pelo owner;
+- Plano 4 passa de 0% para 50% e o geral de 45% para 52,5%.
+
 ## 2. Os oito planos
 
 | Plano | Peso geral | Progresso especifico | Contribuicao geral | Estado |
@@ -113,12 +128,12 @@ UX-C4 foi executada no draft e aprovada pelo owner em 2026-07-20:
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
 | [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 100% | 10,0% | Concluido |
-| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 0% | 0,0% | Briefing R1A pronto |
+| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | R1A aprovada; R1B real e a proxima |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [7. Acabamento e operacao assistida](especificos/07-acabamento-e-operacao-assistida.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [8. Evolucoes por evidencia](especificos/08-evolucoes-por-evidencia.md) | 5% | 0% | 0,0% | Congelado |
-| **Total** | **100%** | - | **45,0%** | Em andamento |
+| **Total** | **100%** | - | **52,5%** | Em andamento |
 
 ## 3. Formula
 
@@ -169,10 +184,10 @@ Novo geral: 25 + 4 = 29%
 Antes de executar a proxima fatia:
 
 ```text
-Plano geral: 45,0%
-Plano especifico: Revisao Semestral Estrategica - 0,0%
-Proxima fatia: R1A - vale 50 pontos do especifico e 7,5 pontos do geral
-Se aprovada: especifico 50,0% | geral 52,5%
+Plano geral: 52,5%
+Plano especifico: Revisao Semestral Estrategica - 50,0%
+Proxima fatia: R1B - vale 50 pontos do especifico e 7,5 pontos do geral
+Se aprovada: especifico 100,0% | geral 60,0%
 ```
 
 Depois de executar:

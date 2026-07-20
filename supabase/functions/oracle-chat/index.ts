@@ -17,7 +17,7 @@ import { buildPlanContext, type PlanContextFocus } from "../_shared/plan-context
 import { periodForClose, periodForPlanning } from "../_shared/periods.ts";
 import { CONVERSATION_STYLE, conversationGuideForContext } from "../_shared/conductors/persona.ts";
 import { loadOrgTone, toneDirective } from "../_shared/conductors/tone.ts";
-import { startPlanningSession } from "../_shared/session-engine.ts";
+import { processPlanningMessage, startPlanningSession } from "../_shared/session-engine.ts";
 import { recordAiUsage } from "../_shared/usage.ts";
 import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 
@@ -100,15 +100,24 @@ serve(async (req) => {
         return jsonResponse({ answer, conversationId: conversation.id });
       }
 
+      const companyWide = intent.planning_type === "strategic" || intent.planning_type === "strategic_review";
       const sessionResult = await startPlanningSession(client, {
         orgId,
-        areaId: intent.planning_type === "strategic" ? null : resolvedAreaId,
+        areaId: companyWide ? null : resolvedAreaId,
         type: intent.planning_type,
         period: periodForPlanning(intent.planning_type, intent.period_hint, String(message)),
         userId: user.id,
         channel: "web",
+        suppressOpeningMessage: true,
       });
-      return jsonResponse({ answer: sessionResult.reply, conversationId: conversation.id, session: sessionResult.session });
+      const naturalStart = await processPlanningMessage(client, {
+        sessionId: sessionResult.session.id,
+        message: String(message),
+        userId: user.id,
+        channel: "web",
+        skipUserMessageInsert: true,
+      });
+      return jsonResponse({ answer: naturalStart.reply, conversationId: conversation.id, session: naturalStart.session });
     }
 
     if (intent.intent === "close_period") {

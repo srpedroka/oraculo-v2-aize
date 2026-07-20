@@ -26,6 +26,15 @@ describe("roteamento de planejamento pelo WhatsApp", () => {
     expect(explicitPlanningRequest("Quero planejar")).toBeNull();
   });
 
+  it("separa revisão do plano anual de criação de um plano anual novo", () => {
+    expect(explicitPlanningRequest("Quero revisar o plano estratégico anual da GAAM com os resultados do primeiro semestre"))
+      .toBe("strategic_review");
+    expect(explicitPlanningRequest("Vamos atualizar o planejamento anual com as evidências de T1 e T2"))
+      .toBe("strategic_review");
+    expect(explicitPlanningRequest("Quero criar o plano estratégico anual de 2027"))
+      .toBe("strategic");
+  });
+
   it("resolve a área citada dentro da frase inteira", () => {
     expect(resolveAreaFromMessage("Vamos planejar o departamento comercial", areas).area?.id).toBe("commercial");
   });

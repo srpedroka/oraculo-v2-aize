@@ -29,6 +29,7 @@ import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.
 import { replayedSessionConfirmation } from "./session-confirmation.ts";
 import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
+import { sessionAsideDirective, sessionAsideKind } from "./session-conversation.ts";
 import { applyProposal } from "./proposals.ts";
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
@@ -131,6 +132,7 @@ function conductorPrompt(type: string, phase: string) {
 }
 
 function planFocusForSession(type: string) {
+  if (type === "strategic_review") return "semester_review" as const;
   if (type === "monthly" || type === "month_close") return "monthly" as const;
   if (type === "quarterly" || type === "quarter_close") return "quarterly" as const;
   return "org" as const;
@@ -213,11 +215,11 @@ export async function startPlanningSession(
         .single();
       if (rebindError) throw rebindError;
       const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
-      if ((params.channel ?? "web") === "whatsapp") await insertMessage(client, rebound, "oracle", reply, "whatsapp");
+      if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") await insertMessage(client, rebound, "oracle", reply, "whatsapp");
       return { session: rebound, reply };
     }
     const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
-    if ((params.channel ?? "web") === "whatsapp") await insertMessage(client, existing, "oracle", reply, "whatsapp");
+    if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") await insertMessage(client, existing, "oracle", reply, "whatsapp");
     return { session: existing, reply };
   }
 
@@ -286,7 +288,14 @@ async function createFollowUpSessionAfterClose(
 
 export async function processPlanningMessage(
   client: Client,
-  params: { sessionId: string; message: string; userId: string; channel?: "web" | "whatsapp" },
+  params: {
+    sessionId: string;
+    message: string;
+    userId: string;
+    channel?: "web" | "whatsapp";
+    skipUserMessageInsert?: boolean;
+    transientContext?: string | null;
+  },
 ) {
   const { data: session, error } = await client.from("planning_sessions").select("*").eq("id", params.sessionId).maybeSingle();
   if (error) throw error;
@@ -296,7 +305,9 @@ export async function processPlanningMessage(
 
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
-  await insertMessage(client, ensured.session, "user", params.message, channel);
+  if (!params.skipUserMessageInsert) {
+    await insertMessage(client, ensured.session, "user", params.message, channel);
+  }
   const conversation = await maybeSummarize(client, ensured.session.org_id, ensured.conversation);
   const [history, context, orgTone] = await Promise.all([
     loadConversationHistory(client, ensured.session.conversation_id),
@@ -308,6 +319,51 @@ export async function processPlanningMessage(
     loadOrgTone(client, ensured.session.org_id),
   ]);
   const conversationMemory = formatConversationMemory(history);
+
+  const asideKind = sessionAsideKind(params.message);
+  if (asideKind) {
+    const aiRoute = await resolveAiFunction(client, ensured.session.org_id, "planning");
+    if (!aiRoute) throw new Error("IA de planejamento não configurada");
+    const asidePrompt = [
+      PERSONA_ORACULO,
+      toneDirective(orgTone),
+      sessionAsideDirective(asideKind),
+      conversationMemory,
+      "Contexto atual do plano:",
+      context,
+    ].filter(Boolean).join("\n\n");
+    const output = await callModelForFunction(
+      client,
+      ensured.session.org_id,
+      "planning",
+      aiRoute,
+      asidePrompt,
+      conversationMessagesForModel(history),
+      { ...aiRoute.limits, timeoutMs: planningModelTimeout(Date.now() + PLANNING_REQUEST_DEADLINE_MS) },
+      { userId: params.userId },
+    );
+    await recordAiUsage({
+      client,
+      orgId: ensured.session.org_id,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
+      channel,
+      usage: output.usage,
+      settings: aiRoute.legacySettings,
+      metadata: {
+        aiFunction: "planning",
+        action: "session_conversation_aside",
+        asideKind,
+        sessionId: ensured.session.id,
+        sessionType: ensured.session.type,
+        conversationId: conversation?.id ?? ensured.session.conversation_id,
+      },
+    });
+    const reply = String(output.text ?? "").trim()
+      || "Pode mandar o arquivo. Vou ler o conteúdo e depois retomamos exatamente deste ponto.";
+    await insertMessage(client, ensured.session, "oracle", reply, channel);
+    return { session: ensured.session, reply, pendingProposal: ensured.session.pending_proposal ?? null };
+  }
 
   const systemPrompt = [
     PERSONA_ORACULO,
@@ -321,6 +377,7 @@ export async function processPlanningMessage(
     conversationMemory,
     "Contexto atual do plano:",
     context,
+    params.transientContext ? `CONTEXTO TRANSITÓRIO DESTE TURNO (não persistido):\n${params.transientContext}` : "",
   ].filter(Boolean).join("\n\n");
 
   const modelMessages = conversationMessagesForModel(history);

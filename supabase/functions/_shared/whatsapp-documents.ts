@@ -21,6 +21,7 @@ import {
 } from "./untrusted-content.ts";
 import { documentExtractionFailureMessage, extractDocumentText, resolveDocumentFile } from "./whatsapp-media.ts";
 import { normalizeWhatsAppText as normalizeText, whatsappFileExtension as fileExtension } from "./whatsapp-text.ts";
+import { inferWhatsAppDocumentType, type WhatsAppPlanDocumentType } from "./whatsapp-document-routing.ts";
 
 type DocumentTarget = "strategic" | "quarterly" | "monthly" | "evidence" | "unknown";
 
@@ -101,21 +102,11 @@ function formatImportedDocumentInsight(
   ].filter(Boolean).join("\n\n");
 }
 
-type PlanDocumentType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close";
-
-function inferDocumentType(message: string): PlanDocumentType | null {
-  const normalized = normalizeText(message);
-  const asksClose = /\b(fechamento|fechar|check in|checkin|balanco|revisao)\b/.test(normalized);
-  if (asksClose && /\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarter_close";
-  if (asksClose) return "month_close";
-  if (/\b(estrategico|estrategia|anual|ano)\b/.test(normalized)) return "strategic";
-  if (/\b(tri|trimestre|trimestral|q[1-4]|t[1-4])\b/.test(normalized)) return "quarterly";
-  if (/\b(mes|mensal|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|abr|mai|jun|jul|ago|set|out|nov|dez)\b/.test(normalized)) return "monthly";
-  return null;
-}
+type PlanDocumentType = WhatsAppPlanDocumentType;
 
 function periodForDocument(type: PlanDocumentType, hint: string | null | undefined, message: string) {
   if (type === "strategic") return periodForPlanning("strategic", hint, message);
+  if (type === "strategic_review") return periodForPlanning("strategic_review", hint, message);
   if (type === "quarterly") return periodForPlanning("quarterly", hint, message);
   if (type === "monthly") return periodForPlanning("monthly", hint, message);
   if (type === "quarter_close") return periodForClose("quarterly", hint, message);
@@ -166,8 +157,8 @@ export async function answerDocumentQuestion(
     .maybeSingle();
   if (contextError) throw contextError;
 
-  const explicitType = inferDocumentType(params.message);
-  const sessionType = ["strategic", "quarterly", "monthly", "month_close", "quarter_close"].includes(contextSession?.type)
+  const explicitType = inferWhatsAppDocumentType(params.message);
+  const sessionType = ["strategic", "strategic_review", "quarterly", "monthly", "month_close", "quarter_close"].includes(contextSession?.type)
     ? contextSession.type as PlanDocumentType
     : null;
   const type = explicitType ?? sessionType;
@@ -179,10 +170,11 @@ export async function answerDocumentQuestion(
     };
   }
 
-  const areaId = type === "strategic"
+  const companyWide = type === "strategic" || type === "strategic_review";
+  const areaId = companyWide
     ? null
     : await resolveDocumentAreaId(client, params.orgId, params.message, contextSession?.area_id ?? params.areaId);
-  if (type !== "strategic" && !areaId) {
+  if (!companyWide && !areaId) {
     return {
       reply: "De qual área é esse documento? Preciso da área para não te entregar um plano de outro departamento.",
       document: null,
@@ -196,7 +188,9 @@ export async function answerDocumentQuestion(
   const document = await latestDocumentByQuery(client, params.orgId, type, areaId, period);
 
   if (!document) {
-    const typeText = targetLabel(type === "strategic" ? "strategic" : type === "quarterly" || type === "quarter_close" ? "quarterly" : "monthly");
+    const typeText = type === "strategic_review"
+      ? "Revisão Semestral"
+      : targetLabel(type === "strategic" ? "strategic" : type === "quarterly" || type === "quarter_close" ? "quarterly" : "monthly");
     const areas = await loadActiveAreas(client, params.orgId);
     const areaName = areas.find((area: any) => area.id === areaId)?.name;
     const scope = [typeText, areaName, period].filter(Boolean).join(" · ");
@@ -334,6 +328,7 @@ export async function processIncomingDocument(
   whatsappKeyRow: any,
   payload: any,
   profile: any,
+  conversationId?: string | null,
 ) {
   const diagnostics: string[] = [];
   const file = await resolveDocumentFile(whatsappSettings, whatsappKeyRow, payload, diagnostics);
@@ -355,6 +350,32 @@ export async function processIncomingDocument(
       textLength: extractedText.length,
     });
     const classification = await classifyImportedDocument(client, orgId, areaId, file.fileName, extractedText, profile);
+    const { data: reviewSession, error: reviewSessionError } = conversationId
+      ? await client.from("planning_sessions")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("user_id", profile.id)
+        .eq("conversation_id", conversationId)
+        .eq("type", "strategic_review")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      : { data: null, error: null };
+    if (reviewSessionError) throw reviewSessionError;
+    if (reviewSession) {
+      return {
+        userText: importedDocumentInsightReceipt(classification),
+        answer: formatImportedDocumentInsight(classification),
+        skipHistory: false,
+        resumeSessionId: reviewSession.id,
+        transientContext: formatUntrustedDocument({
+          fileName: file.fileName,
+          content: extractedText,
+          maxChars: 20_000,
+        }),
+      };
+    }
     if (classification.target === "strategic") {
       const year = classification.period?.match(/\b(20\d{2})\b/)?.[1] ?? String(new Date().getFullYear());
       const prepared = await prepareReadyStrategicPlanProposal(client, {

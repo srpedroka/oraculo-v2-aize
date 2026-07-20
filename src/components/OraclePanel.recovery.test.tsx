@@ -98,7 +98,7 @@ describe("OraclePanel recovery", () => {
     ["monthly", { type: "save_monthly_plan", period: "Jul 2026" }, "Plano Mensal Jul 2026"],
     ["month_close", { type: "month_close", period: "Jun 2026" }, "Fechamento do Mês Jun 2026"],
     ["quarter_close", { type: "quarter_close", period: "T2 2026" }, "Fechamento do Trimestre T2 2026"],
-    ["strategic_review", { type: "apply_strategic_review", period: "S1 2026" }, "Revisão Estratégica S1 2026"],
+    ["strategic_review", { type: "apply_strategic_review", period: "S1 2026" }, "Revisão Semestral S1 2026"],
   ] as const)("mostra uma prévia estruturada para %s", (type, pendingProposal, expectedTitle) => {
     const dispatch = vi.fn();
     const proposalFields = pendingProposal as Record<string, string | number>;

@@ -24,6 +24,7 @@ describe("períodos server-side", () => {
     expect(periodForPlanning("quarterly", null, "terceiro trimestre de 2027")).toBe("T3 2027");
     expect(periodForPlanning("monthly", null, "fevereiro de 2028")).toBe("Fev 2028");
     expect(periodForPlanning("strategic", "2029")).toBe("2029");
+    expect(periodForPlanning("strategic_review", null, "revisão semestral do plano 2030")).toBe("2030");
   });
 
   it("avança mês e trimestre cruzando o ano", () => {

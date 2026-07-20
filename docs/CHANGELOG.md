@@ -1,5 +1,18 @@
 # Changelog
 
+- Implementada a R1A da Revisão Semestral com arquitetura conversacional
+  AI-first. Pedidos para revisar o Plano Estratégico Anual agora abrem
+  `strategic_review`, a primeira resposta considera a mensagem real e ofertas
+  de arquivo/perguntas sobre o processo suspendem o ritual sem perder estado.
+  O contexto reúne Plano Anual, objetivos e ações de todas as áreas, T1/T2,
+  evidências, check-ins, KPIs e até 24 documentos relevantes. Arquivos enviados
+  durante a revisão entram integralmente apenas no contexto transitório do
+  turno; o histórico mantém somente o resumo seguro. A confirmação continua
+  única e transacional: aplica apenas microajustes explícitos permitidos e gera
+  `Revisão Semestral e Plano do Segundo Semestre`, preservando o Plano Anual
+  original. Tela/PDF e WhatsApp exibem diagnóstico, prioridades e ajustes com o
+  mesmo conteúdo material. Sem migration ou tabela nova.
+
 - O owner definiu o principio AI-first: guias estrategicos orientam a IA, mas
   nao executam a conversa como formulario. A IA passa a possuir entendimento,
   pergunta, sintese, interrupcao e retomada; o servidor continua autoridade de

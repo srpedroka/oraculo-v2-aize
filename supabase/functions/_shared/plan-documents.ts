@@ -25,6 +25,10 @@ function asText(value: unknown, fallback = "") {
   return text || fallback;
 }
 
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
 function asObjectiveType(value: unknown) {
   const text = asText(value).toLowerCase();
   if (text === "seed" || text.includes("plantio") || text.includes("evolu")) return "evolucao";
@@ -210,10 +214,48 @@ function buildStrategicReviewContent(base: Record<string, unknown>, proposal: an
     para: asText(adjustment.to ?? adjustment.para),
     porque: asText(adjustment.because ?? adjustment.porque ?? adjustment.justificativa),
   }));
+  const review = asRecord(proposal.semester_review ?? proposal.revisao_semestre);
+  const plan = asRecord(proposal.second_semester_plan ?? proposal.plano_segundo_semestre);
 
   return {
     ...base,
     motivo_revisao: asText(proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason),
+    plano_anual_original_preservado: true,
+    revisao_semestre: {
+      resumo_executivo: asText(review.executiveSummary ?? review.executive_summary ?? review.resumo_executivo),
+      avancos_confirmados: firstFilledArray<string>(review.confirmedAdvances, review.confirmed_advances, review.avancos_confirmados),
+      lacunas: firstFilledArray<string>(review.gaps, review.lacunas),
+      padroes_repetidos: firstFilledArray<string>(review.repeatedPatterns, review.repeated_patterns, review.padroes_repetidos),
+      aprendizados: firstFilledArray<string>(review.lessons, review.aprendizados),
+      riscos: firstFilledArray<string>(review.risks, review.riscos),
+      lacunas_evidencia: firstFilledArray<string>(review.evidenceGaps, review.evidence_gaps, review.lacunas_evidencia),
+      resultados_por_area: asArray<any>(review.resultsByArea ?? review.results_by_area ?? review.resultados_por_area).map((item) => ({
+        area: asText(item.area ?? item.name ?? item.nome),
+        avancos: firstFilledArray<string>(item.advances, item.avancos),
+        lacunas: firstFilledArray<string>(item.gaps, item.lacunas),
+        evidencias: firstFilledArray<string>(item.evidence, item.evidences, item.evidencias),
+      })),
+    },
+    plano_segundo_semestre: {
+      foco: asText(plan.focus ?? plan.foco),
+      prioridades: asArray<any>(plan.priorities ?? plan.prioridades).map((priority) => ({
+        titulo: asText(priority.title ?? priority.titulo),
+        justificativa: asText(priority.rationale ?? priority.justificativa),
+        objetivo_vinculado_id: asText(priority.linkedObjectiveId ?? priority.linked_objective_id ?? priority.objetivo_vinculado_id) || null,
+        objetivo_vinculado: asText(priority.linkedObjective ?? priority.objetivo_vinculado),
+        resultado_esperado: asText(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado),
+        indicador: asText(priority.metric ?? priority.indicador),
+        meta: asText(priority.target ?? priority.meta),
+        prazo: asText(priority.deadline ?? priority.prazo),
+        responsavel: asText(priority.owner ?? priority.responsavel),
+        primeira_acao: asText(priority.firstAction ?? priority.first_action ?? priority.primeira_acao),
+      })),
+      decisoes: firstFilledArray<string>(plan.decisions, plan.decisoes),
+      renuncias: firstFilledArray<string>(plan.renunciations, plan.renuncias),
+      riscos: firstFilledArray<string>(plan.risks, plan.riscos),
+      cadencia: firstFilledArray<string>(plan.cadence, plan.cadencia),
+    },
+    permanece_igual: firstFilledArray<string>(proposal.unchanged, proposal.permaneceIgual, proposal.permanece_igual),
     ajustes: adjustments,
     antes: adjustments.map((adjustment) => ({
       id: adjustment.objetivo_id,

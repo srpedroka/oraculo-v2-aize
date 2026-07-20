@@ -3,7 +3,7 @@ import { formatUntrustedDocument } from "./untrusted-content.ts";
 
 type Client = any;
 
-export type PlanContextFocus = "org" | "area" | "quarterly" | "monthly";
+export type PlanContextFocus = "org" | "area" | "quarterly" | "monthly" | "semester_review";
 
 const STATUS_LABEL: Record<string, string> = {
   on_track: "No prazo",
@@ -28,6 +28,8 @@ const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "
 const MAX_HISTORICAL_DOCS = 5;
 const MAX_HISTORICAL_CHARS_PER_DOC = 1600;
 const MAX_PROFILE_CHARS = 1200;
+const MAX_SEMESTER_DOCUMENTS = 24;
+const MAX_SEMESTER_CHARS_PER_DOCUMENT = 2200;
 
 function text(value: unknown, fallback = "não informado") {
   const output = String(value ?? "").trim();
@@ -174,7 +176,121 @@ function historicalDocumentScore(document: any, focus: PlanContextFocus, areaId:
   if (focus === "monthly" && document.type === "quarterly") score += 2;
   if (focus === "area" && ["monthly", "quarterly"].includes(document.type)) score += 2;
   if (focus === "org" && document.type === "strategic") score += 3;
+  if (focus === "semester_review" && document.type === "strategic") score += 4;
+  if (focus === "semester_review" && ["quarterly", "quarter_close"].includes(document.type)) score += 3;
+  if (focus === "semester_review" && ["monthly", "month_close"].includes(document.type)) score += 2;
   return score;
+}
+
+function semesterYear(period: unknown, fallback = currentPeriods().year) {
+  return Number(String(period ?? "").match(/\b20\d{2}\b/)?.[0] ?? fallback);
+}
+
+function belongsToFirstSemester(period: unknown, year: number) {
+  const normalized = rawText(period).toLowerCase();
+  if (!normalized || !normalized.includes(String(year))) return false;
+  if (/\b[tq][12]\b/i.test(normalized)) return true;
+  return ["jan", "fev", "mar", "abr", "mai", "jun", "janeiro", "fevereiro", "março", "marco", "abril", "maio", "junho"]
+    .some((month) => new RegExp(`\\b${month}\\b`, "i").test(normalized));
+}
+
+function semesterDocumentText(document: any) {
+  const content = asRecord(document.content);
+  const summary = rawText(content.summary) || rawText(asRecord(content.classification).summary);
+  const raw = rawText(content.raw);
+  const canonical = rawText(JSON.stringify({
+    contexto: content.contexto_rapido,
+    objetivos: content.objetivos,
+    fechamento: content.fechamento,
+    ajustes: content.ajustes,
+  }));
+  return [summary, raw || canonical].filter(Boolean).join("\n");
+}
+
+export function firstSemesterContextLines(input: {
+  year: number;
+  objectives: any[];
+  actions: any[];
+  evidences: any[];
+  checkIns: any[];
+  kpis: any[];
+  kpiValues: any[];
+  documents: any[];
+  areas: any[];
+}) {
+  const { year } = input;
+  const objectives = input.objectives.filter((objective) => {
+    if (objective.level === "strategic") return String(objective.period ?? "").includes(String(year));
+    if (objective.level === "area_annual") return String(objective.period ?? "").includes(String(year));
+    return belongsToFirstSemester(objective.period, year);
+  });
+  const objectiveIds = new Set(objectives.map((objective) => objective.id));
+  const start = `${year}-01-01`;
+  const end = `${year}-06-30T23:59:59.999Z`;
+  const evidences = input.evidences.filter((evidence) => objectiveIds.has(evidence.objective_id)
+    && String(evidence.created_at ?? "") >= start && String(evidence.created_at ?? "") <= end);
+  const checkIns = input.checkIns.filter((checkIn) => belongsToFirstSemester(checkIn.period, year));
+  const documents = input.documents.filter((document) => {
+    if (document.type === "strategic" && String(document.period ?? "").includes(String(year))) return true;
+    if (belongsToFirstSemester(document.period, year)) return true;
+    const content = asRecord(document.content);
+    const metadata = asRecord(content.source_metadata);
+    return Number(metadata.year ?? 0) === year
+      && (Number(metadata.quarter ?? 0) <= 2 || /primeiro semestre|t1|t2|jan|fev|mar|abr|mai|jun/i.test(`${document.title ?? ""} ${content.raw ?? ""}`));
+  }).slice(0, MAX_SEMESTER_DOCUMENTS);
+
+  const lines = [
+    `REVISÃO SEMESTRAL EM FOCO: janeiro a junho de ${year}.`,
+    "Use os guias como critérios internos de qualidade. Conduza pela IA a partir do que a pessoa disser; não transforme as fases em questionário nem ignore interrupções, correções ou arquivos oferecidos.",
+    "O plano anual original é a referência e deve ser preservado. Só proponha alteração de dado existente quando ela estiver explícita, justificada e visível na confirmação final.",
+    "EXECUÇÃO DO PRIMEIRO SEMESTRE POR ÁREA:",
+  ];
+
+  for (const area of input.areas) {
+    const scoped = objectives.filter((objective) => objective.area_id === area.id);
+    if (!scoped.length) continue;
+    lines.push(`ÁREA: ${text(area.name)}`);
+    for (const objective of scoped) {
+      lines.push(objectiveLine(objective));
+      const actions = input.actions.filter((action) => action.objective_id === objective.id);
+      if (actions.length) lines.push(...actions.map(keyActionLine));
+    }
+  }
+
+  lines.push("EVIDÊNCIAS REGISTRADAS ENTRE JANEIRO E JUNHO:");
+  lines.push(...(evidences.length
+    ? evidences.map((evidence) => `- ${dateLabel(evidence.created_at)} | objetivo ${text(evidence.objective_id)}: ${text(evidence.text)}`)
+    : ["- Nenhuma evidência registrada no período."]));
+
+  lines.push("CHECK-INS E FECHAMENTOS DO PRIMEIRO SEMESTRE:");
+  lines.push(...(checkIns.length
+    ? checkIns.map((checkIn) => `- ${text(checkIn.period)} | ${text(checkIn.summary)} | detalhes: ${rawText(JSON.stringify(checkIn.details ?? {})) || "não informados"}`)
+    : ["- Nenhum check-in registrado no período."]));
+
+  lines.push("KPIS EXECUTIVOS DE JANEIRO A JUNHO:");
+  for (const kpi of input.kpis) {
+    const values = input.kpiValues
+      .filter((value) => value.kpi_id === kpi.id && Number(value.year) === year && Number(value.month) <= 6)
+      .sort((a, b) => Number(a.month) - Number(b.month));
+    lines.push(`- ${text(kpi.label)} (${text(kpi.unit)}): ${values.length
+      ? values.map((value) => `${MONTHS[Number(value.month) - 1]} meta=${text(value.target_value)} atingido=${text(value.actual_value)}`).join("; ")
+      : "sem lançamentos no período"}`);
+  }
+
+  lines.push("DOCUMENTOS DO PLANO ANUAL E DO PRIMEIRO SEMESTRE:");
+  if (!documents.length) lines.push("- Nenhum documento compatível encontrado.");
+  for (const document of documents) {
+    const areaName = document.area_id ? input.areas.find((area) => area.id === document.area_id)?.name ?? "Área" : "Empresa";
+    lines.push(formatUntrustedDocument({
+      fileName: `${text(document.title, "Documento")} | ${text(document.period, "sem período")} | ${areaName}`,
+      content: semesterDocumentText(document),
+      maxChars: MAX_SEMESTER_CHARS_PER_DOCUMENT,
+    }));
+  }
+  if (input.documents.length > documents.length) {
+    lines.push(`COBERTURA DOCUMENTAL: ${documents.length} documento(s) relevante(s) incluído(s) no contexto desta rodada; os demais registros permanecem preservados no histórico.`);
+  }
+  return lines;
 }
 
 export function historicalMemoryLines(
@@ -263,6 +379,26 @@ export async function buildPlanContext(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  const semesterDocumentsQuery = focus === "semester_review"
+    ? client.from("plan_documents")
+      .select("id, area_id, type, origin, period, title, content, version, created_at")
+      .eq("org_id", orgId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false })
+      .limit(80)
+    : Promise.resolve({ data: [] });
+  const executiveKpisQuery = focus === "semester_review"
+    ? client.from("executive_kpis").select("*").eq("org_id", orgId).order("sort_order")
+    : Promise.resolve({ data: [] });
+  const kpiValuesQuery = focus === "semester_review"
+    ? client.from("kpi_monthly_values").select("*").eq("org_id", orgId).eq("year", semesterYear(options.period)).lte("month", 6).order("month")
+    : Promise.resolve({ data: [] });
+  let evidencesQuery = client.from("evidences").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false });
+  evidencesQuery = focus === "semester_review"
+    ? evidencesQuery.gte("created_at", `${semesterYear(options.period)}-01-01`).lt("created_at", `${semesterYear(options.period)}-07-01`)
+    : evidencesQuery.limit(30);
+  let checkInsQuery = client.from("check_ins").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false });
+  checkInsQuery = checkInsQuery.limit(focus === "semester_review" ? 200 : 12);
   const [
     { data: organization },
     { data: areas },
@@ -276,6 +412,9 @@ export async function buildPlanContext(
     { data: strategicProjects },
     { data: historicalDocuments },
     { data: companyProfile },
+    { data: semesterDocuments },
+    { data: executiveKpis },
+    { data: kpiValues },
   ] = await Promise.all([
     client.from("organizations").select("id, name, subtitle").eq("id", orgId).maybeSingle(),
     client.from("areas").select("id, name, coordinator_id, archived_at").eq("org_id", orgId).order("created_at"),
@@ -284,11 +423,14 @@ export async function buildPlanContext(
     client.from("area_plans").select("*").eq("org_id", orgId),
     client.from("objectives").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     client.from("key_actions").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
-    client.from("evidences").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false }).limit(30),
-    client.from("check_ins").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at", { ascending: false }).limit(12),
+    evidencesQuery,
+    checkInsQuery,
     client.from("strategic_projects").select("*").eq("org_id", orgId).is("archived_at", null).order("created_at"),
     historicalDocumentsQuery,
     companyProfileQuery,
+    semesterDocumentsQuery,
+    executiveKpisQuery,
+    kpiValuesQuery,
   ]);
 
   const profileIds = Array.from(new Set((memberships ?? []).map((membership: any) => membership.user_id).filter(Boolean)));
@@ -326,6 +468,21 @@ export async function buildPlanContext(
     focus,
     areaId: area?.id ?? options.areaId ?? null,
   }));
+
+  if (!area && focus === "semester_review") {
+    lines.push(...firstSemesterContextLines({
+      year: semesterYear(options.period),
+      objectives: allObjectives,
+      actions: allActions,
+      evidences: evidences ?? [],
+      checkIns: checkIns ?? [],
+      kpis: executiveKpis ?? [],
+      kpiValues: kpiValues ?? [],
+      documents: semesterDocuments ?? [],
+      areas: allAreas,
+    }));
+    return lines.join("\n");
+  }
 
   if (!area && focus === "org") {
     lines.push("ÁREAS CADASTRADAS:");

@@ -91,6 +91,36 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("Origem: Proposta confirmada");
   });
 
+  it("renders the semester diagnosis and second-semester direction without replacing the annual plan", () => {
+    const content = buildPlanDocumentPreview({
+      type: "apply_strategic_review",
+      period: "2026",
+      motivo_revisao: "Fechamento de T1 e T2",
+      semester_review: {
+        executiveSummary: "A receita avançou, mas a margem ficou abaixo do esperado.",
+        confirmedAdvances: ["CRM implantado"],
+        lessons: ["Menos prioridades melhorou a entrega"],
+      },
+      second_semester_plan: {
+        focus: "Recuperar margem sem perder previsibilidade",
+        priorities: [{ title: "Revisar mix", expectedResult: "Margem em 10%", owner: "Diretoria", deadline: "2026-09-30" }],
+      },
+      adjustments: [],
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "strategic_review",
+      period: "2026",
+    }) as any;
+
+    expect(content.plano_anual_original_preservado).toBe(true);
+    expect(content.revisao_semestre.resumo_executivo).toContain("receita");
+    const whatsapp = renderPlanForWhatsApp(content, { version: 1, origin: "session" });
+    expect(whatsapp).toContain("Revisão do primeiro semestre");
+    expect(whatsapp).toContain("Plano do segundo semestre");
+    expect(whatsapp).toContain("Plano Estratégico Anual original foi preservado");
+  });
+
   it("renders repeated quarterly actions once as transversal execution", () => {
     const action = {
       description: "Publicar o padrão operacional",

@@ -8,20 +8,21 @@ const conductor = readFileSync(
 );
 
 describe("strategic review adaptive quality", () => {
-  it("absorbs complete batches and keeps a single final confirmation", () => {
-    expect(conductor).toContain("Absorva todos os microajustes explícitos da mensagem");
-    expect(conductor).toContain("Não percorra a lista inteira por obrigação");
-    expect(conductor).toContain("Faça no máximo uma pergunta de alto valor por resposta");
-    expect(conductor).toContain("Não peça confirmação intermediária de cada objetivo ou ajuste");
-    expect(conductor).toContain("A única confirmação de gravação é a final");
-    expect(conductor).toContain("Aceite um ou vários objetivos na mesma mensagem");
-    expect(conductor).toContain("As chaves técnicas metric, target, current e deadline aparecem somente dentro da proposal JSON");
+  it("keeps AI ownership of the conversation and a single final confirmation", () => {
+    expect(conductor).toContain("Você possui a conversa");
+    expect(conductor).toContain("Nunca execute as referências como formulário");
+    expect(conductor).toContain("Absorva blocos completos de informação sem obrigar uma entrevista");
+    expect(conductor).toContain("Faça no máximo uma pergunta por resposta");
+    expect(conductor).toContain("Gere uma única proposal completa");
+    expect(conductor).toContain("uma única pergunta de confirmação");
+    expect(conductor).toContain("Se ele oferecer arquivo, aceite e aguarde a leitura");
   });
 
-  it("preserves the micro-adjustment boundary", () => {
-    expect(conductor).toContain("Isto é microajuste do plano estratégico vivo, não replanejamento");
-    expect(conductor).toContain("Nunca crie, exclua, substitua em massa ou renomeie objetivos");
-    expect(conductor).toContain("Campos permitidos: metric, target, current, deadline, status");
-    expect(conductor).toContain("Nunca invente motivo, número, prazo, objetivo ou mudança implícita");
+  it("preserves the annual plan while allowing an evidence-based semester direction", () => {
+    expect(conductor).toContain("A revisão não apaga, recria ou substitui o Plano Estratégico Anual");
+    expect(conductor).toContain("Só altere objetivos estratégicos existentes");
+    expect(conductor).toContain("Novas prioridades do segundo semestre ficam no documento da revisão");
+    expect(conductor).toContain("Não invente número, resultado, causalidade, decisão, responsável ou prazo");
+    expect(conductor).toContain("plano anual original permanece intacto");
   });
 });

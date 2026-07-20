@@ -144,10 +144,28 @@ function monthlyBlock(content: any) {
 
 function strategicReviewBlock(content: any) {
   const adjustments = asArray<any>(content?.ajustes);
-  if (!adjustments.length && !asText(content?.motivo_revisao)) return "";
-  const lines = ["*Ajustes da revisão*"];
+  const review = asRecord(content?.revisao_semestre);
+  const plan = asRecord(content?.plano_segundo_semestre);
+  const priorities = asArray<any>(plan.prioridades);
+  if (!adjustments.length && !asText(content?.motivo_revisao) && !asText(review.resumo_executivo) && !priorities.length) return "";
+  const lines = ["*Revisão do primeiro semestre*"];
   if (asText(content?.motivo_revisao)) lines.push(`Motivo: ${asText(content.motivo_revisao)}`);
-  lines.push(...adjustments.map((adjustment) => `- ${asText(adjustment.titulo, "Objetivo")}: ${asText(adjustment.campo)} de ${asText(adjustment.de)} para ${asText(adjustment.para)}${asText(adjustment.porque) ? `, porque ${asText(adjustment.porque)}` : ""}`));
+  if (asText(review.resumo_executivo)) lines.push(asText(review.resumo_executivo));
+  for (const [label, value] of [["Avanços", review.avancos_confirmados], ["Lacunas", review.lacunas], ["Aprendizados", review.aprendizados], ["Riscos", review.riscos]] as Array<[string, unknown]>) {
+    const items = asArray<string>(value).filter(Boolean);
+    if (items.length) lines.push(`${label}: ${items.join("; ")}`);
+  }
+  if (priorities.length || asText(plan.foco)) {
+    lines.push("", "*Plano do segundo semestre*");
+    if (asText(plan.foco)) lines.push(`Foco: ${asText(plan.foco)}`);
+    lines.push(...priorities.map((priority, index) => `${index + 1}. ${asText(priority.titulo, "Prioridade")}${asText(priority.resultado_esperado) ? `: ${asText(priority.resultado_esperado)}` : ""}${asText(priority.responsavel) ? ` · ${asText(priority.responsavel)}` : ""}${asText(priority.prazo) ? ` · ${asText(priority.prazo)}` : ""}`));
+  }
+  if (adjustments.length) {
+    lines.push("", "*Ajustes explícitos no plano anual*");
+    lines.push(...adjustments.map((adjustment) => `- ${asText(adjustment.titulo, "Objetivo")}: ${asText(adjustment.campo)} de ${asText(adjustment.de)} para ${asText(adjustment.para)}${asText(adjustment.porque) ? `, porque ${asText(adjustment.porque)}` : ""}`));
+  } else if (content?.plano_anual_original_preservado === true) {
+    lines.push("", "O Plano Estratégico Anual original foi preservado sem alteração de objetivos.");
+  }
   return lines.join("\n");
 }
 
