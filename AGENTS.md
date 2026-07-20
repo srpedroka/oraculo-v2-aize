@@ -155,7 +155,7 @@ supabase functions deploy whatsapp-webhook oracle-chat --project-ref bkswkfazkji
   - `/redefinir-senha`: recuperacao de senha.
 - `src/state/store.tsx`: principal ponte entre frontend e Supabase.
 - `src/lib/supabase.ts`: cliente Supabase do navegador e checagem de configuracao.
-- `src/lib/fileImport.ts`: extracao local de texto de PDF/PPTX/DOCX/TXT.
+- `src/lib/fileImport.ts`: extracao local de texto de PDF/PPTX/DOCX/TXT/Markdown.
 - `src/lib/aiPricing.ts`: catalogo de pricing usado na UI.
 - `src/lib/kpi.ts`: formatacao e calculos dos KPIs; cards usam ate 2 casas e tooltip do grafico ate 4. Fixture: `pnpm run test:kpi-format`.
 - `src/components/OraclePanel.tsx`: chat lateral do Oraculo, sessoes e anexos.
@@ -574,7 +574,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - Backups por empresa com snapshot manual/automático, pacote portátil criptografado e restauração como clone.
 - Recuperação de desastre owner-only com RPO/RTO visíveis, teste mensal interno, exercício trimestral forçado pelo R2, clone verificado e incidentes estruturados sem texto livre.
 - Importacao de planilha ou imagem de KPIs (`.xlsx`, `.xls`, `.csv`, JPG, PNG e WEBP) com proposta da IA de bastidores, histórico/documento e confirmacao antes de gravar Meta/Atingido.
-- Plano Estrategico com importacao de PDF/PPTX/DOCX/TXT e proposta estruturada.
+- Plano Estrategico com importacao de PDF/PPTX/DOCX/TXT/Markdown e proposta estruturada.
 - Planos Trimestrais com importacao por area e confirmacao.
 - Areas com criacao manual e permissao por owner/coordenador.
 - Execucao Viva com check-in/fechamento guiado.
@@ -583,7 +583,7 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 - WhatsApp real via Evolution API/Evo Go.
 - Painel owner-only de saúde do WhatsApp com conexão/webhook, telemetria sanitizada, teste manual e recuperação controlada de dead-letter.
 - Audio no WhatsApp com download, descriptografia quando necessario e transcricao.
-- Arquivos no WhatsApp com extração real de TXT/DOCX/PPTX/PDF, leitura do conteúdo, memória resumida segura e proposta pendente quando forem planos.
+- Arquivos no WhatsApp com extração real de TXT/Markdown/DOCX/PPTX/PDF, leitura do conteúdo, memória resumida segura e proposta pendente quando forem planos.
 - Roteador de intencao, atualizacoes rapidas e limite de escopo no WhatsApp.
 - Configuracao de IA por provedor e funcao (`planning`, `daily`, `background`).
 - Tracking de tokens e custo estimado.

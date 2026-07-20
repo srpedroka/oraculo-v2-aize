@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
-import { HISTORICAL_FILE_ACCEPT, importStrategicPlanFile, isHistoricalImageFile } from "./fileImport";
+import {
+  HISTORICAL_FILE_ACCEPT,
+  importStrategicPlanFile,
+  isHistoricalImageFile,
+  PLAN_FILE_ACCEPT,
+} from "./fileImport";
 
 describe("importação local de arquivos", () => {
   it("normaliza TXT e preserva o nome", async () => {
@@ -13,8 +18,24 @@ describe("importação local de arquivos", () => {
   });
 
   it("recusa arquivo vazio e extensão não suportada", async () => {
-    await expect(importStrategicPlanFile(new File([""], "vazio.txt"))).rejects.toThrow(/TXT está vazio/);
+    await expect(importStrategicPlanFile(new File([""], "vazio.txt"))).rejects.toThrow(/arquivo de texto está vazio/i);
     await expect(importStrategicPlanFile(new File(["x"], "plano.exe"))).rejects.toThrow(/Formato não suportado/);
+  });
+
+  it("lê Markdown como texto no app", async () => {
+    const file = new File(
+      ["# Contexto estratégico\r\n\r\n- Receita cresceu 12%\r\n- Margem estabilizada"],
+      "Relatorio_1S2026.md",
+      { type: "text/markdown" },
+    );
+
+    await expect(importStrategicPlanFile(file)).resolves.toEqual({
+      fileName: "Relatorio_1S2026.md",
+      text: "# Contexto estratégico\n\n- Receita cresceu 12%\n- Margem estabilizada",
+      warning: undefined,
+    });
+    expect(PLAN_FILE_ACCEPT).toContain(".md");
+    expect(PLAN_FILE_ACCEPT).toContain("text/markdown");
   });
 
   it("extrai slides PPTX na ordem numérica", async () => {

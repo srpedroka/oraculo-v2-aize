@@ -674,7 +674,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
         <div className={`flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6 ${isDraggingHistorical ? "bg-[#F7FAFF]" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <p className="text-xs leading-5 text-text-secondary">
-              Aceita PDF, PPTX, DOCX, TXT e imagens JPG/PNG/WEBP. Nada é gravado ao escolher o arquivo — só depois de confirmar.
+              Aceita PDF, PPTX, DOCX, TXT, Markdown e imagens JPG/PNG/WEBP. Nada é gravado ao escolher o arquivo — só depois de confirmar.
             </p>
             <label
               className={[

@@ -133,4 +133,52 @@ d("leitura de documento no WhatsApp (staging, webhook real)", () => {
     expect(oracleMessage).toContain("roteiro de vídeo");
     expect(oracleMessage).not.toMatch(/não consegui extrair/i);
   }, 60_000);
+
+  it("extrai Markdown enviado pela Evolution com MIME genérico", async () => {
+    const markdown = Buffer.from(
+      "# RELATORIO CONTEXTO ESTRATEGICO PRIMEIRO SEMESTRE\n\n- Receita cresceu 12%\n- Margem estabilizada\n- Prioridade: consolidar a operacao comercial",
+      "utf8",
+    );
+    const response = await fetch(`${stagingUrl}/functions/v1/whatsapp-webhook?orgId=${org!.orgId}`, {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        "content-type": "application/json",
+        "x-oraculo-webhook-secret": webhookSecret,
+      },
+      body: JSON.stringify({
+        event: "messages.upsert",
+        instance: instanceName,
+        data: {
+          key: { id: `markdown-${crypto.randomUUID()}`, remoteJid, fromMe: false },
+          message: {
+            documentMessage: {
+              base64: markdown.toString("base64"),
+              mimetype: "application/octet-stream",
+              fileName: "Relatorio_Contexto_Estrategico_GAAM_AIZE_1S2026_3.md",
+            },
+          },
+        },
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, document: "processed" });
+
+    const { data, error } = await serviceClient()
+      .from("chat_messages")
+      .select("author, text")
+      .eq("org_id", org!.orgId)
+      .order("created_at", { ascending: false })
+      .limit(2);
+    if (error) throw error;
+    const userMessage = data?.find((message) => message.author === "user")?.text ?? "";
+    const oracleMessage = data?.find((message) => message.author === "oracle")?.text ?? "";
+
+    expect(userMessage).toContain("conteúdo não confiável");
+    expect(userMessage).not.toContain("Relatorio_Contexto_Estrategico");
+    expect(userMessage).not.toContain("Receita cresceu 12%");
+    expect(oracleMessage).toMatch(/relatório/i);
+    expect(oracleMessage).not.toMatch(/não consegui extrair|formato não suportado/i);
+  }, 60_000);
 });

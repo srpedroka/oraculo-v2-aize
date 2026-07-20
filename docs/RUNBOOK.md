@@ -690,7 +690,7 @@ Fluxo esperado pela tela Plano Estrategico:
 
 1. Usuario abre Plano Estrategico.
 2. Mesmo sem plano cadastrado, a tela mostra "Importar plano pronto".
-3. Usuario cola texto ou importa PDF, PPTX, DOCX ou TXT.
+3. Usuario cola texto ou importa PDF, PPTX, DOCX, TXT ou Markdown.
 4. O navegador extrai texto e preenche o campo "Plano existente".
 5. Usuario escolhe uma das duas rotas:
    - "Só revisar texto": revisa lacunas no navegador, sem gravar e sem chamar IA.
@@ -702,7 +702,7 @@ Fluxo esperado pela tela Plano Estrategico:
 
 Verifique:
 
-- se o arquivo tem formato suportado: PDF com texto selecionavel, PPTX, DOCX ou TXT;
+- se o arquivo tem formato suportado: PDF com texto selecionavel, PPTX, DOCX, TXT ou Markdown;
 - se o texto aparece no campo antes de enviar ao Oraculo;
 - se existe uma sessao ativa em `public.planning_sessions` com `type = 'strategic'`;
 - se `public.chat_messages` recebeu a mensagem grande do usuario com `conversation_id`;
@@ -724,7 +724,7 @@ limit 10;
 Limites atuais:
 
 - arquivo escaneado ou imagem dentro de PDF pode nao ter texto extraivel;
-- a importacao pelo app aceita PDF, PPTX, DOCX e TXT ate 80 MB; arquivos maiores devem ser compactados ou convertidos para texto antes de importar;
+- a importacao pelo app aceita PDF, PPTX, DOCX, TXT e Markdown ate 80 MB; arquivos maiores devem ser compactados ou convertidos para texto antes de importar;
 - arquivos acima de 30 MB podem demorar porque a extracao roda no navegador da pessoa;
 - textos muito longos sao cortados pelo frontend e pela Edge Function antes de entrar no modelo para proteger o contexto da IA;
 - o fluxo estrategico importa Plano Estrategico. Plano Trimestral tambem pode ser importado pela tela Planos Trimestrais, escolhendo antes o departamento. Pelo WhatsApp, documentos classificados como Estrategico, Trimestral ou Mensal geram proposta estruturada e continuam exigindo `confirmar`.
@@ -736,7 +736,7 @@ Fluxo esperado:
 
 1. Usuario abre o painel lateral do Oraculo.
 2. Clica no icone de anexo ao lado do campo de mensagem.
-3. Seleciona PDF, PPTX, DOCX ou TXT.
+3. Seleciona PDF, PPTX, DOCX, TXT ou Markdown.
 4. O navegador extrai o texto com `src/lib/fileImport.ts`.
 5. Se houver sessao ativa, o texto entra como mensagem da sessao via `oracle-session`.
 6. Se nao houver sessao ativa, o texto entra como mensagem do chat via `oracle-chat`.
@@ -756,7 +756,7 @@ Fluxo esperado pela tela Planos Trimestrais:
 1. Usuario abre Planos Trimestrais.
 2. Escolhe o departamento correto.
 3. Clica em "Importar plano".
-4. Seleciona PDF, PPTX, DOCX ou TXT.
+4. Seleciona PDF, PPTX, DOCX, TXT ou Markdown.
 5. O frontend extrai texto e chama `oracle-session` com `action = import_ready_quarterly_plan`, enviando `orgId`, `areaId`, `period`, `planText`, `fileName` e `channel = web`.
 6. A Edge Function usa a funcao de IA `planning`, monta uma proposta `save_quarterly_plan` e salva em `planning_sessions.pending_proposal`.
 7. O painel lateral mostra o cartao "Pronto para gravar" com previa de papel da area, diagnostico, objetivos anuais, objetivos trimestrais, entregas e lacunas.
@@ -933,7 +933,7 @@ Verifique:
 - se existe registro em `ai_usage_logs` com `metadata.action = document_classification`;
 - para Plano Estratégico, se existe registro em `ai_usage_logs` com `metadata.action = ready_plan_import`;
 - para Plano Estratégico, se `public.planning_sessions.pending_proposal` foi preenchido;
-- se o arquivo tem extensao e MIME compatíveis: PDF, PPTX, DOCX ou TXT;
+- se o arquivo tem extensao e MIME compatíveis: PDF, PPTX, DOCX, TXT ou Markdown;
 - se a rota `POST /message/downloadmedia` da Evo Go continua baixando documentos; rotas antigas são apenas fallback.
 
 Consultas uteis no Supabase SQL editor:
@@ -1054,9 +1054,9 @@ Nunca copie esses valores para o frontend.
 ## Importar histórico (Documentos)
 
 1. Abra **Documentos** e clique **Importar histórico** (owner, ou coordenador com ao menos uma área ativa). O Plano Estratégico **não** tem mais esta entrada.
-2. Ao selecionar PDF/PPTX/DOCX/TXT ou imagem, aguarde a leitura e a organização automática. Tipo, escopo, período e título devem ser preenchidos sem um segundo clique; ano, trimestre, responsável e versão aparecem como metadados quando identificados.
+2. Ao selecionar PDF/PPTX/DOCX/TXT/Markdown ou imagem, aguarde a leitura e a organização automática. Tipo, escopo, período e título devem ser preenchidos sem um segundo clique; ano, trimestre, responsável e versão aparecem como metadados quando identificados.
 3. Nomes equivalentes de área podem ser associados automaticamente quando houver um único destino seguro, como `Industrial` para a área cadastrada `Produção`. Se duas áreas forem igualmente plausíveis, escolha manualmente; o Oráculo não decide o empate.
-4. Cole texto **ou** use **Importar arquivo** / arraste: PDF, PPTX, DOCX, TXT, JPG, PNG ou WEBP. Nada é gravado só por escolher o arquivo.
+4. Cole texto **ou** use **Importar arquivo** / arraste: PDF, PPTX, DOCX, TXT, Markdown, JPG, PNG ou WEBP. Nada é gravado só por escolher o arquivo.
 5. Imagem: o navegador redimensiona e envia à leitura do Oráculo; o texto transcrito preenche o campo e a sugestão de tipo/área/período/título aparece para conferência.
 6. **Tabelas multi-ano** (ex. colunas TOTAL 2025 e TOTAL 2026): ao **Interpretar** (ou ao importar imagem), o texto canônico é **expandido** para uma linha por mês+ano (`Janeiro 2025 | R$ …`), e o período do documento vira faixa `2025–2026`. Confira a prévia antes de salvar.
 7. Ajuste os campos e **Salvar histórico**. Nada vira objetivo ativo; entra em Documentos como histórico. A mídia da imagem **não** é guardada. Após salvar, o novo documento fica selecionado.

@@ -40,7 +40,7 @@ const sections = [
     icon: FileText,
     title: "Documentos, histórico e pesquisa",
     paragraphs: [
-      "Textos extraídos de PDF, DOCX, PPTX, TXT, planilhas e imagens podem ser usados para classificar, importar ou orientar planos. O conteúdo importado só vira dado operacional depois das confirmações previstas pelo fluxo.",
+      "Textos extraídos de PDF, DOCX, PPTX, TXT, Markdown, planilhas e imagens podem ser usados para classificar, importar ou orientar planos. O conteúdo importado só vira dado operacional depois das confirmações previstas pelo fluxo.",
       "Quando uma pesquisa sobre a empresa é solicitada, consultas e páginas públicas selecionadas podem ser processadas para montar contexto. A origem deve permanecer identificável e conteúdo externo é tratado como não confiável.",
     ],
   },

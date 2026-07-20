@@ -61,7 +61,7 @@ function classifyDocumentFallback(text: string) {
   if (/trimestral|q1|q2|q3|q4|trimestre|entregas do trimestre|objetivo anual da area/.test(normalized)) {
     return { target: "quarterly" as const, confidence: 0.68, reason: "Contém sinais de plano trimestral.", ...insight };
   }
-  if (/mensal|mes|semana|acao-chave|acoes-chave|checklist|ate dia/.test(normalized)) {
+  if (/\b(?:mensal|mes|semana|checklist)\b|acao(?:es)?\s+chave|ate\s+dia/.test(normalized)) {
     return { target: "monthly" as const, confidence: 0.66, reason: "Contém sinais de plano mensal ou execução do mês.", ...insight };
   }
   if (/evidencia|comprovante|relatorio|foto|laudo|contrato assinado|nota fiscal/.test(normalized)) {
@@ -337,12 +337,13 @@ export async function processIncomingDocument(
     console.error("Falha final ao baixar documento do WhatsApp", { diagnosticCode });
     return {
       userText: "[Arquivo recebido sem leitura]",
-      answer: "Recebi o arquivo, mas não consegui baixá-lo desta vez. Pode reenviar o mesmo documento? Se continuar, tente enviar como PDF ou TXT.",
+      answer: "Recebi o arquivo, mas não consegui baixá-lo desta vez. Pode reenviar o mesmo documento? Se continuar, tente enviar como PDF, TXT ou Markdown.",
     };
   }
 
+  let extractedText: string | null = null;
   try {
-    const extractedText = await extractDocumentText(file);
+    extractedText = await extractDocumentText(file);
     console.info("Documento do WhatsApp extraído", {
       mimeType: file.mimeType,
       extension: fileExtension(file.fileName),
@@ -445,12 +446,20 @@ export async function processIncomingDocument(
       skipHistory: false,
     };
   } catch (error) {
-    console.error("Falha ao extrair ou classificar documento do WhatsApp", {
+    console.error(extractedText ? "Falha após extrair documento do WhatsApp" : "Falha ao extrair documento do WhatsApp", {
       mimeType: file.mimeType,
       extension: fileExtension(file.fileName),
       byteLength: file.bytes.byteLength,
       error: error instanceof Error ? error.message : "erro-desconhecido",
     });
+    if (extractedText) {
+      const fallback = classifyDocumentFallback(extractedText);
+      return {
+        userText: importedDocumentInsightReceipt(fallback),
+        answer: `${formatImportedDocumentInsight(fallback)}\n\nLi o arquivo, mas não consegui preparar a ação automática agora. Posso continuar usando o conteúdo como contexto nesta conversa.`,
+        skipHistory: false,
+      };
+    }
     return {
       userText: "[Arquivo recebido sem extração]",
       answer: `Recebi o arquivo "${file.fileName}", mas não consegui extrair texto suficiente. ${documentExtractionFailureMessage(error)}`,
