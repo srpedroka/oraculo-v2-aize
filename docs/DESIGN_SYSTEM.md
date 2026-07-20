@@ -1,6 +1,6 @@
 # Design System do Oraculo
 
-Status: **UX-P1, UX-P2 E UX-C0 A UX-C2 APROVADOS; UX-C3 EM REVISAO**
+Status: **UX-P1, UX-P2 E UX-C0 A UX-C3 APROVADOS**
 
 Aplicacao UX-C0: os tokens e as primitivas `Button`, `Card`, `StatusBadge` e
 `Field` foram aprovados no draft da branch local `codex/ux-c0-foundation`.
@@ -21,8 +21,8 @@ Aplicacao UX-C3: o contrato de interacao da IA foi aplicado no draft e staging.
 O painel mostra contexto e fase, previa os seis rituais, concentra a decisao em
 uma confirmacao, preserva proposta em ajuste/erro, confirma descarte e liga o
 sucesso ao documento canonico. Repetir a confirmacao no app ou WhatsApp retorna
-o mesmo documento sem nova gravacao. O gate do owner e a producao continuam
-pendentes e separados.
+o mesmo documento sem nova gravacao. O owner aprovou o gate em 2026-07-20; a
+producao continua pendente e separada.
 
 Fontes de decisao:
 

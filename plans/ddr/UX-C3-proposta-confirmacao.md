@@ -2,7 +2,7 @@
 
 Data: 2026-07-20
 
-Status: **EXECUTADA NO DRAFT/STAGING - GATE DO OWNER PENDENTE**
+Status: **APROVADA PELO OWNER EM 2026-07-20**
 
 Progresso antes do gate: **Plano geral 41% | Plano 3 60%**
 
@@ -94,6 +94,6 @@ No draft, o owner deve confirmar se:
 5. entende que descartar nao grava;
 6. encontra o documento depois do sucesso.
 
-A fatia continua valendo zero ate esse gate ser aprovado. Se aprovada, soma 20
-pontos ao Plano 3 e 2 pontos ao geral. O aceite do draft nao autoriza producao;
-release continua sendo um gate separado.
+O owner aprovou o gate em 2026-07-20. A UX-C3 soma 20 pontos ao Plano 3 e 2
+pontos ao geral: o progresso passa para 80% no Plano 3 e 43% no plano geral.
+Producao permanece inalterada e continua dependendo de autorizacao separada.

@@ -2,7 +2,7 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - UX-C3 executada no draft/staging; gate pendente**
+Status: **ATIVO - UX-C3 aprovada; UX-C4 e a proxima fatia**
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -22,8 +22,8 @@ descarte e sucesso ligado ao documento canonico. A Function `oracle-session`
 foi publicada somente no staging; repeticoes pelo app e WhatsApp devolvem o
 mesmo documento sem nova mutacao. O draft e
 `https://6a5e2b72df0f2fded70554e3--oraculo-v2-aize.netlify.app`. O gate do owner
-esta pendente, portanto o progresso permanece 41% geral e 60% no Plano 3.
-Producao nao foi alterada.
+foi aprovado em 2026-07-20; o progresso passa para 43% geral e 80% no Plano 3.
+Producao nao foi alterada e continua em gate separado.
 
 Este documento passa a ser a autoridade unica para a ordem de execucao. Os
 planos anteriores continuam versionados como memoria, evidencia e especificacao
@@ -1160,12 +1160,11 @@ continuam abertas sem risco critico.
 
 ## 24. Proximo passo
 
-UX-C0/UX-C1 estao em producao. UX-C2 foi aprovada no draft. UX-C3 foi
-implementada no draft/staging e sua evidencia esta em
-`plans/ddr/UX-C3-proposta-confirmacao.md`. O progresso permanece 41% geral e
-60% no Plano 3 ate o owner decidir o gate. Producao exige autorizacao separada
-e permanece inalterada.
+UX-C0/UX-C1 estao em producao. UX-C2 e UX-C3 foram aprovadas no draft; a
+evidencia mais recente esta em `plans/ddr/UX-C3-proposta-confirmacao.md`. O
+progresso esta em 43% geral e 80% no Plano 3. Producao exige autorizacao
+separada e permanece inalterada.
 
-Proximo passo: revisar o draft da UX-C3. Se o owner aprovar o gate,
-o progresso passa para 43% geral e 80% no Plano 3; depois deve receber o
-briefing da UX-C4 antes de qualquer nova execucao.
+Proximo passo: apresentar o briefing da UX-C4 e obter autorizacao antes de
+alterar mobile ou acessibilidade. Se aprovada no fim, a fatia encerra o Plano 3
+em 100% e leva o plano geral a 45%.

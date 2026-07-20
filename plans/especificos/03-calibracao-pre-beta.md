@@ -2,11 +2,11 @@
 
 Peso no plano geral: **10%**
 
-Progresso especifico: **60%**
+Progresso especifico: **80%**
 
-Contribuicao atual ao geral: **6,0%**
+Contribuicao atual ao geral: **8,0%**
 
-Status: **EM ANDAMENTO - UX-C3 executada; gate do owner pendente**
+Status: **EM ANDAMENTO - UX-C3 aprovada; UX-C4 e a proxima**
 
 ## Objetivo
 
@@ -20,9 +20,9 @@ transformar a calibracao em redesign ou expansao funcional.
 | UX-C0. Fundacao visual | 20 | Aprovada | Componentes-base verdes |
 | UX-C1. Feedback e recuperacao | 20 | Aprovada | Erros/retry preservam trabalho |
 | UX-C2. Contexto e caminho critico | 20 | Aprovada | Jornada compreensivel |
-| UX-C3. Proposta e confirmacao | 20 | Em revisao | Uma confirmacao inequivoca |
+| UX-C3. Proposta e confirmacao | 20 | Aprovada | Uma confirmacao inequivoca |
 | UX-C4. Mobile e acessibilidade | 20 | Nao iniciado | Desktop e dois celulares verdes |
-| **Total** | **100** | **Em andamento** | **60%** |
+| **Total** | **100** | **Em andamento** | **80%** |
 
 ## Limites
 
@@ -96,6 +96,6 @@ interacao, e sua execucao continua sujeita a autorizacao separada.
   mutacao;
 - zero migration, dado permanente, IA paga ou alteracao de producao.
 
-O gate do owner esta pendente. Por isso o progresso oficial continua em 60%
-neste plano e 41% no geral. Se aprovada, a UX-C3 leva o Plano 3 a 80% e o geral
-a 43%; producao continuara dependendo de autorizacao separada.
+O owner aprovou o gate em 2026-07-20. A UX-C3 leva o Plano 3 a 80% e o geral a
+43%. Producao continua dependendo de autorizacao separada. A UX-C4 recebe
+briefing antes de qualquer alteracao mobile ou de acessibilidade.

@@ -1,5 +1,11 @@
 # Changelog
 
+- O owner aprovou o gate da UX-C3 em 2026-07-20. A Calibracao pre-beta passa
+  de 60% para 80% e o plano geral de 41% para 43%. O aceite valida contexto,
+  proposta dos seis rituais, confirmacao unica, ajuste/descarte e acesso ao
+  documento no draft/staging, mas nao autoriza producao. Proxima fatia:
+  briefing UX-C4, com autorizacao separada antes da execucao.
+
 - A UX-C3 foi implementada somente no draft/staging e aguarda o gate do owner.
   O painel do Oraculo agora identifica ritual, empresa, area, periodo, fase e
   progresso; mostra previa estruturada para plano anual, trimestral, mensal,
