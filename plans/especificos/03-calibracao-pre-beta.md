@@ -2,11 +2,11 @@
 
 Peso no plano geral: **10%**
 
-Progresso especifico: **40%**
+Progresso especifico: **60%**
 
-Contribuicao atual ao geral: **4,0%**
+Contribuicao atual ao geral: **6,0%**
 
-Status: **EM ANDAMENTO - UX-C2 executada no draft; gate pendente**
+Status: **EM ANDAMENTO - UX-C2 aprovada; UX-C3 e a proxima**
 
 ## Objetivo
 
@@ -19,10 +19,10 @@ transformar a calibracao em redesign ou expansao funcional.
 | --- | ---: | --- | --- |
 | UX-C0. Fundacao visual | 20 | Aprovada | Componentes-base verdes |
 | UX-C1. Feedback e recuperacao | 20 | Aprovada | Erros/retry preservam trabalho |
-| UX-C2. Contexto e caminho critico | 20 | Em revisao | Jornada compreensivel |
+| UX-C2. Contexto e caminho critico | 20 | Aprovada | Jornada compreensivel |
 | UX-C3. Proposta e confirmacao | 20 | Nao iniciado | Uma confirmacao inequivoca |
 | UX-C4. Mobile e acessibilidade | 20 | Nao iniciado | Desktop e dois celulares verdes |
-| **Total** | **100** | **Em andamento** | **40%** |
+| **Total** | **100** | **Em andamento** | **60%** |
 
 ## Limites
 
@@ -80,6 +80,6 @@ A publicacao nao soma pontos adicionais.
   explicito, sem nova pagina, permissao, dado ou regra de negocio;
 - zero migration, Function, WhatsApp, IA paga ou alteracao de producao.
 
-O gate do owner permanece pendente. Por isso, o progresso oficial continua 40%
-neste plano e 39% no geral. Se aprovada, a UX-C2 leva este plano a 60% e o geral
-a 41%. A UX-C3 so recebe briefing depois desse gate.
+O owner aprovou o gate em 2026-07-20. O progresso oficial passa para 60% neste
+plano e 41% no geral. A UX-C3 recebe briefing antes de qualquer alteracao na
+interacao, e sua execucao continua sujeita a autorizacao separada.

@@ -2,11 +2,11 @@
 
 Data: 2026-07-20
 
-Status: **EXECUTADA NO DRAFT - GATE DO OWNER PENDENTE**
+Status: **APROVADA PELO OWNER EM 2026-07-20**
 
 Progresso antes do gate: **Plano geral 39% | Plano 3 40%**
 
-Progresso se aprovada: **Plano geral 41% | Plano 3 60%**
+Progresso apos o gate: **Plano geral 41% | Plano 3 60%**
 
 ## 1. Resumo funcional
 
@@ -76,5 +76,6 @@ explicacao externa:
 3. De onde vem a prioridade trimestral?
 4. Onde encontro o resultado confirmado?
 
-A UX-C2 vale zero ate esse aceite. A aprovacao soma 20 pontos ao Plano 3 e 2
-pontos ao geral, mas nao autoriza automaticamente producao nem a UX-C3.
+O owner aprovou o gate em 2026-07-20. A UX-C2 soma 20 pontos ao Plano 3 e 2
+pontos ao geral. O aceite nao autoriza automaticamente producao nem a execucao
+da UX-C3; ambos permanecem sujeitos a briefing e autorizacao separados.

@@ -12,11 +12,11 @@ custo. A soma dos oito pesos e 100 pontos.
 
 ## 1. Progresso atual
 
-**Plano geral: 39,0%**
+**Plano geral: 41,0%**
 
-**Plano especifico atual: Plano 3 - Calibracao pre-beta: 40,0%**
+**Plano especifico atual: Plano 3 - Calibracao pre-beta: 60,0%**
 
-**Proxima acao: avaliacao e gate da UX-C2 no draft**
+**Proxima acao: briefing da UX-C3 - Proposta e confirmacao da IA**
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -69,15 +69,15 @@ UX-C1 foi executada em draft, aprovada e publicada em producao:
   Documentos, Planos Trimestrais e Configuracoes ficaram verdes;
 - custo de IA/API: US$ 0.
 
-UX-C2 foi executada no draft e aguarda o gate do owner:
+UX-C2 foi executada no draft e aprovada pelo owner em 2026-07-20:
 
 - evidencia: `plans/ddr/UX-C2-caminho-gestor.md`;
 - draft: `https://6a5dfa113c90387d0905fc6e--oraculo-v2-aize.netlify.app`;
 - 541 unitarios, lint, build, bundle, secret scan e verificacao do deploy verdes;
 - jornada autenticada e smoke publico desktop/mobile aprovados;
 - zero backend, dado, WhatsApp, migration ou IA paga;
-- progresso permanece geral 39% e Plano 3 em 40% ate aprovacao explicita;
-- se aprovada: geral 41% e Plano 3 em 60%.
+- Plano 3 passa de 40% para 60% e o geral de 39% para 41%;
+- producao continua inalterada e exige autorizacao separada.
 
 ## 2. Os oito planos
 
@@ -85,13 +85,13 @@ UX-C2 foi executada no draft e aguarda o gate do owner:
 | --- | ---: | ---: | ---: | --- |
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
-| [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 40% | 4,0% | UX-C2 no draft; gate pendente |
+| [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 60% | 6,0% | UX-C2 aprovada; UX-C3 e a proxima |
 | [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [7. Acabamento e operacao assistida](especificos/07-acabamento-e-operacao-assistida.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [8. Evolucoes por evidencia](especificos/08-evolucoes-por-evidencia.md) | 5% | 0% | 0,0% | Congelado |
-| **Total** | **100%** | - | **39,0%** | Em andamento |
+| **Total** | **100%** | - | **41,0%** | Em andamento |
 
 ## 3. Formula
 
@@ -142,10 +142,10 @@ Novo geral: 25 + 4 = 29%
 Antes de executar a proxima fatia:
 
 ```text
-Plano geral: 39,0%
-Plano especifico: Calibracao pre-beta - 40,0%
-Proxima fatia: UX-C2 - vale 20 pontos do especifico e 2 pontos do geral
-Se aprovada: especifico 60,0% | geral 41,0%
+Plano geral: 41,0%
+Plano especifico: Calibracao pre-beta - 60,0%
+Proxima fatia: UX-C3 - vale 20 pontos do especifico e 2 pontos do geral
+Se aprovada: especifico 80,0% | geral 43,0%
 ```
 
 Depois de executar:

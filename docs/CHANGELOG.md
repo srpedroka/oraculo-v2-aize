@@ -1,5 +1,10 @@
 # Changelog
 
+- O owner aprovou o gate da UX-C2 em 2026-07-20. A Calibracao pre-beta passa
+  de 40% para 60% e o plano geral de 39% para 41%. A aprovacao valida a clareza
+  do caminho do gestor no draft, mas nao autoriza producao. Proxima fatia:
+  briefing UX-C3, com autorizacao separada antes da execucao.
+
 - A UX-C2 foi implementada e publicada somente no draft
   `https://6a5dfa113c90387d0905fc6e--oraculo-v2-aize.netlify.app`. Dashboard,
   origem anual, desdobramento trimestral, Documentos, navegacao, abas e

@@ -2,7 +2,7 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - UX-C2 executada no draft; gate do owner pendente**
+Status: **ATIVO - UX-C2 aprovada; UX-C3 e a proxima fatia**
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -13,8 +13,8 @@ permanece 39% geral e 40% no Plano 3; publicacao nao cria pontuacao adicional.
 Atualizacao UX-C2 de 2026-07-20: o caminho critico do gestor foi simplificado
 no draft `6a5dfa113c90387d0905fc6e`, com Dashboard, origem anual, desdobramento
 trimestral, Documentos, navegacao e configuracoes validados em desktop/mobile.
-Nao houve backend, dados ou IA paga. Como o gate do owner esta pendente, o
-progresso continua 39% geral e 40% no Plano 3.
+Nao houve backend, dados ou IA paga. O owner aprovou o gate em 2026-07-20; o
+progresso passa para 41% geral e 60% no Plano 3. Producao permanece inalterada.
 
 Este documento passa a ser a autoridade unica para a ordem de execucao. Os
 planos anteriores continuam versionados como memoria, evidencia e especificacao
@@ -1151,11 +1151,11 @@ continuam abertas sem risco critico.
 
 ## 24. Proximo passo
 
-UX-C0/UX-C1 estao em producao. A UX-C2 foi implementada e validada somente no
-draft; a evidencia esta em `plans/ddr/UX-C2-caminho-gestor.md`. O progresso
-permanece 39% geral e 40% no Plano 3 porque execucao sem gate nao soma pontos.
+UX-C0/UX-C1 estao em producao. A UX-C2 foi implementada no draft e aprovada
+pelo owner; a evidencia esta em `plans/ddr/UX-C2-caminho-gestor.md`. O
+progresso passa para 41% geral e 60% no Plano 3. Producao exige autorizacao
+separada e permanece inalterada.
 
-Proximo passo: o owner percorre o draft e aprova ou reprova o gate da UX-C2. Se
-aprovada, o Plano 3 passa a 60% e o geral a 41%; producao exige autorizacao
-separada. Depois disso, apresentar o briefing da UX-C3. A aplicacao completa do
-contrato de proposta do Oraculo permanece reservada para essa proxima fatia.
+Proximo passo: apresentar o briefing da UX-C3 e obter autorizacao antes de
+alterar a interacao com a IA. A fatia aplicara o contrato aprovado de proposta,
+ajuste, descarte, confirmacao unica e sucesso com documento.
