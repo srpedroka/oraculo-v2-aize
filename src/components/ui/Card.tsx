@@ -1,13 +1,14 @@
-import type { HTMLAttributes } from "react";
+import { forwardRef, type HTMLAttributes } from "react";
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
   elevated?: boolean;
 }
 
-export function Card({ className = "", interactive = false, elevated = false, ...props }: CardProps) {
+export const Card = forwardRef<HTMLDivElement, CardProps>(function Card({ className = "", interactive = false, elevated = false, ...props }, ref) {
   return (
     <div
+      ref={ref}
       className={[
         "rounded-card border border-border bg-surface p-5",
         elevated ? "shadow-raised" : "",
@@ -17,4 +18,4 @@ export function Card({ className = "", interactive = false, elevated = false, ..
       {...props}
     />
   );
-}
+});

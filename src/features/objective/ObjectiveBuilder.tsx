@@ -8,6 +8,7 @@ import type { KeyAction, Objective, ObjectiveType, PlanLevel } from "../../types
 import { LEVEL_LABEL, TYPE_LABEL } from "../../types";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 import { ConcretenessMeter } from "../../components/ui/ConcretenessMeter";
 import { InlineFeedback } from "../../components/ui/InlineFeedback";
 import { recoverableFeedback, type RecoverableFeedback } from "../../lib/uiFeedback";
@@ -72,6 +73,7 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   const [actions, setActions] = useState<DraftAction[]>([]);
   const [savedObjectiveId, setSavedObjectiveId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const dialogRef = useModalAccessibility<HTMLDivElement>({ closeDisabled: saving, onClose });
   const [saveError, setSaveError] = useState<RecoverableFeedback | null>(null);
 
   const draftObjective: Objective = {
@@ -166,14 +168,14 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
-      <Card className="max-h-[92vh] w-full max-w-3xl overflow-auto p-0">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="objective-builder-title">
+      <Card className="max-h-[calc(100dvh-1rem)] w-full max-w-3xl overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
           <div>
             <p className="text-xs font-medium text-text-tertiary">Novo objetivo</p>
-            <h2 className="text-xl font-semibold text-text">{LEVEL_LABEL[level]}</h2>
+            <h2 id="objective-builder-title" className="text-xl font-semibold text-text">{LEVEL_LABEL[level]}</h2>
           </div>
-          <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
+          <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={onClose} disabled={saving} aria-label="Fechar" />
         </div>
 
         <div className="space-y-6 p-6">

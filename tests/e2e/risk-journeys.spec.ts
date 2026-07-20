@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { createDisposableOrg, destroyDisposableOrg, type DisposableOrg } from "../helpers/factory";
 import { hasStagingEnv, serviceClient } from "../helpers/staging";
 
@@ -19,6 +20,11 @@ async function openSettingsSection(page: Page, projectName: string, label: strin
     return;
   }
   await page.getByRole("tab", { name: label, exact: true }).click();
+}
+
+async function expectNoSeriousAccessibilityViolations(page: Page) {
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
 }
 
 test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
@@ -194,11 +200,17 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
   test("login real e módulos essenciais carregam dados da empresa", async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     if (!org) throw new Error("fixture ausente");
+    await page.setViewportSize(testInfo.project.name === "mobile"
+      ? { width: 390, height: 844 }
+      : { width: 1280, height: 720 });
     await login(page, org.owner.email, org.owner.password);
     await expect(page.getByRole("heading", { name: "Dashboard executivo" })).toBeVisible();
     await expect(page.getByText("Faturamento E2E")).toBeVisible();
+    await expectNoSeriousAccessibilityViolations(page);
 
-    await page.getByRole("button", { name: "Abrir Oráculo" }).click();
+    const oracleLauncher = page.getByRole("button", { name: "Abrir Oráculo" });
+    await oracleLauncher.click();
+    await expect(page.getByRole("complementary", { name: "Oráculo" })).toBeFocused();
     await expect(page.getByText("Pronto para conferir")).toBeVisible();
     await expect(page.getByText("Plano Trimestral · Comercial · T3 2026")).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirmar e gravar" })).toHaveCount(1);
@@ -208,10 +220,14 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
       await page.screenshot({ path: testInfo.outputPath(`oracle-proposta-${testInfo.project.name}.png`), fullPage: true });
     }
     await page.getByRole("button", { name: "Fechar Oráculo" }).click();
+    await expect(oracleLauncher).toBeFocused();
 
-    await page.getByRole("button", { name: "Lançar / Editar" }).click();
+    const kpiOpener = page.getByRole("button", { name: "Lançar / Editar" });
+    await kpiOpener.click();
     await expect(page.getByRole("heading", { name: "Lançar KPIs" }).first()).toBeVisible();
-    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(kpiOpener).toBeFocused();
 
     const routes = [
       ["/estrategico", "Plano Estratégico"],
@@ -257,10 +273,13 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
       });
       expect(navigationFits).toBe(true);
     } else {
-      await page.getByRole("button", { name: "Abrir menu" }).click();
+      const menuOpener = page.getByRole("button", { name: "Abrir menu" });
+      await menuOpener.click();
+      await expect(page.getByRole("button", { name: "Fechar menu" })).toBeFocused();
       await expect(page.getByRole("link", { name: "Plano Estratégico", exact: true })).toBeVisible();
       await expect(page.getByText("Planejamento", { exact: true })).toBeVisible();
-      await page.getByRole("button", { name: "Fechar menu" }).click();
+      await page.keyboard.press("Escape");
+      await expect(menuOpener).toBeFocused();
     }
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`dashboard-${testInfo.project.name}.png`), fullPage: true });
@@ -281,6 +300,9 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     }
 
     await page.goto("/configuracoes");
+    if (testInfo.project.name === "mobile") {
+      await page.setViewportSize({ width: 430, height: 932 });
+    }
 
     await openSettingsSection(page, testInfo.project.name, "IA do Oráculo", "ia");
     await expect(page.getByRole("heading", { name: "IA do Oráculo" })).toBeVisible();
@@ -346,11 +368,14 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("button", { name: "Excluir" }).click();
     await expect(page.getByRole("heading", { name: "Excluir sua conta do Oráculo?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expectNoSeriousAccessibilityViolations(page);
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`minha-conta-${testInfo.project.name}.png`), fullPage: true });
     }
-    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Excluir" })).toBeFocused();
 
     await page.goto("/documentos");
     await expect(page.getByRole("button", { name: /Histórico descartável E2E/ })).toBeVisible();
@@ -365,10 +390,28 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`plano-anual-${testInfo.project.name}.png`), fullPage: true });
     }
-    await page.getByRole("button", { name: "Importar histórico" }).first().click();
+    const historyOpener = page.getByRole("button", { name: "Importar histórico" }).first();
+    await historyOpener.click();
     await expect(page.getByRole("heading", { name: "Importar histórico" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
     await expect(page.locator('input[type="file"]')).toHaveAttribute("accept", /\.pdf/);
-    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(historyOpener).toBeFocused();
+
+    if (testInfo.project.name === "mobile") {
+      await page.getByRole("button", { name: "Abrir Oráculo" }).click();
+      await page.setViewportSize({ width: 430, height: 520 });
+      const composer = page.getByPlaceholder(/Escreva|Responda|O que você quer mudar/);
+      await composer.focus();
+      const sendButton = page.getByRole("button", { name: "Enviar mensagem" });
+      const sendBox = await sendButton.boundingBox();
+      expect(sendBox).not.toBeNull();
+      expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(520);
+      await expectNoSeriousAccessibilityViolations(page);
+      await page.keyboard.press("Escape");
+      await page.setViewportSize({ width: 430, height: 932 });
+    }
 
     await page.goto("/arquivo");
     await expect(page.getByRole("heading", { name: "Histórico de alterações" })).toBeVisible();

@@ -19,8 +19,8 @@
   --border-control: #8e8e93;
   --border: var(--border-subtle);
   --text: #1d1d1f;
-  --text-secondary: #6e6e73;
-  --text-tertiary: #737378;
+  --text-secondary: #5f6368;
+  --text-tertiary: #68686d;
   --text-disabled: #a1a1a6;
   --accent: #2e2e33;
   --focus: #2e2e33;
@@ -48,6 +48,7 @@ html,
 body,
 #root {
   min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
@@ -74,6 +75,31 @@ select:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 12%, transparent);
+}
+
+.oracle-panel-frame {
+  inset: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+  width: auto;
+}
+
+.oracle-panel-composer {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  .oracle-panel-frame {
+    inset: 1rem 1rem 1rem auto;
+    width: calc(100vw - 2rem);
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select {
+    min-height: 44px;
+  }
 }
 
 ::selection {

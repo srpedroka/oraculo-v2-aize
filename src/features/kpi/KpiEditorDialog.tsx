@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ConflictNotice } from "../../components/ConflictNotice";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 import { isKpiImageFile, KPI_IMPORT_ACCEPT, readKpiImage, readKpiSpreadsheet } from "../../lib/kpiSpreadsheet";
 import { cashDeltas, formatKpiCompact, formatKpiFull, KPI_MONTHS, ladderLabel, movingAverage3, orderedLadder } from "../../lib/kpi";
 import { useAppState } from "../../state/store";
@@ -114,6 +115,10 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [applyingImport, setApplyingImport] = useState(false);
+  const dialogRef = useModalAccessibility<HTMLDivElement>({
+    closeDisabled: saving || importing || applyingImport,
+    onClose,
+  });
   const [spreadsheetSuggestion, setSpreadsheetSuggestion] = useState<KpiSpreadsheetSuggestion | null>(null);
   // `token` é um "número de recibo" gerado a cada novo processamento de arquivo: torna a
   // aplicação idempotente (duplo clique = mesmo token = não duplica) sem impedir uma
@@ -336,14 +341,14 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
 
   if (!activeKpi || !activeDraft) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
-        <Card className="w-full max-w-xl p-0">
+      <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="kpi-editor-empty-title">
+        <Card className="max-h-[calc(100dvh-1rem)] w-full max-w-xl overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]">
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <div>
               <p className="text-xs font-medium text-text-tertiary">Dashboard executivo</p>
-              <h2 className="text-xl font-semibold text-text">Lançar KPIs</h2>
+              <h2 id="kpi-editor-empty-title" className="text-xl font-semibold text-text">Lançar KPIs</h2>
             </div>
-            <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
+            <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
           </div>
           <div className="p-6 text-sm text-text-secondary">KPIs executivos ainda não carregados.</div>
         </Card>
@@ -358,13 +363,13 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
   const ladder = orderedLadder(activeKpi.ladder);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
-      <Card className="max-h-[92vh] w-full max-w-5xl overflow-auto p-0">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="kpi-editor-title">
+      <Card className="max-h-[calc(100dvh-1rem)] w-full max-w-5xl overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]">
         <div className="sticky top-0 z-20 border-b border-border bg-surface px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-medium text-text-tertiary">Dashboard executivo · {year}</p>
-              <h2 className="text-xl font-semibold text-text">Lançar KPIs</h2>
+              <h2 id="kpi-editor-title" className="text-xl font-semibold text-text">Lançar KPIs</h2>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -384,7 +389,7 @@ export function KpiEditorDialog({ onClose, autoScanHistory = false }: KpiEditorD
               <Button variant="ghost" icon={FileSpreadsheet} onClick={() => spreadsheetInputRef.current?.click()} disabled={importing}>
                 {importing && importSource?.kind !== "history" ? "Lendo arquivo" : "Importar planilha ou imagem"}
               </Button>
-              <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
+              <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={onClose} disabled={saving || importing || applyingImport} aria-label="Fechar" />
             </div>
           </div>
 

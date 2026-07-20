@@ -20,6 +20,7 @@ import {
 import { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAppState } from "../state/store";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import { Button } from "./ui/Button";
 
 const COMPACT_WIDTH = 72;
@@ -99,6 +100,10 @@ export function Sidebar() {
   const accountDisplayName = currentProfile?.fullName || accountEmail || "Conta";
   const accountDisplayPhone = currentProfile?.phone || "Celular não cadastrado";
   const accountInitials = getInitials(accountDisplayName);
+  const mobileNavRef = useModalAccessibility<HTMLElement>({
+    active: mobileNavOpen,
+    onClose: () => dispatch({ type: "close_mobile_nav" }),
+  });
 
   useEffect(() => {
     if (!dragging) return;
@@ -137,21 +142,6 @@ export function Sidebar() {
   useEffect(() => {
     dispatch({ type: "close_mobile_nav" });
   }, [location.pathname, dispatch]);
-
-  // Trava o scroll do body e fecha no Esc enquanto o drawer mobile está aberto.
-  useEffect(() => {
-    if (!mobileNavOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") dispatch({ type: "close_mobile_nav" });
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [mobileNavOpen, dispatch]);
 
   function startResize(event: ReactMouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -198,11 +188,14 @@ export function Sidebar() {
         />
       ) : null}
       <aside
-        role="navigation"
+        ref={mobileNavRef}
+        role={mobileNavOpen ? "dialog" : "navigation"}
+        aria-modal={mobileNavOpen || undefined}
         aria-label="Menu principal"
+        tabIndex={-1}
         className={[
-          "fixed inset-y-0 left-0 z-40 flex min-h-screen w-[86vw] max-w-[320px] flex-col border-r border-border bg-surface shadow-overlay transition-transform duration-200 motion-reduce:transition-none",
-          "sm:static sm:z-auto sm:w-[var(--sidebar-w)] sm:max-w-none sm:shrink-0 sm:translate-x-0 sm:shadow-none",
+          "fixed inset-y-0 left-0 z-40 flex h-dvh min-h-dvh w-[86vw] max-w-[320px] flex-col border-r border-border bg-surface shadow-overlay transition-transform duration-200 motion-reduce:transition-none",
+          "sm:static sm:z-auto sm:h-auto sm:min-h-screen sm:w-[var(--sidebar-w)] sm:max-w-none sm:shrink-0 sm:translate-x-0 sm:shadow-none",
           mobileNavOpen ? "max-sm:translate-x-0" : "max-sm:-translate-x-full",
           dragging ? "sm:transition-none" : "sm:transition-[width] sm:duration-200",
         ].join(" ")}
@@ -230,6 +223,7 @@ export function Sidebar() {
         </span>
         <span className="inline-flex sm:hidden">
           <Button
+            data-dialog-initial-focus
             variant="quiet"
             size="icon"
             icon={X}

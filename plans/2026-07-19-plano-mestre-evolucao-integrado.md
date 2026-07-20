@@ -2,7 +2,7 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - UX-C3 aprovada; UX-C4 e a proxima fatia**
+Status: **ATIVO - UX-C4 executada; gate do owner pendente**
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -24,6 +24,14 @@ mesmo documento sem nova mutacao. O draft e
 `https://6a5e2b72df0f2fded70554e3--oraculo-v2-aize.netlify.app`. O gate do owner
 foi aprovado em 2026-07-20; o progresso passa para 43% geral e 80% no Plano 3.
 Producao nao foi alterada e continua em gate separado.
+
+Atualizacao UX-C4 de 2026-07-20: foco, teclado, dialogs, viewport dinamico,
+safe area, alvos de toque e contraste AA foram aplicados ao caminho critico no
+draft `https://6a5e39c470f0f2420ba96122--oraculo-v2-aize.netlify.app`.
+Desktop 1280x720, celulares 390x844/430x932 e altura reduzida de 430x520
+passaram E2E, Axe e inspecao visual. Nao houve backend, dado de producao ou IA
+paga. O gate do owner esta pendente; o progresso oficial permanece 43% geral e
+80% no Plano 3. Se aprovada: 45%/100%. Producao segue inalterada.
 
 Este documento passa a ser a autoridade unica para a ordem de execucao. Os
 planos anteriores continuam versionados como memoria, evidencia e especificacao
@@ -1160,11 +1168,12 @@ continuam abertas sem risco critico.
 
 ## 24. Proximo passo
 
-UX-C0/UX-C1 estao em producao. UX-C2 e UX-C3 foram aprovadas no draft; a
-evidencia mais recente esta em `plans/ddr/UX-C3-proposta-confirmacao.md`. O
-progresso esta em 43% geral e 80% no Plano 3. Producao exige autorizacao
+UX-C0/UX-C1 estao em producao. UX-C2 e UX-C3 foram aprovadas no draft. UX-C4
+foi executada e sua evidencia esta em
+`plans/ddr/UX-C4-mobile-acessibilidade.md`. O progresso oficial permanece em
+43% geral e 80% no Plano 3 ate o gate do owner. Producao exige autorizacao
 separada e permanece inalterada.
 
-Proximo passo: apresentar o briefing da UX-C4 e obter autorizacao antes de
-alterar mobile ou acessibilidade. Se aprovada no fim, a fatia encerra o Plano 3
-em 100% e leva o plano geral a 45%.
+Proximo passo: o owner revisar o draft e aprovar ou reprovar a UX-C4. Se
+aprovada, a fatia encerra o Plano 3 em 100% e leva o plano geral a 45%. Depois,
+o briefing seguinte sera R1A - prontidao e contrato da revisao semestral.

@@ -6,7 +6,7 @@ Progresso especifico: **80%**
 
 Contribuicao atual ao geral: **8,0%**
 
-Status: **EM ANDAMENTO - UX-C3 aprovada; UX-C4 e a proxima**
+Status: **EM REVISAO - UX-C4 executada; gate do owner pendente**
 
 ## Objetivo
 
@@ -21,7 +21,7 @@ transformar a calibracao em redesign ou expansao funcional.
 | UX-C1. Feedback e recuperacao | 20 | Aprovada | Erros/retry preservam trabalho |
 | UX-C2. Contexto e caminho critico | 20 | Aprovada | Jornada compreensivel |
 | UX-C3. Proposta e confirmacao | 20 | Aprovada | Uma confirmacao inequivoca |
-| UX-C4. Mobile e acessibilidade | 20 | Nao iniciado | Desktop e dois celulares verdes |
+| UX-C4. Mobile e acessibilidade | 20 | Executada; gate pendente | Desktop e dois celulares verdes |
 | **Total** | **100** | **Em andamento** | **80%** |
 
 ## Limites
@@ -99,3 +99,18 @@ interacao, e sua execucao continua sujeita a autorizacao separada.
 O owner aprovou o gate em 2026-07-20. A UX-C3 leva o Plano 3 a 80% e o geral a
 43%. Producao continua dependendo de autorizacao separada. A UX-C4 recebe
 briefing antes de qualquer alteracao mobile ou de acessibilidade.
+
+## Evidencia UX-C4
+
+- relatorio: `plans/ddr/UX-C4-mobile-acessibilidade.md`;
+- draft: `https://6a5e39c470f0f2420ba96122--oraculo-v2-aize.netlify.app`;
+- 556 unitarios, 132 integracoes aprovadas e 2 skips opt-in esperados;
+- 6 jornadas autenticadas e 2 smokes publicos desktop/mobile verdes;
+- 1280x720, 390x844, 430x932 e altura reduzida de 430x520 cobertos;
+- Axe sem violacao critica/seria nos estados medidos, foco e `Esc` validados;
+- lint, build, bundle, secret scan e `production:verify` do draft verdes;
+- zero migration, Function, dado de producao ou IA paga.
+
+O gate do owner permanece pendente. O progresso oficial continua em 80% neste
+plano e 43% no geral. Se aprovada, a UX-C4 encerra o Plano 3 em 100% e leva o
+geral a 45%; producao continua em gate separado.

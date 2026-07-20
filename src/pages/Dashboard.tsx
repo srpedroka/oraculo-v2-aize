@@ -227,7 +227,7 @@ export function Dashboard() {
                     {unsetSeeds ? <span className="text-body text-status-neutral">{unsetSeeds} Sem avaliação</span> : null}
                   </div>
                 </div>
-                <div className="h-28 w-28">
+                <div className="h-28 w-28" aria-hidden="true">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -237,6 +237,7 @@ export function Dashboard() {
                         outerRadius={50}
                         paddingAngle={3}
                         isAnimationActive={false}
+                        rootTabIndex={-1}
                       >
                         {donutData.map((entry) => (
                           <Cell key={entry.name} fill={entry.color} stroke="#CCD4DE" />

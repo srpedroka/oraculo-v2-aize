@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { InlineFeedback } from "../../components/ui/InlineFeedback";
 import type { RecoverableFeedback } from "../../lib/uiFeedback";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 
 interface OperationalArchiveDialogProps {
   eyebrow: string;
@@ -29,6 +30,7 @@ export function OperationalArchiveDialog({
   onConfirm,
 }: OperationalArchiveDialogProps) {
   const [reason, setReason] = useState("");
+  const dialogRef = useModalAccessibility<HTMLDivElement>({ closeDisabled: busy, onClose });
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,15 +38,15 @@ export function OperationalArchiveDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
-      <Card className="max-h-[92vh] w-full max-w-lg overflow-auto p-0" role="dialog" aria-modal="true" aria-labelledby="operational-archive-title">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4">
+      <Card ref={dialogRef} tabIndex={-1} className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]" role="dialog" aria-modal="true" aria-labelledby="operational-archive-title">
         <form onSubmit={submit}>
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
             <div className="min-w-0">
               <p className="text-xs font-medium text-text-tertiary">{eyebrow}</p>
               <h2 id="operational-archive-title" className="mt-1 text-lg font-semibold leading-6 text-text">{title}</h2>
             </div>
-            <Button variant="quiet" size="icon" icon={X} onClick={onClose} disabled={busy} aria-label="Fechar" />
+            <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={onClose} disabled={busy} aria-label="Fechar" />
           </div>
 
           <div className="space-y-4 px-5 py-5 sm:px-6">

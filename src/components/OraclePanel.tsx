@@ -180,11 +180,11 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
   const rituals = asTextArray(proposal.rituals);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será gravado</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será gravado</p>
         <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Plano Estratégico {asText(proposal.year)}</p>
-        <p className="text-[12px] text-[#7A7D82]">
+        <p className="text-[12px] text-text-tertiary">
           Será salvo como plano anual, objetivos estratégicos e projetos prioritários depois da sua confirmação.
         </p>
       </div>
@@ -217,7 +217,7 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
               <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
                 <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo ${index + 1}`}</p>
                 {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
-                {meta.length ? <p className="mt-1 text-[11px] text-[#7A7D82]">{meta.join(" · ")}</p> : null}
+                {meta.length ? <p className="mt-1 text-[11px] text-text-tertiary">{meta.join(" · ")}</p> : null}
                 <KpiLinkPreview objective={objective} />
               </div>
             );
@@ -231,7 +231,7 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
           {projects.map((project, index) => (
             <div key={`${asText(project.name)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(project.name) || `Projeto ${index + 1}`}</p>
-              <p className="mt-1 text-[11px] text-[#7A7D82]">
+              <p className="mt-1 text-[11px] text-text-tertiary">
                 {[
                   asText(project.owner) ? `Dono: ${asText(project.owner)}` : "",
                   asText(project.deadline) ? `Prazo: ${asText(project.deadline)}` : "",
@@ -279,11 +279,11 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
   const learningFocus = asTextArray(proposal.learningFocus ?? proposal.foco_aprendizado);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será gravado</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será gravado</p>
         <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Plano Trimestral {asText(proposal.period)}</p>
-        <p className="text-[12px] text-[#7A7D82]">
+        <p className="text-[12px] text-text-tertiary">
           Será salvo no departamento escolhido, com objetivo anual da área quando necessário e objetivos do trimestre.
         </p>
       </div>
@@ -303,7 +303,7 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
             <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo anual ${index + 1}`}</p>
               {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
-              <p className="mt-1 text-[11px] text-[#7A7D82]">
+              <p className="mt-1 text-[11px] text-text-tertiary">
                 {[
                   asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
                   asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
@@ -324,7 +324,7 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
               <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
                 <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo trimestral ${index + 1}`}</p>
                 {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
-                <p className="mt-1 text-[11px] text-[#7A7D82]">
+                <p className="mt-1 text-[11px] text-text-tertiary">
                   {[
                     asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
                     asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
@@ -388,7 +388,7 @@ function MonthlyProposalPreview({ proposal }: { proposal: Record<string, unknown
   const risks = asTextArray(proposal.risks ?? proposal.riscos);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
       <div>
         <p className="text-caption font-semibold uppercase text-text-tertiary">Prévia do que será gravado</p>
         <p className="mt-1 text-base font-semibold text-text">Plano Mensal {asText(proposal.period)}</p>
@@ -463,7 +463,7 @@ function CloseProposalPreview({ proposal }: { proposal: Record<string, unknown> 
   const title = type === "month_close" ? "Fechamento do Mês" : "Fechamento do Trimestre";
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
       <div>
         <p className="text-caption font-semibold uppercase text-text-tertiary">Prévia do que será gravado</p>
         <p className="mt-1 text-base font-semibold text-text">{title} {asText(proposal.period ?? proposal.periodo)}</p>
@@ -521,11 +521,11 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
   const unchanged = asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será ajustado</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será ajustado</p>
         <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Estratégica {asText(proposal.period ?? proposal.periodo)}</p>
-        <p className="text-[12px] text-[#7A7D82]">
+        <p className="text-[12px] text-text-tertiary">
           Só objetivos estratégicos existentes serão ajustados depois da sua confirmação.
         </p>
       </div>
@@ -611,7 +611,10 @@ export function OraclePanel() {
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
   const mode = state.ui.oracleMode;
+  const previousModeRef = useRef(mode);
   const isDashboard = location.pathname === "/";
   const availableSessions = useMemo(() => {
     if (state.planningSessions.length) return state.planningSessions;
@@ -679,6 +682,17 @@ export function OraclePanel() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeSession?.id, activeSession?.phase, mode, visibleMessages.length]);
+
+  useEffect(() => {
+    const previousMode = previousModeRef.current;
+    previousModeRef.current = mode;
+    if (previousMode === mode) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (mode === "minimized") launcherRef.current?.focus();
+      else if (previousMode === "minimized") panelRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mode]);
 
   function setMode(nextMode: typeof mode) {
     dispatch({ type: "set_oracle_mode", mode: nextMode });
@@ -921,6 +935,7 @@ export function OraclePanel() {
   if (mode === "minimized") {
     return (
       <button
+        ref={launcherRef}
         type="button"
         onClick={() => setMode("normal")}
         className="fixed right-[4.25rem] top-1.5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[#0B6B5C] bg-[#075E54] text-white shadow-card transition sm:right-0 sm:top-1/2 sm:h-16 sm:w-11 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:hover:w-12"
@@ -936,8 +951,18 @@ export function OraclePanel() {
 
   return (
     <aside
+      ref={panelRef}
+      role="complementary"
+      aria-label="Oráculo"
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setMode("minimized");
+        }
+      }}
       className={[
-        "fixed bottom-4 right-4 top-4 z-40 w-[calc(100vw-2rem)] transition-[max-width] duration-200",
+        "oracle-panel-frame fixed z-40 transition-[max-width] duration-200 motion-reduce:transition-none",
         mode === "expanded" ? "max-w-[560px]" : "max-w-[420px]",
       ].join(" ")}
     >
@@ -962,7 +987,7 @@ export function OraclePanel() {
               <button
                 type="button"
                 onClick={() => setMode(mode === "expanded" ? "normal" : "expanded")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label={mode === "expanded" ? "Voltar ao normal" : "Expandir"}
               >
                 {mode === "expanded" ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -970,7 +995,7 @@ export function OraclePanel() {
               <button
                 type="button"
                 onClick={() => setMode("minimized")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label="Fechar Oráculo"
               >
                 <X className="h-4 w-4" />
@@ -1015,7 +1040,7 @@ export function OraclePanel() {
             </div>
           ) : null}
 
-          <div ref={messagesListRef} className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
+          <div ref={messagesListRef} tabIndex={0} aria-label="Mensagens do Oráculo" className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
             {!visibleMessages.length ? (
               <div className="mx-auto mt-4 max-w-[280px] rounded-xl border border-black/5 bg-white/80 px-3 py-3 text-center shadow-sm">
                 <p className="text-sm font-semibold text-[#1D1D1F]">
@@ -1164,14 +1189,14 @@ export function OraclePanel() {
                 <button
                   type="button"
                   onClick={() => setEvidenceOpen((current) => !current)}
-                  className="h-9 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
+                  className="h-11 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
                 >
                   Registrar evidência
                 </button>
                 <button
                   type="button"
                   onClick={runWeeklyReview}
-                  className="h-9 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
+                  className="h-11 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
                 >
                   Revisão semanal
                 </button>
@@ -1205,7 +1230,7 @@ export function OraclePanel() {
             </div>
           ) : null}
 
-          <div className="border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
+          <div className="oracle-panel-composer border-t border-black/5 bg-[#F0F0F0] px-3 pt-3">
             {attachmentError ? (
               <InlineFeedback
                 className="mb-2"
@@ -1234,11 +1259,11 @@ export function OraclePanel() {
               />
             ) : null}
             <form onSubmit={submitMessage} className="flex items-center gap-2">
-              <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} />
+              <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} aria-label="Selecionar arquivo para o Oráculo" />
               <button
                 type="button"
                 onClick={() => attachmentInputRef.current?.click()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#5F6368] shadow-sm transition hover:bg-[#F7F7F7] disabled:cursor-wait disabled:opacity-60"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#5F6368] shadow-sm transition hover:bg-[#F7F7F7] disabled:cursor-wait disabled:opacity-60"
                 disabled={attachmentLoading}
                 aria-label="Anexar arquivo"
                 title="Anexar PDF, PPTX, DOCX ou TXT"
@@ -1256,11 +1281,11 @@ export function OraclePanel() {
                   }
                 }}
                 placeholder={adjustingSessionId === activeSession?.id ? "O que você quer mudar?" : activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
-                className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
+                className="h-11 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
               />
               <button
                 type="submit"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!message.trim() || sendingMessage}
                 aria-busy={sendingMessage || undefined}
                 aria-label="Enviar mensagem"

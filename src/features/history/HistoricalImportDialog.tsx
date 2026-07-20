@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { InlineFeedback } from "../../components/ui/InlineFeedback";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 import { HISTORICAL_FILE_ACCEPT, importStrategicPlanFile, isHistoricalImageFile } from "../../lib/fileImport";
 import { readKpiImage } from "../../lib/kpiSpreadsheet";
 import { recoverableFeedback, type RecoverableFeedback } from "../../lib/uiFeedback";
@@ -102,6 +103,11 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     [historicalSuggestion],
   );
   const historicalBusy = importingHistorical || suggestingHistorical || savingHistorical;
+  const dialogRef = useModalAccessibility<HTMLDivElement>({
+    active: open,
+    closeDisabled: historicalBusy,
+    onClose: handleClose,
+  });
   const requiredConflicts = useMemo(
     () => (importSuggestion?.conflicts ?? []).filter((conflict) => conflict.required),
     [importSuggestion],
@@ -119,15 +125,6 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     selectedCandidateIds.length > 0 &&
     unresolvedRequiredConflicts.length === 0 &&
     !historicalBusy;
-
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
 
   useEffect(() => {
     if (!open || !initialBackup) return;
@@ -646,10 +643,12 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4">
       <Card
+        ref={dialogRef}
+        tabIndex={-1}
         className={[
-          "flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden p-0",
+          "flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]",
           isDraggingHistorical ? "border-accent" : "",
         ].join(" ")}
         role="dialog"
@@ -669,7 +668,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
               Importe planos, relatórios e tabelas antigas. O Oráculo organiza os campos e você confirma antes de salvar.
             </p>
           </div>
-          <Button variant="quiet" size="icon" icon={X} onClick={handleClose} disabled={historicalBusy} aria-label="Fechar" />
+          <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={handleClose} disabled={historicalBusy} aria-label="Fechar" />
         </div>
 
         <div className={`flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6 ${isDraggingHistorical ? "bg-[#F7FAFF]" : ""}`}>

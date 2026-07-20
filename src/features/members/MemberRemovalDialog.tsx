@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Area, Membership } from "../../types";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 
 interface MemberRemovalDialogProps {
   membership: Membership;
@@ -30,16 +31,17 @@ export function MemberRemovalDialog({
   const [areaReassignments, setAreaReassignments] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(impactedAreas.map((area) => [area.id, null])),
   );
+  const dialogRef = useModalAccessibility<HTMLDivElement>({ closeDisabled: busy, onClose });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="remove-member-title">
-      <Card className="max-h-[92vh] w-full max-w-xl overflow-auto p-0">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="remove-member-title">
+      <Card className="max-h-[calc(100dvh-1rem)] w-full max-w-xl overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-surface px-6 py-4">
           <div>
             <p className="text-xs font-medium text-text-tertiary">Acesso à empresa</p>
             <h2 id="remove-member-title" className="mt-1 text-lg font-semibold text-text">Remover {memberName(membership)}?</h2>
           </div>
-          <Button variant="quiet" size="icon" icon={X} onClick={onClose} disabled={busy} aria-label="Fechar" />
+          <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={onClose} disabled={busy} aria-label="Fechar" />
         </div>
 
         <div className="space-y-5 px-6 py-5">

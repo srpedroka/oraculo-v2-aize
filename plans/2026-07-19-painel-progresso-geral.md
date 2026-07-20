@@ -16,7 +16,7 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 3 - Calibracao pre-beta: 80,0%**
 
-**Proxima acao: briefing da UX-C4 - Mobile e acessibilidade**
+**Proxima acao: gate do owner da UX-C4 - Mobile e acessibilidade**
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -93,13 +93,26 @@ UX-C3 foi executada no draft/staging e aprovada pelo owner em 2026-07-20:
 - Plano 3 passa de 60% para 80% e o geral de 41% para 43%;
 - producao continua inalterada e exige autorizacao separada.
 
+UX-C4 foi executada no draft e aguarda o gate do owner:
+
+- evidencia: `plans/ddr/UX-C4-mobile-acessibilidade.md`;
+- draft: `https://6a5e39c470f0f2420ba96122--oraculo-v2-aize.netlify.app`;
+- foco, `Esc`, retorno ao acionador, dialogs aninhados, `dvh`, safe area,
+  contraste AA e alvos de toque cobertos;
+- 556 unitarios, 132 integracoes aprovadas, 2 skips opt-in esperados, 6 E2E
+  autenticados e 2 smokes publicos verdes;
+- desktop 1280x720, celulares 390x844/430x932 e teclado em 430x520 validados;
+- zero backend, migration, dado de producao, WhatsApp ou IA paga;
+- ate o gate, Plano 3 permanece 80% e o geral 43%; se aprovada: 100%/45%;
+- producao continua inalterada e exige autorizacao separada.
+
 ## 2. Os oito planos
 
 | Plano | Peso geral | Progresso especifico | Contribuicao geral | Estado |
 | --- | ---: | ---: | ---: | --- |
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
-| [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 80% | 8,0% | UX-C3 aprovada; UX-C4 e a proxima |
+| [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 80% | 8,0% | UX-C4 executada; gate pendente |
 | [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |
@@ -158,7 +171,7 @@ Antes de executar a proxima fatia:
 ```text
 Plano geral: 43,0%
 Plano especifico: Calibracao pre-beta - 80,0%
-Proxima fatia: UX-C4 - vale 20 pontos do especifico e 2 pontos do geral
+Gate pendente: UX-C4 - vale 20 pontos do especifico e 2 pontos do geral
 Se aprovada: especifico 100,0% | geral 45,0%
 ```
 
