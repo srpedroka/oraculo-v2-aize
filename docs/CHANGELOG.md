@@ -1,6 +1,12 @@
 # Changelog
 
-- A UX-C4 foi implementada somente no draft e aguarda o gate do owner. Dialogs
+- O owner aprovou o gate da UX-C4 em 2026-07-20. A Calibracao pre-beta passa
+  de 80% para 100% e o plano geral de 43% para 45%. O aceite valida mobile,
+  teclado, acessibilidade e contraste do draft, mas nao autoriza producao. O
+  briefing R1A foi consolidado para a Revisao Semestral do Plano Estrategico
+  Anual inteiro, primeiro no staging e sem dados reais ou mutacao em producao.
+
+- A UX-C4 foi implementada somente no draft antes da aprovacao do owner. Dialogs
   criticos, menu mobile e painel do Oraculo agora prendem/restauram foco, fecham
   a camada superior com `Esc`, respeitam `100dvh`/safe area e mantem a acao
   principal visivel em altura reduzida. Alvos de toque chegam a 44 px, textos
@@ -12,8 +18,8 @@
   `production:verify` verdes. Draft:
   `https://6a5e39c470f0f2420ba96122--oraculo-v2-aize.netlify.app`. Custo US$ 0;
   zero backend, migration, dado de producao, WhatsApp ou IA paga. Progresso
-  oficial permanece 43% geral e 80% no Plano 3 ate o aceite; se aprovada:
-  45%/100%. Producao inalterada.
+  oficial permaneceu 43% geral e 80% no Plano 3 ate o aceite posterior.
+  Producao permaneceu inalterada.
 
 - O owner aprovou o gate da UX-C3 em 2026-07-20. A Calibracao pre-beta passa
   de 60% para 80% e o plano geral de 41% para 43%. O aceite valida contexto,

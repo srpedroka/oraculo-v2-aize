@@ -2,11 +2,9 @@
 
 Data: 2026-07-20
 
-Status: **EXECUTADA - GATE DO OWNER PENDENTE**
+Status: **APROVADA PELO OWNER**
 
-Progresso antes do gate: **Plano geral 43% | Plano 3 80%**
-
-Progresso se aprovada: **Plano geral 45% | Plano 3 100%**
+Progresso aprovado: **Plano geral 45% | Plano 3 100%**
 
 ## 1. Resumo funcional
 
@@ -60,7 +58,7 @@ operavel em desktop e celular com teclado, toque e leitor de tela:
 - inspecao visual de Dashboard, Oraculo, plano e dialog critico sem corte ou
   sobreposicao incoerente;
 - lint e build verdes; bundle inicial de 135,1 KB gzip, abaixo de 200 KB;
-- secret scan: 576 arquivos e zero segredo de alta confianca;
+- secret scan: 577 arquivos e zero segredo de alta confianca;
 - `production:verify` do draft verde: 31 Functions, 54/54 migrations, HTTP 200,
   CSP, cache e segredos fora do Git.
 
@@ -83,6 +81,7 @@ No draft, o owner deve confirmar se:
 5. dialogs ficam centralizados e suas acoes permanecem alcançaveis;
 6. o contraste ficou mais legivel sem pesar o cockpit.
 
-Ate o aceite, esta fatia nao soma pontos. Se aprovada, soma 20 pontos ao Plano
-3 e 2 pontos ao plano geral: Plano 3 passa a 100% e o geral a 45%.
-Producao continua dependendo de autorizacao separada.
+O owner aprovou a UX-C4 em 2026-07-20. A fatia soma 20 pontos ao Plano 3 e 2
+pontos ao plano geral: Plano 3 passa a 100% e o geral a 45%. O aceite encerra a
+Calibracao pre-beta, mas nao autoriza producao. O release continua dependendo
+de autorizacao separada.

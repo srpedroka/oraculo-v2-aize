@@ -2,11 +2,11 @@
 
 Peso no plano geral: **10%**
 
-Progresso especifico: **80%**
+Progresso especifico: **100%**
 
-Contribuicao atual ao geral: **8,0%**
+Contribuicao atual ao geral: **10,0%**
 
-Status: **EM REVISAO - UX-C4 executada; gate do owner pendente**
+Status: **CONCLUIDO**
 
 ## Objetivo
 
@@ -21,8 +21,8 @@ transformar a calibracao em redesign ou expansao funcional.
 | UX-C1. Feedback e recuperacao | 20 | Aprovada | Erros/retry preservam trabalho |
 | UX-C2. Contexto e caminho critico | 20 | Aprovada | Jornada compreensivel |
 | UX-C3. Proposta e confirmacao | 20 | Aprovada | Uma confirmacao inequivoca |
-| UX-C4. Mobile e acessibilidade | 20 | Executada; gate pendente | Desktop e dois celulares verdes |
-| **Total** | **100** | **Em andamento** | **80%** |
+| UX-C4. Mobile e acessibilidade | 20 | Aprovada | Desktop e dois celulares verdes |
+| **Total** | **100** | **Concluido** | **100%** |
 
 ## Limites
 
@@ -111,6 +111,6 @@ briefing antes de qualquer alteracao mobile ou de acessibilidade.
 - lint, build, bundle, secret scan e `production:verify` do draft verdes;
 - zero migration, Function, dado de producao ou IA paga.
 
-O gate do owner permanece pendente. O progresso oficial continua em 80% neste
-plano e 43% no geral. Se aprovada, a UX-C4 encerra o Plano 3 em 100% e leva o
-geral a 45%; producao continua em gate separado.
+O owner aprovou o gate em 2026-07-20. A UX-C4 encerra o Plano 3 em 100% e leva
+o plano geral a 45%. Producao continua em gate separado. O proximo plano
+especifico e a Revisao Semestral Estrategica, iniciando pelo briefing R1A.

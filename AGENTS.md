@@ -597,13 +597,12 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   com porcentagens oficiais em `plans/2026-07-19-painel-progresso-geral.md`.
   UX-C0/UX-C1 foram aprovadas e publicadas em 2026-07-20 pela PR #15, CI #101,
   merge `330190a` e deploy Netlify `6a5de9e76733af06c6887d56`. Verificacao e
-  smokes ficaram verdes. UX-C2 e UX-C3 foram aprovadas no draft. UX-C4 foi
-  executada no draft, com foco/teclado, dialogs, viewport dinamico, safe area,
-  toque e contraste AA validados em desktop e dois celulares; o gate do owner
-  esta pendente e producao permanece inalterada. Evidencia:
-  `plans/ddr/UX-C4-mobile-acessibilidade.md`. Progresso oficial atual: geral 43%
-  e Plano 3 em 80%. Se o gate for aprovado: 45% geral e Plano 3 concluido;
-  depois, briefing R1A.
+  smokes ficaram verdes. UX-C2, UX-C3 e UX-C4 foram aprovadas no draft. A UX-C4
+  validou foco/teclado, dialogs, viewport dinamico, safe area, toque e contraste
+  AA em desktop e dois celulares; producao permanece inalterada. Evidencia:
+  `plans/ddr/UX-C4-mobile-acessibilidade.md`. Progresso oficial atual: geral 45%
+  e Plano 3 concluido em 100%. Proximo passo: revisar e autorizar o briefing
+  `plans/ddr/R1A-prontidao-contrato-briefing.md` antes de executar no staging.
 - A Q0 R2 foi aprovada em 2026-07-16 após o owner exigir Plano Estratégico Anual primeiro e cobertura de todas as entregas. O padrão possui sete rubricas, dezesseis falhas críticas e matriz de 21 entregas em `tests/evals/strategic-quality/deliverable-coverage.json`. O primeiro ciclo financeiro encerrou em US$ 17,352811. Em 2026-07-18 o owner abriu um novo ciclo de consumo de US$ 20, aviso US$ 15 e parada preventiva US$ 19; o ledger historico nao e zerado e o gate usa o delta desde `cycleStartCumulativeUsd`. Sempre reportar geração, judge, total do caso, total histórico e consumo do ciclo.
 - A Q1 anual automatizada foi aprovada no staging em 2026-07-16: técnica verde, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. A Revisão Estratégica foi alinhada ao modo adaptativo sem deixar de ser microajuste; teste real aprovou dois ajustes em lote, uma confirmação, banco/documento e cleanup. Acumulado do plano: US$ 0,437777. Produção concluída no merge `43b5935`, release protegido `29525599601` e Netlify `6a5928c0f349e3bcc2a4728a`; verificação e smoke autenticado verdes. A chave temporária deve permanecer privada para novos testes autorizados, sem revogação por enquanto. Consulte `docs/STRATEGIC_EVALUATION_LAB.md`.
 - A Q2 foi implementada e aprovada pelo owner em 2026-07-16: 29 casos sinteticos em Q2A-Q2E cobrem 15 entregas e as 16 falhas criticas. `pnpm run test:strategic-cases` valida manifesto, casos, metodos, rubricas, canais, confirmacoes e sanitizacao. O gate esta `owner-approved`.

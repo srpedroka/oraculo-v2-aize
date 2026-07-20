@@ -2,7 +2,7 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - UX-C4 executada; gate do owner pendente**
+Status: **ATIVO - Plano 3 concluido; briefing R1A pronto**
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -30,8 +30,8 @@ safe area, alvos de toque e contraste AA foram aplicados ao caminho critico no
 draft `https://6a5e39c470f0f2420ba96122--oraculo-v2-aize.netlify.app`.
 Desktop 1280x720, celulares 390x844/430x932 e altura reduzida de 430x520
 passaram E2E, Axe e inspecao visual. Nao houve backend, dado de producao ou IA
-paga. O gate do owner esta pendente; o progresso oficial permanece 43% geral e
-80% no Plano 3. Se aprovada: 45%/100%. Producao segue inalterada.
+paga. O owner aprovou o gate em 2026-07-20; o progresso passa para 45% geral e
+100% no Plano 3. Producao segue inalterada.
 
 Este documento passa a ser a autoridade unica para a ordem de execucao. Os
 planos anteriores continuam versionados como memoria, evidencia e especificacao
@@ -1168,12 +1168,12 @@ continuam abertas sem risco critico.
 
 ## 24. Proximo passo
 
-UX-C0/UX-C1 estao em producao. UX-C2 e UX-C3 foram aprovadas no draft. UX-C4
-foi executada e sua evidencia esta em
-`plans/ddr/UX-C4-mobile-acessibilidade.md`. O progresso oficial permanece em
-43% geral e 80% no Plano 3 ate o gate do owner. Producao exige autorizacao
-separada e permanece inalterada.
+UX-C0/UX-C1 estao em producao. UX-C2, UX-C3 e UX-C4 foram aprovadas no draft.
+A evidencia final da calibracao esta em
+`plans/ddr/UX-C4-mobile-acessibilidade.md`. O Plano 3 foi concluido em 100% e o
+progresso geral chegou a 45%. Producao exige autorizacao separada e permanece
+inalterada.
 
-Proximo passo: o owner revisar o draft e aprovar ou reprovar a UX-C4. Se
-aprovada, a fatia encerra o Plano 3 em 100% e leva o plano geral a 45%. Depois,
-o briefing seguinte sera R1A - prontidao e contrato da revisao semestral.
+Proximo passo: o owner revisar o briefing
+`plans/ddr/R1A-prontidao-contrato-briefing.md` e autorizar ou ajustar a R1A. A
+execucao sera primeiro no staging, sem dados reais e sem mutacao em producao.
