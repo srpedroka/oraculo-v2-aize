@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { ConflictNotice } from "../../components/ConflictNotice";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { InlineFeedback } from "../../components/ui/InlineFeedback";
+import { recoverableFeedback, type RecoverableFeedback } from "../../lib/uiFeedback";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { useAppState } from "../../state/store";
 import { usePaginatedObjectiveEvidences } from "../../state/use-paginated-records";
@@ -51,7 +53,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [reviewKpis, setReviewKpis] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [saveError, setSaveError] = useState<RecoverableFeedback | null>(null);
   const [baselineUpdatedAt, setBaselineUpdatedAt] = useState(objective.updatedAt ?? "");
   const [hasConflict, setHasConflict] = useState(false);
   const ownSavePending = useRef(false);
@@ -75,7 +77,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
     setDeliverables((objective.deliverables ?? []).join("\n"));
     setBaselineUpdatedAt(objective.updatedAt ?? "");
     setHasConflict(false);
-    setSaveError("");
+    setSaveError(null);
   }
 
   useEffect(() => {
@@ -91,11 +93,16 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   function save() {
     if (saving) return;
     if (hasConflict) {
-      setSaveError("Recarregue a versão atual antes de salvar.");
+      setSaveError(recoverableFeedback(
+        "Recarregue a versão atual antes de salvar.",
+        "Recarregue a versão atual antes de salvar.",
+        "Seu formulário permanece preenchido até você decidir recarregar.",
+        "OBJECTIVE_UPDATE_CONFLICT",
+      ));
       return;
     }
     setSaving(true);
-    setSaveError("");
+    setSaveError(null);
     ownSavePending.current = true;
     dispatch({
       type: "update_objective",
@@ -127,7 +134,12 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
       onError: (message) => {
         ownSavePending.current = false;
         setSaving(false);
-        setSaveError(message);
+        setSaveError(recoverableFeedback(
+          message,
+          "Não consegui salvar as alterações.",
+          "O formulário continua preenchido. Tente novamente.",
+          "OBJECTIVE_UPDATE_FAILED",
+        ));
       },
     });
   }
@@ -341,7 +353,17 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
               ) : null}
             </section>
           ) : null}
-          {saveError ? <p className="text-sm text-status-danger">{saveError}</p> : null}
+          {saveError ? (
+            <InlineFeedback
+              tone="error"
+              title={saveError.title}
+              description={saveError.description}
+              occurrenceId={saveError.occurrenceId}
+              actionLabel={hasConflict ? "Recarregar versão" : "Tentar novamente"}
+              onAction={hasConflict ? loadCurrentObjective : save}
+              actionLoading={saving}
+            />
+          ) : null}
           {reviewKpis ? <ObjectiveKpiSuggestionPanel objectiveId={objective.id} onDone={onClose} /> : null}
         </div>
 
@@ -349,8 +371,8 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-            <Button icon={Save} onClick={save} disabled={saving || hasConflict}>
-            {saving ? "Salvando..." : "Salvar alterações"}
+            <Button icon={Save} onClick={save} loading={saving} disabled={hasConflict}>
+            Salvar alterações
           </Button>
         </div> : null}
       </Card>

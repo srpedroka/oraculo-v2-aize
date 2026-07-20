@@ -2,12 +2,15 @@ import { ClipboardCheck, FileText, Loader2, Plus, RefreshCw, Send, Upload } from
 import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { InlineFeedback } from "../components/ui/InlineFeedback";
 import { LineageTag } from "../components/ui/LineageTag";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { formatDate } from "../lib/format";
 import { reviewPastedPlan, type PastedPlanReview } from "../lib/oracle";
+import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
+import { useSessionLauncher } from "../hooks/useSessionLauncher";
 import { useAppState } from "../state/store";
 
 type StrategicTab = "build" | "paste";
@@ -74,8 +77,11 @@ export function Strategic() {
   const [importingPlan, setImportingPlan] = useState(false);
   const [importedFileName, setImportedFileName] = useState<string | null>(null);
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<RecoverableFeedback | null>(null);
+  const [retryPlanFile, setRetryPlanFile] = useState<File | null>(null);
   const [sentToOracle, setSentToOracle] = useState(false);
+  const [sendingReadyPlan, setSendingReadyPlan] = useState(false);
+  const [readyPlanError, setReadyPlanError] = useState<RecoverableFeedback | null>(null);
   const [isDraggingPlan, setIsDraggingPlan] = useState(false);
   const plan = state.strategicPlan;
   const isOwner = state.currentMembership?.role === "owner";
@@ -84,13 +90,16 @@ export function Strategic() {
     [state.objectives],
   );
   const currentYear = new Date().getFullYear();
+  const sessionLauncher = useSessionLauncher(dispatch);
+  const strategicRequest = { sessionType: "strategic" as const, period: String(currentYear) };
+  const reviewRequest = { sessionType: "strategic_review" as const, period: String(plan?.year ?? currentYear) };
 
   function startStrategicSession() {
-    dispatch({ type: "start_session", sessionType: "strategic", period: String(currentYear) });
+    sessionLauncher.startSession(strategicRequest);
   }
 
   function startStrategicReviewSession() {
-    dispatch({ type: "start_session", sessionType: "strategic_review", period: String(plan?.year ?? currentYear) });
+    sessionLauncher.startSession(reviewRequest);
   }
 
   function openReadyPlanImport() {
@@ -103,12 +112,14 @@ export function Strategic() {
     setImportedFileName(null);
     setImportFeedback(null);
     setImportError(null);
+    setRetryPlanFile(null);
     setSentToOracle(false);
+    setReadyPlanError(null);
   }
 
   function sendReadyPlanToOracle() {
     const planText = pastedPlan.trim();
-    if (!planText) return;
+    if (!planText || sendingReadyPlan) return;
 
     const contextLimit = 24000;
     const safePlanText =
@@ -116,13 +127,28 @@ export function Strategic() {
         ? `${planText.slice(0, contextLimit)}\n\n[O texto enviado foi cortado pelo limite de contexto. Se precisar, peça o restante do plano ao usuário antes de gravar.]`
         : planText;
 
+    setSendingReadyPlan(true);
+    setReadyPlanError(null);
+    setSentToOracle(false);
     dispatch({
       type: "import_ready_strategic_plan",
       period: String(currentYear),
       text: safePlanText,
       fileName: importedFileName,
+      onSuccess: () => {
+        setSendingReadyPlan(false);
+        setSentToOracle(true);
+      },
+      onError: (message) => {
+        setSendingReadyPlan(false);
+        setReadyPlanError(recoverableFeedback(
+          message,
+          "Não consegui enviar o plano ao Oráculo.",
+          "O texto continua neste campo. Tente novamente sem importar o arquivo de novo.",
+          "STRATEGIC_IMPORT_SEND_FAILED",
+        ));
+      },
     });
-    setSentToOracle(true);
   }
 
   async function processPlanFile(file: File | undefined) {
@@ -133,15 +159,22 @@ export function Strategic() {
     setImportError(null);
     setImportFeedback(null);
     setSentToOracle(false);
+    setRetryPlanFile(file);
 
     try {
       const imported = await importStrategicPlanFile(file);
       setPastedPlan(imported.text);
       setImportedFileName(imported.fileName);
       setImportFeedback(imported.warning ?? "Texto importado. Agora peça a revisão ao Oráculo.");
+      setRetryPlanFile(null);
     } catch (error) {
       setImportedFileName(null);
-      setImportError(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
+      setImportError(recoverableFeedback(
+        error,
+        "Não consegui ler este arquivo.",
+        "Nada foi enviado ou gravado. Confira o formato e tente novamente.",
+        "STRATEGIC_IMPORT_READ_FAILED",
+      ));
     } finally {
       setImportingPlan(false);
     }
@@ -187,16 +220,28 @@ export function Strategic() {
           <h1 className="text-2xl font-semibold text-text">Plano Estratégico</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button icon={Plus} onClick={startStrategicSession}>
+          <Button icon={Plus} loading={sessionLauncher.isStarting(strategicRequest)} onClick={startStrategicSession}>
             Planejar o ano com o Oráculo
           </Button>
           {isOwner && plan ? (
-            <Button variant="ghost" icon={RefreshCw} onClick={startStrategicReviewSession}>
+            <Button variant="ghost" icon={RefreshCw} loading={sessionLauncher.isStarting(reviewRequest)} onClick={startStrategicReviewSession}>
               Revisão Estratégica
             </Button>
           ) : null}
         </div>
       </div>
+
+      {sessionLauncher.error ? (
+        <InlineFeedback
+          tone="error"
+          title={sessionLauncher.error.title}
+          description={sessionLauncher.error.description}
+          occurrenceId={sessionLauncher.error.occurrenceId}
+          actionLabel="Tentar novamente"
+          onAction={sessionLauncher.retry}
+          actionLoading={sessionLauncher.pending}
+        />
+      ) : null}
 
       <div className="inline-flex rounded-xl border border-border bg-surface p-1 shadow-card">
         <button
@@ -276,7 +321,18 @@ export function Strategic() {
               </p>
             ) : null}
             {importFeedback ? <p className="mt-2 text-xs leading-5 text-[#1D7A3E]">{importFeedback}</p> : null}
-            {importError ? <p role="alert" className="mt-2 text-xs leading-5 text-[#B42318]">{importError}</p> : null}
+            {importError ? (
+              <InlineFeedback
+                className="mt-3"
+                tone="error"
+                title={importError.title}
+                description={importError.description}
+                occurrenceId={importError.occurrenceId}
+                actionLabel={retryPlanFile ? "Tentar novamente" : undefined}
+                onAction={retryPlanFile ? () => void processPlanFile(retryPlanFile) : undefined}
+                actionLoading={importingPlan}
+              />
+            ) : null}
             <div className="mt-4">
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -287,15 +343,28 @@ export function Strategic() {
                 >
                   Só revisar texto
                 </Button>
-                <Button icon={Send} disabled={!pastedPlan.trim() || importingPlan} onClick={sendReadyPlanToOracle}>
+                <Button icon={Send} loading={sendingReadyPlan} disabled={!pastedPlan.trim() || importingPlan} onClick={sendReadyPlanToOracle}>
                   Enviar ao Oráculo
                 </Button>
               </div>
             </div>
+            {sendingReadyPlan ? (
+              <InlineFeedback className="mt-3" tone="info" title="Enviando plano ao Oráculo" description="O texto continua preservado enquanto a proposta é preparada." />
+            ) : null}
+            {readyPlanError ? (
+              <InlineFeedback
+                className="mt-3"
+                tone="error"
+                title={readyPlanError.title}
+                description={readyPlanError.description}
+                occurrenceId={readyPlanError.occurrenceId}
+                actionLabel="Tentar novamente"
+                onAction={sendReadyPlanToOracle}
+                actionLoading={sendingReadyPlan}
+              />
+            ) : null}
             {sentToOracle ? (
-              <p className="mt-3 text-xs leading-5 text-[#1D7A3E]">
-                Plano enviado ao Oráculo. O cartão de proposta aparecerá no painel lateral; confirme para gravar objetivos e projetos no seu plano.
-              </p>
+              <InlineFeedback className="mt-3" tone="success" title="Plano enviado ao Oráculo" description="Confira a proposta no painel lateral antes de gravar objetivos e projetos." />
             ) : null}
           </Card>
           {review ? <ReviewResult review={review} /> : null}
@@ -307,7 +376,7 @@ export function Strategic() {
             Crie a estrutura anual para começar a desdobrar objetivos por área, trimestre e mês.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button icon={Plus} onClick={startStrategicSession}>
+            <Button icon={Plus} loading={sessionLauncher.isStarting(strategicRequest)} onClick={startStrategicSession}>
               Planejar o ano com o Oráculo
             </Button>
             <Button variant="ghost" icon={Upload} onClick={openReadyPlanImport}>

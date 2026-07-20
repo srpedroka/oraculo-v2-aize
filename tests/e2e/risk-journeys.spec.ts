@@ -295,6 +295,8 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.goto("/redefinir-senha");
     await page.getByLabel("Email").fill("recuperacao@oraculo-e2e.invalid");
     await page.getByRole("button", { name: "Enviar link por email" }).click();
-    await expect(page.getByText(/Enviamos um link para redefinir sua senha/)).toBeVisible();
+    const success = page.getByRole("status");
+    await expect(success.getByText("Link enviado", { exact: true })).toBeVisible();
+    await expect(success.getByText(/Abra o email e siga o link para criar uma nova senha/)).toBeVisible();
   });
 });

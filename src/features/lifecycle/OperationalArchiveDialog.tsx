@@ -2,6 +2,8 @@ import { Archive, X } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { InlineFeedback } from "../../components/ui/InlineFeedback";
+import type { RecoverableFeedback } from "../../lib/uiFeedback";
 
 interface OperationalArchiveDialogProps {
   eyebrow: string;
@@ -10,7 +12,7 @@ interface OperationalArchiveDialogProps {
   impacts?: string[];
   confirmLabel?: string;
   busy?: boolean;
-  error?: string | null;
+  error?: string | RecoverableFeedback | null;
   onClose: () => void;
   onConfirm: (reason: string) => void;
 }
@@ -68,7 +70,14 @@ export function OperationalArchiveDialog({
               />
             </label>
 
-            {error ? <p className="text-sm text-status-danger">{error}</p> : null}
+            {error ? (
+              <InlineFeedback
+                tone="error"
+                title={typeof error === "string" ? error : error.title}
+                description={typeof error === "string" ? undefined : error.description}
+                occurrenceId={typeof error === "string" ? undefined : error.occurrenceId}
+              />
+            ) : null}
           </div>
 
           <div className="flex flex-wrap justify-end gap-3 border-t border-border px-5 py-4 sm:px-6">

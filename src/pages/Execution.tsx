@@ -2,12 +2,15 @@ import { Archive, CalendarCheck, ClipboardList, RefreshCcw } from "lucide-react"
 import { useState } from "react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { InlineFeedback } from "../components/ui/InlineFeedback";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { formatDate } from "../lib/format";
 import { previousMonthPeriod } from "../lib/periods";
+import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
 import { OperationalArchiveDialog } from "../features/lifecycle/OperationalArchiveDialog";
 import { ExecutionCockpit } from "../features/execution/ExecutionCockpit";
+import { useSessionLauncher } from "../hooks/useSessionLauncher";
 
 export function Execution() {
   const { state, dispatch } = useAppState();
@@ -16,8 +19,9 @@ export function Execution() {
   const closePeriod = previousMonthPeriod();
   const [archiveTarget, setArchiveTarget] = useState<{ type: "strategic_project" | "check_in"; id: string; title: string } | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
-  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<RecoverableFeedback | null>(null);
   const isOwner = state.currentMembership?.role === "owner";
+  const sessionLauncher = useSessionLauncher(dispatch);
 
   function archive(reason: string) {
     if (!archiveTarget) return;
@@ -35,7 +39,12 @@ export function Execution() {
       },
       onError: (message) => {
         setArchiveBusy(false);
-        setArchiveError(message);
+        setArchiveError(recoverableFeedback(
+          message,
+          "Não consegui retirar este item da operação.",
+          "O item continua disponível. Tente novamente.",
+          "OPERATIONAL_ARCHIVE_FAILED",
+        ));
       },
     });
   }
@@ -46,6 +55,18 @@ export function Execution() {
         <p className="text-sm font-medium text-text-tertiary">Projetos, rituais e fechamento mensal</p>
         <h1 className="text-2xl font-semibold text-text">Execução Viva</h1>
       </div>
+
+      {sessionLauncher.error ? (
+        <InlineFeedback
+          tone="error"
+          title={sessionLauncher.error.title}
+          description={sessionLauncher.error.description}
+          occurrenceId={sessionLauncher.error.occurrenceId}
+          actionLabel="Tentar novamente"
+          onAction={sessionLauncher.retry}
+          actionLoading={sessionLauncher.pending}
+        />
+      ) : null}
 
       <ExecutionCockpit />
 
@@ -140,7 +161,10 @@ export function Execution() {
                       size="sm"
                       variant="ghost"
                       icon={RefreshCcw}
-                      onClick={() => dispatch({ type: "start_session", sessionType: "month_close", areaId: area.id, period: closePeriod })}
+                      loading={sessionLauncher.isStarting({ sessionType: "month_close", areaId: area.id, period: closePeriod })}
+                      disabled={!monthlyObjectives.length}
+                      title={monthlyObjectives.length ? "Revisar e fechar o mês" : "Crie o plano mensal antes do check-in"}
+                      onClick={() => sessionLauncher.startSession({ sessionType: "month_close", areaId: area.id, period: closePeriod })}
                     >
                       Adicionar check-in
                     </Button>

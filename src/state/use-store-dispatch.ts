@@ -284,14 +284,18 @@ export function useStoreDispatch({
           areaId: action.areaId ?? null,
           message: action.text,
           context: action.context ?? "chat",
-        }).then(() => {
-          invalidateDomains(["chat", "sessions", "aiUsage"]);
-        });
+        })
+          .then(() => {
+            invalidateDomains(["chat", "sessions", "aiUsage"]);
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.");
+          });
         return;
       }
 
       if (action.type === "start_session") {
-        uiDispatch({ type: "set_oracle_mode", mode: "normal" });
         void callEdgeFunction("oracle-session", {
           action: "start",
           orgId,
@@ -299,14 +303,19 @@ export function useStoreDispatch({
           type: action.sessionType,
           period: action.period,
           channel: "web",
-        }).then(() => {
-          invalidateDomains(["sessions", "chat"]);
-        });
+        })
+          .then(() => {
+            invalidateDomains(["sessions", "chat"]);
+            uiDispatch({ type: "set_oracle_mode", mode: "normal" });
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível iniciar a condução.");
+          });
         return;
       }
 
       if (action.type === "import_ready_strategic_plan") {
-        uiDispatch({ type: "set_oracle_mode", mode: "normal" });
         void callEdgeFunction("oracle-session", {
           action: "import_ready_plan",
           orgId,
@@ -314,14 +323,19 @@ export function useStoreDispatch({
           planText: action.text,
           fileName: action.fileName ?? null,
           channel: "web",
-        }).then(() => {
-          invalidateDomains(["sessions", "chat", "aiUsage"]);
-        });
+        })
+          .then(() => {
+            invalidateDomains(["sessions", "chat", "aiUsage"]);
+            uiDispatch({ type: "set_oracle_mode", mode: "normal" });
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível enviar o plano ao Oráculo.");
+          });
         return;
       }
 
       if (action.type === "import_ready_quarterly_plan") {
-        uiDispatch({ type: "set_oracle_mode", mode: "normal" });
         void callEdgeFunction("oracle-session", {
           action: "import_ready_quarterly_plan",
           orgId,
@@ -330,9 +344,15 @@ export function useStoreDispatch({
           planText: action.text,
           fileName: action.fileName ?? null,
           channel: "web",
-        }).then(() => {
-          invalidateDomains(["sessions", "chat", "aiUsage"]);
-        });
+        })
+          .then(() => {
+            invalidateDomains(["sessions", "chat", "aiUsage"]);
+            uiDispatch({ type: "set_oracle_mode", mode: "normal" });
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível enviar o plano ao Oráculo.");
+          });
         return;
       }
 
@@ -454,9 +474,14 @@ export function useStoreDispatch({
           sessionId: action.sessionId,
           message: action.text,
           channel: "web",
-        }).then(() => {
-          invalidateDomains(["sessions", "chat", "aiUsage"]);
-        });
+        })
+          .then(() => {
+            invalidateDomains(["sessions", "chat", "aiUsage"]);
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível enviar a resposta.");
+          });
         return;
       }
 
@@ -480,7 +505,14 @@ export function useStoreDispatch({
         void callEdgeFunction("oracle-session", {
           action: "abandon",
           sessionId: action.sessionId,
-        }).then(() => invalidateDomains(["sessions", "chat"]));
+        })
+          .then(() => {
+            invalidateDomains(["sessions", "chat"]);
+            action.onSuccess?.();
+          })
+          .catch((error) => {
+            action.onError?.(error instanceof Error ? error.message : "Não foi possível descartar a proposta.");
+          });
         return;
       }
 

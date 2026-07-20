@@ -3,8 +3,10 @@ import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from "
 import { createPortal } from "react-dom";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { InlineFeedback } from "../../components/ui/InlineFeedback";
 import { HISTORICAL_FILE_ACCEPT, importStrategicPlanFile, isHistoricalImageFile } from "../../lib/fileImport";
 import { readKpiImage } from "../../lib/kpiSpreadsheet";
+import { recoverableFeedback, type RecoverableFeedback } from "../../lib/uiFeedback";
 import { useAppState } from "../../state/store";
 import type {
   HistoricalConflict,
@@ -78,6 +80,9 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
   const [importBatchId, setImportBatchId] = useState<string>(() => crypto.randomUUID());
   const [historicalFeedback, setHistoricalFeedback] = useState<string | null>(null);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
+  const [historicalRecovery, setHistoricalRecovery] = useState<RecoverableFeedback | null>(null);
+  const [historicalRetry, setHistoricalRetry] = useState<"file" | "suggest" | "save" | null>(null);
+  const [historicalRetryFile, setHistoricalRetryFile] = useState<File | null>(null);
   const [importingHistorical, setImportingHistorical] = useState(false);
   const [suggestingHistorical, setSuggestingHistorical] = useState(false);
   const [savingHistorical, setSavingHistorical] = useState(false);
@@ -188,6 +193,9 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     setConflictChoices({});
     setHistoricalFeedback(null);
     setHistoricalError(null);
+    setHistoricalRecovery(null);
+    setHistoricalRetry(null);
+    setHistoricalRetryFile(null);
     setImportingHistorical(false);
     setSuggestingHistorical(false);
     setSavingHistorical(false);
@@ -207,6 +215,8 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     setHistoricalTitle("");
     setHistoricalFeedback(null);
     setHistoricalError(null);
+    setHistoricalRecovery(null);
+    setHistoricalRetry(null);
   }
 
   function applyHistoricalSuggestion(
@@ -252,16 +262,21 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
     }
     if (options?.warnings?.length) parts.push(...options.warnings);
     setHistoricalFeedback(parts.join(" "));
+    setHistoricalRecovery(null);
+    setHistoricalRetry(null);
   }
 
   async function processHistoricalFile(file: File | undefined) {
-    if (!file) return;
+    if (!file || historicalBusy) return;
 
     setImportingHistorical(true);
     setHistoricalSuggestion(null);
     setHistoricalTitle("");
     setHistoricalError(null);
     setHistoricalFeedback(null);
+    setHistoricalRecovery(null);
+    setHistoricalRetry(null);
+    setHistoricalRetryFile(file);
 
     try {
       if (isHistoricalImageFile(file)) {
@@ -296,6 +311,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
             onError: (message) => reject(new Error(message)),
           });
         });
+        setHistoricalRetryFile(null);
         return;
       }
 
@@ -321,9 +337,17 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           onError: (message) => reject(new Error(message)),
         });
       });
+      setHistoricalRetryFile(null);
     } catch (error) {
       setHistoricalFileName(null);
-      setHistoricalError(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
+      setHistoricalError(null);
+      setHistoricalRecovery(recoverableFeedback(
+        error,
+        "Não consegui importar este arquivo.",
+        "Nada foi gravado. O arquivo continua disponível para uma nova tentativa.",
+        "HISTORICAL_IMPORT_READ_FAILED",
+      ));
+      setHistoricalRetry("file");
     } finally {
       setImportingHistorical(false);
     }
@@ -360,10 +384,13 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
   }
 
   function suggestHistoricalMetadata() {
+    if (historicalBusy) return;
     const rawText = historicalText.trim();
 
     setHistoricalFeedback(null);
     setHistoricalError(null);
+    setHistoricalRecovery(null);
+    setHistoricalRetry(null);
 
     if (!rawText) {
       setHistoricalError("Cole ou importe o texto do histórico antes de interpretar.");
@@ -392,7 +419,13 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       },
       onError: (message) => {
         setSuggestingHistorical(false);
-        setHistoricalError(message);
+        setHistoricalRecovery(recoverableFeedback(
+          message,
+          "Não consegui interpretar este histórico.",
+          "O conteúdo e os campos continuam preenchidos. Tente novamente.",
+          "HISTORICAL_IMPORT_SUGGEST_FAILED",
+        ));
+        setHistoricalRetry("suggest");
       },
     });
   }
@@ -478,6 +511,7 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
   }
 
   function saveHistoricalDocument() {
+    if (historicalBusy) return;
     const period = historicalPeriod.trim();
     const areaId = effectiveHistoricalAreaId === "company" ? null : effectiveHistoricalAreaId || null;
     const title = historicalTitle.trim();
@@ -489,6 +523,8 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
 
     setHistoricalFeedback(null);
     setHistoricalError(null);
+    setHistoricalRecovery(null);
+    setHistoricalRetry(null);
 
     if (unresolvedRequiredConflicts.length) {
       setHistoricalError("Resolva as escolhas obrigatórias antes de salvar.");
@@ -589,9 +625,24 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
       },
       onError: (message) => {
         setSavingHistorical(false);
-        setHistoricalError(message);
+        setHistoricalRecovery(recoverableFeedback(
+          message,
+          "Não consegui salvar este histórico.",
+          "Todo o conteúdo e as escolhas continuam preenchidos. Tente novamente.",
+          "HISTORICAL_IMPORT_SAVE_FAILED",
+        ));
+        setHistoricalRetry("save");
       },
     });
+  }
+
+  function retryHistoricalAction() {
+    if (historicalRetry === "file" && historicalRetryFile) {
+      void processHistoricalFile(historicalRetryFile);
+      return;
+    }
+    if (historicalRetry === "suggest") suggestHistoricalMetadata();
+    if (historicalRetry === "save") saveHistoricalDocument();
   }
 
   return createPortal(
@@ -920,8 +971,24 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
             </div>
           ) : null}
 
-          {historicalFeedback ? <p className="text-xs leading-5 text-[#1D7A3E]">{historicalFeedback}</p> : null}
-          {historicalError ? <p role="alert" className="text-xs leading-5 text-[#B42318]">{historicalError}</p> : null}
+          {historicalFeedback ? (
+            <InlineFeedback
+              tone={historicalBusy ? "info" : "success"}
+              title={historicalFeedback}
+            />
+          ) : null}
+          {historicalError ? <InlineFeedback tone="warning" title={historicalError} /> : null}
+          {historicalRecovery ? (
+            <InlineFeedback
+              tone="error"
+              title={historicalRecovery.title}
+              description={historicalRecovery.description}
+              occurrenceId={historicalRecovery.occurrenceId}
+              actionLabel="Tentar novamente"
+              onAction={retryHistoricalAction}
+              actionLoading={historicalBusy}
+            />
+          ) : null}
           {unresolvedRequiredConflicts.length ? (
             <p className="text-xs leading-5 text-[#A16207]">
               Ainda faltam {unresolvedRequiredConflicts.length} escolha(s) obrigatória(s) para liberar o salvamento.
@@ -935,14 +1002,15 @@ export function HistoricalImportDialog({ open, onClose, onSaved, initialBackup =
           </Button>
           <Button
             variant="ghost"
-            icon={suggestingHistorical ? Loader2 : Sparkles}
+            icon={Sparkles}
+            loading={suggestingHistorical}
             disabled={!historicalText.trim() || historicalBusy}
             onClick={suggestHistoricalMetadata}
           >
-            {suggestingHistorical ? "Interpretando..." : "Interpretar com o Oráculo"}
+            Interpretar com o Oráculo
           </Button>
-          <Button icon={savingHistorical ? Loader2 : Save} disabled={!canSave} onClick={saveHistoricalDocument}>
-            {savingHistorical ? "Salvando..." : "Salvar histórico"}
+          <Button icon={Save} loading={savingHistorical} disabled={!canSave} onClick={saveHistoricalDocument}>
+            Salvar histórico
           </Button>
         </div>
       </Card>

@@ -3,8 +3,10 @@ import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { InlineFeedback } from "../components/ui/InlineFeedback";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
+import { useSessionLauncher } from "../hooks/useSessionLauncher";
 import { currentMonthPeriod, currentQuarterPeriod } from "../lib/periods";
 import { useAppState } from "../state/store";
 import type { PlanLevel } from "../types";
@@ -37,6 +39,9 @@ export function AreaDetail() {
   const [builderLevel, setBuilderLevel] = useState<PlanLevel | null>(null);
   const area = state.areas.find((item) => item.id === areaId);
   const plan = state.areaPlans.find((item) => item.areaId === areaId);
+  const sessionLauncher = useSessionLauncher(dispatch);
+  const quarterlyRequest = { sessionType: "quarterly" as const, areaId: area?.id, period: currentQuarterPeriod() };
+  const monthlyRequest = { sessionType: "monthly" as const, areaId: area?.id, period: currentMonthPeriod() };
   const canEditArea = Boolean(
     area &&
       (state.currentMembership?.role === "owner" ||
@@ -51,12 +56,12 @@ export function AreaDetail() {
 
   function startQuarterlySession() {
     if (!area) return;
-    dispatch({ type: "start_session", sessionType: "quarterly", areaId: area.id, period: currentQuarterPeriod() });
+    sessionLauncher.startSession({ ...quarterlyRequest, areaId: area.id });
   }
 
   function startMonthlySession() {
     if (!area) return;
-    dispatch({ type: "start_session", sessionType: "monthly", areaId: area.id, period: currentMonthPeriod() });
+    sessionLauncher.startSession({ ...monthlyRequest, areaId: area.id });
   }
 
   function startSessionForCurrentTab() {
@@ -77,6 +82,17 @@ export function AreaDetail() {
           <p className="text-sm font-medium text-text-tertiary">Coordenador: {area.coordinator}</p>
           <h1 className="text-2xl font-semibold text-text">Área: {area.name}</h1>
         </div>
+        {sessionLauncher.error ? (
+          <InlineFeedback
+            tone="error"
+            title={sessionLauncher.error.title}
+            description={sessionLauncher.error.description}
+            occurrenceId={sessionLauncher.error.occurrenceId}
+            actionLabel="Tentar novamente"
+            onAction={sessionLauncher.retry}
+            actionLoading={sessionLauncher.pending}
+          />
+        ) : null}
         <Card>
           <p className="text-base font-semibold text-text">Nenhum plano anual da área ainda.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
@@ -88,7 +104,7 @@ export function AreaDetail() {
                 Criar objetivo anual
               </Button>
             ) : null}
-            <Button icon={Plus} onClick={startQuarterlySession}>
+            <Button icon={Plus} loading={sessionLauncher.isStarting(quarterlyRequest)} onClick={startQuarterlySession}>
               Planejar com o Oráculo
             </Button>
           </div>
@@ -127,12 +143,28 @@ export function AreaDetail() {
             </Button>
           ) : null}
           {tab !== "area_annual" ? (
-            <Button icon={Plus} onClick={startSessionForCurrentTab}>
+            <Button
+              icon={Plus}
+              loading={sessionLauncher.isStarting(tab === "monthly" ? monthlyRequest : quarterlyRequest)}
+              onClick={startSessionForCurrentTab}
+            >
               {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
             </Button>
           ) : null}
         </div>
       </div>
+
+      {sessionLauncher.error ? (
+        <InlineFeedback
+          tone="error"
+          title={sessionLauncher.error.title}
+          description={sessionLauncher.error.description}
+          occurrenceId={sessionLauncher.error.occurrenceId}
+          actionLabel="Tentar novamente"
+          onAction={sessionLauncher.retry}
+          actionLoading={sessionLauncher.pending}
+        />
+      ) : null}
 
       <Card>
         <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr_1fr]">
@@ -226,7 +258,11 @@ export function AreaDetail() {
                   </Button>
                 ) : null}
                 {tab !== "area_annual" ? (
-                  <Button icon={Plus} onClick={tab === "monthly" ? startMonthlySession : startQuarterlySession}>
+                  <Button
+                    icon={Plus}
+                    loading={sessionLauncher.isStarting(tab === "monthly" ? monthlyRequest : quarterlyRequest)}
+                    onClick={tab === "monthly" ? startMonthlySession : startQuarterlySession}
+                  >
                     {tab === "monthly" ? "Planejar o mês com o Oráculo" : "Planejar o trimestre com o Oráculo"}
                   </Button>
                 ) : null}

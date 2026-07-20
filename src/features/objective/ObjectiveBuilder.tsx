@@ -9,6 +9,8 @@ import { LEVEL_LABEL, TYPE_LABEL } from "../../types";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConcretenessMeter } from "../../components/ui/ConcretenessMeter";
+import { InlineFeedback } from "../../components/ui/InlineFeedback";
+import { recoverableFeedback, type RecoverableFeedback } from "../../lib/uiFeedback";
 import { ObjectiveKpiSuggestionPanel } from "./ObjectiveKpiSuggestionPanel";
 
 interface ObjectiveBuilderProps {
@@ -70,7 +72,7 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   const [actions, setActions] = useState<DraftAction[]>([]);
   const [savedObjectiveId, setSavedObjectiveId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [saveError, setSaveError] = useState<RecoverableFeedback | null>(null);
 
   const draftObjective: Objective = {
     id: "draft",
@@ -113,7 +115,7 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
   function saveObjective() {
     if (saving || savedObjectiveId) return;
     setSaving(true);
-    setSaveError("");
+    setSaveError(null);
     const id = createObjectiveId();
     const objective: Objective = {
       ...draftObjective,
@@ -153,7 +155,12 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
       },
       onError: (message) => {
         setSaving(false);
-        setSaveError(message);
+        setSaveError(recoverableFeedback(
+          message,
+          "Não consegui salvar este objetivo.",
+          "O rascunho continua preenchido. Tente novamente.",
+          "OBJECTIVE_CREATE_FAILED",
+        ));
       },
     });
   }
@@ -346,7 +353,17 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
               </p>
             </div>
           </section>
-          {saveError ? <p className="text-sm text-status-danger">{saveError}</p> : null}
+          {saveError ? (
+            <InlineFeedback
+              tone="error"
+              title={saveError.title}
+              description={saveError.description}
+              occurrenceId={saveError.occurrenceId}
+              actionLabel="Tentar novamente"
+              onAction={saveObjective}
+              actionLoading={saving}
+            />
+          ) : null}
           {savedObjectiveId ? <ObjectiveKpiSuggestionPanel objectiveId={savedObjectiveId} onDone={onClose} /> : null}
         </div>
 
@@ -354,8 +371,8 @@ export function ObjectiveBuilder({ level, areaId = null, onClose }: ObjectiveBui
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button icon={Save} onClick={saveObjective} disabled={saving}>
-            {saving ? "Salvando..." : "Salvar objetivo"}
+          <Button icon={Save} onClick={saveObjective} loading={saving}>
+            Salvar objetivo
           </Button>
         </div> : null}
       </Card>

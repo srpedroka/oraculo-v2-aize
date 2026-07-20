@@ -11,20 +11,29 @@
   --bg: #f5f5f7;
   --surface: #ffffff;
   --surface-muted: #fafafb;
+  --surface-subtle: #f7f7f8;
   --fill-hover: #f0f0f2;
   --fill-active: #ececef;
   --fill-press: #e4e4e8;
-  --border: #e8e8ed;
+  --border-subtle: #e8e8ed;
+  --border-control: #8e8e93;
+  --border: var(--border-subtle);
   --text: #1d1d1f;
   --text-secondary: #6e6e73;
-  --text-tertiary: #a1a1a6;
+  --text-tertiary: #737378;
+  --text-disabled: #a1a1a6;
   --accent: #2e2e33;
+  --focus: #2e2e33;
   --status-success: #1d7a3e;
   --status-success-bg: #e6f4ea;
-  --status-warning: #9a6400;
+  --status-warning: #8a5a0a;
   --status-warning-bg: #fdf1dd;
   --status-danger: #b42318;
   --status-danger-bg: #fbe9e7;
+  --status-neutral: #5f6368;
+  --status-neutral-bg: #eef1f4;
+  --status-info: #245d85;
+  --status-info-bg: #eef6fc;
   color: var(--text);
   background: var(--bg);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -62,9 +71,9 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 12%, transparent);
 }
 
 ::selection {

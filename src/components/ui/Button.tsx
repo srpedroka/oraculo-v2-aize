@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader2, type LucideIcon } from "lucide-react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "ghost" | "quiet" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "quiet" | "danger";
   size?: "sm" | "md" | "icon";
   icon?: LucideIcon;
   loading?: boolean;
@@ -22,14 +22,15 @@ export function Button({
 }: ButtonProps) {
   const variants = {
     primary: "border-accent bg-accent text-white hover:bg-[#1D1D1F] active:bg-[#161618]",
-    ghost: "border-border bg-transparent text-text hover:border-accent/30 hover:bg-white active:bg-surface-muted",
+    secondary: "border-border bg-surface text-text hover:border-accent/30 hover:bg-surface-muted active:bg-fill-active",
+    ghost: "border-border bg-surface text-text hover:border-accent/30 hover:bg-surface-muted active:bg-fill-active",
     quiet: "border-transparent bg-transparent text-text-secondary hover:bg-fill-hover hover:text-text active:bg-fill-press",
     danger: "border-status-danger bg-status-danger text-white hover:border-[#8F1C13] hover:bg-[#8F1C13] active:bg-[#74170F]",
   };
   const sizes = {
     sm: "h-8 gap-1.5 rounded-control px-3 text-label",
     md: "h-10 gap-2 rounded-control px-4 text-sm",
-    icon: "h-9 w-9 rounded-control p-0 active:scale-95 motion-reduce:active:scale-100",
+    icon: "h-10 w-10 rounded-control p-0 active:scale-95 motion-reduce:active:scale-100",
   };
 
   return (
@@ -38,7 +39,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={[
-        "inline-flex shrink-0 items-center justify-center border font-medium transition active:translate-y-px disabled:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:translate-y-0",
+        "inline-flex shrink-0 items-center justify-center border font-medium transition duration-fast active:translate-y-px disabled:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:translate-y-0",
         variants[variant],
         sizes[size],
         className,

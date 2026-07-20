@@ -1,5 +1,103 @@
 # Changelog
 
+- O owner aprovou o gate da UX-C1 em 2026-07-19. A Calibracao pre-beta passa de
+  20% para 40% e o plano geral de 37% para 39%. A aprovacao valida feedback,
+  preservacao de rascunho, retry e bloqueio de duplo clique no draft, mas nao
+  autoriza producao. O release acumulado de UX-C0/UX-C1 permanece em gate
+  separado.
+
+- A UX-C1 foi implementada e publicada somente no draft
+  `https://6a5d5646cfcba581e404012f--oraculo-v2-aize.netlify.app`. Os fluxos
+  criticos agora mostram envio, gravacao, sucesso e erro recuperavel; preservam
+  mensagens, arquivos e formularios ate o aceite do servidor; oferecem retry
+  seguro; recolhem detalhes tecnicos em um codigo de ocorrencia; e bloqueiam
+  cliques duplicados. O launcher mobile do Oraculo tambem volta a abrir. A
+  validacao passou 535 unitarios, 132 integracoes, lint, build, bundle, secret
+  scan, `verify:deploy` e inspecao responsiva sem overflow. Nao houve migration,
+  Edge Function, IA paga ou alteracao de producao. Gate do owner pendente;
+  progresso permanece geral 37% e Plano 3 em 20%.
+
+- O owner aprovou o gate visual da UX-C0 em 2026-07-19. A Calibracao pre-beta
+  passa de 0% para 20% e o plano geral de 35% para 37%. O draft permanece como
+  evidencia e producao continua inalterada; a proxima fatia e UX-C1, com
+  briefing obrigatorio antes de alterar feedback e recuperacao dos fluxos
+  criticos.
+
+- A UX-C0 foi implementada em branch local e publicada somente como draft de
+  avaliacao. Tokens de cor, contraste, tipografia, raio, sombra e motion agora
+  seguem o Design System; `Button`, `Card`, `StatusBadge` e o novo `Field`
+  consolidam os estados basicos, e acesso, recuperacao de senha e onboarding
+  usam o controle visual comum. O draft
+  `https://6a5d183bbe39944dbe344cf4--oraculo-v2-aize.netlify.app` passou 528
+  unitarios, lint, build, bundle, `verify:deploy`, foco de 2 px e inspecao sem
+  overflow em 1280 x 720 e 390 x 844. Producao, dados, IA e Edge Functions nao
+  foram alterados; custo US$ 0. Gate do owner pendente, portanto o progresso
+  permanece geral 35% e Plano 3 em 0%.
+
+- O owner aprovou o DDR UX-P2 em 2026-07-19. A Pesquisa de Usabilidade passa de
+  70% para 100% e o plano geral de 32% para 35%. O contrato de contexto,
+  estados, proposta dos seis rituais, confirmacao unica, retry, retomada e
+  paridade WhatsApp passa a orientar a futura UX-C3. A aprovacao nao altera nem
+  autoriza publicar o `OraclePanel`. Proxima fatia: briefing UX-C0.
+
+- A UX-P2 especificou a interacao atual com a IA sem mudar capacidades. A
+  auditoria somente leitura confirmou contexto incompleto, envios comuns sem
+  feedback, Markdown literal, importacoes longas na conversa, proposta tipada
+  em apenas tres dos seis rituais e launcher mobile ainda sem resposta visivel.
+  O DDR define contexto persistente, estados pensando/gravando/erro, proposta
+  separada, previa dos seis rituais, revisao antes/depois, uma confirmacao,
+  ajuste, descarte, retry idempotente, sucesso com documento e paridade natural
+  no WhatsApp. Gate do owner pendente; progresso permanece geral 32% e Plano 2
+  em 70%. Custo US$ 0, sem runtime, dados, mensagens, IA ou deploy.
+
+- O owner aprovou o DDR UX-P1 e o Design System em 2026-07-19. A Pesquisa de
+  Usabilidade passa de 40% para 70% e o plano geral de 29% para 32%. A aprovacao
+  torna tokens e contratos a fonte visual das futuras UX-C0/C4, mas nao altera
+  nem autoriza publicar o frontend. A proxima fatia e UX-P2.
+
+- A UX-P1 especificou o sistema de design minimo sem alterar o frontend. O
+  inventario encontrou seis primitivas, 28 arquivos com formularios locais,
+  70+ cores hexadecimais e raios fragmentados. Contraste atual de texto
+  terciario (2,57:1) e alerta (4,48:1) ficou abaixo de AA; o DDR propoe tokens
+  corrigidos, raio maximo de 8 px, borda antes de sombra, status neutro, uma
+  acao primaria por contexto e contratos de Button, Card, Field, Dialog, Tabs,
+  listas e feedback. Gate do owner pendente; progresso permanece geral 29% e
+  Plano 2 em 40%. Custo US$ 0, sem runtime, dado, IA ou deploy.
+
+- O owner aprovou o DDR e o caminho critico da UX-P0 em 2026-07-19. A Pesquisa
+  de Usabilidade passa de 0% para 40% e o plano geral de 25% para 29%. A proxima
+  fatia e UX-P1, que especificara o sistema de design minimo sem alterar o
+  runtime. O gate nao autoriza ainda implementar as correcoes UX-C0/C4.
+
+- A UX-P0 foi executada em producao somente leitura, em desktop 1280 x 720 e
+  celular 390 x 844, sem gravar dado ou enviar mensagem. O DDR
+  `plans/ddr/UX-P0-auditoria-friccao.md` preserva o que funciona e prioriza tres
+  bloqueios mobile: modal de importacao com campos cobertos, Plano Estrategico
+  com overflow horizontal e launcher do Oraculo sem resposta visivel ao clique.
+  Tambem registra estados semanticamente falsos, acoes duplicadas e texto
+  tecnico exposto. Gate do owner pendente; progresso continua geral 25% e Plano
+  2 em 0%. Custo US$ 0, sem runtime, dado, IA ou deploy.
+
+- O programa integrado ganhou acompanhamento objetivo de progresso. O painel
+  `plans/2026-07-19-painel-progresso-geral.md` divide o roadmap em oito planos
+  especificos, com pesos que somam 100 pontos, etapas pontuadas e gates. Estado
+  inicial: plano geral 25%; Fundacao Tecnica e Qualidade 100%; Pesquisa de
+  Usabilidade 0%; proxima fatia UX-P0. Uma fatia so soma depois de aprovada, e
+  todo agente deve reportar geral/especifico antes e depois. Nenhuma mudanca de
+  runtime, dado, deploy ou custo de IA.
+
+- O owner redefiniu R1 e a abertura do uso real no plano-mestre. R1 agora e a
+  Revisao Semestral do Plano Estrategico Anual inteiro, baseada nos resultados,
+  KPIs, evidencias, fechamentos e contexto de T1/T2; a entrega inclui Resumo
+  Estrategico do Semestre, lacunas e proposta unica para o segundo semestre. A
+  antiga revisao isolada de objetivo e o piloto de um gestor em clone foram
+  substituidos por R1A/R1B e por um beta monitorado com todos os gestores em
+  producao. O1-O7 viraram jornadas de cobertura dentro do beta e B2 define
+  triagem continua: P0 pausa o fluxo afetado, P1 recebe contorno/correcao e P2
+  alimenta acabamento. Nenhuma mudanca de runtime, dado, deploy ou custo de IA.
+
+- Os planos de qualidade operacional, pre-piloto, programa de UX e backlog H3 foram integrados em `plans/2026-07-19-plano-mestre-evolucao-integrado.md`. A nova ordem preserva todas as fatias, mas divide o acabamento H1 em calibracao minima antes do primeiro gestor e restante orientado por evidencia depois. Sequencia: UX-P0/P2, UX-C0/C4, revisao anual R1, gestor em clone G0, correcoes G1, O1-O7 reais, acabamento restante, O8 e EV1-EV12 somente por gatilho. Nenhuma mudanca de runtime, dado ou custo de IA.
+
 - O ensaio trimestral anterior a O1 foi declarado descartavel e removido da base ativa por transacao restrita a IDs exatos. Foram eliminados sessoes, conversas, 122 mensagens e artefatos de negocio exclusivos do ensaio; 1 Plano Estrategico Anual, 30 documentos historicos, os objetivos oficiais e o projeto anual permaneceram com fingerprints identicos. O conteudo do ensaio nao e baseline nem memoria reutilizavel. O plano-mestre agora executa design, revisao anual real e usabilidade assistida antes da O1 oficial. A limpeza custou US$ 0.
 
 - A retomada do ensaio descartavel passou em producao depois do merge `9f8287a` e do release protegido `29660983334`, que publicou somente `oracle-session`. A confirmacao retornou HTTP 400 sem mutacao, mas o frontend mantinha `Gravando...` porque nao tratava a rejeicao. O painel agora exibe o erro real, libera retry seguro e preserva a proposta/idempotencia. Validacao: 520 unitarios, lint e build/bundle verdes. Essa execucao nao conta como O1 oficial e seu conteudo foi removido. Evidencias em `docs/OPERATIONAL_PILOT_O1.md`.
