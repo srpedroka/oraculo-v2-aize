@@ -26,9 +26,9 @@ import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-t
 import { callModelForFunction } from "./call-for-function.ts";
 import { PLANNING_SESSION_OUTPUT } from "./session-output-schema.ts";
 import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.ts";
+import { replayedSessionConfirmation } from "./session-confirmation.ts";
 import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
-import { documentTypeFromProposalType } from "./plan-documents.ts";
 import { applyProposal } from "./proposals.ts";
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
@@ -44,7 +44,6 @@ import {
 } from "./untrusted-content.ts";
 import {
   asText,
-  currentYearFromPeriod,
   formatReadyMonthlyPlanReply,
   formatReadyQuarterlyPlanReply,
   formatReadyStrategicPlanReply,
@@ -578,23 +577,15 @@ export async function processPlanningMessage(
   return { session: followUp?.session ?? updated, reply: finalReply, pendingProposal };
 }
 
-async function loadLatestDocumentForProposal(client: Client, session: any, proposal: any) {
-  const documentType = documentTypeFromProposalType(asText(proposal?.type));
-  if (!documentType) return null;
-  const period = documentType === "strategic"
-    ? String(proposal?.year ?? currentYearFromPeriod(session.period))
-    : asText(proposal?.period ?? proposal?.periodo, session.period);
-
-  let query = client
+async function loadLatestDocumentForSession(client: Client, session: any) {
+  const query = client
     .from("plan_documents")
     .select("*")
     .eq("org_id", session.org_id)
-    .eq("type", documentType)
-    .eq("period", period)
+    .eq("session_id", session.id)
     .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(1);
-  query = session.area_id ? query.eq("area_id", session.area_id) : query.is("area_id", null);
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data;
@@ -605,7 +596,12 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   if (error) throw error;
   if (!session) throw new Error("Sessão não encontrada");
   if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
-  if (!session.pending_proposal) throw new Error("Não há proposta pendente para confirmar");
+  if (!session.pending_proposal) {
+    const document = await loadLatestDocumentForSession(client, session);
+    const replay = replayedSessionConfirmation(session, document);
+    if (!replay) throw new Error("Não há proposta pendente para confirmar");
+    return replay;
+  }
 
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
@@ -629,7 +625,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   // e limpa pending_proposal atomicamente). O log de mensagens fica fora (cosmetico).
   const outcome = await runIdempotentCommand(key, async (tx) => {
     const summary = await applyProposal(tx, ensured.session, proposal, params.userId);
-    const document = channel === "whatsapp" ? await loadLatestDocumentForProposal(tx, ensured.session, proposal) : null;
+    const document = await loadLatestDocumentForSession(tx, ensured.session);
     const reply = isCloseSession
       ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?`
       : isReviewSession
@@ -666,7 +662,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   } catch (_) { /* log nao-critico */ }
 
   let document = null;
-  if (channel === "whatsapp" && outcome.result.documentId) {
+  if (outcome.result.documentId) {
     const { data, error: documentError } = await client
       .from("plan_documents")
       .select("*")
@@ -676,7 +672,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
     document = data;
   }
 
-  return { session: finalSession, reply, document };
+  return { session: finalSession, reply, document, replayed: outcome.replayed };
 }
 
 export async function abandonPlanningSession(client: Client, params: { sessionId: string; userId: string }) {

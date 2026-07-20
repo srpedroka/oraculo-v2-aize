@@ -1,5 +1,21 @@
 # Changelog
 
+- A UX-C3 foi implementada somente no draft/staging e aguarda o gate do owner.
+  O painel do Oraculo agora identifica ritual, empresa, area, periodo, fase e
+  progresso; mostra previa estruturada para plano anual, trimestral, mensal,
+  Revisao Estrategica e fechamentos mensal/trimestral; oferece uma unica acao
+  `Confirmar e gravar`, ajuste sem perda, descarte confirmado e sucesso com
+  acesso ao documento. Confirmacoes repetidas pelo app ou WhatsApp devolvem o
+  mesmo documento sem duplicar dados. O frontend preserva acesso a Documentos
+  durante a compatibilidade com o backend anterior. A regressao passou 554
+  unitarios, 132 integracoes com 2 skips opt-in esperados e E2E autenticado
+  desktop/mobile.
+  `oracle-session` foi publicada somente no staging; zero migration, IA paga ou
+  alteracao de producao. Draft:
+  `https://6a5e2b72df0f2fded70554e3--oraculo-v2-aize.netlify.app`, com
+  verificacao estrutural e smoke publico desktop/mobile verdes. Ate o gate,
+  geral permanece 41% e Plano 3 em 60%.
+
 - O owner aprovou o gate da UX-C2 em 2026-07-20. A Calibracao pre-beta passa
   de 40% para 60% e o plano geral de 39% para 41%. A aprovacao valida a clareza
   do caminho do gestor no draft, mas nao autoriza producao. Proxima fatia:

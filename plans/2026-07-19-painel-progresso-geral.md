@@ -16,7 +16,7 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 3 - Calibracao pre-beta: 60,0%**
 
-**Proxima acao: briefing da UX-C3 - Proposta e confirmacao da IA**
+**Proxima acao: gate do owner da UX-C3 - Proposta e confirmacao da IA**
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -79,13 +79,27 @@ UX-C2 foi executada no draft e aprovada pelo owner em 2026-07-20:
 - Plano 3 passa de 40% para 60% e o geral de 39% para 41%;
 - producao continua inalterada e exige autorizacao separada.
 
+UX-C3 foi executada no draft/staging e aguarda o gate do owner:
+
+- evidencia: `plans/ddr/UX-C3-proposta-confirmacao.md`;
+- draft: `https://6a5e2b72df0f2fded70554e3--oraculo-v2-aize.netlify.app`;
+- contexto e proposta cobrem os seis rituais existentes;
+- uma confirmacao primaria, ajuste, descarte e sucesso com documento;
+- repeticao pelo app ou WhatsApp devolve o mesmo documento sem duplicar dados;
+- 554 unitarios, 132 integracoes aprovadas, 2 skips opt-in esperados e jornada
+  autenticada desktop/mobile verde;
+- verificacao estrutural e smoke publico desktop/mobile do draft verdes;
+- zero migration, IA paga ou alteracao de producao;
+- enquanto o gate estiver pendente, Plano 3 permanece 60% e o geral 41%;
+- se aprovada, Plano 3 passa a 80% e o geral a 43%.
+
 ## 2. Os oito planos
 
 | Plano | Peso geral | Progresso especifico | Contribuicao geral | Estado |
 | --- | ---: | ---: | ---: | --- |
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
-| [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 60% | 6,0% | UX-C2 aprovada; UX-C3 e a proxima |
+| [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 60% | 6,0% | UX-C3 em revisao; gate pendente |
 | [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |

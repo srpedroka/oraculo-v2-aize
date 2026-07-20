@@ -10,7 +10,7 @@ import type {
   ObjectiveKpiSuggestion,
 } from "../types";
 import { callEdgeFunction, requireClient } from "./store-client";
-import type { AppAction } from "./store-contract";
+import type { AppAction, ConfirmSessionProposalResult } from "./store-contract";
 import { toKeyActionInsert, toObjectiveInsert } from "./domains/planning-mappers";
 import { conflictMessage } from "../lib/optimisticConcurrency";
 import {
@@ -491,9 +491,14 @@ export function useStoreDispatch({
           sessionId: action.sessionId,
           channel: "web",
         })
-          .then(() => {
+          .then((result) => {
             invalidateDomains(PLANNING_MUTATION_DOMAINS);
-            action.onSuccess?.();
+            const confirmation = result as Omit<ConfirmSessionProposalResult, "sessionId">;
+            action.onSuccess?.({
+              ...confirmation,
+              sessionId: action.sessionId,
+              document: confirmation.document ?? null,
+            });
           })
           .catch((error) => {
             action.onError?.(error instanceof Error ? error.message : "Não foi possível gravar o plano.");

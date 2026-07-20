@@ -1,12 +1,11 @@
 # Design System do Oraculo
 
-Status: **UX-P1, UX-P2 E UX-C0 A UX-C2 APROVADOS**
+Status: **UX-P1, UX-P2 E UX-C0 A UX-C2 APROVADOS; UX-C3 EM REVISAO**
 
 Aplicacao UX-C0: os tokens e as primitivas `Button`, `Card`, `StatusBadge` e
 `Field` foram aprovados no draft da branch local `codex/ux-c0-foundation`.
 Acesso, recuperacao de senha e onboarding ja consomem o controle visual comum.
-Producao permanece inalterada, e as proximas mudancas de fluxo seguem para
-UX-C2 a UX-C4.
+Producao permanece inalterada; a proxima calibracao de fluxo e a UX-C4.
 
 Aplicacao UX-C1: `InlineFeedback` e o contrato de erro recuperavel foram
 aplicados aos fluxos criticos no draft da branch local
@@ -18,10 +17,17 @@ status semanticos e listas mais compactas foram aplicados ao caminho critico do
 gestor. O owner aprovou o gate em 2026-07-20; a publicacao em producao continua
 como gate separado.
 
+Aplicacao UX-C3: o contrato de interacao da IA foi aplicado no draft e staging.
+O painel mostra contexto e fase, previa os seis rituais, concentra a decisao em
+uma confirmacao, preserva proposta em ajuste/erro, confirma descarte e liga o
+sucesso ao documento canonico. Repetir a confirmacao no app ou WhatsApp retorna
+o mesmo documento sem nova gravacao. O gate do owner e a producao continuam
+pendentes e separados.
+
 Fontes de decisao:
 
 - `plans/ddr/UX-P1-design-system.md` - aprovada;
-- `plans/ddr/UX-P2-interacao-ia.md` - aprovada para aplicacao futura em UX-C3.
+- `plans/ddr/UX-P2-interacao-ia.md` - aprovada e aplicada na UX-C3.
 
 ## 1. Principios
 
@@ -314,8 +320,8 @@ UX-C0. A aprovacao deste documento define a direcao, nao autoriza um deploy.
 
 ## 7. Interacao com a IA
 
-Este anexo materializa a UX-P2 aprovada. Ele orienta a futura UX-C3, mas nao
-autoriza por si so alterar `OraclePanel`, prompts, sessoes ou WhatsApp.
+Este anexo materializa a UX-P2 aprovada e foi aplicado na UX-C3 em draft e
+staging. O gate do owner e a publicacao em producao permanecem separados.
 
 ### Principios
 

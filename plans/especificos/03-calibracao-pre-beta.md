@@ -6,7 +6,7 @@ Progresso especifico: **60%**
 
 Contribuicao atual ao geral: **6,0%**
 
-Status: **EM ANDAMENTO - UX-C2 aprovada; UX-C3 e a proxima**
+Status: **EM ANDAMENTO - UX-C3 executada; gate do owner pendente**
 
 ## Objetivo
 
@@ -20,7 +20,7 @@ transformar a calibracao em redesign ou expansao funcional.
 | UX-C0. Fundacao visual | 20 | Aprovada | Componentes-base verdes |
 | UX-C1. Feedback e recuperacao | 20 | Aprovada | Erros/retry preservam trabalho |
 | UX-C2. Contexto e caminho critico | 20 | Aprovada | Jornada compreensivel |
-| UX-C3. Proposta e confirmacao | 20 | Nao iniciado | Uma confirmacao inequivoca |
+| UX-C3. Proposta e confirmacao | 20 | Em revisao | Uma confirmacao inequivoca |
 | UX-C4. Mobile e acessibilidade | 20 | Nao iniciado | Desktop e dois celulares verdes |
 | **Total** | **100** | **Em andamento** | **60%** |
 
@@ -83,3 +83,19 @@ A publicacao nao soma pontos adicionais.
 O owner aprovou o gate em 2026-07-20. O progresso oficial passa para 60% neste
 plano e 41% no geral. A UX-C3 recebe briefing antes de qualquer alteracao na
 interacao, e sua execucao continua sujeita a autorizacao separada.
+
+## Evidencia UX-C3
+
+- relatorio: `plans/ddr/UX-C3-proposta-confirmacao.md`;
+- draft: `https://6a5e2b72df0f2fded70554e3--oraculo-v2-aize.netlify.app`;
+- Function `oracle-session` publicada somente no staging;
+- 554 unitarios, 132 integracoes aprovadas e 2 skips opt-in esperados;
+- jornada autenticada e inspecao visual desktop/mobile verdes;
+- verificacao estrutural e smoke publico do draft desktop/mobile verdes;
+- app e WhatsApp devolvem o mesmo documento em confirmacao repetida sem nova
+  mutacao;
+- zero migration, dado permanente, IA paga ou alteracao de producao.
+
+O gate do owner esta pendente. Por isso o progresso oficial continua em 60%
+neste plano e 41% no geral. Se aprovada, a UX-C3 leva o Plano 3 a 80% e o geral
+a 43%; producao continuara dependendo de autorizacao separada.

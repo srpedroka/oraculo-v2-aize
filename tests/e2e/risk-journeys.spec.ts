@@ -127,6 +127,29 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
         after_data: { requireMfaForCriticalActions: true },
         request_id: `e2e-audit-${Date.now()}`,
       }),
+      service.from("planning_sessions").insert({
+        org_id: org.orgId,
+        area_id: org.areas.comercialId,
+        user_id: org.owner.id,
+        type: "quarterly",
+        period: "T3 2026",
+        phase: "sintese",
+        state: {},
+        pending_proposal: {
+          type: "save_quarterly_plan",
+          period: "T3 2026",
+          annualAlignment: { status: "linked", strategicObjectiveTitle: "Expandir capacidade digital E2E" },
+          quarterlyObjectives: [{
+            title: "Implantar a rotina comercial E2E",
+            result: "Rotina usada por toda a equipe",
+            metric: "Adoção da rotina",
+            target: "90%",
+            owner: "Owner E2E",
+            period: "T3 2026",
+          }],
+        },
+        status: "active",
+      }),
     ];
     const seeded = await Promise.all(seedOperations);
     const seedError = seeded.find((result) => result.error)?.error;
@@ -174,6 +197,17 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await login(page, org.owner.email, org.owner.password);
     await expect(page.getByRole("heading", { name: "Dashboard executivo" })).toBeVisible();
     await expect(page.getByText("Faturamento E2E")).toBeVisible();
+
+    await page.getByRole("button", { name: "Abrir Oráculo" }).click();
+    await expect(page.getByText("Pronto para conferir")).toBeVisible();
+    await expect(page.getByText("Plano Trimestral · Comercial · T3 2026")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmar e gravar" })).toHaveCount(1);
+    await page.getByRole("button", { name: "Ajustar" }).click();
+    await expect(page.getByPlaceholder("O que você quer mudar?")).toBeVisible();
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`oracle-proposta-${testInfo.project.name}.png`), fullPage: true });
+    }
+    await page.getByRole("button", { name: "Fechar Oráculo" }).click();
 
     await page.getByRole("button", { name: "Lançar / Editar" }).click();
     await expect(page.getByRole("heading", { name: "Lançar KPIs" }).first()).toBeVisible();

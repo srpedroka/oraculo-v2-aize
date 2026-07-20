@@ -1,12 +1,14 @@
-import { Loader2, Maximize2, Minimize2, Paperclip, Send, Sparkles, X } from "lucide-react";
+import { CheckCircle2, FileText, Loader2, Maximize2, Minimize2, Paperclip, Send, Sparkles, X } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { createMessageId, generateWeeklyReview } from "../lib/oracle";
 import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
+import type { ConfirmSessionProposalResult } from "../state/store-contract";
 import { Button } from "./ui/Button";
 import { InlineFeedback } from "./ui/InlineFeedback";
+import { ReadableText } from "./ui/ReadableText";
 
 type ChatTarget =
   | { kind: "session"; sessionId: string }
@@ -375,6 +377,133 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
   );
 }
 
+function MonthlyProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  if (asText(proposal.type) !== "save_monthly_plan") return null;
+
+  const alignment = asRecord(proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral);
+  const objectives = asRecordArray(proposal.objectives ?? proposal.objetivos_mes);
+  const actions = objectives.flatMap((objective) => asRecordArray(objective.actions ?? objective.acoes));
+  const pendingDecisions = asRecordArray(proposal.pendingDecisions ?? proposal.decisoes_pendentes);
+  const blockers = asTextArray(proposal.blockers ?? proposal.bloqueios);
+  const risks = asTextArray(proposal.risks ?? proposal.riscos);
+
+  return (
+    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
+      <div>
+        <p className="text-caption font-semibold uppercase text-text-tertiary">Prévia do que será gravado</p>
+        <p className="mt-1 text-base font-semibold text-text">Plano Mensal {asText(proposal.period)}</p>
+        <p>Até cinco ações serão salvas com seus responsáveis, prazos e critérios de conclusão.</p>
+      </div>
+
+      <div className="grid gap-1 border-y border-border-subtle py-2">
+        <DetailLine label="Vínculo trimestral" value={alignment.quarterlyObjectiveTitle ?? alignment.objectiveTitle ?? alignment.rationale} />
+        <DetailLine label="Cadência" value={proposal.cadence ?? proposal.cadencia} />
+        <DetailLine label="Próximo compromisso" value={proposal.nextCommitment ?? proposal.proximo_compromisso} />
+      </div>
+
+      {objectives.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-text">Resultados do mês ({objectives.length})</p>
+          {objectives.map((objective, index) => (
+            <div key={`${asText(objective.title)}-${index}`} className="border-b border-border-subtle pb-2 last:border-0 last:pb-0">
+              <p className="font-semibold text-text">{asText(objective.title) || `Resultado ${index + 1}`}</p>
+              <DetailLine label="Resultado" value={objective.result} />
+              <p className="text-caption text-text-tertiary">
+                {[
+                  asText(objective.current) ? `Atual: ${asText(objective.current)}` : "",
+                  asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
+                  asText(objective.owner) ? `Dono: ${asText(objective.owner)}` : "",
+                  asText(objective.deadline) ? `Prazo: ${asText(objective.deadline)}` : "",
+                ].filter(Boolean).join(" · ") || "Campos materiais não informados serão mantidos em branco."}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {actions.length ? (
+        <div className="space-y-1 border-t border-border-subtle pt-2">
+          <p className="font-semibold text-text">Ações ({actions.length})</p>
+          {actions.map((action, index) => (
+            <p key={`${asText(action.description ?? action.descricao)}-${index}`}>
+              <span className="font-medium text-text">{asText(action.description ?? action.descricao) || `Ação ${index + 1}`}</span>
+              {[
+                asText(action.owner ?? action.responsavel) ? `Dono: ${asText(action.owner ?? action.responsavel)}` : "",
+                asText(action.deadline ?? action.prazo) ? `Prazo: ${asText(action.deadline ?? action.prazo)}` : "",
+                asText(action.completionCriterion ?? action.criterio_conclusao) ? `Conclui quando: ${asText(action.completionCriterion ?? action.criterio_conclusao)}` : "",
+              ].filter(Boolean).length ? ` · ${[
+                asText(action.owner ?? action.responsavel) ? `Dono: ${asText(action.owner ?? action.responsavel)}` : "",
+                asText(action.deadline ?? action.prazo) ? `Prazo: ${asText(action.deadline ?? action.prazo)}` : "",
+                asText(action.completionCriterion ?? action.criterio_conclusao) ? `Conclui quando: ${asText(action.completionCriterion ?? action.criterio_conclusao)}` : "",
+              ].filter(Boolean).join(" · ")}` : ""}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {pendingDecisions.length || blockers.length || risks.length ? (
+        <div className="grid gap-1 border-t border-border-subtle pt-2">
+          {pendingDecisions.length ? <DetailLine label="Decisões pendentes" value={`${pendingDecisions.length} registrada(s)`} /> : null}
+          {blockers.length ? <DetailLine label="Bloqueios" value={blockers.join("; ")} /> : null}
+          {risks.length ? <DetailLine label="Riscos" value={risks.join("; ")} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CloseProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  const type = asText(proposal.type);
+  if (type !== "month_close" && type !== "quarter_close") return null;
+
+  const reviews = asRecordArray(proposal.reviews ?? proposal.revisao ?? proposal.revisao_tri);
+  const pendencies = asRecordArray(proposal.pendencies ?? proposal.pendencias);
+  const pulse = asRecord(proposal.managementPulse ?? proposal.management_pulse);
+  const learnings = asTextArray(proposal.learnings ?? proposal.aprendizados ?? proposal.learningBalance ?? proposal.balanco_aprendizado);
+  const title = type === "month_close" ? "Fechamento do Mês" : "Fechamento do Trimestre";
+
+  return (
+    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
+      <div>
+        <p className="text-caption font-semibold uppercase text-text-tertiary">Prévia do que será gravado</p>
+        <p className="mt-1 text-base font-semibold text-text">{title} {asText(proposal.period ?? proposal.periodo)}</p>
+        <p>Resultados, evidências, aprendizados e compromissos serão registrados após uma confirmação.</p>
+      </div>
+
+      <DetailLine label="Resumo" value={proposal.summary ?? proposal.resumo} />
+
+      {reviews.length ? (
+        <div className="space-y-2 border-t border-border-subtle pt-2">
+          <p className="font-semibold text-text">Resultados revisados ({reviews.length})</p>
+          {reviews.map((review, index) => (
+            <div key={`${asText(review.objectiveTitle ?? review.title ?? review.objectiveId)}-${index}`} className="border-b border-border-subtle pb-2 last:border-0 last:pb-0">
+              <p className="font-semibold text-text">{asText(review.objectiveTitle ?? review.title) || `Objetivo ${index + 1}`}</p>
+              <p>
+                {[
+                  asText(review.expected ?? review.target) ? `Esperado: ${asText(review.expected ?? review.target)}` : "",
+                  asText(review.achieved ?? review.actual ?? review.progressFinal) ? `Realizado: ${asText(review.achieved ?? review.actual ?? review.progressFinal)}` : "",
+                  asText(review.statusFinal ?? review.status) ? `Status: ${asText(review.statusFinal ?? review.status)}` : "",
+                ].filter(Boolean).join(" · ")}
+              </p>
+              <DetailLine label="Evidência" value={review.evidence ?? review.evidencia} />
+              <DetailLine label="Aprendizado" value={review.learning ?? review.aprendizado} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="grid gap-1 border-t border-border-subtle pt-2">
+        {learnings.length ? <DetailLine label="Aprendizados" value={learnings.join("; ")} /> : null}
+        {pendencies.length ? <DetailLine label="Pendências" value={`${pendencies.length} com decisão registrada`} /> : null}
+        <DetailLine label="Confiança" value={pulse.confidence ?? pulse.confianca ?? proposal.confidence} />
+        <DetailLine label="Bloqueio" value={pulse.blocker ?? pulse.bloqueio} />
+        <DetailLine label="Próximo compromisso" value={pulse.next_commitment ?? pulse.nextCommitment ?? proposal.nextCommitment} />
+        <DetailLine label="Próximo período" value={proposal.nextPeriod ?? proposal.next_period} />
+      </div>
+    </div>
+  );
+}
+
 function fieldLabel(value: unknown) {
   const field = asText(value);
   if (field === "metric") return "Indicador";
@@ -389,6 +518,7 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
   if (asText(proposal.type) !== "apply_strategic_review") return null;
 
   const adjustments = asRecordArray(proposal.adjustments ?? proposal.ajustes);
+  const unchanged = asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual);
 
   return (
     <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
@@ -404,7 +534,7 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
 
       {adjustments.length ? (
         <div className="space-y-2">
-          <p className="font-semibold text-[#1D1D1F]">Ajustes ({adjustments.length})</p>
+          <p className="font-semibold text-[#1D1D1F]">Vai mudar ({adjustments.length})</p>
           {adjustments.map((adjustment, index) => (
             <div key={`${asText(adjustment.objectiveId ?? adjustment.objetivo_id)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(adjustment.title ?? adjustment.titulo) || `Objetivo ${index + 1}`}</p>
@@ -419,13 +549,45 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
       ) : (
         <p className="rounded-xl bg-[#FFF8E8] px-3 py-2 text-[#7A4E12]">Nenhum ajuste estruturado ainda.</p>
       )}
+
+      <div className="border-t border-border-subtle pt-2">
+        <p className="font-semibold text-text">Permanece igual</p>
+        <p className="mt-1">{unchanged.length ? unchanged.join("; ") : "Tudo o que não aparece em Vai mudar será preservado."}</p>
+      </div>
     </div>
+  );
+}
+
+function ProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  return (
+    <>
+      <StrategicProposalPreview proposal={proposal} />
+      <QuarterlyProposalPreview proposal={proposal} />
+      <MonthlyProposalPreview proposal={proposal} />
+      <CloseProposalPreview proposal={proposal} />
+      <StrategicReviewProposalPreview proposal={proposal} />
+    </>
+  );
+}
+
+function AttachmentReceipt({ value }: { value: string }) {
+  const [header, ...content] = value.split(/\n\n/);
+  const fileName = header.replace(/^Arquivo anexado no chat do app:\s*/i, "").trim();
+  return (
+    <details className="text-xs">
+      <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-text">
+        <FileText aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span className="min-w-0 truncate">{fileName || "Arquivo enviado"}</span>
+      </summary>
+      <ReadableText value={content.join("\n\n")} className="mt-2 border-t border-border-subtle pt-2 text-xs" />
+    </details>
   );
 }
 
 export function OraclePanel() {
   const { state, dispatch } = useAppState();
   const location = useLocation();
+  const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [selectedObjectiveId, setSelectedObjectiveId] = useState(state.objectives[0]?.id ?? "");
@@ -441,11 +603,37 @@ export function OraclePanel() {
   const [confirmationError, setConfirmationError] = useState<RecoverableFeedback | null>(null);
   const [abandoningSessionId, setAbandoningSessionId] = useState<string | null>(null);
   const [abandonError, setAbandonError] = useState<RecoverableFeedback | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [adjustingSessionId, setAdjustingSessionId] = useState<string | null>(null);
+  const [discardConfirmSessionId, setDiscardConfirmSessionId] = useState<string | null>(null);
+  const [proposalSuccess, setProposalSuccess] = useState<ConfirmSessionProposalResult | null>(null);
+  const [proposalNotice, setProposalNotice] = useState<string | null>(null);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLInputElement | null>(null);
   const mode = state.ui.oracleMode;
   const isDashboard = location.pathname === "/";
-  const activeSession = state.activeSession;
+  const availableSessions = useMemo(() => {
+    if (state.planningSessions.length) return state.planningSessions;
+    return state.activeSession ? [state.activeSession] : [];
+  }, [state.activeSession, state.planningSessions]);
+  const activeSession = useMemo(
+    () => availableSessions.find((session) => session.id === selectedSessionId) ?? availableSessions[0] ?? null,
+    [availableSessions, selectedSessionId],
+  );
+  const visibleMessages = useMemo(() => {
+    const conversationId = activeSession?.conversationId
+      ?? state.chatMessages.at(-1)?.conversationId
+      ?? null;
+    if (!conversationId) return state.chatMessages;
+    return state.chatMessages.filter((chatMessage) => chatMessage.conversationId === conversationId);
+  }, [activeSession?.conversationId, state.chatMessages]);
+  const activeArea = activeSession?.areaId
+    ? state.areas.find((area) => area.id === activeSession.areaId) ?? null
+    : null;
+  const confirmedDocument = proposalSuccess?.document
+    ?? state.planDocuments.find((document) => document.sessionId === proposalSuccess?.sessionId)
+    ?? null;
   const phases = activeSession ? SESSION_PHASES[activeSession.type] : [];
   const phaseIndex = activeSession ? Math.max(0, phases.indexOf(activeSession.phase)) : 0;
   const phaseProgress = phases.length ? ((phaseIndex + 1) / phases.length) * 100 : 0;
@@ -461,6 +649,11 @@ export function OraclePanel() {
     }
   }, [selectedObjectiveId, state.objectives]);
 
+  useEffect(() => {
+    if (selectedSessionId && availableSessions.some((session) => session.id === selectedSessionId)) return;
+    setSelectedSessionId(availableSessions[0]?.id ?? null);
+  }, [availableSessions, selectedSessionId]);
+
   // Libera o botao quando a proposta e aplicada/descartada (pendingProposal some) ou troca a sessao.
   useEffect(() => {
     if (!activeSession?.pendingProposal) {
@@ -468,6 +661,8 @@ export function OraclePanel() {
       setConfirmationError(null);
       setAbandoningSessionId(null);
       setAbandonError(null);
+      setAdjustingSessionId(null);
+      setDiscardConfirmSessionId(null);
     }
   }, [activeSession?.id, activeSession?.pendingProposal]);
 
@@ -483,7 +678,7 @@ export function OraclePanel() {
       if (messagesList) messagesList.scrollTop = messagesList.scrollHeight;
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeSession?.id, activeSession?.phase, mode, state.chatMessages.length]);
+  }, [activeSession?.id, activeSession?.phase, mode, visibleMessages.length]);
 
   function setMode(nextMode: typeof mode) {
     dispatch({ type: "set_oracle_mode", mode: nextMode });
@@ -499,6 +694,10 @@ export function OraclePanel() {
 
   function sendChatMessage(payload: PendingChatMessage) {
     if (sendingMessage) return;
+    if (payload.kind === "session") {
+      setProposalSuccess(null);
+      setProposalNotice(null);
+    }
     setSendingMessage(true);
     setMessageError(null);
     setFailedMessage(payload);
@@ -508,6 +707,7 @@ export function OraclePanel() {
         setSendingMessage(false);
         setFailedMessage(null);
         setMessageError(null);
+        if (payload.kind === "session") setAdjustingSessionId(null);
         setMessage((current) => current.trim() === payload.text ? "" : current);
       },
       (errorMessage) => {
@@ -610,7 +810,13 @@ export function OraclePanel() {
     dispatch({
       type: "confirm_session_proposal",
       sessionId,
-      onSuccess: () => setConfirmingSessionId(null),
+      onSuccess: (result) => {
+        setConfirmingSessionId(null);
+        setProposalSuccess(result);
+        setProposalNotice(null);
+        setAdjustingSessionId(null);
+        setDiscardConfirmSessionId(null);
+      },
       onError: (errorMessage) => {
         setConfirmingSessionId(null);
         setConfirmationError(recoverableFeedback(
@@ -631,7 +837,12 @@ export function OraclePanel() {
     dispatch({
       type: "abandon_session",
       sessionId,
-      onSuccess: () => setAbandoningSessionId(null),
+      onSuccess: () => {
+        setAbandoningSessionId(null);
+        setDiscardConfirmSessionId(null);
+        setAdjustingSessionId(null);
+        setProposalNotice("Proposta descartada. Nenhum dado foi gravado.");
+      },
       onError: (errorMessage) => {
         setAbandoningSessionId(null);
         setAbandonError(recoverableFeedback(
@@ -642,6 +853,30 @@ export function OraclePanel() {
         ));
       },
     });
+  }
+
+  function beginProposalAdjustment(sessionId: string) {
+    setConfirmationError(null);
+    setAbandonError(null);
+    setProposalNotice(null);
+    setDiscardConfirmSessionId(null);
+    setAdjustingSessionId(sessionId);
+    window.requestAnimationFrame(() => messageInputRef.current?.focus());
+  }
+
+  function selectSession(sessionId: string) {
+    setSelectedSessionId(sessionId);
+    setConfirmationError(null);
+    setAbandonError(null);
+    setProposalSuccess(null);
+    setProposalNotice(null);
+    setAdjustingSessionId(null);
+    setDiscardConfirmSessionId(null);
+  }
+
+  function openConfirmedDocument() {
+    setMode("minimized");
+    navigate(confirmedDocument ? `/documentos/${confirmedDocument.id}/imprimir` : "/documentos");
   }
 
   function runWeeklyReview() {
@@ -718,7 +953,7 @@ export function OraclePanel() {
                 <h2 className="truncate text-sm font-semibold">Oráculo</h2>
                 <p className="truncate text-xs text-white/75">
                   {activeSession
-                    ? `Conduzindo ${SESSION_TYPE_LABEL[activeSession.type]} · ${PHASE_LABEL[activeSession.phase] ?? activeSession.phase} · ${activeSession.period}`
+                    ? `${SESSION_TYPE_LABEL[activeSession.type]} em andamento`
                     : `IA Estratégica · ${state.organization?.name}`}
                 </p>
               </div>
@@ -744,7 +979,36 @@ export function OraclePanel() {
           </div>
 
           {activeSession ? (
-            <div className="border-b border-black/5 bg-[#075E54] px-4 pb-3">
+            <div className="space-y-2 border-b border-black/5 bg-[#075E54] px-4 pb-3 text-white">
+              {availableSessions.length > 1 ? (
+                <label className="block">
+                  <span className="sr-only">Condução atual</span>
+                  <select
+                    aria-label="Condução atual"
+                    value={activeSession.id}
+                    onChange={(event) => selectSession(event.target.value)}
+                    className="h-8 w-full rounded-control border border-white/25 bg-white/10 px-2 text-xs font-medium text-white outline-none focus:border-white"
+                  >
+                    {availableSessions.map((session) => {
+                      const area = session.areaId ? state.areas.find((item) => item.id === session.areaId)?.name : "Empresa inteira";
+                      return (
+                        <option key={session.id} value={session.id} className="text-text">
+                          {SESSION_TYPE_LABEL[session.type]} · {area || "Área"} · {session.period}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              ) : null}
+              <div>
+                <p className="truncate text-xs font-semibold">{SESSION_TYPE_LABEL[activeSession.type]}</p>
+                <p className="truncate text-[11px] text-white/75">
+                  {state.organization?.name} · {activeArea?.name ?? "Empresa inteira"} · {activeSession.period}
+                </p>
+                <p className="truncate text-[11px] text-white/75">
+                  {PHASE_LABEL[activeSession.phase] ?? "Condução"} · etapa {phaseIndex + 1} de {phases.length || 1}
+                </p>
+              </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
                 <div className="h-full rounded-full bg-[#25D366] transition-all" style={{ width: `${phaseProgress}%` }} />
               </div>
@@ -752,7 +1016,7 @@ export function OraclePanel() {
           ) : null}
 
           <div ref={messagesListRef} className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
-            {!state.chatMessages.length ? (
+            {!visibleMessages.length ? (
               <div className="mx-auto mt-4 max-w-[280px] rounded-xl border border-black/5 bg-white/80 px-3 py-3 text-center shadow-sm">
                 <p className="text-sm font-semibold text-[#1D1D1F]">
                   {activeSession ? "Condução pronta para continuar" : "Comece uma conversa com o Oráculo"}
@@ -764,7 +1028,7 @@ export function OraclePanel() {
                 </p>
               </div>
             ) : null}
-            {state.chatMessages.map((chatMessage) => (
+            {visibleMessages.map((chatMessage) => (
               <div
                 key={chatMessage.id}
                 className={[
@@ -774,27 +1038,61 @@ export function OraclePanel() {
                     : "ml-auto rounded-tr-sm bg-[#DCF8C6] text-[#1D1D1F]",
                 ].join(" ")}
               >
-                <p>{chatMessage.text}</p>
+                {chatMessage.text.startsWith("Arquivo anexado no chat do app:") ? (
+                  <AttachmentReceipt value={chatMessage.text} />
+                ) : (
+                  <ReadableText value={chatMessage.text} className="space-y-1 text-[13px] leading-5" />
+                )}
               </div>
             ))}
           </div>
 
-          {activeSession?.pendingProposal ? (
+          {proposalSuccess ? (
             <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm">
-                <p className="text-sm font-semibold text-[#1D1D1F]">Pronto para gravar</p>
-                <p className="mt-1 text-xs leading-5 text-[#5F6368]">
-                  {proposalTitle(activeSession.pendingProposal)} preparado. Confirme para salvar no sistema ou peça ajustes na conversa.
+              <div role="status" className="rounded-card border border-status-success/25 bg-status-success-bg p-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-status-success" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-text">{proposalSuccess.replayed ? "Registro já estava gravado" : "Registro gravado"}</p>
+                    <p className="mt-1 text-xs leading-5 text-text-secondary">
+                      {confirmedDocument
+                        ? `${confirmedDocument.title} (v${confirmedDocument.version}) está salvo em Documentos.`
+                        : proposalSuccess.reply}
+                    </p>
+                    <Button className="mt-2" size="sm" variant="secondary" icon={FileText} onClick={openConfirmedDocument}>
+                      {confirmedDocument ? "Abrir documento" : "Abrir Documentos"}
+                    </Button>
+                  </div>
+                  <button type="button" onClick={() => setProposalSuccess(null)} className="rounded-control p-1 text-text-secondary hover:bg-white" aria-label="Fechar confirmação">
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {proposalNotice && !activeSession?.pendingProposal ? (
+            <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
+              <InlineFeedback tone="success" title={proposalNotice} description="Você pode iniciar ou retomar outra condução quando quiser." />
+            </div>
+          ) : null}
+
+          {activeSession?.pendingProposal && !proposalSuccess ? (
+            <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
+              <div className="rounded-card border border-border bg-surface/95 p-3 shadow-card">
+                <p className="text-sm font-semibold text-text">
+                  {adjustingSessionId === activeSession.id ? "Ajustando a proposta" : "Pronto para conferir"}
                 </p>
-                <StrategicProposalPreview proposal={activeSession.pendingProposal} />
-                <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
-                <StrategicReviewProposalPreview proposal={activeSession.pendingProposal} />
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  {proposalTitle(activeSession.pendingProposal)} · {activeArea?.name ?? "Empresa inteira"} · {activeSession.period}
+                </p>
+                <ProposalPreview proposal={activeSession.pendingProposal} />
                 {confirmationError ? (
                   <InlineFeedback
                     className="mt-3"
                     tone="error"
                     title={confirmationError.title}
-                    description={confirmationError.description}
+                    description="Sua proposta continua pronta e nada foi duplicado."
                     occurrenceId={confirmationError.occurrenceId}
                     actionLabel="Tentar novamente"
                     onAction={() => confirmProposal(activeSession.id)}
@@ -813,47 +1111,54 @@ export function OraclePanel() {
                     actionLoading={abandoningSessionId === activeSession.id}
                   />
                 ) : null}
-                <div className="mt-3 grid gap-2">
-                  <Button
-                    type="button"
-                    className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
-                    loading={confirmingSessionId === activeSession.id}
-                    disabled={abandoningSessionId === activeSession.id}
-                    onClick={() => confirmProposal(activeSession.id)}
-                  >
-                    Confirmar e gravar
-                  </Button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
-                      onClick={() => {
-                        setConfirmationError(null);
-                        setAbandonError(null);
-                        setMessage("Quero ajustar: ");
-                      }}
-                    >
-                      Ajustar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      loading={abandoningSessionId === activeSession.id}
-                      disabled={confirmingSessionId === activeSession.id}
-                      onClick={() => abandonProposal(activeSession.id)}
-                    >
-                      Descartar
-                    </Button>
+
+                {discardConfirmSessionId === activeSession.id ? (
+                  <div role="alert" className="mt-3 rounded-card border border-status-warning/25 bg-status-warning-bg p-3">
+                    <p className="text-sm font-semibold text-text">Descartar este rascunho?</p>
+                    <p className="mt-1 text-xs text-text-secondary">A proposta será encerrada sem gravar dados.</p>
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => setDiscardConfirmSessionId(null)}>Manter proposta</Button>
+                      <Button variant="danger" size="sm" loading={abandoningSessionId === activeSession.id} onClick={() => abandonProposal(activeSession.id)}>Descartar</Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-3 grid gap-2">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      loading={confirmingSessionId === activeSession.id}
+                      disabled={abandoningSessionId === activeSession.id || adjustingSessionId === activeSession.id}
+                      onClick={() => confirmProposal(activeSession.id)}
+                    >
+                      Confirmar e gravar
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full"
+                        disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
+                        onClick={() => beginProposalAdjustment(activeSession.id)}
+                      >
+                        Ajustar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="quiet"
+                        className="w-full"
+                        disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
+                        onClick={() => setDiscardConfirmSessionId(activeSession.id)}
+                      >
+                        Descartar proposta
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : null}
 
-          {isDashboard ? (
+          {isDashboard && !activeSession && !proposalSuccess ? (
             <div className="space-y-3 border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -914,7 +1219,7 @@ export function OraclePanel() {
               />
             ) : null}
             {sendingMessage ? (
-              <InlineFeedback className="mb-2" tone="info" title="Enviando sua mensagem" description="O texto continua preservado até o Oráculo receber." />
+              <InlineFeedback className="mb-2" tone="info" title="Oráculo está pensando" description="Sua mensagem continua preservada até a resposta chegar." />
             ) : null}
             {messageError ? (
               <InlineFeedback
@@ -941,6 +1246,7 @@ export function OraclePanel() {
                 {attachmentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
               </button>
               <input
+                ref={messageInputRef}
                 value={message}
                 onChange={(event) => {
                   setMessage(event.target.value);
@@ -949,7 +1255,7 @@ export function OraclePanel() {
                     setFailedMessage(null);
                   }
                 }}
-                placeholder={activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
+                placeholder={adjustingSessionId === activeSession?.id ? "O que você quer mudar?" : activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
                 className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
               />
               <button
