@@ -1,5 +1,13 @@
 # Changelog
 
+- O owner decidiu que a R1 deve ser avaliada na pratica com o Plano Estrategico
+  Anual e os relatorios reais de T1/T2. O briefing foi revisado: R1A e um
+  preflight curto com inventario real somente em leitura e testes tecnicos no
+  staging; R1B e a conversa real no Oraculo, produzindo a Revisao Semestral e o
+  Plano Estrategico do Segundo Semestre com uma confirmacao. Dados reais nao
+  entram em Git/logs/fixtures, e release, mutacao real e beta continuam em
+  gates separados. Nenhum runtime ou dado mudou nesta decisao.
+
 - O owner aprovou o gate da UX-C4 em 2026-07-20. A Calibracao pre-beta passa
   de 80% para 100% e o plano geral de 43% para 45%. O aceite valida mobile,
   teclado, acessibilidade e contraste do draft, mas nao autoriza producao. O

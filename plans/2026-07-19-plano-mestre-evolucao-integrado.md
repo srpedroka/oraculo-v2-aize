@@ -2,7 +2,7 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - Plano 3 concluido; briefing R1A pronto**
+Status: **ATIVO - Plano 3 concluido; ciclo real R1 aguardando autorizacao**
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -534,6 +534,13 @@ Essa mudanca e funcional: a revisao existente foi desenhada para microajustes.
 Antes de usar dados reais, e necessario provar que o condutor, o contexto e o
 documento canonico suportam a leitura do semestre completo sem sobrescrever o
 plano original nem inventar conclusoes.
+
+Decisao do owner em 2026-07-20: a prova de qualidade principal sera feita na
+pratica, com o Plano Anual e os relatorios reais do primeiro semestre. R1A vira
+um preflight tecnico curto, com inventario real somente em leitura e seguranca
+validada no staging. R1B usa o Oraculo em producao com o owner e deve entregar a
+Revisao Semestral e o Plano Estrategico do Segundo Semestre. Testes sinteticos
+continuam apenas como protecao tecnica e nao substituem a avaliacao real.
 
 ## R1A - Prontidao e contrato da revisao semestral
 
@@ -1174,6 +1181,7 @@ A evidencia final da calibracao esta em
 progresso geral chegou a 45%. Producao exige autorizacao separada e permanece
 inalterada.
 
-Proximo passo: o owner revisar o briefing
+Proximo passo: o owner revisar o briefing revisado
 `plans/ddr/R1A-prontidao-contrato-briefing.md` e autorizar ou ajustar a R1A. A
-execucao sera primeiro no staging, sem dados reais e sem mutacao em producao.
+execucao comeca pelo inventario real somente em leitura e pelo staging. Depois
+do gate tecnico, o release e a R1B real exigem autorizacao explicita.

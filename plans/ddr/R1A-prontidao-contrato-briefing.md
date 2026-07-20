@@ -1,31 +1,40 @@
-# Briefing R1A - Prontidao e contrato da Revisao Semestral
+# Briefing R1 - Ciclo real controlado da Revisao Semestral
 
 Data: 2026-07-20
 
-Status: **PRONTO PARA APROVACAO - EXECUCAO NAO INICIADA**
+Status: **REVISADO PELO OWNER - AGUARDA AUTORIZACAO DE EXECUCAO**
 
 Progresso atual: **Plano geral 45% | Plano 4 0%**
 
-Progresso se o gate R1A for aprovado: **Plano geral 52,5% | Plano 4 50%**
+Marco tecnico se R1A for aprovada: **Plano geral 52,5% | Plano 4 50%**
+
+Marco do ciclo real se R1B for aprovada: **Plano geral 60% | Plano 4 100%**
 
 ## 1. Resumo para o owner
 
-A R1A prepara e prova, somente no staging, uma Revisao Semestral do Plano
-Estrategico Anual inteiro. O Oraculo deixara de tratar esse ritual como um
-microajuste isolado e passara a consolidar o que aconteceu entre janeiro e
-junho, relacionando objetivos anuais, areas, planos T1/T2, execucao mensal,
-KPIs, evidencias, projetos e historicos relevantes.
+Por decisao do owner, a prova principal sera pratica e usara o Plano Estrategico
+Anual, os relatorios e as evidencias reais do primeiro semestre. O owner
+conversara com o Oraculo no fluxo normal e avaliara tanto a conducao quanto os
+documentos produzidos.
 
-Esta fatia nao executa a revisao real da empresa. Ela cria o contrato, adapta o
-motor e testa com dados descartaveis. A revisao real com o owner pertence a R1B
-e tera um novo briefing e uma nova autorizacao.
+A R1A continua existindo, mas vira um preflight tecnico curto: inventaria o
+contexto real somente em leitura, adapta o motor e prova seguranca no staging.
+Ela nao tenta substituir a avaliacao humana com uma empresa ficticia. Logo
+depois, mediante gate de release explicito, a R1B executa a revisao real com o
+owner em producao.
+
+O ciclo deve entregar dois resultados ligados e distintos:
+
+1. `Revisao Semestral do Plano Estrategico Anual`, com o que aconteceu em T1/T2;
+2. `Plano Estrategico do Segundo Semestre`, com prioridades, ajustes e decisoes
+   para julho-dezembro, sempre derivado da revisao aprovada.
 
 ## 2. Mudanca funcional explicita
 
 Hoje `strategic_review` foi desenhada para propor pequenos ajustes sobre um
 plano existente. Depois da R1A, o ritual devera:
 
-1. produzir primeiro um diagnostico do semestre inteiro;
+1. produzir primeiro um diagnostico do semestre inteiro com dados reais;
 2. separar fatos, interpretacoes, lacunas e recomendacoes;
 3. mostrar a origem material das conclusoes relevantes;
 4. perguntar somente quando a ausencia mudar uma decisao;
@@ -33,20 +42,22 @@ plano existente. Depois da R1A, o ritual devera:
    complementar para o segundo semestre;
 6. permitir ajustes do owner sem reiniciar a conversa;
 7. pedir uma unica conferencia e uma unica confirmacao;
-8. preservar integralmente o plano anual original ate essa confirmacao.
+8. preservar integralmente o plano anual original ate essa confirmacao;
+9. gerar o novo planejamento do segundo semestre como versao derivada, sem
+   apagar ou reescrever silenciosamente o plano anual original.
 
 Nao muda nesta fatia:
 
-- revisao real da empresa e dados de producao;
 - permissoes, papeis, login ou cadastro;
 - WhatsApp operacional fora da paridade de saida;
 - planos trimestrais e mensais existentes;
 - regra de uma confirmacao antes de gravar;
-- release em producao.
+- liberacao para os demais gestores, que pertence ao beta coletivo.
 
 ## 3. Pacote de contexto
 
-O servidor deve montar um recorte janeiro-junho do ano escolhido contendo:
+O servidor deve montar, a partir da empresa real do owner e sem mutacao, um
+recorte janeiro-junho do ano escolhido contendo:
 
 - Plano Estrategico Anual canonico, objetivos, projetos e responsaveis;
 - planos trimestrais T1/T2 de todas as areas e seus vinculos anuais;
@@ -73,19 +84,30 @@ usado apenas quando identificado como contexto historico.
 9. prioridades recomendadas;
 10. lista explicita de `evidencia insuficiente` onde faltarem fatos.
 
-O documento canonico deve se chamar `Revisao Semestral do Plano Estrategico
-Anual` e permanecer materialmente coerente na tela, PDF e resumo do WhatsApp.
+O primeiro documento canonico deve se chamar `Revisao Semestral do Plano
+Estrategico Anual`. Depois do aceite do diagnostico e dos ajustes, o segundo
+deve se chamar `Plano Estrategico do Segundo Semestre`. Ambos devem permanecer
+materialmente coerentes na tela, PDF e resumo do WhatsApp.
 
 ## 5. Fatias internas de execucao
 
-### R1A.1 - Inventario e contrato
+### R1A.1 - Inventario real somente em leitura
 
 - mapear o comportamento atual de `strategic_review`;
+- localizar o Plano Anual e os documentos de T1/T2 da empresa escolhida;
+- conferir areas, periodos, vinculos, lacunas e volume sem expor o conteudo em
+  log, commit ou artefato de teste;
+- gerar backup, contagens e fingerprints antes de qualquer release;
+- apresentar ao owner o que o Oraculo conseguira ler e o que estiver faltando;
+
+### R1A.2 - Contrato e implementacao
+
 - localizar contexto, condutor, proposta, persistencia e documento;
 - congelar schemas de entrada, diagnostico, proposta e aplicacao;
+- incluir o contrato do `Plano Estrategico do Segundo Semestre`;
 - justificar separadamente qualquer migration; a preferencia e nao criar tabela.
 
-### R1A.2 - Montagem segura do contexto
+### R1A.3 - Montagem segura do contexto
 
 - criar o agregador sem mutacao;
 - aplicar recorte de semestre, empresa e ano;
@@ -93,7 +115,7 @@ Anual` e permanecer materialmente coerente na tela, PDF e resumo do WhatsApp.
 - marcar lacunas e conflitos;
 - testar isolamento e ausencia de contaminacao.
 
-### R1A.3 - Conducao e proposta
+### R1A.4 - Conducao e proposta
 
 - adaptar persona e condutor para uma conversa casual, executiva e objetiva;
 - gerar resumo antes do detalhe;
@@ -101,22 +123,40 @@ Anual` e permanecer materialmente coerente na tela, PDF e resumo do WhatsApp.
 - separar diagnostico imutavel da proposta editavel;
 - garantir uma unica confirmacao.
 
-### R1A.4 - Aplicacao e documento
+### R1A.5 - Aplicacao e documentos
 
 - reutilizar sessao, versionamento, auditoria e documentos existentes;
 - aplicar somente campos aprovados;
 - preservar antes/depois e referencias;
 - garantir idempotencia em confirmacao repetida;
-- renderizar tela, PDF e WhatsApp com o mesmo conteudo material.
+- renderizar revisao e novo planejamento na tela, PDF e WhatsApp com o mesmo
+  conteudo material.
 
-### R1A.5 - Validacao de qualidade no staging
+### R1A.6 - Preflight tecnico no staging
 
-- fixtures completas, incompletas, conflitantes e multi-area;
-- duas variacoes por cenario de IA quando houver geracao paga;
+- fixtures tecnicas minimas para isolamento, lacunas, conflitos e multi-area;
+- testes sinteticos validam seguranca e contrato, nao substituem a prova real;
 - rubricas de Conducao, Revisao Semestral e Saida Derivada;
 - teste de banco, documento, idempotencia, isolamento e cleanup;
 - jornada autenticada desktop/mobile e inspecao visual;
 - lint, build, unitarios, integracao, seguranca e secret scan conforme o risco.
+
+### R1B.1 - Conversa real com o owner
+
+- publicar somente o pacote aprovado da R1A;
+- abrir a revisao no Oraculo com o contexto real de T1/T2;
+- deixar o owner responder, corrigir e desafiar a leitura naturalmente;
+- observar tempos, perguntas repetidas, referencias erradas e lacunas;
+- apresentar revisao e planejamento do segundo semestre antes de gravar.
+
+### R1B.2 - Confirmacao e verificacao real
+
+- owner ajusta a proposta sem reiniciar a sessao;
+- uma conferencia final apresenta tudo que sera gravado;
+- uma confirmacao grava o lote e os dois documentos;
+- comparar banco, tela, PDF e WhatsApp;
+- avaliar a conversa e as saidas pelas rubricas;
+- preservar backup, fingerprints, versoes e trilha antes/depois.
 
 ## 6. Falhas criticas
 
@@ -128,32 +168,42 @@ O gate reprova imediatamente se ocorrer:
 - mudanca fora da proposta confirmada;
 - segunda confirmacao para o mesmo lote;
 - duplicacao em retry ou retomada;
-- perda do plano original, historico ou documento;
+- perda ou sobrescrita do plano original, historico ou documento;
 - diferenca material entre banco, tela, PDF e WhatsApp;
 - vazamento de segredo ou conteudo sensivel em log;
 - residuo de teste no staging.
 
 ## 7. Testes e gate
 
-Para aprovar R1A:
+Para aprovar o preflight R1A:
 
 - todos os testes tecnicos aplicaveis verdes;
 - zero falha critica;
-- Conducao >= 80;
-- Revisao Semestral >= 80;
-- Saida Derivada >= 80;
-- media das tres rubricas >= 85;
 - plano original intacto antes da confirmacao;
 - aplicacao deterministica e idempotente depois da confirmacao;
 - tela, PDF e WhatsApp coerentes;
 - cleanup independente com zero residuo;
-- owner aprova estrutura, clareza e utilidade do resultado sintetico.
+- owner aprova o pacote que sera publicado para a prova real.
+
+Para aprovar a prova real R1B:
+
+- zero falha critica;
+- Conducao >= 80;
+- Revisao Semestral >= 80;
+- Plano do Segundo Semestre >= 80;
+- Saida Derivada >= 80;
+- media das quatro rubricas >= 85;
+- owner aprova fidelidade, clareza, utilidade e prioridades propostas;
+- nenhum dado fora da unica proposta confirmada;
+- plano anual e documentos historicos originais preservados.
 
 ## 8. Ambiente, custo e seguranca
 
-- execucao: staging, com dados sinteticos e descartaveis;
-- producao: somente leitura para inventario estrutural quando indispensavel;
-- nenhuma revisao real ou mutacao em producao;
+- R1A: staging para implementacao e testes; producao somente em leitura para o
+  inventario real;
+- R1B: conversa e confirmacao reais em producao depois de autorizacao explicita
+  do release;
+- nenhum conteudo real sera copiado para Git, logs ou fixtures;
 - nenhuma compra, credito ou assinatura sem autorizacao explicita;
 - uso de API pode consumir o ciclo ja autorizado de US$ 20, com aviso ao
   atingir US$ 15 e parada preventiva em US$ 19;
@@ -166,16 +216,22 @@ Para aprovar R1A:
 
 - codigo: reverter apenas os commits da R1A;
 - staging: remover sessoes, documentos e fixtures pelos IDs registrados;
-- producao: nenhum rollback esperado, pois nao sera alterada;
+- producao: reverter somente o lote real confirmado, preservando as versoes e
+  os documentos anteriores;
 - se houver migration indispensavel, ela recebe plano de rollback e aprovacao
   proprios antes de ser aplicada.
 
 ## 10. Autorizacao solicitada
 
-A aprovacao deste briefing autoriza implementar R1A.1 a R1A.5 no staging e usar
-API dentro do ciclo financeiro descrito. Nao autoriza R1B, dados reais, deploy
-de producao, compra de creditos ou abertura do beta para gestores.
+A aprovacao deste briefing autoriza executar R1A.1 a R1A.6, incluindo o
+inventario real somente em leitura e a implementacao no staging. Depois do gate
+tecnico, o owner recebera o relatorio de prontidao e autoriza separadamente o
+release e a R1B real. Isso evita publicar uma mudanca nao testada sem transformar
+a experiencia do owner em um ensaio artificial.
+
+Nao autoriza ainda mutacao real, deploy de producao, compra de creditos ou
+abertura do beta para gestores.
 
 Frase de gate sugerida:
 
-`Aprovo o briefing R1A e autorizo executar no staging.`
+`Aprovo o briefing revisado do ciclo real R1 e autorizo iniciar a R1A.`

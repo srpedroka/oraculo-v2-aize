@@ -10,16 +10,16 @@ Status: **BRIEFING R1A PRONTO - EXECUCAO NAO AUTORIZADA**
 
 ## Objetivo
 
-Revisar o Plano Estrategico Anual inteiro com base nos resultados, evidencias e
-contexto de T1/T2, produzindo uma leitura do semestre e prioridades para o
-segundo semestre.
+Revisar na pratica o Plano Estrategico Anual inteiro com o owner, usando os
+resultados, evidencias e relatorios reais de T1/T2 para produzir a leitura do
+semestre e um novo planejamento estrategico para julho-dezembro.
 
 ## Etapas e pontos
 
 | Fatia | Pontos | Estado | Gate |
 | --- | ---: | --- | --- |
-| R1A. Prontidao e contrato no staging | 50 | Briefing pronto | Contexto, documento e testes aprovados |
-| R1B. Revisao semestral real com owner | 50 | Nao iniciado | Revisao gravada uma vez e aprovada |
+| R1A. Preflight e contrato para o ciclo real | 50 | Briefing revisado | Contexto real em leitura, contrato e testes aprovados |
+| R1B. Revisao e novo planejamento reais com owner | 50 | Nao iniciado | Dois documentos, uma confirmacao e qualidade aprovados |
 | **Total** | **100** | **Nao iniciado** | **0%** |
 
 ## Entregas
@@ -29,6 +29,7 @@ segundo semestre.
 - lacunas e riscos explicitamente identificados;
 - proposta consolidada do que manter, reforcar, ajustar ou substituir;
 - prioridades para o segundo semestre;
+- Plano Estrategico do Segundo Semestre derivado da revisao;
 - uma conferencia e uma confirmacao;
 - plano original preservado, versionado e auditavel.
 

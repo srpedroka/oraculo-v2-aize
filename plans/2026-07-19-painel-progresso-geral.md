@@ -16,7 +16,7 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 0,0%**
 
-**Proxima acao: aprovar o briefing e autorizar a execucao da R1A no staging**
+**Proxima acao: aprovar o briefing revisado e iniciar o preflight R1A do ciclo real**
 
 **Marco de operacao assistida: 95% do plano geral**
 
