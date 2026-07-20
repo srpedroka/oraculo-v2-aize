@@ -337,7 +337,7 @@ export async function processIncomingDocument(
     console.error("Falha final ao baixar documento do WhatsApp", { diagnosticCode });
     return {
       userText: "[Arquivo recebido sem leitura]",
-      answer: "Recebi o arquivo, mas não consegui baixá-lo desta vez. Pode reenviar o mesmo documento? Se continuar, tente enviar como PDF ou TXT.",
+      answer: "Recebi o arquivo, mas não consegui baixá-lo desta vez. Pode reenviar o mesmo documento? Se continuar, tente enviar como PDF, TXT ou Markdown.",
     };
   }
 

@@ -45,7 +45,7 @@ flowchart LR
 
 ### 3.1 Arquivos e mídia
 
-- PDF, PPTX, DOCX, TXT, XLS/XLSX e CSV do app são lidos no navegador. O arquivo bruto não é salvo; texto/tabela extraído pode ser enviado às Edge Functions e ao provedor de IA selecionado.
+- PDF, PPTX, DOCX, TXT, Markdown, XLS/XLSX e CSV do app são lidos no navegador. O arquivo bruto não é salvo; texto/tabela extraído pode ser enviado às Edge Functions e ao provedor de IA selecionado.
 - JPG, PNG e WEBP de histórico/KPI são reduzidos em memória e enviados como imagem ao modelo de bastidores. A gravação posterior contém apenas a classificação e os dados confirmados.
 - Áudio do WhatsApp é baixado da Evolution, eventualmente descriptografado em memória e enviado à OpenAI para transcrição. O áudio bruto não é salvo; a transcrição passa a integrar a conversa.
 - Documento do WhatsApp é baixado/descriptografado em memória. O nome completo, bytes e texto bruto não entram no histórico; um resumo limitado pode entrar em `chat_messages`, e um plano gera proposta antes de qualquer gravação.

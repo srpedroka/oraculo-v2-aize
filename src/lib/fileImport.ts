@@ -4,7 +4,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const LARGE_FILE_WARNING_BYTES = LARGE_FILE_WARNING_MB * 1024 * 1024;
 
 export const STRATEGIC_PLAN_FILE_ACCEPT =
-  ".pdf,.pptx,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
+  ".pdf,.pptx,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown";
 
 export const PLAN_FILE_ACCEPT = STRATEGIC_PLAN_FILE_ACCEPT;
 
@@ -43,8 +43,8 @@ function assertSupportedFile(file: File) {
   }
 
   const extension = getExtension(file.name);
-  if (![".pdf", ".pptx", ".docx", ".txt"].includes(extension)) {
-    throw new Error("Formato não suportado. Importe um arquivo PDF, PPTX, DOCX ou TXT.");
+  if (![".pdf", ".pptx", ".docx", ".txt", ".md", ".markdown"].includes(extension)) {
+    throw new Error("Formato não suportado. Importe um arquivo PDF, PPTX, DOCX, TXT ou Markdown.");
   }
 }
 
@@ -145,7 +145,7 @@ async function extractDocxText(file: File) {
 }
 
 async function extractTxtText(file: File) {
-  return ensureTextWasExtracted(await file.text(), "O TXT está vazio. Cole o conteúdo do plano no campo.");
+  return ensureTextWasExtracted(await file.text(), "O arquivo de texto está vazio. Cole o conteúdo do plano no campo.");
 }
 
 export async function importStrategicPlanFile(file: File): Promise<ImportedPlanText> {
@@ -157,6 +157,8 @@ export async function importStrategicPlanFile(file: File): Promise<ImportedPlanT
     ".pptx": () => extractPptxText(file),
     ".docx": () => extractDocxText(file),
     ".txt": () => extractTxtText(file),
+    ".md": () => extractTxtText(file),
+    ".markdown": () => extractTxtText(file),
   };
 
   const text = await textByExtension[extension]();

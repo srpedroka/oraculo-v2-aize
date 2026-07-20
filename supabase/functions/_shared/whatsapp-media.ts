@@ -3,7 +3,11 @@ import { evaluateAiControls } from "./ai-controls.ts";
 import { buildEvolutionMediaAttempts } from "./evolution-media.ts";
 import { normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from "./transcription.ts";
 import { audioFileFromBase64, extractAudioInfo, extractDocumentInfo, extractText, firstText, mediaFileFromBase64 } from "./whatsapp-event.ts";
-import { whatsappFileExtension as fileExtension } from "./whatsapp-text.ts";
+import {
+  extractWhatsAppPlainTextDocument,
+  isWhatsAppPlainTextDocument,
+  whatsappFileExtension as fileExtension,
+} from "./whatsapp-text.ts";
 
 const MAX_MEDIA_DOWNLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -195,12 +199,10 @@ function looksLikePdf(bytes: Uint8Array) {
 }
 
 function looksLikeDocumentBytes(bytes: Uint8Array, fileName: string, mimeType: string) {
-  const extension = fileExtension(fileName);
   return (
     looksLikePdf(bytes) ||
     looksLikeZip(bytes) ||
-    extension === ".txt" ||
-    mimeType.includes("text/") ||
+    isWhatsAppPlainTextDocument(fileName, mimeType) ||
     mimeType.includes("pdf") ||
     mimeType.includes("presentation") ||
     mimeType.includes("wordprocessing")
@@ -484,13 +486,12 @@ async function extractPdfTextFromBytes(bytes: Uint8Array) {
 
 export async function extractDocumentText(file: AudioFile) {
   const extension = fileExtension(file.fileName);
-  if (extension === ".txt" || file.mimeType.includes("text/")) {
-    return ensureImportedText(new TextDecoder().decode(file.bytes), "O TXT está vazio.");
-  }
+  const plainText = extractWhatsAppPlainTextDocument(file.bytes, file.fileName, file.mimeType);
+  if (plainText !== null) return plainText;
   if (extension === ".pptx" || file.mimeType.includes("presentation")) return await extractPptxTextFromBytes(file.bytes);
   if (extension === ".docx" || file.mimeType.includes("wordprocessing")) return await extractDocxTextFromBytes(file.bytes);
   if (extension === ".pdf" || file.mimeType.includes("pdf") || looksLikePdf(file.bytes)) return await extractPdfTextFromBytes(file.bytes);
-  throw new Error("Formato não suportado pelo WhatsApp. Envie PDF, PPTX, DOCX ou TXT.");
+  throw new Error("Formato não suportado pelo WhatsApp. Envie PDF, PPTX, DOCX, TXT ou Markdown.");
 }
 
 export function documentExtractionFailureMessage(error: unknown) {
@@ -498,7 +499,7 @@ export function documentExtractionFailureMessage(error: unknown) {
   if (/não tem uma camada de texto|não encontrei texto editável|está vazio|formato não suportado/i.test(message)) {
     return message;
   }
-  return "Não consegui interpretar o conteúdo deste arquivo. Tente reenviar ou converter para PDF com texto selecionável ou TXT.";
+  return "Não consegui interpretar o conteúdo deste arquivo. Tente reenviar ou converter para PDF com texto selecionável, TXT ou Markdown.";
 }
 
 async function downloadAudioFromEvolution(

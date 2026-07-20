@@ -1286,7 +1286,7 @@ export function OraclePanel() {
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#5F6368] shadow-sm transition hover:bg-[#F7F7F7] disabled:cursor-wait disabled:opacity-60"
                 disabled={attachmentLoading}
                 aria-label="Anexar arquivo"
-                title="Anexar PDF, PPTX, DOCX ou TXT"
+                title="Anexar PDF, PPTX, DOCX, TXT ou Markdown"
               >
                 {attachmentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
               </button>
