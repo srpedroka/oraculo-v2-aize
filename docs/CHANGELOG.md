@@ -1,5 +1,15 @@
 # Changelog
 
+- O owner definiu o principio AI-first: guias estrategicos orientam a IA, mas
+  nao executam a conversa como formulario. A IA passa a possuir entendimento,
+  pergunta, sintese, interrupcao e retomada; o servidor continua autoridade de
+  permissao, IDs, proposta, confirmacao, transacao, idempotencia e auditoria.
+  A Revisao Semestral sera a primeira prova real; depois, o contrato deve chegar
+  aos demais rituais antes do beta coletivo. O DDR
+  `plans/ddr/AI-first-arquitetura-conversacional.md` preserva os gates de
+  seguranca e nao muda porcentagens sem nova aprovacao. Nenhum runtime, deploy,
+  dado ou custo mudou nesta decisao.
+
 - Uma conversa real no WhatsApp comprovou que o pedido de revisar o Plano Anual
   abre incorretamente o condutor fixo de criacao `strategic`; a oferta de enviar
   um arquivo e absorvida pela sessao ativa e pode terminar no fallback generico

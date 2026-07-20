@@ -542,6 +542,14 @@ validada no staging. R1B usa o Oraculo em producao com o owner e deve entregar a
 Revisao Semestral e o Plano Estrategico do Segundo Semestre. Testes sinteticos
 continuam apenas como protecao tecnica e nao substituem a avaliacao real.
 
+Decisao complementar do owner: a experiencia passa a seguir a arquitetura
+AI-first de `plans/ddr/AI-first-arquitetura-conversacional.md`. Guias orientam a
+IA e nao executam a conversa como formulario; o servidor mantem autoridade
+sobre gravacao e seguranca. A Revisao Semestral sera a primeira prova vertical.
+O rollout aos demais rituais deve ocorrer antes do beta coletivo, mas sua
+distribuicao em pontos sera apresentada separadamente para nao alterar o plano
+silenciosamente.
+
 ## R1A - Prontidao e contrato da revisao semestral
 
 ### Pacote de contexto

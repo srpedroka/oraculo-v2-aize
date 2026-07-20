@@ -30,6 +30,7 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 - proposta consolidada do que manter, reforcar, ajustar ou substituir;
 - prioridades para o segundo semestre;
 - Plano Estrategico do Segundo Semestre derivado da revisao;
+- primeira prova real da arquitetura conversacional AI-first;
 - uma conferencia e uma confirmacao;
 - plano original preservado, versionado e auditavel.
 

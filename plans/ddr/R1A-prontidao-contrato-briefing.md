@@ -51,6 +51,30 @@ errada, contexto incompleto e pouca liberdade de conversa. A R1 deve corrigir
 roteamento, interrupcoes naturais, pacote semestral e fallbacks antes da prova
 real.
 
+## 1.2 Principio AI-first aprovado pelo owner
+
+O guia estrategico orienta a IA; nao e um script executado pelo sistema. A
+fronteira passa a ser:
+
+- a IA possui entendimento, conversa, perguntas, sintese e retomada;
+- o servidor possui permissao, escopo, IDs, integridade, proposta, confirmacao,
+  transacao, idempotencia e auditoria;
+- a fase atual e contexto para a IA, nao um campo obrigatorio do turno;
+- toda mensagem passa primeiro pela interpretacao conversacional, mesmo quando
+  existe sessao ativa;
+- perguntas laterais, pedido de ajuda, correcao, pausa e oferta de arquivo podem
+  suspender e retomar o ritual sem perder estado;
+- guardas bloqueiam apenas conteudo ou mutacao insegura; nao trocam uma resposta
+  pertinente por pergunta generica;
+- mensagens puramente transacionais, como erro tecnico ou sucesso confirmado
+  pelo banco, podem ser deterministicas, mas ficam claramente separadas da voz
+  estrategica do Oraculo.
+
+Contrato recomendado por turno: uma unica chamada principal devolve a resposta
+natural e um bloco lateral estruturado com intencao, acao conversacional,
+atualizacao de estado e eventual proposta. O usuario ve a conversa; o servidor
+valida somente o bloco operacional antes de qualquer gravacao.
+
 ## 2. Mudanca funcional explicita
 
 Hoje `strategic_review` foi desenhada para propor pequenos ajustes sobre um
@@ -135,6 +159,13 @@ materialmente coerentes na tela, PDF e resumo do WhatsApp.
   owner e retomar a conversa no mesmo ponto;
 - substituir o fallback generico por recuperacao contextual que reconhece o
   pedido real do usuario;
+- fazer a IA interpretar o turno antes de a sessao ativa decidir o caminho;
+- transformar fases em cobertura recomendada e permitir salto, pausa, correcao
+  e retomada definidos pela conversa;
+- separar resposta visivel de comando operacional, validando estritamente a
+  gravacao sem reescrever mecanicamente a fala;
+- limitar cada turno a uma chamada principal e no maximo um reparo interno para
+  controlar custo, latencia e variacao;
 - justificar separadamente qualquer migration; a preferencia e nao criar tabela.
 
 ### R1A.3 - Montagem segura do contexto
@@ -171,6 +202,11 @@ materialmente coerentes na tela, PDF e resumo do WhatsApp.
 - teste exato: `revisar plano anual` nunca abre silenciosamente a criacao anual;
 - teste exato: pergunta lateral nao recebe menu generico de resultado, prazo,
   responsavel ou acao;
+- variacoes semanticamente equivalentes recebem respostas naturais e chegam ao
+  mesmo estado seguro sem exigir palavras magicas;
+- o guia cobre as decisoes necessarias sem obrigar a mesma ordem de perguntas;
+- guardas recusam proposta insegura sem apagar uma resposta conversacional
+  pertinente;
 - rubricas de Conducao, Revisao Semestral e Saida Derivada;
 - teste de banco, documento, idempotencia, isolamento e cleanup;
 - jornada autenticada desktop/mobile e inspecao visual;
