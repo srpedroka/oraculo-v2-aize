@@ -1,5 +1,14 @@
 # Changelog
 
+- Uma conversa real no WhatsApp comprovou que o pedido de revisar o Plano Anual
+  abre incorretamente o condutor fixo de criacao `strategic`; a oferta de enviar
+  um arquivo e absorvida pela sessao ativa e pode terminar no fallback generico
+  fixo. A analise mostrou ainda que o contexto organizacional comum limita a
+  memoria a cinco historicos truncados e nao consolida o semestre completo.
+  Esses pontos entraram como falhas criticas da R1: roteamento de revisao,
+  interrupcao natural, arquivo ligado a sessao, pacote T1/T2 e recuperacao
+  contextual. Nenhum runtime ou dado foi alterado neste diagnostico.
+
 - O owner decidiu que a R1 deve ser avaliada na pratica com o Plano Estrategico
   Anual e os relatorios reais de T1/T2. O briefing foi revisado: R1A e um
   preflight curto com inventario real somente em leitura e testes tecnicos no

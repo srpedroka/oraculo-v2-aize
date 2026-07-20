@@ -29,6 +29,28 @@ O ciclo deve entregar dois resultados ligados e distintos:
 2. `Plano Estrategico do Segundo Semestre`, com prioridades, ajustes e decisoes
    para julho-dezembro, sempre derivado da revisao aprovada.
 
+## 1.1 Diagnostico observado no WhatsApp real
+
+Uma conversa real do owner em 2026-07-20 comprovou quatro limites do runtime
+atual:
+
+1. `revisar o plano estrategico anual` e classificado como criacao de plano
+   `strategic`, porque o roteador do WhatsApp nao oferece `strategic_review`;
+2. a abertura recebida e uma frase fixa do condutor de plano anual, antes de o
+   modelo interpretar o contexto completo do pedido;
+3. com uma sessao ativa, uma pergunta natural como `posso compartilhar um
+   arquivo?` e enviada diretamente ao motor da sessao, antes da classificacao
+   de documento ou de interrupcao; quando a resposta estruturada e recusada, o
+   usuario recebe um fallback generico fixo do codigo;
+4. o contexto organizacional comum usa no maximo cinco historicos, com ate 1.600
+   caracteres por documento, e nao consolida T1/T2, KPIs, acoes, check-ins,
+   fechamentos e evidencias de todas as areas.
+
+Conclusao: trocar apenas o modelo nao resolve. O modelo hoje recebe a sessao
+errada, contexto incompleto e pouca liberdade de conversa. A R1 deve corrigir
+roteamento, interrupcoes naturais, pacote semestral e fallbacks antes da prova
+real.
+
 ## 2. Mudanca funcional explicita
 
 Hoje `strategic_review` foi desenhada para propor pequenos ajustes sobre um
@@ -105,6 +127,14 @@ materialmente coerentes na tela, PDF e resumo do WhatsApp.
 - localizar contexto, condutor, proposta, persistencia e documento;
 - congelar schemas de entrada, diagnostico, proposta e aplicacao;
 - incluir o contrato do `Plano Estrategico do Segundo Semestre`;
+- distinguir deterministicamente criacao anual de revisao semestral no app e
+  no WhatsApp;
+- aceitar pausa, pergunta sobre o processo e oferta de arquivo sem tratar a
+  mensagem como resposta ao campo atual;
+- associar o arquivo importado a revisao ativa somente depois da confirmacao do
+  owner e retomar a conversa no mesmo ponto;
+- substituir o fallback generico por recuperacao contextual que reconhece o
+  pedido real do usuario;
 - justificar separadamente qualquer migration; a preferencia e nao criar tabela.
 
 ### R1A.3 - Montagem segura do contexto
@@ -136,6 +166,11 @@ materialmente coerentes na tela, PDF e resumo do WhatsApp.
 
 - fixtures tecnicas minimas para isolamento, lacunas, conflitos e multi-area;
 - testes sinteticos validam seguranca e contrato, nao substituem a prova real;
+- teste exato: iniciar revisao semestral, perguntar se pode enviar arquivo,
+  receber autorizacao natural, importar e retomar sem perder a sessao;
+- teste exato: `revisar plano anual` nunca abre silenciosamente a criacao anual;
+- teste exato: pergunta lateral nao recebe menu generico de resultado, prazo,
+  responsavel ou acao;
 - rubricas de Conducao, Revisao Semestral e Saida Derivada;
 - teste de banco, documento, idempotencia, isolamento e cleanup;
 - jornada autenticada desktop/mobile e inspecao visual;
@@ -170,6 +205,9 @@ O gate reprova imediatamente se ocorrer:
 - duplicacao em retry ou retomada;
 - perda ou sobrescrita do plano original, historico ou documento;
 - diferenca material entre banco, tela, PDF e WhatsApp;
+- criacao anual aberta quando o pedido era revisao semestral;
+- pergunta sobre arquivo absorvida como resposta estrategica;
+- fallback generico que ignora o pedido explicito do usuario;
 - vazamento de segredo ou conteudo sensivel em log;
 - residuo de teste no staging.
 
