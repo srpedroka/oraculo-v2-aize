@@ -1,5 +1,12 @@
 # Changelog
 
+- Publicado em producao o pacote conjunto UX-C2/C3/C4 + R1A pela PR #16 e
+  merge `688707b`. O release protegido `29771409862` publicou `oracle-session`,
+  `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker`; o frontend foi publicado
+  no Netlify `6a5e7543f33863cd34980d37`. A verificacao posterior confirmou 31
+  Functions, 54/54 migrations, HTTP 200, headers/cache e login publico em
+  desktop/mobile. Nenhuma migration foi necessaria e o custo de IA foi US$ 0.
+
 - Implementada a R1A da Revisão Semestral com arquitetura conversacional
   AI-first. Pedidos para revisar o Plano Estratégico Anual agora abrem
   `strategic_review`, a primeira resposta considera a mensagem real e ofertas

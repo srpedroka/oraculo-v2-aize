@@ -603,7 +603,10 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Plano do Segundo Semestre, preservando o plano anual sem ajuste explicito.
   Gate: 563 unitarios, 31 arquivos de integracao, 7 verificacoes de seguranca,
   11 E2E desktop/mobile, lint/build/bundle/secret scan verdes; IA paga US$ 0.
-  O owner autorizou publicar o pacote conjunto UX-C2/C3/C4 + R1A em producao.
+  O pacote conjunto UX-C2/C3/C4 + R1A foi publicado em producao em 2026-07-20:
+  PR #16, merge `688707b`, release protegido `29771409862` e deploy Netlify
+  `6a5e7543f33863cd34980d37`. A verificacao confirmou 31 Functions, 54/54
+  migrations, HTTP 200, headers/cache e smoke publico desktop/mobile.
   Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Proximo passo:
   R1B real com o owner em producao. Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
