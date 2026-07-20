@@ -275,7 +275,7 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
     });
 
     if (hasDocument) {
-      const result = await processIncomingDocument(client, orgId, areaId, whatsappSettings, whatsappKeyRow, payload, profile);
+      const result = await processIncomingDocument(client, orgId, areaId, whatsappSettings, whatsappKeyRow, payload, profile, conversation.id);
 
       if (!result.skipHistory) {
         await insertConversationMessage(client, {
@@ -288,18 +288,30 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
           channel: "whatsapp",
         });
 
-        await insertConversationMessage(client, {
-          orgId,
-          areaId,
-          userId: profile.id,
-          conversationId: conversation.id,
-          author: "oracle",
-          text: result.answer,
-          channel: "whatsapp",
-        });
+        if (!result.resumeSessionId) {
+          await insertConversationMessage(client, {
+            orgId,
+            areaId,
+            userId: profile.id,
+            conversationId: conversation.id,
+            author: "oracle",
+            text: result.answer,
+            channel: "whatsapp",
+          });
+        }
       }
 
-      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, result.answer);
+      const sessionResult = result.resumeSessionId
+        ? await processPlanningMessage(client, {
+          sessionId: result.resumeSessionId,
+          message: result.userText,
+          userId: profile.id,
+          channel: "whatsapp",
+          skipUserMessageInsert: true,
+          transientContext: result.transientContext,
+        })
+        : null;
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult?.reply ?? result.answer);
       return jsonResponse({ ok: true, document: "processed" });
     }
 
@@ -638,9 +650,10 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
       }
 
       const areas = await loadActiveAreas(client, orgId);
-      const areaMatch = explicitStart === "strategic" ? null : resolveAreaFromMessage(text, areas);
-      const requestedAreaId = explicitStart === "strategic" ? null : areaMatch?.area?.id ?? areaId;
-      if (explicitStart !== "strategic" && !requestedAreaId) {
+      const companyWide = explicitStart === "strategic" || explicitStart === "strategic_review";
+      const areaMatch = companyWide ? null : resolveAreaFromMessage(text, areas);
+      const requestedAreaId = companyWide ? null : areaMatch?.area?.id ?? areaId;
+      if (!companyWide && !requestedAreaId) {
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
         await client.from("conversations").update({
           pending_context: {
@@ -672,8 +685,16 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         period: requestedPeriod,
         userId: profile.id,
         channel: "whatsapp",
+        suppressOpeningMessage: true,
       });
-      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, sessionResult.reply);
+      const naturalStart = await processPlanningMessage(client, {
+        sessionId: sessionResult.session.id,
+        message: storedUserText,
+        userId: profile.id,
+        channel: "whatsapp",
+        skipUserMessageInsert: true,
+      });
+      await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, naturalStart.reply);
       return jsonResponse({ ok: true, intent: sameSession ? "planning_resumed" : "planning_switched", sessionId: sessionResult.session.id });
     }
 
@@ -737,10 +758,11 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
       }
 
       const areas = await loadActiveAreas(client, orgId);
-      const areaMatch = intent.planning_type === "strategic" ? null : resolveAreaFromMessage(text, areas);
-      const requestedAreaId = intent.planning_type === "strategic" ? null : areaMatch?.area?.id ?? areaId;
+      const companyWide = intent.planning_type === "strategic" || intent.planning_type === "strategic_review";
+      const areaMatch = companyWide ? null : resolveAreaFromMessage(text, areas);
+      const requestedAreaId = companyWide ? null : areaMatch?.area?.id ?? areaId;
       const requestedPeriod = periodForPlanning(intent.planning_type, intent.period_hint, text);
-      if (intent.planning_type !== "strategic" && !requestedAreaId) {
+      if (!companyWide && !requestedAreaId) {
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
         await client.from("conversations").update({
           pending_context: {
@@ -764,8 +786,16 @@ export async function handleWhatsAppWebhook(req: Request, options: WhatsAppWebho
         period: requestedPeriod,
         userId: profile.id,
         channel: "whatsapp",
+        suppressOpeningMessage: true,
       });
-      const reply = sessionResult.reply;
+      const naturalStart = await processPlanningMessage(client, {
+        sessionId: sessionResult.session.id,
+        message: storedUserText,
+        userId: profile.id,
+        channel: "whatsapp",
+        skipUserMessageInsert: true,
+      });
+      const reply = naturalStart.reply;
       await sendFormattedWhatsApp(whatsappSettings, whatsappKeyRow, replyPhone, reply);
       return jsonResponse({ ok: true, intent: "start_planning", sessionId: sessionResult.session.id });
     }

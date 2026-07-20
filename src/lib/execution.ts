@@ -97,6 +97,12 @@ export function derivedStatus(item: { deadline: string | null; status?: Status }
   return item.status ?? "on_track";
 }
 
+export function displayStatus(item: { deadline: string | null; status?: Status }, now = new Date()): Status | "unset" {
+  const status = derivedStatus(item, now);
+  if (status === "on_track" && !parseDeadline(item.deadline)) return "unset";
+  return status;
+}
+
 const OWNERLESS = "Sem responsável";
 
 function ownerLabel(owner: string): string {

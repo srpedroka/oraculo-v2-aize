@@ -22,7 +22,7 @@ describe("fundacao visual", () => {
 
     expect(button.hasAttribute("disabled")).toBe(true);
     expect(button.getAttribute("aria-busy")).toBe("true");
-    expect(button.classList.contains("h-10")).toBe(true);
+    expect(button.classList.contains("h-11")).toBe(true);
   });
 
   it("mantem card comum sem sombra e reserva elevacao para uso explicito", () => {

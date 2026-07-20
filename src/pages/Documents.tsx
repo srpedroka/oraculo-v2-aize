@@ -20,7 +20,7 @@ const TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
-  strategic_review: "Revisão Estratégica",
+  strategic_review: "Revisão Semestral",
   kpi_history: "Histórico de KPIs",
   company_profile: "Perfil da empresa",
 };
@@ -124,12 +124,12 @@ export function Documents() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-text-tertiary">Oráculo</p>
+          <p className="text-sm font-medium text-text-tertiary">Comprovação dos planos e fechamentos</p>
           <h1 className="text-2xl font-semibold text-text">Documentos</h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-            Planos, fechamentos e históricos salvos para leitura, impressão e envio pelo WhatsApp.
+            Confira o que foi gravado pelo Oráculo, imprima em PDF e consulte a memória importada da empresa.
             {canImportHistory
-              ? " Importe planos, relatórios e tabelas antigas. O Oráculo organiza os campos e você confirma antes de salvar."
+              ? " Históricos antigos entram aqui somente depois da sua confirmação."
               : ""}
           </p>
         </div>
@@ -240,7 +240,7 @@ export function Documents() {
 
       {selectedDocument ? (
         <div className="grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="max-h-80 space-y-2 overflow-y-auto pr-1 xl:sticky xl:top-8 xl:max-h-[calc(100vh-4rem)]">
+          <aside className="max-h-80 overflow-y-auto rounded-card border border-border bg-surface xl:sticky xl:top-8 xl:max-h-[calc(100vh-4rem)]" aria-label="Lista de documentos">
             {filteredDocuments.map((document) => {
               const active = document.id === selectedDocument.id;
               return (
@@ -249,8 +249,8 @@ export function Documents() {
                   type="button"
                   onClick={() => setSelectedId(document.id)}
                   className={[
-                    "w-full rounded-2xl border p-4 text-left transition",
-                    active ? "border-accent bg-white" : "border-border bg-surface hover:border-accent/30",
+                    "w-full border-b border-border-subtle p-4 text-left transition-colors last:border-b-0",
+                    active ? "bg-fill-active" : "bg-surface hover:bg-fill-hover",
                   ].join(" ")}
                 >
                   <div className="flex items-start gap-3">
@@ -295,8 +295,8 @@ export function Documents() {
         <Card className="text-center">
           <p className="text-base font-semibold text-text">Nenhum documento padrão ainda.</p>
           <p className="mt-2 text-sm leading-6 text-text-secondary">
-            Confirme um plano estratégico, trimestral, mensal ou fechamento para o Oráculo gerar o primeiro documento.
-            {canImportHistory ? " Você também pode importar um histórico antigo." : ""}
+            Quando você confirma um plano ou fechamento, o comprovante aparece aqui.
+            {canImportHistory ? " Para consultar decisões passadas, importe o primeiro histórico da empresa." : ""}
           </p>
           {canImportHistory ? (
             <div className="mt-4 flex justify-center">

@@ -1,12 +1,14 @@
-import { Loader2, Maximize2, Minimize2, Paperclip, Send, Sparkles, X } from "lucide-react";
+import { CheckCircle2, FileText, Loader2, Maximize2, Minimize2, Paperclip, Send, Sparkles, X } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { createMessageId, generateWeeklyReview } from "../lib/oracle";
 import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
 import { useAppState } from "../state/store";
+import type { ConfirmSessionProposalResult } from "../state/store-contract";
 import { Button } from "./ui/Button";
 import { InlineFeedback } from "./ui/InlineFeedback";
+import { ReadableText } from "./ui/ReadableText";
 
 type ChatTarget =
   | { kind: "session"; sessionId: string }
@@ -23,7 +25,7 @@ const SESSION_TYPE_LABEL = {
   monthly: "Plano Mensal",
   month_close: "Fechamento do Mês",
   quarter_close: "Fechamento do Trimestre",
-  strategic_review: "Revisão Estratégica",
+  strategic_review: "Revisão Semestral",
 };
 
 const SESSION_PHASES = {
@@ -32,7 +34,7 @@ const SESSION_PHASES = {
   monthly: ["abertura", "relembrar", "objetivos_do_mes", "acoes_chave", "realismo", "sintese"],
   month_close: ["abertura", "revisao", "pendencias", "pulso", "resumo", "ponte"],
   quarter_close: ["abertura", "revisao_trimestre", "aprendizado_do_time", "balanco"],
-  strategic_review: ["abertura", "revisao_objetivos", "sintese"],
+  strategic_review: ["abertura", "contexto_semestre", "leitura_resultados", "decisoes_segundo_semestre", "sintese"],
 };
 
 const PHASE_LABEL: Record<string, string> = {
@@ -72,7 +74,7 @@ function proposalTitle(proposal: Record<string, unknown> | null) {
   if (type === "save_monthly_plan") return "Plano Mensal";
   if (type === "month_close") return "Fechamento do Mês";
   if (type === "quarter_close") return "Fechamento do Trimestre";
-  if (type === "apply_strategic_review") return "Revisão Estratégica";
+  if (type === "apply_strategic_review") return "Revisão Semestral";
   return "Proposta";
 }
 
@@ -178,11 +180,11 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
   const rituals = asTextArray(proposal.rituals);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será gravado</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será gravado</p>
         <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Plano Estratégico {asText(proposal.year)}</p>
-        <p className="text-[12px] text-[#7A7D82]">
+        <p className="text-[12px] text-text-tertiary">
           Será salvo como plano anual, objetivos estratégicos e projetos prioritários depois da sua confirmação.
         </p>
       </div>
@@ -215,7 +217,7 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
               <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
                 <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo ${index + 1}`}</p>
                 {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
-                {meta.length ? <p className="mt-1 text-[11px] text-[#7A7D82]">{meta.join(" · ")}</p> : null}
+                {meta.length ? <p className="mt-1 text-[11px] text-text-tertiary">{meta.join(" · ")}</p> : null}
                 <KpiLinkPreview objective={objective} />
               </div>
             );
@@ -229,7 +231,7 @@ function StrategicProposalPreview({ proposal }: { proposal: Record<string, unkno
           {projects.map((project, index) => (
             <div key={`${asText(project.name)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(project.name) || `Projeto ${index + 1}`}</p>
-              <p className="mt-1 text-[11px] text-[#7A7D82]">
+              <p className="mt-1 text-[11px] text-text-tertiary">
                 {[
                   asText(project.owner) ? `Dono: ${asText(project.owner)}` : "",
                   asText(project.deadline) ? `Prazo: ${asText(project.deadline)}` : "",
@@ -277,11 +279,11 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
   const learningFocus = asTextArray(proposal.learningFocus ?? proposal.foco_aprendizado);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será gravado</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será gravado</p>
         <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Plano Trimestral {asText(proposal.period)}</p>
-        <p className="text-[12px] text-[#7A7D82]">
+        <p className="text-[12px] text-text-tertiary">
           Será salvo no departamento escolhido, com objetivo anual da área quando necessário e objetivos do trimestre.
         </p>
       </div>
@@ -301,7 +303,7 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
             <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo anual ${index + 1}`}</p>
               {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
-              <p className="mt-1 text-[11px] text-[#7A7D82]">
+              <p className="mt-1 text-[11px] text-text-tertiary">
                 {[
                   asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
                   asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
@@ -322,7 +324,7 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
               <div key={`${asText(objective.title)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
                 <p className="font-semibold text-[#1D1D1F]">{asText(objective.title) || `Objetivo trimestral ${index + 1}`}</p>
                 {asText(objective.result) ? <p className="mt-1">{asText(objective.result)}</p> : null}
-                <p className="mt-1 text-[11px] text-[#7A7D82]">
+                <p className="mt-1 text-[11px] text-text-tertiary">
                   {[
                     asText(objective.metric) ? `Indicador: ${asText(objective.metric)}` : "",
                     asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
@@ -375,6 +377,133 @@ function QuarterlyProposalPreview({ proposal }: { proposal: Record<string, unkno
   );
 }
 
+function MonthlyProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  if (asText(proposal.type) !== "save_monthly_plan") return null;
+
+  const alignment = asRecord(proposal.quarterlyAlignment ?? proposal.alinhamento_trimestral);
+  const objectives = asRecordArray(proposal.objectives ?? proposal.objetivos_mes);
+  const actions = objectives.flatMap((objective) => asRecordArray(objective.actions ?? objective.acoes));
+  const pendingDecisions = asRecordArray(proposal.pendingDecisions ?? proposal.decisoes_pendentes);
+  const blockers = asTextArray(proposal.blockers ?? proposal.bloqueios);
+  const risks = asTextArray(proposal.risks ?? proposal.riscos);
+
+  return (
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
+      <div>
+        <p className="text-caption font-semibold uppercase text-text-tertiary">Prévia do que será gravado</p>
+        <p className="mt-1 text-base font-semibold text-text">Plano Mensal {asText(proposal.period)}</p>
+        <p>Até cinco ações serão salvas com seus responsáveis, prazos e critérios de conclusão.</p>
+      </div>
+
+      <div className="grid gap-1 border-y border-border-subtle py-2">
+        <DetailLine label="Vínculo trimestral" value={alignment.quarterlyObjectiveTitle ?? alignment.objectiveTitle ?? alignment.rationale} />
+        <DetailLine label="Cadência" value={proposal.cadence ?? proposal.cadencia} />
+        <DetailLine label="Próximo compromisso" value={proposal.nextCommitment ?? proposal.proximo_compromisso} />
+      </div>
+
+      {objectives.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-text">Resultados do mês ({objectives.length})</p>
+          {objectives.map((objective, index) => (
+            <div key={`${asText(objective.title)}-${index}`} className="border-b border-border-subtle pb-2 last:border-0 last:pb-0">
+              <p className="font-semibold text-text">{asText(objective.title) || `Resultado ${index + 1}`}</p>
+              <DetailLine label="Resultado" value={objective.result} />
+              <p className="text-caption text-text-tertiary">
+                {[
+                  asText(objective.current) ? `Atual: ${asText(objective.current)}` : "",
+                  asText(objective.target) ? `Meta: ${asText(objective.target)}` : "",
+                  asText(objective.owner) ? `Dono: ${asText(objective.owner)}` : "",
+                  asText(objective.deadline) ? `Prazo: ${asText(objective.deadline)}` : "",
+                ].filter(Boolean).join(" · ") || "Campos materiais não informados serão mantidos em branco."}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {actions.length ? (
+        <div className="space-y-1 border-t border-border-subtle pt-2">
+          <p className="font-semibold text-text">Ações ({actions.length})</p>
+          {actions.map((action, index) => (
+            <p key={`${asText(action.description ?? action.descricao)}-${index}`}>
+              <span className="font-medium text-text">{asText(action.description ?? action.descricao) || `Ação ${index + 1}`}</span>
+              {[
+                asText(action.owner ?? action.responsavel) ? `Dono: ${asText(action.owner ?? action.responsavel)}` : "",
+                asText(action.deadline ?? action.prazo) ? `Prazo: ${asText(action.deadline ?? action.prazo)}` : "",
+                asText(action.completionCriterion ?? action.criterio_conclusao) ? `Conclui quando: ${asText(action.completionCriterion ?? action.criterio_conclusao)}` : "",
+              ].filter(Boolean).length ? ` · ${[
+                asText(action.owner ?? action.responsavel) ? `Dono: ${asText(action.owner ?? action.responsavel)}` : "",
+                asText(action.deadline ?? action.prazo) ? `Prazo: ${asText(action.deadline ?? action.prazo)}` : "",
+                asText(action.completionCriterion ?? action.criterio_conclusao) ? `Conclui quando: ${asText(action.completionCriterion ?? action.criterio_conclusao)}` : "",
+              ].filter(Boolean).join(" · ")}` : ""}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {pendingDecisions.length || blockers.length || risks.length ? (
+        <div className="grid gap-1 border-t border-border-subtle pt-2">
+          {pendingDecisions.length ? <DetailLine label="Decisões pendentes" value={`${pendingDecisions.length} registrada(s)`} /> : null}
+          {blockers.length ? <DetailLine label="Bloqueios" value={blockers.join("; ")} /> : null}
+          {risks.length ? <DetailLine label="Riscos" value={risks.join("; ")} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CloseProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  const type = asText(proposal.type);
+  if (type !== "month_close" && type !== "quarter_close") return null;
+
+  const reviews = asRecordArray(proposal.reviews ?? proposal.revisao ?? proposal.revisao_tri);
+  const pendencies = asRecordArray(proposal.pendencies ?? proposal.pendencias);
+  const pulse = asRecord(proposal.managementPulse ?? proposal.management_pulse);
+  const learnings = asTextArray(proposal.learnings ?? proposal.aprendizados ?? proposal.learningBalance ?? proposal.balanco_aprendizado);
+  const title = type === "month_close" ? "Fechamento do Mês" : "Fechamento do Trimestre";
+
+  return (
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-card border border-border bg-surface p-3 text-xs leading-5 text-text-secondary">
+      <div>
+        <p className="text-caption font-semibold uppercase text-text-tertiary">Prévia do que será gravado</p>
+        <p className="mt-1 text-base font-semibold text-text">{title} {asText(proposal.period ?? proposal.periodo)}</p>
+        <p>Resultados, evidências, aprendizados e compromissos serão registrados após uma confirmação.</p>
+      </div>
+
+      <DetailLine label="Resumo" value={proposal.summary ?? proposal.resumo} />
+
+      {reviews.length ? (
+        <div className="space-y-2 border-t border-border-subtle pt-2">
+          <p className="font-semibold text-text">Resultados revisados ({reviews.length})</p>
+          {reviews.map((review, index) => (
+            <div key={`${asText(review.objectiveTitle ?? review.title ?? review.objectiveId)}-${index}`} className="border-b border-border-subtle pb-2 last:border-0 last:pb-0">
+              <p className="font-semibold text-text">{asText(review.objectiveTitle ?? review.title) || `Objetivo ${index + 1}`}</p>
+              <p>
+                {[
+                  asText(review.expected ?? review.target) ? `Esperado: ${asText(review.expected ?? review.target)}` : "",
+                  asText(review.achieved ?? review.actual ?? review.progressFinal) ? `Realizado: ${asText(review.achieved ?? review.actual ?? review.progressFinal)}` : "",
+                  asText(review.statusFinal ?? review.status) ? `Status: ${asText(review.statusFinal ?? review.status)}` : "",
+                ].filter(Boolean).join(" · ")}
+              </p>
+              <DetailLine label="Evidência" value={review.evidence ?? review.evidencia} />
+              <DetailLine label="Aprendizado" value={review.learning ?? review.aprendizado} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="grid gap-1 border-t border-border-subtle pt-2">
+        {learnings.length ? <DetailLine label="Aprendizados" value={learnings.join("; ")} /> : null}
+        {pendencies.length ? <DetailLine label="Pendências" value={`${pendencies.length} com decisão registrada`} /> : null}
+        <DetailLine label="Confiança" value={pulse.confidence ?? pulse.confianca ?? proposal.confidence} />
+        <DetailLine label="Bloqueio" value={pulse.blocker ?? pulse.bloqueio} />
+        <DetailLine label="Próximo compromisso" value={pulse.next_commitment ?? pulse.nextCommitment ?? proposal.nextCommitment} />
+        <DetailLine label="Próximo período" value={proposal.nextPeriod ?? proposal.next_period} />
+      </div>
+    </div>
+  );
+}
+
 function fieldLabel(value: unknown) {
   const field = asText(value);
   if (field === "metric") return "Indicador";
@@ -389,22 +518,45 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
   if (asText(proposal.type) !== "apply_strategic_review") return null;
 
   const adjustments = asRecordArray(proposal.adjustments ?? proposal.ajustes);
+  const unchanged = asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual);
+  const semesterReview = asRecord(proposal.semester_review ?? proposal.revisao_semestre);
+  const secondSemesterPlan = asRecord(proposal.second_semester_plan ?? proposal.plano_segundo_semestre);
+  const advances = asTextArray(semesterReview.confirmedAdvances ?? semesterReview.confirmed_advances ?? semesterReview.avancos_confirmados);
+  const gaps = asTextArray(semesterReview.gaps ?? semesterReview.lacunas);
+  const priorities = asRecordArray(secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades);
 
   return (
-    <div className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
+    <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7A7D82]">Prévia do que será ajustado</p>
-        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Estratégica {asText(proposal.period ?? proposal.periodo)}</p>
-        <p className="text-[12px] text-[#7A7D82]">
-          Só objetivos estratégicos existentes serão ajustados depois da sua confirmação.
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será ajustado</p>
+        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Semestral {asText(proposal.period ?? proposal.periodo)}</p>
+        <p className="text-[12px] text-text-tertiary">
+          O plano anual original será preservado. Só ajustes explícitos abaixo alteram objetivos existentes após sua confirmação.
         </p>
       </div>
 
       <DetailLine label="Motivo" value={proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason} />
+      <DetailLine label="Leitura executiva" value={semesterReview.executiveSummary ?? semesterReview.executive_summary ?? semesterReview.resumo_executivo} />
+      <DetailLine label="Avanços confirmados" value={advances.join("; ")} />
+      <DetailLine label="Lacunas" value={gaps.join("; ")} />
+
+      {priorities.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Prioridades do segundo semestre</p>
+          {priorities.map((priority, index) => (
+            <div key={`${asText(priority.title ?? priority.titulo)}-${index}`} className="border-t border-black/10 pt-2 first:border-t-0 first:pt-0">
+              <p className="font-semibold text-[#1D1D1F]">{asText(priority.title ?? priority.titulo) || `Prioridade ${index + 1}`}</p>
+              <DetailLine label="Resultado" value={priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado} />
+              <DetailLine label="Responsável" value={priority.owner ?? priority.responsavel} />
+              <DetailLine label="Primeira ação" value={priority.firstAction ?? priority.first_action ?? priority.primeira_acao} />
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {adjustments.length ? (
         <div className="space-y-2">
-          <p className="font-semibold text-[#1D1D1F]">Ajustes ({adjustments.length})</p>
+          <p className="font-semibold text-[#1D1D1F]">Vai mudar ({adjustments.length})</p>
           {adjustments.map((adjustment, index) => (
             <div key={`${asText(adjustment.objectiveId ?? adjustment.objetivo_id)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(adjustment.title ?? adjustment.titulo) || `Objetivo ${index + 1}`}</p>
@@ -416,16 +568,46 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
             </div>
           ))}
         </div>
-      ) : (
-        <p className="rounded-xl bg-[#FFF8E8] px-3 py-2 text-[#7A4E12]">Nenhum ajuste estruturado ainda.</p>
-      )}
+      ) : <p className="rounded-xl bg-[#F0F7F2] px-3 py-2 text-[#295C3A]">Nenhum objetivo anual será alterado nesta gravação.</p>}
+
+      <div className="border-t border-border-subtle pt-2">
+        <p className="font-semibold text-text">Permanece igual</p>
+        <p className="mt-1">{unchanged.length ? unchanged.join("; ") : "Tudo o que não aparece em Vai mudar será preservado."}</p>
+      </div>
     </div>
+  );
+}
+
+function ProposalPreview({ proposal }: { proposal: Record<string, unknown> }) {
+  return (
+    <>
+      <StrategicProposalPreview proposal={proposal} />
+      <QuarterlyProposalPreview proposal={proposal} />
+      <MonthlyProposalPreview proposal={proposal} />
+      <CloseProposalPreview proposal={proposal} />
+      <StrategicReviewProposalPreview proposal={proposal} />
+    </>
+  );
+}
+
+function AttachmentReceipt({ value }: { value: string }) {
+  const [header, ...content] = value.split(/\n\n/);
+  const fileName = header.replace(/^Arquivo anexado no chat do app:\s*/i, "").trim();
+  return (
+    <details className="text-xs">
+      <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-text">
+        <FileText aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span className="min-w-0 truncate">{fileName || "Arquivo enviado"}</span>
+      </summary>
+      <ReadableText value={content.join("\n\n")} className="mt-2 border-t border-border-subtle pt-2 text-xs" />
+    </details>
   );
 }
 
 export function OraclePanel() {
   const { state, dispatch } = useAppState();
   const location = useLocation();
+  const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [selectedObjectiveId, setSelectedObjectiveId] = useState(state.objectives[0]?.id ?? "");
@@ -441,11 +623,40 @@ export function OraclePanel() {
   const [confirmationError, setConfirmationError] = useState<RecoverableFeedback | null>(null);
   const [abandoningSessionId, setAbandoningSessionId] = useState<string | null>(null);
   const [abandonError, setAbandonError] = useState<RecoverableFeedback | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [adjustingSessionId, setAdjustingSessionId] = useState<string | null>(null);
+  const [discardConfirmSessionId, setDiscardConfirmSessionId] = useState<string | null>(null);
+  const [proposalSuccess, setProposalSuccess] = useState<ConfirmSessionProposalResult | null>(null);
+  const [proposalNotice, setProposalNotice] = useState<string | null>(null);
   const messagesListRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
   const mode = state.ui.oracleMode;
+  const previousModeRef = useRef(mode);
   const isDashboard = location.pathname === "/";
-  const activeSession = state.activeSession;
+  const availableSessions = useMemo(() => {
+    if (state.planningSessions.length) return state.planningSessions;
+    return state.activeSession ? [state.activeSession] : [];
+  }, [state.activeSession, state.planningSessions]);
+  const activeSession = useMemo(
+    () => availableSessions.find((session) => session.id === selectedSessionId) ?? availableSessions[0] ?? null,
+    [availableSessions, selectedSessionId],
+  );
+  const visibleMessages = useMemo(() => {
+    const conversationId = activeSession?.conversationId
+      ?? state.chatMessages.at(-1)?.conversationId
+      ?? null;
+    if (!conversationId) return state.chatMessages;
+    return state.chatMessages.filter((chatMessage) => chatMessage.conversationId === conversationId);
+  }, [activeSession?.conversationId, state.chatMessages]);
+  const activeArea = activeSession?.areaId
+    ? state.areas.find((area) => area.id === activeSession.areaId) ?? null
+    : null;
+  const confirmedDocument = proposalSuccess?.document
+    ?? state.planDocuments.find((document) => document.sessionId === proposalSuccess?.sessionId)
+    ?? null;
   const phases = activeSession ? SESSION_PHASES[activeSession.type] : [];
   const phaseIndex = activeSession ? Math.max(0, phases.indexOf(activeSession.phase)) : 0;
   const phaseProgress = phases.length ? ((phaseIndex + 1) / phases.length) * 100 : 0;
@@ -461,6 +672,11 @@ export function OraclePanel() {
     }
   }, [selectedObjectiveId, state.objectives]);
 
+  useEffect(() => {
+    if (selectedSessionId && availableSessions.some((session) => session.id === selectedSessionId)) return;
+    setSelectedSessionId(availableSessions[0]?.id ?? null);
+  }, [availableSessions, selectedSessionId]);
+
   // Libera o botao quando a proposta e aplicada/descartada (pendingProposal some) ou troca a sessao.
   useEffect(() => {
     if (!activeSession?.pendingProposal) {
@@ -468,6 +684,8 @@ export function OraclePanel() {
       setConfirmationError(null);
       setAbandoningSessionId(null);
       setAbandonError(null);
+      setAdjustingSessionId(null);
+      setDiscardConfirmSessionId(null);
     }
   }, [activeSession?.id, activeSession?.pendingProposal]);
 
@@ -483,7 +701,18 @@ export function OraclePanel() {
       if (messagesList) messagesList.scrollTop = messagesList.scrollHeight;
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeSession?.id, activeSession?.phase, mode, state.chatMessages.length]);
+  }, [activeSession?.id, activeSession?.phase, mode, visibleMessages.length]);
+
+  useEffect(() => {
+    const previousMode = previousModeRef.current;
+    previousModeRef.current = mode;
+    if (previousMode === mode) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (mode === "minimized") launcherRef.current?.focus();
+      else if (previousMode === "minimized") panelRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mode]);
 
   function setMode(nextMode: typeof mode) {
     dispatch({ type: "set_oracle_mode", mode: nextMode });
@@ -499,6 +728,10 @@ export function OraclePanel() {
 
   function sendChatMessage(payload: PendingChatMessage) {
     if (sendingMessage) return;
+    if (payload.kind === "session") {
+      setProposalSuccess(null);
+      setProposalNotice(null);
+    }
     setSendingMessage(true);
     setMessageError(null);
     setFailedMessage(payload);
@@ -508,6 +741,7 @@ export function OraclePanel() {
         setSendingMessage(false);
         setFailedMessage(null);
         setMessageError(null);
+        if (payload.kind === "session") setAdjustingSessionId(null);
         setMessage((current) => current.trim() === payload.text ? "" : current);
       },
       (errorMessage) => {
@@ -610,7 +844,13 @@ export function OraclePanel() {
     dispatch({
       type: "confirm_session_proposal",
       sessionId,
-      onSuccess: () => setConfirmingSessionId(null),
+      onSuccess: (result) => {
+        setConfirmingSessionId(null);
+        setProposalSuccess(result);
+        setProposalNotice(null);
+        setAdjustingSessionId(null);
+        setDiscardConfirmSessionId(null);
+      },
       onError: (errorMessage) => {
         setConfirmingSessionId(null);
         setConfirmationError(recoverableFeedback(
@@ -631,7 +871,12 @@ export function OraclePanel() {
     dispatch({
       type: "abandon_session",
       sessionId,
-      onSuccess: () => setAbandoningSessionId(null),
+      onSuccess: () => {
+        setAbandoningSessionId(null);
+        setDiscardConfirmSessionId(null);
+        setAdjustingSessionId(null);
+        setProposalNotice("Proposta descartada. Nenhum dado foi gravado.");
+      },
       onError: (errorMessage) => {
         setAbandoningSessionId(null);
         setAbandonError(recoverableFeedback(
@@ -642,6 +887,30 @@ export function OraclePanel() {
         ));
       },
     });
+  }
+
+  function beginProposalAdjustment(sessionId: string) {
+    setConfirmationError(null);
+    setAbandonError(null);
+    setProposalNotice(null);
+    setDiscardConfirmSessionId(null);
+    setAdjustingSessionId(sessionId);
+    window.requestAnimationFrame(() => messageInputRef.current?.focus());
+  }
+
+  function selectSession(sessionId: string) {
+    setSelectedSessionId(sessionId);
+    setConfirmationError(null);
+    setAbandonError(null);
+    setProposalSuccess(null);
+    setProposalNotice(null);
+    setAdjustingSessionId(null);
+    setDiscardConfirmSessionId(null);
+  }
+
+  function openConfirmedDocument() {
+    setMode("minimized");
+    navigate(confirmedDocument ? `/documentos/${confirmedDocument.id}/imprimir` : "/documentos");
   }
 
   function runWeeklyReview() {
@@ -686,6 +955,7 @@ export function OraclePanel() {
   if (mode === "minimized") {
     return (
       <button
+        ref={launcherRef}
         type="button"
         onClick={() => setMode("normal")}
         className="fixed right-[4.25rem] top-1.5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[#0B6B5C] bg-[#075E54] text-white shadow-card transition sm:right-0 sm:top-1/2 sm:h-16 sm:w-11 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:border-r-0 sm:shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:hover:w-12"
@@ -701,8 +971,18 @@ export function OraclePanel() {
 
   return (
     <aside
+      ref={panelRef}
+      role="complementary"
+      aria-label="Oráculo"
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setMode("minimized");
+        }
+      }}
       className={[
-        "fixed bottom-4 right-4 top-4 z-40 w-[calc(100vw-2rem)] transition-[max-width] duration-200",
+        "oracle-panel-frame fixed z-40 transition-[max-width] duration-200 motion-reduce:transition-none",
         mode === "expanded" ? "max-w-[560px]" : "max-w-[420px]",
       ].join(" ")}
     >
@@ -718,7 +998,7 @@ export function OraclePanel() {
                 <h2 className="truncate text-sm font-semibold">Oráculo</h2>
                 <p className="truncate text-xs text-white/75">
                   {activeSession
-                    ? `Conduzindo ${SESSION_TYPE_LABEL[activeSession.type]} · ${PHASE_LABEL[activeSession.phase] ?? activeSession.phase} · ${activeSession.period}`
+                    ? `${SESSION_TYPE_LABEL[activeSession.type]} em andamento`
                     : `IA Estratégica · ${state.organization?.name}`}
                 </p>
               </div>
@@ -727,7 +1007,7 @@ export function OraclePanel() {
               <button
                 type="button"
                 onClick={() => setMode(mode === "expanded" ? "normal" : "expanded")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label={mode === "expanded" ? "Voltar ao normal" : "Expandir"}
               >
                 {mode === "expanded" ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -735,7 +1015,7 @@ export function OraclePanel() {
               <button
                 type="button"
                 onClick={() => setMode("minimized")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label="Fechar Oráculo"
               >
                 <X className="h-4 w-4" />
@@ -744,15 +1024,44 @@ export function OraclePanel() {
           </div>
 
           {activeSession ? (
-            <div className="border-b border-black/5 bg-[#075E54] px-4 pb-3">
+            <div className="space-y-2 border-b border-black/5 bg-[#075E54] px-4 pb-3 text-white">
+              {availableSessions.length > 1 ? (
+                <label className="block">
+                  <span className="sr-only">Condução atual</span>
+                  <select
+                    aria-label="Condução atual"
+                    value={activeSession.id}
+                    onChange={(event) => selectSession(event.target.value)}
+                    className="h-8 w-full rounded-control border border-white/25 bg-white/10 px-2 text-xs font-medium text-white outline-none focus:border-white"
+                  >
+                    {availableSessions.map((session) => {
+                      const area = session.areaId ? state.areas.find((item) => item.id === session.areaId)?.name : "Empresa inteira";
+                      return (
+                        <option key={session.id} value={session.id} className="text-text">
+                          {SESSION_TYPE_LABEL[session.type]} · {area || "Área"} · {session.period}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              ) : null}
+              <div>
+                <p className="truncate text-xs font-semibold">{SESSION_TYPE_LABEL[activeSession.type]}</p>
+                <p className="truncate text-[11px] text-white/75">
+                  {state.organization?.name} · {activeArea?.name ?? "Empresa inteira"} · {activeSession.period}
+                </p>
+                <p className="truncate text-[11px] text-white/75">
+                  {PHASE_LABEL[activeSession.phase] ?? "Condução"} · etapa {phaseIndex + 1} de {phases.length || 1}
+                </p>
+              </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
                 <div className="h-full rounded-full bg-[#25D366] transition-all" style={{ width: `${phaseProgress}%` }} />
               </div>
             </div>
           ) : null}
 
-          <div ref={messagesListRef} className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
-            {!state.chatMessages.length ? (
+          <div ref={messagesListRef} tabIndex={0} aria-label="Mensagens do Oráculo" className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-4">
+            {!visibleMessages.length ? (
               <div className="mx-auto mt-4 max-w-[280px] rounded-xl border border-black/5 bg-white/80 px-3 py-3 text-center shadow-sm">
                 <p className="text-sm font-semibold text-[#1D1D1F]">
                   {activeSession ? "Condução pronta para continuar" : "Comece uma conversa com o Oráculo"}
@@ -764,7 +1073,7 @@ export function OraclePanel() {
                 </p>
               </div>
             ) : null}
-            {state.chatMessages.map((chatMessage) => (
+            {visibleMessages.map((chatMessage) => (
               <div
                 key={chatMessage.id}
                 className={[
@@ -774,27 +1083,61 @@ export function OraclePanel() {
                     : "ml-auto rounded-tr-sm bg-[#DCF8C6] text-[#1D1D1F]",
                 ].join(" ")}
               >
-                <p>{chatMessage.text}</p>
+                {chatMessage.text.startsWith("Arquivo anexado no chat do app:") ? (
+                  <AttachmentReceipt value={chatMessage.text} />
+                ) : (
+                  <ReadableText value={chatMessage.text} className="space-y-1 text-[13px] leading-5" />
+                )}
               </div>
             ))}
           </div>
 
-          {activeSession?.pendingProposal ? (
+          {proposalSuccess ? (
             <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
-              <div className="rounded-2xl bg-white/90 p-3 shadow-sm">
-                <p className="text-sm font-semibold text-[#1D1D1F]">Pronto para gravar</p>
-                <p className="mt-1 text-xs leading-5 text-[#5F6368]">
-                  {proposalTitle(activeSession.pendingProposal)} preparado. Confirme para salvar no sistema ou peça ajustes na conversa.
+              <div role="status" className="rounded-card border border-status-success/25 bg-status-success-bg p-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-status-success" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-text">{proposalSuccess.replayed ? "Registro já estava gravado" : "Registro gravado"}</p>
+                    <p className="mt-1 text-xs leading-5 text-text-secondary">
+                      {confirmedDocument
+                        ? `${confirmedDocument.title} (v${confirmedDocument.version}) está salvo em Documentos.`
+                        : proposalSuccess.reply}
+                    </p>
+                    <Button className="mt-2" size="sm" variant="secondary" icon={FileText} onClick={openConfirmedDocument}>
+                      {confirmedDocument ? "Abrir documento" : "Abrir Documentos"}
+                    </Button>
+                  </div>
+                  <button type="button" onClick={() => setProposalSuccess(null)} className="rounded-control p-1 text-text-secondary hover:bg-white" aria-label="Fechar confirmação">
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {proposalNotice && !activeSession?.pendingProposal ? (
+            <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
+              <InlineFeedback tone="success" title={proposalNotice} description="Você pode iniciar ou retomar outra condução quando quiser." />
+            </div>
+          ) : null}
+
+          {activeSession?.pendingProposal && !proposalSuccess ? (
+            <div className="border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
+              <div className="rounded-card border border-border bg-surface/95 p-3 shadow-card">
+                <p className="text-sm font-semibold text-text">
+                  {adjustingSessionId === activeSession.id ? "Ajustando a proposta" : "Pronto para conferir"}
                 </p>
-                <StrategicProposalPreview proposal={activeSession.pendingProposal} />
-                <QuarterlyProposalPreview proposal={activeSession.pendingProposal} />
-                <StrategicReviewProposalPreview proposal={activeSession.pendingProposal} />
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  {proposalTitle(activeSession.pendingProposal)} · {activeArea?.name ?? "Empresa inteira"} · {activeSession.period}
+                </p>
+                <ProposalPreview proposal={activeSession.pendingProposal} />
                 {confirmationError ? (
                   <InlineFeedback
                     className="mt-3"
                     tone="error"
                     title={confirmationError.title}
-                    description={confirmationError.description}
+                    description="Sua proposta continua pronta e nada foi duplicado."
                     occurrenceId={confirmationError.occurrenceId}
                     actionLabel="Tentar novamente"
                     onAction={() => confirmProposal(activeSession.id)}
@@ -813,60 +1156,67 @@ export function OraclePanel() {
                     actionLoading={abandoningSessionId === activeSession.id}
                   />
                 ) : null}
-                <div className="mt-3 grid gap-2">
-                  <Button
-                    type="button"
-                    className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
-                    loading={confirmingSessionId === activeSession.id}
-                    disabled={abandoningSessionId === activeSession.id}
-                    onClick={() => confirmProposal(activeSession.id)}
-                  >
-                    Confirmar e gravar
-                  </Button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
-                      onClick={() => {
-                        setConfirmationError(null);
-                        setAbandonError(null);
-                        setMessage("Quero ajustar: ");
-                      }}
-                    >
-                      Ajustar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      loading={abandoningSessionId === activeSession.id}
-                      disabled={confirmingSessionId === activeSession.id}
-                      onClick={() => abandonProposal(activeSession.id)}
-                    >
-                      Descartar
-                    </Button>
+
+                {discardConfirmSessionId === activeSession.id ? (
+                  <div role="alert" className="mt-3 rounded-card border border-status-warning/25 bg-status-warning-bg p-3">
+                    <p className="text-sm font-semibold text-text">Descartar este rascunho?</p>
+                    <p className="mt-1 text-xs text-text-secondary">A proposta será encerrada sem gravar dados.</p>
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => setDiscardConfirmSessionId(null)}>Manter proposta</Button>
+                      <Button variant="danger" size="sm" loading={abandoningSessionId === activeSession.id} onClick={() => abandonProposal(activeSession.id)}>Descartar</Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-3 grid gap-2">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      loading={confirmingSessionId === activeSession.id}
+                      disabled={abandoningSessionId === activeSession.id || adjustingSessionId === activeSession.id}
+                      onClick={() => confirmProposal(activeSession.id)}
+                    >
+                      Confirmar e gravar
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full"
+                        disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
+                        onClick={() => beginProposalAdjustment(activeSession.id)}
+                      >
+                        Ajustar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="quiet"
+                        className="w-full"
+                        disabled={confirmingSessionId === activeSession.id || abandoningSessionId === activeSession.id}
+                        onClick={() => setDiscardConfirmSessionId(activeSession.id)}
+                      >
+                        Descartar proposta
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : null}
 
-          {isDashboard ? (
+          {isDashboard && !activeSession && !proposalSuccess ? (
             <div className="space-y-3 border-t border-black/5 bg-[#EFEAE2] px-3 py-3">
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setEvidenceOpen((current) => !current)}
-                  className="h-9 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
+                  className="h-11 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
                 >
                   Registrar evidência
                 </button>
                 <button
                   type="button"
                   onClick={runWeeklyReview}
-                  className="h-9 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
+                  className="h-11 rounded-full bg-white px-3 text-xs font-medium text-[#1D1D1F] shadow-sm transition hover:bg-[#F7F7F7]"
                 >
                   Revisão semanal
                 </button>
@@ -900,7 +1250,7 @@ export function OraclePanel() {
             </div>
           ) : null}
 
-          <div className="border-t border-black/5 bg-[#F0F0F0] px-3 py-3">
+          <div className="oracle-panel-composer border-t border-black/5 bg-[#F0F0F0] px-3 pt-3">
             {attachmentError ? (
               <InlineFeedback
                 className="mb-2"
@@ -914,7 +1264,7 @@ export function OraclePanel() {
               />
             ) : null}
             {sendingMessage ? (
-              <InlineFeedback className="mb-2" tone="info" title="Enviando sua mensagem" description="O texto continua preservado até o Oráculo receber." />
+              <InlineFeedback className="mb-2" tone="info" title="Oráculo está pensando" description="Sua mensagem continua preservada até a resposta chegar." />
             ) : null}
             {messageError ? (
               <InlineFeedback
@@ -929,11 +1279,11 @@ export function OraclePanel() {
               />
             ) : null}
             <form onSubmit={submitMessage} className="flex items-center gap-2">
-              <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} />
+              <input ref={attachmentInputRef} className="sr-only" type="file" accept={PLAN_FILE_ACCEPT} onChange={handleAttachmentChange} aria-label="Selecionar arquivo para o Oráculo" />
               <button
                 type="button"
                 onClick={() => attachmentInputRef.current?.click()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#5F6368] shadow-sm transition hover:bg-[#F7F7F7] disabled:cursor-wait disabled:opacity-60"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#5F6368] shadow-sm transition hover:bg-[#F7F7F7] disabled:cursor-wait disabled:opacity-60"
                 disabled={attachmentLoading}
                 aria-label="Anexar arquivo"
                 title="Anexar PDF, PPTX, DOCX ou TXT"
@@ -941,6 +1291,7 @@ export function OraclePanel() {
                 {attachmentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
               </button>
               <input
+                ref={messageInputRef}
                 value={message}
                 onChange={(event) => {
                   setMessage(event.target.value);
@@ -949,12 +1300,12 @@ export function OraclePanel() {
                     setFailedMessage(null);
                   }
                 }}
-                placeholder={activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
-                className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
+                placeholder={adjustingSessionId === activeSession?.id ? "O que você quer mudar?" : activeSession ? "Responda à condução do Oráculo" : "Escreva para o Oráculo"}
+                className="h-11 min-w-0 flex-1 rounded-full border border-transparent bg-white px-4 text-sm text-[#1D1D1F]"
               />
               <button
                 type="submit"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20BD5A] disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!message.trim() || sendingMessage}
                 aria-busy={sendingMessage || undefined}
                 aria-label="Enviar mensagem"

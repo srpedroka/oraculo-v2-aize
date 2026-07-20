@@ -1,5 +1,109 @@
 # Changelog
 
+- Implementada a R1A da Revisão Semestral com arquitetura conversacional
+  AI-first. Pedidos para revisar o Plano Estratégico Anual agora abrem
+  `strategic_review`, a primeira resposta considera a mensagem real e ofertas
+  de arquivo/perguntas sobre o processo suspendem o ritual sem perder estado.
+  O contexto reúne Plano Anual, objetivos e ações de todas as áreas, T1/T2,
+  evidências, check-ins, KPIs e até 24 documentos relevantes. Arquivos enviados
+  durante a revisão entram integralmente apenas no contexto transitório do
+  turno; o histórico mantém somente o resumo seguro. A confirmação continua
+  única e transacional: aplica apenas microajustes explícitos permitidos e gera
+  `Revisão Semestral e Plano do Segundo Semestre`, preservando o Plano Anual
+  original. Tela/PDF e WhatsApp exibem diagnóstico, prioridades e ajustes com o
+  mesmo conteúdo material. Sem migration ou tabela nova.
+
+- O owner definiu o principio AI-first: guias estrategicos orientam a IA, mas
+  nao executam a conversa como formulario. A IA passa a possuir entendimento,
+  pergunta, sintese, interrupcao e retomada; o servidor continua autoridade de
+  permissao, IDs, proposta, confirmacao, transacao, idempotencia e auditoria.
+  A Revisao Semestral sera a primeira prova real; depois, o contrato deve chegar
+  aos demais rituais antes do beta coletivo. O DDR
+  `plans/ddr/AI-first-arquitetura-conversacional.md` preserva os gates de
+  seguranca e nao muda porcentagens sem nova aprovacao. Nenhum runtime, deploy,
+  dado ou custo mudou nesta decisao.
+
+- Uma conversa real no WhatsApp comprovou que o pedido de revisar o Plano Anual
+  abre incorretamente o condutor fixo de criacao `strategic`; a oferta de enviar
+  um arquivo e absorvida pela sessao ativa e pode terminar no fallback generico
+  fixo. A analise mostrou ainda que o contexto organizacional comum limita a
+  memoria a cinco historicos truncados e nao consolida o semestre completo.
+  Esses pontos entraram como falhas criticas da R1: roteamento de revisao,
+  interrupcao natural, arquivo ligado a sessao, pacote T1/T2 e recuperacao
+  contextual. Nenhum runtime ou dado foi alterado neste diagnostico.
+
+- O owner decidiu que a R1 deve ser avaliada na pratica com o Plano Estrategico
+  Anual e os relatorios reais de T1/T2. O briefing foi revisado: R1A e um
+  preflight curto com inventario real somente em leitura e testes tecnicos no
+  staging; R1B e a conversa real no Oraculo, produzindo a Revisao Semestral e o
+  Plano Estrategico do Segundo Semestre com uma confirmacao. Dados reais nao
+  entram em Git/logs/fixtures, e release, mutacao real e beta continuam em
+  gates separados. Nenhum runtime ou dado mudou nesta decisao.
+
+- O owner aprovou o gate da UX-C4 em 2026-07-20. A Calibracao pre-beta passa
+  de 80% para 100% e o plano geral de 43% para 45%. O aceite valida mobile,
+  teclado, acessibilidade e contraste do draft, mas nao autoriza producao. O
+  briefing R1A foi consolidado para a Revisao Semestral do Plano Estrategico
+  Anual inteiro, primeiro no staging e sem dados reais ou mutacao em producao.
+
+- A UX-C4 foi implementada somente no draft antes da aprovacao do owner. Dialogs
+  criticos, menu mobile e painel do Oraculo agora prendem/restauram foco, fecham
+  a camada superior com `Esc`, respeitam `100dvh`/safe area e mantem a acao
+  principal visivel em altura reduzida. Alvos de toque chegam a 44 px, textos
+  normais atendem contraste AA e grafico/arquivo/regioes rolaveis receberam
+  semantica acessivel. Validacao: 556 unitarios; 132 integracoes e 2 skips
+  opt-in esperados; 6 E2E autenticados; 2 smokes publicos; Axe sem violacao
+  critica/seria; desktop 1280x720, celulares 390x844/430x932 e teclado em
+  430x520; lint, build, bundle 135,1 KB gzip, secret scan e
+  `production:verify` verdes. Draft:
+  `https://6a5e39c470f0f2420ba96122--oraculo-v2-aize.netlify.app`. Custo US$ 0;
+  zero backend, migration, dado de producao, WhatsApp ou IA paga. Progresso
+  oficial permaneceu 43% geral e 80% no Plano 3 ate o aceite posterior.
+  Producao permaneceu inalterada.
+
+- O owner aprovou o gate da UX-C3 em 2026-07-20. A Calibracao pre-beta passa
+  de 60% para 80% e o plano geral de 41% para 43%. O aceite valida contexto,
+  proposta dos seis rituais, confirmacao unica, ajuste/descarte e acesso ao
+  documento no draft/staging, mas nao autoriza producao. Proxima fatia:
+  briefing UX-C4, com autorizacao separada antes da execucao.
+
+- A UX-C3 foi implementada somente no draft/staging e aguarda o gate do owner.
+  O painel do Oraculo agora identifica ritual, empresa, area, periodo, fase e
+  progresso; mostra previa estruturada para plano anual, trimestral, mensal,
+  Revisao Estrategica e fechamentos mensal/trimestral; oferece uma unica acao
+  `Confirmar e gravar`, ajuste sem perda, descarte confirmado e sucesso com
+  acesso ao documento. Confirmacoes repetidas pelo app ou WhatsApp devolvem o
+  mesmo documento sem duplicar dados. O frontend preserva acesso a Documentos
+  durante a compatibilidade com o backend anterior. A regressao passou 554
+  unitarios, 132 integracoes com 2 skips opt-in esperados e E2E autenticado
+  desktop/mobile.
+  `oracle-session` foi publicada somente no staging; zero migration, IA paga ou
+  alteracao de producao. Draft:
+  `https://6a5e2b72df0f2fded70554e3--oraculo-v2-aize.netlify.app`, com
+  verificacao estrutural e smoke publico desktop/mobile verdes. Ate o gate,
+  geral permanece 41% e Plano 3 em 60%.
+
+- O owner aprovou o gate da UX-C2 em 2026-07-20. A Calibracao pre-beta passa
+  de 40% para 60% e o plano geral de 39% para 41%. A aprovacao valida a clareza
+  do caminho do gestor no draft, mas nao autoriza producao. Proxima fatia:
+  briefing UX-C3, com autorizacao separada antes da execucao.
+
+- A UX-C2 foi implementada e publicada somente no draft
+  `https://6a5dfa113c90387d0905fc6e--oraculo-v2-aize.netlify.app`. Dashboard,
+  origem anual, desdobramento trimestral, Documentos, navegacao, abas e
+  auditoria ganharam hierarquia e linguagem mais claras, sem nova funcao ou
+  regra de negocio. A validacao passou 541 unitarios, lint, build, bundle,
+  secret scan, jornada autenticada e smoke publico desktop/mobile, alem de 31
+  Functions e 54/54 migrations coerentes. Zero backend, dado, WhatsApp ou IA
+  paga; producao e progresso permanecem inalterados ate o gate do owner.
+
+- O release acumulado UX-C0/UX-C1 foi autorizado e publicado em 2026-07-20.
+  A PR #15 passou o CI #101 completo, foi mesclada em `330190a` e publicada no
+  Netlify `6a5de9e76733af06c6887d56`. `production:verify`, login publico
+  desktop/mobile e smoke autenticado das rotas criticas ficaram verdes. A
+  publicacao alterou somente o frontend, custou US$ 0 em IA/API e nao modifica
+  o progresso: geral 39%, Plano 3 em 40%. Proxima fatia: briefing UX-C2.
+
 - O owner aprovou o gate da UX-C1 em 2026-07-19. A Calibracao pre-beta passa de
   20% para 40% e o plano geral de 37% para 39%. A aprovacao valida feedback,
   preservacao de rascunho, retry e bloqueio de duplo clique no draft, mas nao

@@ -621,4 +621,95 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
       .eq("period", "T3 2026");
     expect(docs).toBe(documentsBefore);
   });
+
+  it("R1A: grava revisão semestral sem alterar o plano anual e sem duplicar no retry", async () => {
+    const annualTitle = "Objetivo anual preservado R1A";
+    const hierarchy = await seedAnnualHierarchy(org.areas.comercialId, annualTitle);
+    const { data: before, error: beforeError } = await admin
+      .from("objectives")
+      .select("id, title, metric, target, current, deadline, status")
+      .eq("id", hierarchy.strategic.id)
+      .single();
+    if (beforeError) throw beforeError;
+
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: null,
+      user_id: org.owner.id,
+      type: "strategic_review",
+      period: "2026",
+      pending_proposal: {
+        type: "apply_strategic_review",
+        period: "2026",
+        motivo_revisao: "Resultados e evidências de T1 e T2",
+        semester_review: {
+          executiveSummary: "O primeiro semestre confirmou avanço comercial e uma lacuna de cadência.",
+          confirmedAdvances: ["Rotina comercial implantada"],
+          gaps: ["Indicadores ainda não são revisados toda semana"],
+          evidenceGaps: ["Falta consolidar a série mensal de conversão"],
+          resultsByArea: [{
+            area: "Comercial",
+            advances: ["Equipe aderiu à rotina"],
+            gaps: ["Cadência irregular"],
+            evidence: ["Check-ins de T1 e T2"],
+          }],
+        },
+        second_semester_plan: {
+          focus: "Transformar a rotina comercial em previsibilidade de resultado.",
+          priorities: [{
+            title: "Consolidar a gestão semanal dos indicadores",
+            linkedObjectiveId: hierarchy.strategic.id,
+            expectedResult: "Decisões semanais baseadas em dados confiáveis",
+            metric: "Semanas com reunião e painel atualizados",
+            target: "90% das semanas",
+            deadline: "2026-12-15",
+            owner: "Coordenação Comercial",
+            firstAction: "Definir pauta e responsáveis pela atualização",
+          }],
+          decisions: ["Manter o objetivo anual e reforçar sua cadência"],
+          renunciations: ["Não abrir uma segunda frente comercial neste semestre"],
+          risks: ["Baixa qualidade do dado de origem"],
+          cadence: ["Revisão semanal com a coordenação"],
+        },
+        adjustments: [],
+        unchanged: [annualTitle],
+      },
+    });
+
+    const first = await confirm(sessionId);
+    expect(first.status).toBe(200);
+    expect(first.body.reply).toContain("plano anual original preservado");
+
+    const { data: after, error: afterError } = await admin
+      .from("objectives")
+      .select("id, title, metric, target, current, deadline, status")
+      .eq("id", hierarchy.strategic.id)
+      .single();
+    if (afterError) throw afterError;
+    expect(after).toEqual(before);
+
+    const { data: documents, error: documentsError } = await admin
+      .from("plan_documents")
+      .select("id, title, content, version")
+      .eq("org_id", org.orgId)
+      .eq("session_id", sessionId)
+      .eq("type", "strategic_review");
+    if (documentsError) throw documentsError;
+    expect(documents).toHaveLength(1);
+    expect(documents[0].title).toContain("Revisão Semestral e Plano do Segundo Semestre");
+    expect(documents[0].content.plano_anual_original_preservado).toBe(true);
+    expect(documents[0].content.revisao_semestre.resumo_executivo).toContain("primeiro semestre");
+    expect(documents[0].content.plano_segundo_semestre.prioridades).toHaveLength(1);
+
+    const retry = await confirm(sessionId);
+    expect(retry.status).toBe(200);
+    const { count, error: countError } = await admin
+      .from("plan_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org.orgId)
+      .eq("session_id", sessionId)
+      .eq("type", "strategic_review");
+    if (countError) throw countError;
+    expect(count).toBe(1);
+  });
 });

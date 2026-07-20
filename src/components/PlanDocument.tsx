@@ -7,7 +7,7 @@ const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
-  strategic_review: "Revisão Estratégica",
+  strategic_review: "Revisão Semestral",
   kpi_history: "Histórico de KPIs",
   company_profile: "Perfil da empresa",
 };
@@ -241,9 +241,63 @@ function MonthlySection({ content }: { content: Record<string, unknown> }) {
 
 function StrategicReviewSection({ content }: { content: Record<string, unknown> }) {
   const adjustments = asArray<Record<string, unknown>>(content.ajustes);
+  const review = asRecord(content.revisao_semestre);
+  const plan = asRecord(content.plano_segundo_semestre);
+  const areaResults = asArray<Record<string, unknown>>(review.resultados_por_area);
+  const priorities = asArray<Record<string, unknown>>(plan.prioridades);
   return (
     <div className="space-y-5">
       <KeyValue label="Motivo" value={content.motivo_revisao} />
+      <KeyValue label="Leitura executiva" value={review.resumo_executivo} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <KeyValue label="Avanços confirmados" value={asArray<string>(review.avancos_confirmados).join("; ")} />
+        <KeyValue label="Lacunas" value={asArray<string>(review.lacunas).join("; ")} />
+        <KeyValue label="Padrões repetidos" value={asArray<string>(review.padroes_repetidos).join("; ")} />
+        <KeyValue label="Aprendizados" value={asArray<string>(review.aprendizados).join("; ")} />
+        <KeyValue label="Riscos" value={asArray<string>(review.riscos).join("; ")} />
+        <KeyValue label="Lacunas de evidência" value={asArray<string>(review.lacunas_evidencia).join("; ")} />
+      </div>
+      {areaResults.length ? (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Resultados por área</p>
+          {areaResults.map((area, index) => (
+            <div key={`${asText(area.area)}-${index}`} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+              <p className="text-sm font-semibold text-text">{asText(area.area, "Área")}</p>
+              <KeyValue label="Avanços" value={asArray<string>(area.avancos).join("; ")} />
+              <KeyValue label="Lacunas" value={asArray<string>(area.lacunas).join("; ")} />
+              <KeyValue label="Evidências" value={asArray<string>(area.evidencias).join("; ")} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div className="border-t border-border pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Plano do segundo semestre</p>
+        <KeyValue label="Foco" value={plan.foco} />
+        <KeyValue label="Decisões" value={asArray<string>(plan.decisoes).join("; ")} />
+        <KeyValue label="Renúncias" value={asArray<string>(plan.renuncias).join("; ")} />
+        <KeyValue label="Riscos" value={asArray<string>(plan.riscos).join("; ")} />
+        <KeyValue label="Cadência" value={asArray<string>(plan.cadencia).join("; ")} />
+      </div>
+      {priorities.length ? (
+        <div className="space-y-4">
+          {priorities.map((priority, index) => (
+            <article key={`${asText(priority.titulo)}-${index}`} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+              <p className="text-sm font-semibold text-text">{index + 1}. {asText(priority.titulo, "Prioridade")}</p>
+              <KeyValue label="Por quê" value={priority.justificativa} />
+              <KeyValue label="Resultado esperado" value={priority.resultado_esperado} />
+              <KeyValue label="Métrica e meta" value={[asText(priority.indicador), asText(priority.meta)].filter(Boolean).join(" · ")} />
+              <KeyValue label="Responsável e prazo" value={[asText(priority.responsavel), asText(priority.prazo)].filter(Boolean).join(" · ")} />
+              <KeyValue label="Primeira ação" value={priority.primeira_acao} />
+            </article>
+          ))}
+        </div>
+      ) : null}
+      <p className="rounded-lg bg-surface px-3 py-2 text-xs leading-5 text-text-secondary">
+        {content.plano_anual_original_preservado === true
+          ? "O Plano Estratégico Anual original foi preservado."
+          : "A revisão mantém o plano anual como referência."}
+      </p>
+      {adjustments.length ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Ajustes explícitos no plano anual</p> : null}
       {adjustments.map((adjustment, index) => (
         <article key={`${asText(adjustment.objetivo_id)}-${index}`} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
           <p className="text-sm font-semibold text-text">{asText(adjustment.titulo, "Objetivo")}</p>
@@ -358,7 +412,7 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
   }
   if (type === "quarterly") addSection("quarterly", "Decisões do Trimestre", <QuarterlySection content={content} />);
   if (type === "monthly") addSection("monthly", "Decisões do Mês", <MonthlySection content={content} />);
-  if (type === "strategic_review") addSection("strategic-review", "Ajustes da Revisão", <StrategicReviewSection content={content} />);
+  if (type === "strategic_review") addSection("strategic-review", "Revisão do Semestre e Próximo Ciclo", <StrategicReviewSection content={content} />);
   if (objectives.length) {
     addSection(
       "objectives",

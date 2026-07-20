@@ -124,11 +124,11 @@ export function quarterPeriodForMonth(period: string, fallbackDate = new Date())
   return `T${Math.floor(month / 3) + 1} ${year}`;
 }
 
-export function periodForPlanning(type: "strategic" | "quarterly" | "monthly", hint: string | null | undefined, sourceText = "") {
+export function periodForPlanning(type: "strategic" | "strategic_review" | "quarterly" | "monthly", hint: string | null | undefined, sourceText = "") {
   const text = [hint, sourceText].filter(Boolean).join(" ");
   const year = yearFromText(text);
 
-  if (type === "strategic") return String(year);
+  if (type === "strategic" || type === "strategic_review") return String(year);
 
   if (type === "quarterly") {
     const quarter = quarterFromText(text) ?? Math.floor(new Date().getMonth() / 3) + 1;

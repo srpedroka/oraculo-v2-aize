@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Check, Download, Save, ShieldCheck, Trash2, X } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 import { useAppState } from "../../state/store";
 import { callEdgeFunction, requireClient } from "../../state/store-client";
 
@@ -42,6 +43,11 @@ export function PersonalAccountCard() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const deleteDialogRef = useModalAccessibility<HTMLDivElement>({
+    active: deleteOpen,
+    closeDisabled: deleting,
+    onClose: () => setDeleteOpen(false),
+  });
   const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
@@ -181,14 +187,14 @@ export function PersonalAccountCard() {
       </Card>
 
       {deleteOpen ? createPortal(
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
-          <Card className="max-h-[92vh] w-full max-w-lg overflow-auto p-0">
+        <div ref={deleteDialogRef} tabIndex={-1} className="fixed inset-0 z-[80] flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+          <Card className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]">
             <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
               <div>
                 <p className="text-xs font-medium text-text-tertiary">Exclusão da conta</p>
                 <h2 id="delete-account-title" className="mt-1 text-lg font-semibold text-text">Excluir sua conta do Oráculo?</h2>
               </div>
-              <Button variant="quiet" size="icon" icon={X} disabled={deleting} aria-label="Fechar" onClick={() => setDeleteOpen(false)} />
+              <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} disabled={deleting} aria-label="Fechar" onClick={() => setDeleteOpen(false)} />
             </div>
             <div className="space-y-4 px-6 py-5">
               <p className="text-sm leading-6 text-text-secondary">

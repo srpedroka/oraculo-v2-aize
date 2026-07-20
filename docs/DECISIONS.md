@@ -1,5 +1,34 @@
 # Decisoes tecnicas
 
+## 2026-07-20 - A IA possui a conversa; o servidor possui a gravacao
+
+Decisao: os guias estrategicos passam a ser referencias de raciocinio e
+qualidade para a IA, nao roteiros executados pelo servidor como formulario. Em
+cada turno, a IA interpreta a mensagem, o contexto, a sessao e eventuais
+interrupcoes antes de produzir a resposta visivel. Fases servem como checklist
+de cobertura, nunca como obrigacao de perguntar ou concluir um campo naquele
+turno.
+
+O servidor continua sendo autoridade sobre autenticacao, permissao, escopo da
+empresa, IDs, periodo, integridade, proposta, confirmacao unica, transacao,
+idempotencia e auditoria. Ele pode bloquear uma mutacao insegura, mas nao deve
+substituir uma conversa valida por menu generico desconectado do pedido. Quando
+o conteudo estruturado falhar, um reparo interno recebe a conversa completa; se
+ainda falhar, a resposta explica naturalmente a dificuldade sem fingir que o
+usuario respondeu outra coisa.
+
+Motivo: uma conversa real mostrou que `revisar plano anual` abriu a criacao
+anual por regex, uma pergunta sobre envio de arquivo foi absorvida como resposta
+da entrevista e o guard exibiu um fallback fixo. O modelo nao teve oportunidade
+real de compreender o turno. Para um produto de inteligencia estrategica,
+seguranca de gravacao nao pode ser confundida com controle mecanico da fala.
+
+Consequencias: a R1 prova essa arquitetura primeiro na revisao semestral real.
+Antes do beta coletivo, o mesmo contrato deve cobrir plano anual, trimestral,
+mensal e fechamentos, com paridade entre app e WhatsApp. A migracao e fatiada e
+mantem os gates tecnicos existentes. A decisao nao autoriza runtime, deploy,
+dado real ou custo; cada execucao continua seguindo briefing e gate.
+
 ## 2026-07-18 - Baseline de qualidade e evidencia imutavel
 
 Decisao: relatorios historicos da Q3 permanecem imutaveis e uma evolucao posterior do catalogo e registrada como limitacao, nao como falha retroativa da baseline. O gate continua bloqueando qualquer rodada Q5 que divergir do catalogo aprovado no momento da execucao. Comparacoes de nota informam explicitamente quando as entradas historicas nao sao literalmente identicas.

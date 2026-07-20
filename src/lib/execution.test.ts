@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isOverdue, daysLate, derivedStatus, summarize, groupByOwner, type TrackItem } from "./execution";
+import { isOverdue, daysLate, derivedStatus, displayStatus, summarize, groupByOwner, type TrackItem } from "./execution";
 
 const NOW = new Date("2026-07-12T12:00:00");
 
@@ -39,6 +39,14 @@ describe("derivedStatus", () => {
     expect(derivedStatus({ deadline: "2026-01-01", status: "on_track" }, NOW)).toBe("late");
     expect(derivedStatus({ deadline: "2027-01-01", status: "at_risk" }, NOW)).toBe("at_risk");
     expect(derivedStatus({ deadline: "2027-01-01", status: "on_track" }, NOW)).toBe("on_track");
+  });
+});
+
+describe("displayStatus", () => {
+  it("não representa item sem prazo como saudável", () => {
+    expect(displayStatus({ deadline: null, status: "on_track" }, NOW)).toBe("unset");
+    expect(displayStatus({ deadline: null, status: "at_risk" }, NOW)).toBe("at_risk");
+    expect(displayStatus({ deadline: null, status: "done" }, NOW)).toBe("done");
   });
 });
 

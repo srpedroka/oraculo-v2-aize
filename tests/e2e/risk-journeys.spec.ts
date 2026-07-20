@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { createDisposableOrg, destroyDisposableOrg, type DisposableOrg } from "../helpers/factory";
 import { hasStagingEnv, serviceClient } from "../helpers/staging";
 
@@ -11,6 +12,19 @@ async function login(page: Page, email: string, password: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
+}
+
+async function openSettingsSection(page: Page, projectName: string, label: string, value: string) {
+  if (projectName === "mobile") {
+    await page.getByRole("combobox", { name: "Seções das configurações" }).selectOption(value);
+    return;
+  }
+  await page.getByRole("tab", { name: label, exact: true }).click();
+}
+
+async function expectNoSeriousAccessibilityViolations(page: Page) {
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
 }
 
 test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
@@ -119,6 +133,29 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
         after_data: { requireMfaForCriticalActions: true },
         request_id: `e2e-audit-${Date.now()}`,
       }),
+      service.from("planning_sessions").insert({
+        org_id: org.orgId,
+        area_id: org.areas.comercialId,
+        user_id: org.owner.id,
+        type: "quarterly",
+        period: "T3 2026",
+        phase: "sintese",
+        state: {},
+        pending_proposal: {
+          type: "save_quarterly_plan",
+          period: "T3 2026",
+          annualAlignment: { status: "linked", strategicObjectiveTitle: "Expandir capacidade digital E2E" },
+          quarterlyObjectives: [{
+            title: "Implantar a rotina comercial E2E",
+            result: "Rotina usada por toda a equipe",
+            metric: "Adoção da rotina",
+            target: "90%",
+            owner: "Owner E2E",
+            period: "T3 2026",
+          }],
+        },
+        status: "active",
+      }),
     ];
     const seeded = await Promise.all(seedOperations);
     const seedError = seeded.find((result) => result.error)?.error;
@@ -161,14 +198,36 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
   });
 
   test("login real e módulos essenciais carregam dados da empresa", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
     if (!org) throw new Error("fixture ausente");
+    await page.setViewportSize(testInfo.project.name === "mobile"
+      ? { width: 390, height: 844 }
+      : { width: 1280, height: 720 });
     await login(page, org.owner.email, org.owner.password);
     await expect(page.getByRole("heading", { name: "Dashboard executivo" })).toBeVisible();
     await expect(page.getByText("Faturamento E2E")).toBeVisible();
+    await expectNoSeriousAccessibilityViolations(page);
 
-    await page.getByRole("button", { name: "Lançar / Editar" }).click();
+    const oracleLauncher = page.getByRole("button", { name: "Abrir Oráculo" });
+    await oracleLauncher.click();
+    await expect(page.getByRole("complementary", { name: "Oráculo" })).toBeFocused();
+    await expect(page.getByText("Pronto para conferir")).toBeVisible();
+    await expect(page.getByText("Plano Trimestral · Comercial · T3 2026")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmar e gravar" })).toHaveCount(1);
+    await page.getByRole("button", { name: "Ajustar" }).click();
+    await expect(page.getByPlaceholder("O que você quer mudar?")).toBeVisible();
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`oracle-proposta-${testInfo.project.name}.png`), fullPage: true });
+    }
+    await page.getByRole("button", { name: "Fechar Oráculo" }).click();
+    await expect(oracleLauncher).toBeFocused();
+
+    const kpiOpener = page.getByRole("button", { name: "Lançar / Editar" });
+    await kpiOpener.click();
     await expect(page.getByRole("heading", { name: "Lançar KPIs" }).first()).toBeVisible();
-    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(kpiOpener).toBeFocused();
 
     const routes = [
       ["/estrategico", "Plano Estratégico"],
@@ -181,18 +240,79 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     ] as const;
     for (const [path, heading] of routes) {
       await page.goto(path);
-      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible({ timeout: 30_000 });
     }
 
-    await page.getByRole("tab", { name: "IA do Oráculo" }).click();
+    await page.goto("/");
+    await expect(page.getByText("Meta: Meta:")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (testInfo.project.name === "desktop") {
+      const sidebar = page.getByRole("navigation", { name: "Menu principal" });
+      const sidebarLayout = await sidebar.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const firstLabel = element.querySelector("nav a span")?.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        return {
+          width: rect.width,
+          x: rect.x,
+          position: style.position,
+          transform: style.transform,
+          firstLabelLeft: firstLabel?.left ?? -1,
+          firstLabelRight: firstLabel?.right ?? -1,
+        };
+      });
+      expect(sidebarLayout.width).toBeGreaterThanOrEqual(220);
+      expect(sidebarLayout.x).toBeGreaterThanOrEqual(0);
+      expect(sidebarLayout.position).toBe("static");
+      expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(sidebarLayout.transform);
+      expect(sidebarLayout.firstLabelLeft).toBeGreaterThanOrEqual(sidebarLayout.x);
+      expect(sidebarLayout.firstLabelRight).toBeLessThanOrEqual(sidebarLayout.x + sidebarLayout.width);
+      const navigationFits = await sidebar.evaluate((element) => {
+        const labels = Array.from(element.querySelectorAll("nav a span"));
+        return labels.length === 8 && labels.every((label) => label.scrollWidth <= label.clientWidth);
+      });
+      expect(navigationFits).toBe(true);
+    } else {
+      const menuOpener = page.getByRole("button", { name: "Abrir menu" });
+      await menuOpener.click();
+      await expect(page.getByRole("button", { name: "Fechar menu" })).toBeFocused();
+      await expect(page.getByRole("link", { name: "Plano Estratégico", exact: true })).toBeVisible();
+      await expect(page.getByText("Planejamento", { exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(menuOpener).toBeFocused();
+    }
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`dashboard-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.goto("/estrategico");
+    await expect(page.getByText("Direção anual que orienta os planos de cada área e trimestre.")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`estrategia-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.goto("/planos-trimestrais");
+    await expect(page.getByText("Prioridades que cada área executa neste trimestre.")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (process.env.QA_SCREENSHOTS === "true") {
+      await page.screenshot({ path: testInfo.outputPath(`trimestral-${testInfo.project.name}.png`), fullPage: true });
+    }
+
+    await page.goto("/configuracoes");
+    if (testInfo.project.name === "mobile") {
+      await page.setViewportSize({ width: 430, height: 932 });
+    }
+
+    await openSettingsSection(page, testInfo.project.name, "IA do Oráculo", "ia");
     await expect(page.getByRole("heading", { name: "IA do Oráculo" })).toBeVisible();
     await expect(page.getByText("Chaves por provedor")).toBeVisible();
 
-    await page.getByRole("tab", { name: "WhatsApp" }).click();
+    await openSettingsSection(page, testInfo.project.name, "WhatsApp", "whatsapp");
     await expect(page.getByRole("heading", { name: "WhatsApp", exact: true })).toBeVisible();
     await expect(page.getByPlaceholder(/Chave da Evolution API/)).toBeVisible();
 
-    await page.getByRole("tab", { name: "Backups" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Backups", "backups");
     await expect(page.getByRole("heading", { name: "Recuperação de desastre" })).toBeVisible();
     await expect(page.getByText("Até 30 min")).toBeVisible();
     await expect(page.getByText("Até 4h")).toBeVisible();
@@ -215,7 +335,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
       await page.screenshot({ path: testInfo.outputPath(`recuperacao-${testInfo.project.name}.png`), fullPage: true });
     }
 
-    await page.getByRole("tab", { name: "Segurança" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Segurança", "seguranca");
     await expect(page.getByRole("heading", { name: "Saúde operacional" })).toBeVisible();
     await page.getByRole("button", { name: "Registrar incidente" }).click();
     await expect(page.getByText("Ocorrência", { exact: true })).toBeVisible();
@@ -223,15 +343,16 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await expect(page.getByText("Serviço principal", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
-    await page.getByRole("tab", { name: "Auditoria" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Auditoria", "auditoria");
     await expect(page.getByRole("heading", { name: "Auditoria administrativa" })).toBeVisible();
     await expect(page.getByText("Política de MFA alterada")).toBeVisible();
+    await expect(page.getByText("Request ID", { exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`auditoria-${testInfo.project.name}.png`), fullPage: true });
     }
 
-    await page.getByRole("tab", { name: "Privacidade" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Privacidade", "privacidade");
     await expect(page.getByRole("heading", { name: "Privacidade e uso de dados" })).toBeVisible();
     await expect(page.getByText("Owner da organização")).toBeVisible();
     await page.getByRole("button", { name: "Registrar ciência da versão 2026-07-15-r2" }).click();
@@ -239,7 +360,7 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     await page.reload();
     await expect(page.getByText("Ciência registrada")).toBeVisible();
 
-    await page.getByRole("tab", { name: "Minha conta" }).click();
+    await openSettingsSection(page, testInfo.project.name, "Minha conta", "conta");
     await expect(page.getByRole("heading", { name: "Minha conta", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Salvar perfil" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Baixar" })).toBeVisible();
@@ -247,11 +368,14 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("button", { name: "Excluir" }).click();
     await expect(page.getByRole("heading", { name: "Excluir sua conta do Oráculo?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expectNoSeriousAccessibilityViolations(page);
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`minha-conta-${testInfo.project.name}.png`), fullPage: true });
     }
-    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Excluir" })).toBeFocused();
 
     await page.goto("/documentos");
     await expect(page.getByRole("button", { name: /Histórico descartável E2E/ })).toBeVisible();
@@ -266,10 +390,28 @@ test.describe("Fatia 4A — jornadas críticas autenticadas", () => {
     if (process.env.QA_SCREENSHOTS === "true") {
       await page.screenshot({ path: testInfo.outputPath(`plano-anual-${testInfo.project.name}.png`), fullPage: true });
     }
-    await page.getByRole("button", { name: "Importar histórico" }).first().click();
+    const historyOpener = page.getByRole("button", { name: "Importar histórico" }).first();
+    await historyOpener.click();
     await expect(page.getByRole("heading", { name: "Importar histórico" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
     await expect(page.locator('input[type="file"]')).toHaveAttribute("accept", /\.pdf/);
-    await page.getByRole("button", { name: "Fechar", exact: true }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(historyOpener).toBeFocused();
+
+    if (testInfo.project.name === "mobile") {
+      await page.getByRole("button", { name: "Abrir Oráculo" }).click();
+      await page.setViewportSize({ width: 430, height: 520 });
+      const composer = page.getByPlaceholder(/Escreva|Responda|O que você quer mudar/);
+      await composer.focus();
+      const sendButton = page.getByRole("button", { name: "Enviar mensagem" });
+      const sendBox = await sendButton.boundingBox();
+      expect(sendBox).not.toBeNull();
+      expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(520);
+      await expectNoSeriousAccessibilityViolations(page);
+      await page.keyboard.press("Escape");
+      await page.setViewportSize({ width: 430, height: 932 });
+    }
 
     await page.goto("/arquivo");
     await expect(page.getByRole("heading", { name: "Histórico de alterações" })).toBeVisible();

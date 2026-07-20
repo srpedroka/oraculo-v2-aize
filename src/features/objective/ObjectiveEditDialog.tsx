@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConflictNotice } from "../../components/ConflictNotice";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { useModalAccessibility } from "../../hooks/useModalAccessibility";
 import { InlineFeedback } from "../../components/ui/InlineFeedback";
 import { recoverableFeedback, type RecoverableFeedback } from "../../lib/uiFeedback";
 import { ProgressBar } from "../../components/ui/ProgressBar";
@@ -53,6 +54,7 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [reviewKpis, setReviewKpis] = useState(false);
   const [saving, setSaving] = useState(false);
+  const dialogRef = useModalAccessibility<HTMLDivElement>({ closeDisabled: saving || archiveBusy, onClose });
   const [saveError, setSaveError] = useState<RecoverableFeedback | null>(null);
   const [baselineUpdatedAt, setBaselineUpdatedAt] = useState(objective.updatedAt ?? "");
   const [hasConflict, setHasConflict] = useState(false);
@@ -166,14 +168,14 @@ export function ObjectiveEditDialog({ objective, onClose }: ObjectiveEditDialogP
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-[2px]">
-      <Card className="max-h-[92vh] w-full max-w-3xl overflow-auto p-0">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-2 backdrop-blur-[2px] sm:p-4" role="dialog" aria-modal="true" aria-labelledby="objective-edit-title">
+      <Card className="max-h-[calc(100dvh-1rem)] w-full max-w-3xl overflow-y-auto overscroll-contain p-0 sm:max-h-[calc(100dvh-2rem)]">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-6 py-4">
           <div>
             <p className="text-xs font-medium text-text-tertiary">Editar objetivo</p>
-            <h2 className="text-xl font-semibold text-text">{objective.title}</h2>
+            <h2 id="objective-edit-title" className="text-xl font-semibold text-text">{objective.title}</h2>
           </div>
-          <Button variant="quiet" size="icon" icon={X} onClick={onClose} aria-label="Fechar" />
+          <Button data-dialog-initial-focus variant="quiet" size="icon" icon={X} onClick={onClose} disabled={saving || archiveBusy} aria-label="Fechar" />
         </div>
 
         <div className="space-y-6 p-6">

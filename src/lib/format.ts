@@ -9,3 +9,8 @@ export function shortDate(date: string | null | undefined) {
   const parsed = new Date(date.includes("T") ? date : `${date}T00:00:00`);
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" }).format(parsed);
 }
+
+export function formatObjectiveTarget(target: string | null | undefined) {
+  const value = target?.trim().replace(/^meta\s*:\s*/i, "");
+  return value || "A definir";
+}

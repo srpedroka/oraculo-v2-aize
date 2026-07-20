@@ -30,6 +30,19 @@ import type {
   StrategicPlan,
 } from "../types";
 
+export interface ConfirmSessionProposalResult {
+  sessionId: string;
+  reply: string;
+  replayed?: boolean;
+  document: {
+    id: string;
+    title: string;
+    type: PlanDocumentType;
+    period: string;
+    version: number;
+  } | null;
+}
+
 export type AppAction =
   | { type: "toggle_sidebar" }
   | { type: "set_sidebar_width"; width: number }
@@ -121,7 +134,7 @@ export type AppAction =
   | {
       type: "confirm_session_proposal";
       sessionId: string;
-      onSuccess?: () => void;
+      onSuccess?: (result: ConfirmSessionProposalResult) => void;
       onError?: (message: string) => void;
     }
   | { type: "abandon_session"; sessionId: string; onSuccess?: () => void; onError?: (message: string) => void }

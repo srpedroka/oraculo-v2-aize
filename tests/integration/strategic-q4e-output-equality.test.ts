@@ -65,11 +65,11 @@ async function seedSession(fields: Record<string, unknown>) {
   return data.id as string;
 }
 
-async function confirm(sessionId: string) {
+async function confirm(sessionId: string, channel: "web" | "whatsapp" = "web") {
   const response = await fetch(FUNCTIONS_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${ownerJwt}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "confirm", sessionId, channel: "web" }),
+    body: JSON.stringify({ action: "confirm", sessionId, channel }),
   });
   return { status: response.status, body: await response.json() as Record<string, unknown> };
 }
@@ -162,6 +162,23 @@ d("Q4E — igualdade material e rastreabilidade das saídas", () => {
 
     const confirmation = await confirm(sessionId);
     expect(confirmation.status, JSON.stringify(confirmation.body)).toBe(200);
+
+    const beforeRepeatedConfirmation = await outputMutationSnapshot(org.orgId);
+    const repeatedConfirmation = await confirm(sessionId);
+    const afterRepeatedConfirmation = await outputMutationSnapshot(org.orgId);
+    expect(repeatedConfirmation.status, JSON.stringify(repeatedConfirmation.body)).toBe(200);
+    expect(repeatedConfirmation.body.replayed).toBe(true);
+    expect((repeatedConfirmation.body.document as Record<string, unknown>)?.id).toBeTruthy();
+    expect(afterRepeatedConfirmation).toEqual(beforeRepeatedConfirmation);
+
+    const beforeWhatsAppReplay = await outputMutationSnapshot(org.orgId);
+    const whatsappReplay = await confirm(sessionId, "whatsapp");
+    const afterWhatsAppReplay = await outputMutationSnapshot(org.orgId);
+    expect(whatsappReplay.status, JSON.stringify(whatsappReplay.body)).toBe(200);
+    expect(whatsappReplay.body.replayed).toBe(true);
+    expect((whatsappReplay.body.document as Record<string, unknown>)?.id)
+      .toBe((repeatedConfirmation.body.document as Record<string, unknown>)?.id);
+    expect(afterWhatsAppReplay).toEqual(beforeWhatsAppReplay);
 
     const [{ data: objective, error: objectiveError }, { data: document, error: documentError }] = await Promise.all([
       admin.from("objectives").select("*").eq("org_id", org.orgId).eq("title", objectiveTitle).single(),

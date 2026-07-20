@@ -20,19 +20,35 @@ import {
 import { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAppState } from "../state/store";
+import { useModalAccessibility } from "../hooks/useModalAccessibility";
 import { Button } from "./ui/Button";
 
 const COMPACT_WIDTH = 72;
 
-const navItems = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/estrategico", label: "Plano Estratégico", icon: Target },
-  { to: "/planos-trimestrais", label: "Planos Trimestrais", icon: Waypoints },
-  { to: "/documentos", label: "Documentos", icon: FileText },
-  { to: "/areas", label: "Áreas", icon: Users },
-  { to: "/execucao", label: "Execução", icon: PlayCircle },
-  { to: "/arquivo", label: "Arquivo", icon: Archive },
-  { to: "/configuracoes", label: "Configurações", icon: Settings },
+const navGroups = [
+  { label: "Visão geral", items: [{ to: "/", label: "Dashboard", icon: Home }] },
+  {
+    label: "Planejamento",
+    items: [
+      { to: "/estrategico", label: "Plano Estratégico", icon: Target },
+      { to: "/planos-trimestrais", label: "Planos Trimestrais", icon: Waypoints },
+    ],
+  },
+  {
+    label: "Acompanhamento",
+    items: [
+      { to: "/areas", label: "Áreas", icon: Users },
+      { to: "/execucao", label: "Execução", icon: PlayCircle },
+    ],
+  },
+  {
+    label: "Memória",
+    items: [
+      { to: "/documentos", label: "Documentos", icon: FileText },
+      { to: "/arquivo", label: "Arquivo", icon: Archive },
+    ],
+  },
+  { label: "Administração", items: [{ to: "/configuracoes", label: "Configurações", icon: Settings }] },
 ];
 
 function getInitials(name: string) {
@@ -84,6 +100,10 @@ export function Sidebar() {
   const accountDisplayName = currentProfile?.fullName || accountEmail || "Conta";
   const accountDisplayPhone = currentProfile?.phone || "Celular não cadastrado";
   const accountInitials = getInitials(accountDisplayName);
+  const mobileNavRef = useModalAccessibility<HTMLElement>({
+    active: mobileNavOpen,
+    onClose: () => dispatch({ type: "close_mobile_nav" }),
+  });
 
   useEffect(() => {
     if (!dragging) return;
@@ -122,21 +142,6 @@ export function Sidebar() {
   useEffect(() => {
     dispatch({ type: "close_mobile_nav" });
   }, [location.pathname, dispatch]);
-
-  // Trava o scroll do body e fecha no Esc enquanto o drawer mobile está aberto.
-  useEffect(() => {
-    if (!mobileNavOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") dispatch({ type: "close_mobile_nav" });
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [mobileNavOpen, dispatch]);
 
   function startResize(event: ReactMouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -183,12 +188,15 @@ export function Sidebar() {
         />
       ) : null}
       <aside
-        role="navigation"
+        ref={mobileNavRef}
+        role={mobileNavOpen ? "dialog" : "navigation"}
+        aria-modal={mobileNavOpen || undefined}
         aria-label="Menu principal"
+        tabIndex={-1}
         className={[
-          "fixed inset-y-0 left-0 z-40 flex min-h-screen w-[86vw] max-w-[320px] flex-col border-r border-border bg-surface shadow-overlay transition-transform duration-200 motion-reduce:transition-none",
-          "sm:static sm:z-auto sm:w-[var(--sidebar-w)] sm:max-w-none sm:translate-x-0 sm:shadow-none",
-          mobileNavOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-0 left-0 z-40 flex h-dvh min-h-dvh w-[86vw] max-w-[320px] flex-col border-r border-border bg-surface shadow-overlay transition-transform duration-200 motion-reduce:transition-none",
+          "sm:static sm:z-auto sm:h-auto sm:min-h-screen sm:w-[var(--sidebar-w)] sm:max-w-none sm:shrink-0 sm:translate-x-0 sm:shadow-none",
+          mobileNavOpen ? "max-sm:translate-x-0" : "max-sm:-translate-x-full",
           dragging ? "sm:transition-none" : "sm:transition-[width] sm:duration-200",
         ].join(" ")}
         style={{ ["--sidebar-w"]: `${width}px` } as CSSProperties}
@@ -215,6 +223,7 @@ export function Sidebar() {
         </span>
         <span className="inline-flex sm:hidden">
           <Button
+            data-dialog-initial-focus
             variant="quiet"
             size="icon"
             icon={X}
@@ -224,26 +233,29 @@ export function Sidebar() {
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            title={collapsed ? item.label : undefined}
-            onClick={() => dispatch({ type: "close_mobile_nav" })}
-            className={({ isActive }) =>
-              [
-                "group flex h-12 items-center gap-3 rounded-control text-body font-medium transition-colors motion-reduce:transition-none",
-                collapsed ? "justify-center px-0" : "px-4",
-                isActive ? "bg-fill-active text-text" : "text-[#2E2E33] hover:bg-fill-hover active:bg-fill-press",
-              ].join(" ")
-            }
-          >
-            <item.icon className="h-5 w-5 shrink-0 text-text-secondary transition-colors group-hover:text-text motion-reduce:transition-none" />
-            {!collapsed ? (
-              <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            ) : null}
-          </NavLink>
+      <nav className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
+        {navGroups.map((group) => (
+          <div key={group.label} className="space-y-1" aria-label={group.label}>
+            {!collapsed ? <p className="px-4 pt-1 text-[11px] font-medium uppercase text-text-tertiary">{group.label}</p> : null}
+            {group.items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                title={collapsed ? item.label : undefined}
+                onClick={() => dispatch({ type: "close_mobile_nav" })}
+                className={({ isActive }) =>
+                  [
+                    "group flex h-10 items-center gap-3 rounded-control text-sm font-medium transition-colors motion-reduce:transition-none",
+                    collapsed ? "justify-center px-0" : "px-4",
+                    isActive ? "bg-fill-active text-text" : "text-[#2E2E33] hover:bg-fill-hover active:bg-fill-press",
+                  ].join(" ")
+                }
+              >
+                <item.icon className="h-4 w-4 shrink-0 text-text-secondary transition-colors group-hover:text-text motion-reduce:transition-none" />
+                {!collapsed ? <span className="min-w-0 flex-1 truncate">{item.label}</span> : null}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
 

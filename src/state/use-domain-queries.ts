@@ -102,7 +102,7 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
     enabled: Boolean(supabase && orgId && userId),
     queryFn: async () => {
       const client = requireClient();
-      const { data: activeConversation, error: conversationError } = await client
+      const { data: activeConversations, error: conversationError } = await client
         .from("conversations")
         .select("id")
         .eq("org_id", orgId)
@@ -110,14 +110,14 @@ export function useDomainQueries(orgId: string | null, userId: string | null) {
         .eq("channel", "web")
         .eq("status", "active")
         .order("last_message_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(8);
       if (conversationError) throw conversationError;
-      if (!activeConversation) return [];
+      const conversationIds = (activeConversations ?? []).map((conversation) => conversation.id);
+      if (!conversationIds.length) return [];
       const { data, error } = await client
         .from("chat_messages")
         .select("*")
-        .eq("conversation_id", activeConversation.id)
+        .in("conversation_id", conversationIds)
         .order("created_at");
       if (error) throw error;
       return (data ?? []).map(mapChatMessage);

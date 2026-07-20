@@ -23,6 +23,7 @@ let marginObjectiveId = "";
 let startedAt = "";
 let proposalSnapshot: Record<string, unknown> | null = null;
 let replySnapshot = "";
+let asideReplySnapshot = "";
 let confirmationCalls = 0;
 let liveStatus: "approved" | "blocked" = "blocked";
 let ledgerBefore: any = null;
@@ -194,6 +195,7 @@ d("revisão estratégica adaptativa em staging", () => {
         proposal: proposalSnapshot,
         reply: replySnapshot,
         deterministicChecks: {
+          documentHandoffAnsweredNaturally: /pode|claro|envie|compartilh/i.test(asideReplySnapshot),
           completeBatchProducedProposal: Boolean(proposalSnapshot),
           confirmationCalls,
           adjustments: Array.isArray((proposalSnapshot as any)?.adjustments) ? (proposalSnapshot as any).adjustments.length : 0,
@@ -214,7 +216,7 @@ d("revisão estratégica adaptativa em staging", () => {
     if (finalError) throw finalError;
   }, 90_000);
 
-  it("absorve dois ajustes completos e grava após uma única confirmação", async () => {
+  it("acolhe a oferta de arquivo, retoma a revisão completa e grava após uma única confirmação", async () => {
     if (!org) throw new Error("empresa descartável ausente");
     const start = await callOracle({
       action: "start",
@@ -226,12 +228,26 @@ d("revisão estratégica adaptativa em staging", () => {
     const sessionId = String(start.session?.id ?? "");
     expect(sessionId).not.toBe("");
 
+    const phaseBeforeAside = String(start.session?.phase ?? "");
+    const aside = await callOracle({
+      action: "message",
+      sessionId,
+      channel: "web",
+      message: "Antes de falar das decisões, posso compartilhar um arquivo com todo o contexto do primeiro semestre?",
+    });
+    asideReplySnapshot = String(aside.reply ?? "");
+    expect(asideReplySnapshot).toMatch(/pode|claro|envie|compartilh/i);
+    expect(asideReplySnapshot).not.toMatch(/fechar o resultado|prazo, o responsável|primeira ação/i);
+    expect(aside.pendingProposal ?? null).toBeNull();
+    expect(String(aside.session?.phase ?? "")).toBe(phaseBeforeAside);
+
     const response = await callOracle({
       action: "message",
       sessionId,
       channel: "web",
       message: [
-        "O fechamento de junho trouxe dados novos e precisamos revisar dois pontos do plano 2026.",
+        "Com base no arquivo e no fechamento de junho, o primeiro semestre confirmou avanço na previsibilidade da receita, mas mostrou pressão estrutural sobre a margem.",
+        "Para o segundo semestre, o foco é transformar o CRM consolidado em previsibilidade semanal e proteger rentabilidade. A prioridade é operar uma revisão semanal do funil, com o owner como responsável, meta de 90% das semanas revisadas até 15 de dezembro e primeira ação de definir a pauta e a fonte dos indicadores.",
         "No objetivo Aumentar a previsibilidade da receita, altere o valor atual de 55% para 62%, porque o CRM consolidado de junho confirmou essa evolução.",
         "No objetivo Elevar a margem operacional, altere a meta de 12% para 11%, porque o novo contrato anual de insumos elevou o custo estrutural.",
         "Os demais objetivos permanecem iguais. Apresente tudo junto para uma única confirmação final.",
@@ -240,6 +256,8 @@ d("revisão estratégica adaptativa em staging", () => {
 
     expect(response.pendingProposal?.type).toBe("apply_strategic_review");
     expect(response.pendingProposal?.adjustments).toHaveLength(2);
+    expect(response.pendingProposal?.semester_review ?? response.pendingProposal?.revisao_semestre).toBeTruthy();
+    expect(response.pendingProposal?.second_semester_plan ?? response.pendingProposal?.plano_segundo_semestre).toBeTruthy();
     expect(String(response.reply ?? "")).toMatch(/confirm|gravar/i);
     expect(String(response.reply ?? "")).toMatch(/valor atual/i);
     expect(String(response.reply ?? "")).toMatch(/meta/i);

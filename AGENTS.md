@@ -593,6 +593,28 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
 
 ### Em andamento / atencao
 
+- O plano mestre vigente e `plans/2026-07-19-plano-mestre-evolucao-integrado.md`,
+  com porcentagens oficiais em `plans/2026-07-19-painel-progresso-geral.md`.
+  UX-C0/UX-C1 foram aprovadas e publicadas em 2026-07-20 pela PR #15, CI #101,
+  merge `330190a` e deploy Netlify `6a5de9e76733af06c6887d56`. UX-C2, UX-C3 e
+  UX-C4 foram aprovadas no draft. A R1A foi implementada e aprovada no staging:
+  revisão semestral AI-first, contexto janeiro-junho, interrupcoes naturais,
+  arquivo transitorio e pacote canonico com Revisao do Primeiro Semestre +
+  Plano do Segundo Semestre, preservando o plano anual sem ajuste explicito.
+  Gate: 563 unitarios, 31 arquivos de integracao, 7 verificacoes de seguranca,
+  11 E2E desktop/mobile, lint/build/bundle/secret scan verdes; IA paga US$ 0.
+  O owner autorizou publicar o pacote conjunto UX-C2/C3/C4 + R1A em producao.
+  Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Proximo passo:
+  R1B real com o owner em producao. Fontes:
+  `plans/ddr/UX-C4-mobile-acessibilidade.md` e
+  `plans/ddr/R1A-prontidao-contrato-briefing.md`.
+- Principio conversacional aprovado pelo owner: a IA possui a conversa e o
+  servidor possui a gravacao. Guias sao referencias de raciocinio/qualidade,
+  nao scripts de formulario. Fases nao podem absorver perguntas laterais nem
+  substituir respostas pertinentes por fallback generico. A R1 prova primeiro
+  esse contrato; depois do owner, o rollout para os demais rituais deve ocorrer
+  antes do beta coletivo. Fonte:
+  `plans/ddr/AI-first-arquitetura-conversacional.md`.
 - A Q0 R2 foi aprovada em 2026-07-16 após o owner exigir Plano Estratégico Anual primeiro e cobertura de todas as entregas. O padrão possui sete rubricas, dezesseis falhas críticas e matriz de 21 entregas em `tests/evals/strategic-quality/deliverable-coverage.json`. O primeiro ciclo financeiro encerrou em US$ 17,352811. Em 2026-07-18 o owner abriu um novo ciclo de consumo de US$ 20, aviso US$ 15 e parada preventiva US$ 19; o ledger historico nao e zerado e o gate usa o delta desde `cycleStartCumulativeUsd`. Sempre reportar geração, judge, total do caso, total histórico e consumo do ciclo.
 - A Q1 anual automatizada foi aprovada no staging em 2026-07-16: técnica verde, Condução 86,25, Plano Anual 92,50, média 89,38 e zero candidato crítico. A Revisão Estratégica foi alinhada ao modo adaptativo sem deixar de ser microajuste; teste real aprovou dois ajustes em lote, uma confirmação, banco/documento e cleanup. Acumulado do plano: US$ 0,437777. Produção concluída no merge `43b5935`, release protegido `29525599601` e Netlify `6a5928c0f349e3bcc2a4728a`; verificação e smoke autenticado verdes. A chave temporária deve permanecer privada para novos testes autorizados, sem revogação por enquanto. Consulte `docs/STRATEGIC_EVALUATION_LAB.md`.
 - A Q2 foi implementada e aprovada pelo owner em 2026-07-16: 29 casos sinteticos em Q2A-Q2E cobrem 15 entregas e as 16 falhas criticas. `pnpm run test:strategic-cases` valida manifesto, casos, metodos, rubricas, canais, confirmacoes e sanitizacao. O gate esta `owner-approved`.

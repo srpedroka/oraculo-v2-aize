@@ -10,6 +10,7 @@ import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { importPlanFile, PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { currentQuarterPeriod } from "../lib/periods";
 import { recoverableFeedback } from "../lib/uiFeedback";
+import { displayStatus } from "../lib/execution";
 import { useAppState } from "../state/store";
 import type { Status } from "../types";
 
@@ -139,10 +140,11 @@ export function QuarterlyPlans() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-text-tertiary">Planejamento da execução · {CURRENT_QUARTER_PERIOD}</p>
+          <p className="text-sm font-medium text-text-tertiary">Desdobramento do plano anual · {CURRENT_QUARTER_PERIOD}</p>
           <h1 className="text-2xl font-semibold text-text">Planos Trimestrais</h1>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">Prioridades que cada área executa neste trimestre.</p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium text-text-secondary shadow-card">
+        <div className="inline-flex items-center gap-2 rounded-full bg-status-neutral-bg px-3 py-1.5 text-xs font-medium text-status-neutral">
           <Waypoints className="h-4 w-4" />
           Trimestre vigente
         </div>
@@ -191,6 +193,18 @@ export function QuarterlyPlans() {
             (acc, objective) => ({ ...acc, [objective.status]: acc[objective.status] + 1 }),
             { on_track: 0, at_risk: 0, late: 0, done: 0 },
           );
+          const displayedStatuses = quarterlyObjectives.map((objective) => displayStatus(objective));
+          const areaStatus: Status | "unset" = !quarterlyObjectives.length
+            ? "unset"
+            : displayedStatuses.includes("late")
+              ? "late"
+              : displayedStatuses.includes("at_risk")
+                ? "at_risk"
+                : counts.done === quarterlyObjectives.length
+                  ? "done"
+                  : displayedStatuses.includes("unset")
+                    ? "unset"
+                    : "on_track";
 
           return (
             <Card key={area.id} className="space-y-4">
@@ -201,10 +215,7 @@ export function QuarterlyPlans() {
                   <p className="mt-1 text-sm text-text-secondary">Coordenador: {area.coordinator}</p>
                 </div>
                 <div className="flex flex-wrap justify-start gap-2 md:justify-end">
-                  {counts.on_track ? <StatusBadge status="on_track" /> : null}
-                  {counts.at_risk ? <StatusBadge status="at_risk" /> : null}
-                  {counts.late ? <StatusBadge status="late" /> : null}
-                  {counts.done ? <StatusBadge status="done" /> : null}
+                  <StatusBadge status={areaStatus} />
                   <Link
                     to={`/areas/${area.id}`}
                     className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-border bg-transparent px-3 text-[13px] font-medium text-text transition hover:border-accent/30 hover:bg-white"
@@ -234,9 +245,11 @@ export function QuarterlyPlans() {
                           onChange={(event) => handleQuarterlyPlanFile(area.id, event)}
                         />
                       </label>
-                      <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
-                        Criar objetivo
-                      </Button>
+                      {quarterlyObjectives.length ? (
+                        <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
+                          Novo objetivo
+                        </Button>
+                      ) : null}
                     </>
                   ) : null}
                 </div>
@@ -255,23 +268,28 @@ export function QuarterlyPlans() {
               ) : null}
 
               {plan ? (
-                <div className="grid gap-3 rounded-2xl border border-border bg-[#FAFAFB] p-4 lg:grid-cols-[1fr_1fr]">
+                <div className="grid gap-4 border-y border-border-subtle py-4 lg:grid-cols-[1fr_1fr]">
                   <div>
                     <p className="text-xs font-medium text-text-tertiary">Papel no ano</p>
                     <p className="mt-1 text-sm leading-6 text-text-secondary">{plan.role.mission}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-text-tertiary">Objetivo anual de origem</p>
+                    <p className="text-xs font-medium text-text-tertiary">Origem no plano anual</p>
                     <div className="mt-1 space-y-1">
                       {annualObjectives.map((objective) => (
                         <p key={objective.id} className="text-sm leading-6 text-text-secondary">
                           {objective.title}
                         </p>
                       ))}
+                      {!annualObjectives.length ? <p className="text-sm text-status-neutral">Ainda sem objetivo anual vinculado.</p> : null}
                     </div>
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="border-y border-border-subtle py-4 text-sm text-status-neutral">
+                  A área ainda não tem um plano anual de origem. Você pode abrir a área para estruturá-lo.
+                </div>
+              )}
 
               <div className="grid gap-4">
                 {quarterlyObjectives.length ? (
@@ -280,11 +298,12 @@ export function QuarterlyPlans() {
                     return <ObjectiveCard key={objective.id} objective={objective} parent={parent} />;
                   })
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-[#FAFAFB] p-5">
-                    <p className="text-sm text-text-secondary">Nenhum objetivo trimestral definido para esta área.</p>
+                  <div className="border-t border-border-subtle pt-4">
+                    <p className="text-sm font-medium text-text">Nenhuma prioridade definida para {CURRENT_QUARTER_PERIOD}.</p>
+                    <p className="mt-1 text-sm text-text-secondary">Crie o primeiro objetivo do trimestre para esta área.</p>
                     {canPlanArea(area.id) ? (
                       <div className="mt-3">
-                        <Button variant="ghost" size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
+                        <Button size="sm" icon={Plus} onClick={() => setBuilderAreaId(area.id)}>
                           Criar objetivo trimestral
                         </Button>
                       </div>

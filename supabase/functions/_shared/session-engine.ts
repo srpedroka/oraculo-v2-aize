@@ -26,9 +26,10 @@ import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-t
 import { callModelForFunction } from "./call-for-function.ts";
 import { PLANNING_SESSION_OUTPUT } from "./session-output-schema.ts";
 import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.ts";
+import { replayedSessionConfirmation } from "./session-confirmation.ts";
 import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
 import { buildPlanContext } from "./plan-context.ts";
-import { documentTypeFromProposalType } from "./plan-documents.ts";
+import { sessionAsideDirective, sessionAsideKind } from "./session-conversation.ts";
 import { applyProposal } from "./proposals.ts";
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
 import { recordAiUsage } from "./usage.ts";
@@ -44,7 +45,6 @@ import {
 } from "./untrusted-content.ts";
 import {
   asText,
-  currentYearFromPeriod,
   formatReadyMonthlyPlanReply,
   formatReadyQuarterlyPlanReply,
   formatReadyStrategicPlanReply,
@@ -132,6 +132,7 @@ function conductorPrompt(type: string, phase: string) {
 }
 
 function planFocusForSession(type: string) {
+  if (type === "strategic_review") return "semester_review" as const;
   if (type === "monthly" || type === "month_close") return "monthly" as const;
   if (type === "quarterly" || type === "quarter_close") return "quarterly" as const;
   return "org" as const;
@@ -214,11 +215,11 @@ export async function startPlanningSession(
         .single();
       if (rebindError) throw rebindError;
       const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
-      if ((params.channel ?? "web") === "whatsapp") await insertMessage(client, rebound, "oracle", reply, "whatsapp");
+      if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") await insertMessage(client, rebound, "oracle", reply, "whatsapp");
       return { session: rebound, reply };
     }
     const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
-    if ((params.channel ?? "web") === "whatsapp") await insertMessage(client, existing, "oracle", reply, "whatsapp");
+    if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") await insertMessage(client, existing, "oracle", reply, "whatsapp");
     return { session: existing, reply };
   }
 
@@ -287,7 +288,14 @@ async function createFollowUpSessionAfterClose(
 
 export async function processPlanningMessage(
   client: Client,
-  params: { sessionId: string; message: string; userId: string; channel?: "web" | "whatsapp" },
+  params: {
+    sessionId: string;
+    message: string;
+    userId: string;
+    channel?: "web" | "whatsapp";
+    skipUserMessageInsert?: boolean;
+    transientContext?: string | null;
+  },
 ) {
   const { data: session, error } = await client.from("planning_sessions").select("*").eq("id", params.sessionId).maybeSingle();
   if (error) throw error;
@@ -297,7 +305,9 @@ export async function processPlanningMessage(
 
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
-  await insertMessage(client, ensured.session, "user", params.message, channel);
+  if (!params.skipUserMessageInsert) {
+    await insertMessage(client, ensured.session, "user", params.message, channel);
+  }
   const conversation = await maybeSummarize(client, ensured.session.org_id, ensured.conversation);
   const [history, context, orgTone] = await Promise.all([
     loadConversationHistory(client, ensured.session.conversation_id),
@@ -309,6 +319,51 @@ export async function processPlanningMessage(
     loadOrgTone(client, ensured.session.org_id),
   ]);
   const conversationMemory = formatConversationMemory(history);
+
+  const asideKind = sessionAsideKind(params.message);
+  if (asideKind) {
+    const aiRoute = await resolveAiFunction(client, ensured.session.org_id, "planning");
+    if (!aiRoute) throw new Error("IA de planejamento não configurada");
+    const asidePrompt = [
+      PERSONA_ORACULO,
+      toneDirective(orgTone),
+      sessionAsideDirective(asideKind),
+      conversationMemory,
+      "Contexto atual do plano:",
+      context,
+    ].filter(Boolean).join("\n\n");
+    const output = await callModelForFunction(
+      client,
+      ensured.session.org_id,
+      "planning",
+      aiRoute,
+      asidePrompt,
+      conversationMessagesForModel(history),
+      { ...aiRoute.limits, timeoutMs: planningModelTimeout(Date.now() + PLANNING_REQUEST_DEADLINE_MS) },
+      { userId: params.userId },
+    );
+    await recordAiUsage({
+      client,
+      orgId: ensured.session.org_id,
+      provider: aiRoute.provider,
+      model: aiRoute.model,
+      channel,
+      usage: output.usage,
+      settings: aiRoute.legacySettings,
+      metadata: {
+        aiFunction: "planning",
+        action: "session_conversation_aside",
+        asideKind,
+        sessionId: ensured.session.id,
+        sessionType: ensured.session.type,
+        conversationId: conversation?.id ?? ensured.session.conversation_id,
+      },
+    });
+    const reply = String(output.text ?? "").trim()
+      || "Pode mandar o arquivo. Vou ler o conteúdo e depois retomamos exatamente deste ponto.";
+    await insertMessage(client, ensured.session, "oracle", reply, channel);
+    return { session: ensured.session, reply, pendingProposal: ensured.session.pending_proposal ?? null };
+  }
 
   const systemPrompt = [
     PERSONA_ORACULO,
@@ -322,6 +377,7 @@ export async function processPlanningMessage(
     conversationMemory,
     "Contexto atual do plano:",
     context,
+    params.transientContext ? `CONTEXTO TRANSITÓRIO DESTE TURNO (não persistido):\n${params.transientContext}` : "",
   ].filter(Boolean).join("\n\n");
 
   const modelMessages = conversationMessagesForModel(history);
@@ -578,23 +634,15 @@ export async function processPlanningMessage(
   return { session: followUp?.session ?? updated, reply: finalReply, pendingProposal };
 }
 
-async function loadLatestDocumentForProposal(client: Client, session: any, proposal: any) {
-  const documentType = documentTypeFromProposalType(asText(proposal?.type));
-  if (!documentType) return null;
-  const period = documentType === "strategic"
-    ? String(proposal?.year ?? currentYearFromPeriod(session.period))
-    : asText(proposal?.period ?? proposal?.periodo, session.period);
-
-  let query = client
+async function loadLatestDocumentForSession(client: Client, session: any) {
+  const query = client
     .from("plan_documents")
     .select("*")
     .eq("org_id", session.org_id)
-    .eq("type", documentType)
-    .eq("period", period)
+    .eq("session_id", session.id)
     .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(1);
-  query = session.area_id ? query.eq("area_id", session.area_id) : query.is("area_id", null);
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data;
@@ -605,7 +653,12 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   if (error) throw error;
   if (!session) throw new Error("Sessão não encontrada");
   if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
-  if (!session.pending_proposal) throw new Error("Não há proposta pendente para confirmar");
+  if (!session.pending_proposal) {
+    const document = await loadLatestDocumentForSession(client, session);
+    const replay = replayedSessionConfirmation(session, document);
+    if (!replay) throw new Error("Não há proposta pendente para confirmar");
+    return replay;
+  }
 
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
@@ -629,7 +682,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   // e limpa pending_proposal atomicamente). O log de mensagens fica fora (cosmetico).
   const outcome = await runIdempotentCommand(key, async (tx) => {
     const summary = await applyProposal(tx, ensured.session, proposal, params.userId);
-    const document = channel === "whatsapp" ? await loadLatestDocumentForProposal(tx, ensured.session, proposal) : null;
+    const document = await loadLatestDocumentForSession(tx, ensured.session);
     const reply = isCloseSession
       ? `${summary}\n\nFechamento salvo. Quer já abrir o próximo ciclo agora?`
       : isReviewSession
@@ -666,7 +719,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
   } catch (_) { /* log nao-critico */ }
 
   let document = null;
-  if (channel === "whatsapp" && outcome.result.documentId) {
+  if (outcome.result.documentId) {
     const { data, error: documentError } = await client
       .from("plan_documents")
       .select("*")
@@ -676,7 +729,7 @@ export async function confirmPlanningProposal(client: Client, params: { sessionI
     document = data;
   }
 
-  return { session: finalSession, reply, document };
+  return { session: finalSession, reply, document, replayed: outcome.replayed };
 }
 
 export async function abandonPlanningSession(client: Client, params: { sessionId: string; userId: string }) {

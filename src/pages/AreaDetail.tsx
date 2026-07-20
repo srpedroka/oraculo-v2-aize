@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { InlineFeedback } from "../components/ui/InlineFeedback";
+import { Tabs, type TabItem } from "../components/ui/Tabs";
 import { ObjectiveBuilder } from "../features/objective/ObjectiveBuilder";
 import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { useSessionLauncher } from "../hooks/useSessionLauncher";
@@ -18,6 +19,11 @@ const TAB_LABEL: Record<AreaTab, string> = {
   quarterly: "Trimestral",
   monthly: "Mensal",
 };
+
+const AREA_TABS = (Object.keys(TAB_LABEL) as AreaTab[]).map<TabItem<AreaTab>>((value) => ({
+  value,
+  label: TAB_LABEL[value],
+}));
 
 function BulletList({ title, items }: { title: string; items: string[] }) {
   return (
@@ -137,12 +143,12 @@ export function AreaDetail() {
             <FileText className="h-4 w-4" />
             Ver documentos
           </Link>
-          {canEditArea ? (
+          {canEditArea && objectives.length ? (
             <Button variant="ghost" icon={Plus} onClick={() => setBuilderLevel(tab)}>
               Novo objetivo
             </Button>
           ) : null}
-          {tab !== "area_annual" ? (
+          {tab !== "area_annual" && objectives.length ? (
             <Button
               icon={Plus}
               loading={sessionLauncher.isStarting(tab === "monthly" ? monthlyRequest : quarterlyRequest)}
@@ -196,24 +202,15 @@ export function AreaDetail() {
         </div>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-xl border border-border bg-surface p-1 shadow-card">
-          {(Object.keys(TAB_LABEL) as AreaTab[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setTab(item)}
-              className={[
-                "rounded-[10px] px-4 py-2 text-sm font-medium transition",
-                tab === item ? "bg-[#F0F7FF] text-accent" : "text-text-secondary hover:text-text",
-              ].join(" ")}
-            >
-              {TAB_LABEL[item]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs
+        ariaLabel={`Níveis de planejamento da área ${area.name}`}
+        items={AREA_TABS}
+        value={tab}
+        onChange={setTab}
+        panelId="area-level-panel"
+      />
 
+      <div id="area-level-panel" role="tabpanel" className="space-y-4">
       {tab === "quarterly" ? (
         <Card>
           <p className="text-xs font-medium text-text-tertiary">Foco de aprendizado · Q3 2026</p>
@@ -271,6 +268,7 @@ export function AreaDetail() {
           </Card>
         )}
       </section>
+      </div>
 
       {builderLevel ? <ObjectiveBuilder level={builderLevel} areaId={area.id} onClose={() => setBuilderLevel(null)} /> : null}
     </div>

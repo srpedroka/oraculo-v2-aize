@@ -29,8 +29,8 @@ export function Button({
   };
   const sizes = {
     sm: "h-8 gap-1.5 rounded-control px-3 text-label",
-    md: "h-10 gap-2 rounded-control px-4 text-sm",
-    icon: "h-10 w-10 rounded-control p-0 active:scale-95 motion-reduce:active:scale-100",
+    md: "h-11 gap-2 rounded-control px-4 text-sm",
+    icon: "h-11 w-11 rounded-control p-0 active:scale-95 motion-reduce:active:scale-100",
   };
 
   return (

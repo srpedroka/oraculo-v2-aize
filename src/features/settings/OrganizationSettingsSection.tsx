@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { ReadableText } from "../../components/ui/ReadableText";
 import { OrganizationBackupCard } from "../backups/OrganizationBackupCard";
 import { AreaArchiveDialog } from "../areas/AreaArchiveDialog";
 import { MemberRemovalDialog } from "../members/MemberRemovalDialog";
@@ -123,8 +124,8 @@ export function OrganizationSettingsSection({ scope }: { scope: SettingsControll
           </p>
 
           {companyProfile && companyProfileSummary && !profilePreview ? (
-            <div className="mt-4 rounded-2xl border border-border bg-[#FAFAFB] p-4">
-              <p className="text-sm leading-6 text-text whitespace-pre-wrap">{companyProfileSummary}</p>
+            <div className="mt-4 rounded-card border border-border bg-surface-muted p-4">
+              <ReadableText value={companyProfileSummary} />
               <p className="mt-3 text-xs font-medium text-text-tertiary">
                 Atualizado em {formatDate(companyProfile.createdAt)}
               </p>
