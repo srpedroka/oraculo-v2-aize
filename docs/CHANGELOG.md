@@ -3,7 +3,9 @@
 - Arquivos `.md` e `.markdown` passaram a ser tratados como texto puro no
   WhatsApp e no app, inclusive quando a Evolution envia MIME genérico
   `application/octet-stream`. Seletores, mensagens de ajuda e testes cobrem
-  plano, histórico e conversa sem armazenar o arquivo bruto.
+  plano, histórico e conversa sem armazenar o arquivo bruto. O fallback não
+  confunde mais `semestre` com `mês`, e uma falha posterior à extração não é
+  apresentada incorretamente como falha de leitura.
 
 - Publicado em producao o pacote conjunto UX-C2/C3/C4 + R1A pela PR #16 e
   merge `688707b`. O release protegido `29771409862` publicou `oracle-session`,
