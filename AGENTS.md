@@ -281,7 +281,7 @@ Compartilhados criticos:
 - `_shared/administrative-audit.ts`: grava eventos administrativos idempotentes e sanitizados, sem segredos, contatos, prompts ou conteúdo.
 - `_shared/conversation-policy.ts`: timeout de 4 horas entre episodios, deteccao de retomada explicita e validacao do vinculo entre sessao e episodio ativo.
 - `_shared/whatsapp-processor.ts`: núcleo único de autenticação/processamento usado pelo ingress e pelo worker; texto externo nunca usa fallback síncrono.
-- `_shared/whatsapp-event.ts`, `_shared/whatsapp-media.ts`, `_shared/whatsapp-documents.ts` e `_shared/whatsapp-conversation.ts`: parsing/autenticação, mídia em memória, importação de documentos e respostas do processador público.
+- `_shared/whatsapp-event.ts`, `_shared/whatsapp-media.ts`, `_shared/whatsapp-media-crypto.ts`, `_shared/whatsapp-documents.ts`, `_shared/whatsapp-review-document.ts` e `_shared/whatsapp-conversation.ts`: parsing/autenticação, validação/descriptografia de mídia em memória, importação de documentos, handoff transitório para revisão semestral e respostas do processador público.
 - `_shared/model.ts`: chamadas OpenAI, Anthropic, Moonshot/Kimi e xAI/Grok.
 - `_shared/ai-router.ts`: resolve provider/modelo/chave por funcao (`planning`, `daily`, `background`).
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.

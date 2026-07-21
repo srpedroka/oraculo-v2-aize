@@ -22,6 +22,7 @@ import {
 import { documentExtractionFailureMessage, extractDocumentText, resolveDocumentFile } from "./whatsapp-media.ts";
 import { normalizeWhatsAppText as normalizeText, whatsappFileExtension as fileExtension } from "./whatsapp-text.ts";
 import { inferWhatsAppDocumentType, type WhatsAppPlanDocumentType } from "./whatsapp-document-routing.ts";
+import { strategicReviewDocumentHandoff } from "./whatsapp-review-document.ts";
 
 type DocumentTarget = "strategic" | "quarterly" | "monthly" | "evidence" | "unknown";
 
@@ -350,7 +351,6 @@ export async function processIncomingDocument(
       byteLength: file.bytes.byteLength,
       textLength: extractedText.length,
     });
-    const classification = await classifyImportedDocument(client, orgId, areaId, file.fileName, extractedText, profile);
     const { data: reviewSession, error: reviewSessionError } = conversationId
       ? await client.from("planning_sessions")
         .select("id")
@@ -365,18 +365,13 @@ export async function processIncomingDocument(
       : { data: null, error: null };
     if (reviewSessionError) throw reviewSessionError;
     if (reviewSession) {
-      return {
-        userText: importedDocumentInsightReceipt(classification),
-        answer: formatImportedDocumentInsight(classification),
-        skipHistory: false,
-        resumeSessionId: reviewSession.id,
-        transientContext: formatUntrustedDocument({
-          fileName: file.fileName,
-          content: extractedText,
-          maxChars: 20_000,
-        }),
-      };
+      return strategicReviewDocumentHandoff({
+        sessionId: reviewSession.id,
+        fileName: file.fileName,
+        extractedText,
+      });
     }
+    const classification = await classifyImportedDocument(client, orgId, areaId, file.fileName, extractedText, profile);
     if (classification.target === "strategic") {
       const year = classification.period?.match(/\b(20\d{2})\b/)?.[1] ?? String(new Date().getFullYear());
       const prepared = await prepareReadyStrategicPlanProposal(client, {

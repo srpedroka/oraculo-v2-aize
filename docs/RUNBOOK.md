@@ -907,16 +907,17 @@ Incidente de 2026-07-13: a frase "Planejar o calendário de migração" abriu um
 Fluxo esperado:
 
 1. Evolution envia uma mensagem com `documentMessage` para `whatsapp-webhook`.
-2. O webhook baixa o arquivo por base64, URL direta ou rota `/message/downloadmedia`.
-3. Se o arquivo vier como mídia criptografada do WhatsApp, o webhook descriptografa em memoria com `mediaKey` e info `WhatsApp Document Keys`.
+2. O webhook usa base64 já presente ou prioriza `/message/downloadmedia`; URL direta fica como fallback porque pode apontar para mídia ainda criptografada.
+3. Extensão/MIME não provam que os bytes estão abertos. O webhook exige assinatura PDF/ZIP real ou UTF-8 plausível; caso contrário, descriptografa em memoria com `mediaKey` e info `WhatsApp Document Keys`.
 4. O webhook extrai texto de `TXT`, `PPTX`, `DOCX` ou `PDF` com texto selecionavel. PDF usa `unpdf`/PDF.js; nao faça parsing por regex dos bytes.
-5. A IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown` e devolve natureza literal, resumo, pontos principais e uso sugerido com base no conteúdo.
-6. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com previa textual dos objetivos, projetos e lacunas. A pessoa confirma respondendo `confirmar`.
-7. Se for `quarterly`, o webhook tenta identificar o departamento, chama `prepareReadyQuarterlyPlanProposal` e responde com previa textual dos objetivos trimestrais. A pessoa confirma respondendo `confirmar`.
-8. Se for `monthly`, o webhook tenta identificar o departamento, chama `prepareReadyMonthlyPlanProposal` e responde com previa textual dos objetivos mensais e acoes-chave. A pessoa confirma respondendo `confirmar`.
-9. Se faltar departamento, o Oraculo pergunta qual departamento usar antes de montar a proposta.
-10. Se for `evidence` ou `unknown`, o Oraculo mostra o que identificou no conteúdo e pergunta o direcionamento, sem gravar automaticamente. `unknown` significa material fora das categorias operacionais, nao falha de leitura.
-11. Para perguntas seguintes, a conversa guarda somente o insight automático limitado e marcado como não confiável; nome, arquivo e texto bruto continuam omitidos.
+5. Fora de uma revisão ativa, a IA classifica o documento como `strategic`, `quarterly`, `monthly`, `evidence` ou `unknown` e devolve natureza literal, resumo, pontos principais e uso sugerido com base no conteúdo.
+6. Se houver `strategic_review` ativa na mesma conversa, pule a classificação `background`: envie o texto extraído diretamente ao condutor `planning`, com até 60 mil caracteres apenas no contexto transitório. Uma resposta que alegue corrupção depois disso deve ser recusada e reparada pelo guard adaptativo.
+7. Se for `strategic`, o webhook chama `prepareReadyStrategicPlanProposal`, cria/atualiza uma sessao estrategica ativa e responde com previa textual dos objetivos, projetos e lacunas. A pessoa confirma respondendo `confirmar`.
+8. Se for `quarterly`, o webhook tenta identificar o departamento, chama `prepareReadyQuarterlyPlanProposal` e responde com previa textual dos objetivos trimestrais. A pessoa confirma respondendo `confirmar`.
+9. Se for `monthly`, o webhook tenta identificar o departamento, chama `prepareReadyMonthlyPlanProposal` e responde com previa textual dos objetivos mensais e acoes-chave. A pessoa confirma respondendo `confirmar`.
+10. Se faltar departamento, o Oraculo pergunta qual departamento usar antes de montar a proposta.
+11. Se for `evidence` ou `unknown`, o Oraculo mostra o que identificou no conteúdo e pergunta o direcionamento, sem gravar automaticamente. `unknown` significa material fora das categorias operacionais, nao falha de leitura.
+12. Para perguntas seguintes, a conversa guarda somente o insight automático limitado e marcado como não confiável; nome, arquivo e texto bruto continuam omitidos.
 
 Limite atual:
 
@@ -935,6 +936,8 @@ Verifique:
 - para Plano Estratégico, se `public.planning_sessions.pending_proposal` foi preenchido;
 - se o arquivo tem extensao e MIME compatíveis: PDF, PPTX, DOCX, TXT ou Markdown;
 - se a rota `POST /message/downloadmedia` da Evo Go continua baixando documentos; rotas antigas são apenas fallback.
+- com `strategic_review` ativa, se há uso `planning` após o arquivo e não é necessário um uso `document_classification` para o turno avançar;
+- se a resposta cita achados concretos do arquivo e nunca usa `corrompido` quando o log sanitizado registrou `Documento do WhatsApp extraído`.
 
 Consultas uteis no Supabase SQL editor:
 

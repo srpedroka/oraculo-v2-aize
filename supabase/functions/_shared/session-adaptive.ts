@@ -93,6 +93,8 @@ const QUARTERLY_COLLECTIVE_ACTION_CRITERION_PATTERN = /\b(?:ambas|todas|as\s+dua
 const COMPLETION_REQUEST_PATTERN = /\b(?:considere tudo|dados (?:sao|são|estao|estão) suficientes|apresente (?:agora )?(?:a )?(?:sintese|síntese|proposta)|proposta final|pode gerar|pode montar|ja informei|já informei)\b/i;
 const EXPLICIT_READY_PROPOSAL_PATTERN = /\b(?:dados concretos adicionais confirmados|para completar (?:o )?plano|plano (?:anual |trimestral |mensal )?completo)\b/i;
 const GENERIC_OPENING_PATTERN = /\bqual (?:e|é|seria) (?:a |o )?principal (?:dor|desafio|resultado)\b/i;
+const EXTRACTED_DOCUMENT_RECEIPT_PATTERN = /\b(?:resumo autom[aá]tico de arquivo|arquivo extra[ií]do para a revis[aã]o estrat[eé]gica)\b[\s\S]{0,1200}\b(?:arquivo bruto e nome do arquivo|conte[uú]do e nome do arquivo) omitidos\b/i;
+const FALSE_DOCUMENT_READ_FAILURE_PATTERN = /\b(?:arquivo|documento|conte[uú]do|texto)\b[\s\S]{0,120}\b(?:corrompid[oa]|n[aã]o (?:foi|consegui|deu para) (?:ler|extrair|interpretar)|sem leitura|sem extra[cç][aã]o)\b/i;
 const FACT_SIGNALS = [
   /\bobjetiv[oa]s?\b/i,
   /\bmeta\b|\balvo\b|\bbaseline\b/i,
@@ -117,6 +119,7 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   verbose_regular_turn: "uma resposta comum ficou longa demais para uma conversa natural",
   vague_without_options: "a resposta vaga nao recebeu duas ou tres possibilidades concretas",
   technical_state_leak: "o texto visivel expoe estado ou nome tecnico interno",
+  extracted_document_denied: "o servidor extraiu o arquivo, mas a resposta afirmou incorretamente que ele estava corrompido ou não foi lido",
   backward_phase: "a resposta tenta voltar para uma fase anterior",
   ready_without_proposal: "a sessao foi marcada como pronta, mas nao trouxe a proposta final",
   proposal_before_ready: "uma proposta foi criada antes de a sessao estar pronta",
@@ -731,6 +734,9 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
   }
   if (!hasProposal && !paused && regularTurnSentenceCount(reply) > 4) reasons.push("verbose_regular_turn");
   if (TECHNICAL_STATE_PATTERN.test(reply)) reasons.push("technical_state_leak");
+  if (EXTRACTED_DOCUMENT_RECEIPT_PATTERN.test(input.userMessage) && FALSE_DOCUMENT_READ_FAILURE_PATTERN.test(reply)) {
+    reasons.push("extracted_document_denied");
+  }
   if (input.sessionType === "strategic") {
     if (hasProposal && text(input.sessionPeriod)) {
       reasons.push(...strategicProposalReasons(input.envelope.proposal, text(input.sessionPeriod), input.userMessage));
@@ -893,13 +899,16 @@ export function buildAdaptiveRepairDirective(reasons: string[], rejectedReply: s
   const strategicProposalInstruction = reasons.includes("strategic_incomplete_proposal")
     ? "\nA proposta anual saiu incompleta. Releia o bloco concreto ja presente na conversa e reconstrua save_strategic_plan agora. Cada objetivo exige title, type, result, current, metric, target, deadline, source, strategies, owner e period; cada projeto exige name, owner, deadline e linkedObjectiveTitle. Se target ja estiver confirmado, result pode repetir esse mesmo alvo. Nao peca ao gestor para reenviar dados que ja aparecem no historico."
     : "";
+  const extractedDocumentInstruction = reasons.includes("extracted_document_denied")
+    ? "\nO servidor comprovou a extração do arquivo e o conteúdo está no contexto transitório desta rodada. Reconheça de forma concreta o que leu; não use 'corrompido', 'não serve', 'não consegui ler/extrair' nem peça reenvio."
+    : "";
   return `CORRECAO INTERNA OBRIGATORIA:
 A resposta anterior foi recusada antes de chegar ao gestor:
 ${labels}
 
 Trecho recusado: ${text(rejectedReply).replace(/\s+/g, " ").slice(0, 900) || "envelope invalido"}
 
-Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}${quarterlyReadyInstruction}${strategicProposalInstruction}`;
+Gere novamente o objeto JSON completo. Releia todas as mensagens, absorva os fatos ja fornecidos, avance para a primeira lacuna real ou monte a proposta se estiver pronta. Nao mencione esta correcao ao gestor.${quarterlyProceedInstruction}${quarterlyReadyInstruction}${strategicProposalInstruction}${extractedDocumentInstruction}`;
 }
 
 export function safeAdaptiveNextPhase(currentPhase: string, requestedPhase: unknown, phases: string[], reasons: string[]) {
@@ -1057,6 +1066,7 @@ function naturalizeRejectedReply(value: string, userMessage: string, hasProposal
     "strategic_weak_target_unchallenged",
     "strategic_diagnosis_jump",
     "strategic_growth_tension_unchallenged",
+    "extracted_document_denied",
   ]);
   if (!value || !reasons.length || reasons.some((reason) => unsafeVisibleReasons.has(reason)
     || reason.startsWith("quarterly_")
@@ -1449,6 +1459,9 @@ export function adaptiveFallbackReply(
   );
   if (naturalized) return naturalized;
   if (hasProposal) return proposalConfirmationReply(context.proposal, text(context.sessionType));
+  if (reasons.includes("extracted_document_denied")) {
+    return "Consegui extrair o texto do arquivo, mas a síntese automática não ficou confiável neste turno. Pode reenviar o mesmo arquivo para eu repetir a análise sem tratá-lo como corrompido?";
+  }
   if (reasons.includes("monthly_pending_without_options")) {
     return "Essa pendência precisa de um destino claro para não entrar silenciosamente em maio. Você prefere rolar com um novo prazo, renegociar, cortar ou deixar no backlog?";
   }

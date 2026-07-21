@@ -1001,3 +1001,11 @@ Decisao: quando uma abertura trimestral curta apresenta implantacao, instalacao,
 Motivo: o prompt trimestral ja continha essa orientacao, mas o caso CRM variou entre rodadas e recebeu Conducao 65 quando o modelo caiu no menu generico. Uma regra importante de qualidade nao pode depender apenas da aderencia probabilistica ao prompt.
 
 Consequencias: a conversa ganha direcao sem etapa adicional; respostas contextuais boas passam intactas. O smoke Q4K passou com Conducao 81,25, Plano Trimestral 93,75 e media 87,50. A Q5B r4 foi arquivada como calibracao e a fase r6 ficou pronta, sem publicar producao.
+
+## 2026-07-21 - Arquivo extraido nao depende do classificador na revisao
+
+Decisao: durante uma `strategic_review` ativa, a extração comprovada do arquivo segue diretamente ao condutor `planning`. A classificação auxiliar `background` continua útil fora da revisão para escolher destino, mas não pode impedir que um contexto solicitado pelo owner seja lido. Extensão e MIME também deixam de ser prova de mídia aberta; a decisão de descriptografar usa os bytes reais.
+
+Motivo: o arquivo Markdown real chegou por uma URL de mídia com metadados válidos, mas bytes possivelmente ainda criptografados; o código confiava em `.md` e decodificava ruído. Em nova tentativa, o texto foi extraído, porém uma falha posterior no classificador devolveu fallback e retirou o conteúdo da revisão. As duas respostas pareciam falha do arquivo, embora os problemas fossem do pipeline.
+
+Consequencias: `/message/downloadmedia` precede URL direta, mídia opaca com `mediaKey` é descriptografada, e relatórios de até 60 mil caracteres entram apenas no contexto transitório do turno. O histórico mantém recibo/resumo limitado, nunca nome, bytes, URL, chave ou bruto. O guard rejeita alegação de corrupção após extração comprovada; nenhuma gravação deixa de exigir proposta, confirmação e validação server-side.
