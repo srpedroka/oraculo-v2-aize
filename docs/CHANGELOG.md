@@ -1,5 +1,11 @@
 # Changelog
 
+- O primeiro disparo protegido da migration F4 (`29964088183`) foi recusado no
+  preflight, antes de abrir os segredos ou escrever em producao, porque o SQL
+  removia e recriava uma constraint apenas para ser idempotente. A operacao foi
+  reescrita como criacao condicional puramente aditiva; o schema final nao muda
+  e nenhuma excecao destrutiva foi autorizada.
+
 - Estabilizado o readiness do Supabase local no CI durante a propagacao da F4.
   Duas execucoes da PR #22 receberam `502` em Functions administrativas
   diferentes enquanto o log ainda parava em `Setting up Edge Functions
