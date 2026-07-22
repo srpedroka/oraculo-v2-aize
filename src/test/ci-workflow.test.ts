@@ -41,7 +41,7 @@ describe("CI workflow contract", () => {
   it("aquece uma Function administrativa antes da primeira integracao", () => {
     expect(workflow).toContain("admin_status");
     expect(workflow).toContain("functions/v1/set-member-role");
-    expect(workflow).toContain('Authorization: Bearer $SERVICE_ROLE_KEY');
+    expect(workflow).toContain('Authorization: Bearer $SUPABASE_STAGING_SERVICE_ROLE_KEY');
     expect(workflow).toContain('[ "$admin_status" = "400" ]');
   });
 });

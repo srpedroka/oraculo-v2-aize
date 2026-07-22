@@ -4,8 +4,9 @@
   Duas execucoes da PR #22 receberam `502` em Functions administrativas
   diferentes enquanto o log ainda parava em `Setting up Edge Functions
   runtime...`; nenhum contrato funcional ou migration falhou. O workflow agora
-  aquece `set-member-role` com JWT efemero local e somente libera a integracao
-  quando a propria Function responde o `400` esperado ao corpo vazio.
+  aquece `set-member-role` com o JWT efemero persistido entre os passos locais e
+  somente libera a integracao quando a propria Function responde o `400`
+  esperado ao corpo vazio.
   `502`/`503` deixam de contar como ambiente pronto. Os testes permanecem
   estritos, sem retry, e producao continua inalterada.
 

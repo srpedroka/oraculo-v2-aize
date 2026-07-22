@@ -128,8 +128,8 @@ jobs:
           for attempt in {1..60}; do
             admin_status=$(curl -s -o /dev/null -w '%{http_code}' \
               -X POST \
-              -H "apikey: $ANON_KEY" \
-              -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+              -H "apikey: $SUPABASE_STAGING_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_STAGING_SERVICE_ROLE_KEY" \
               -H 'Content-Type: application/json' \
               -d '{}' \
               http://127.0.0.1:54321/functions/v1/set-member-role || true)
