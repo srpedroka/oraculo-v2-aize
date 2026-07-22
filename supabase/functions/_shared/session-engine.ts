@@ -31,6 +31,19 @@ import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
 import { PLANNING_REQUEST_DEADLINE_MS, planningModelTimeout } from "./planning-timeout.ts";
 import { callModelForFunction } from "./call-for-function.ts";
 import { PLANNING_SESSION_OUTPUT } from "./session-output-schema.ts";
+import {
+  claimPlanningSessionTurn,
+  extractionFailureReply,
+  extractionUsageMetadata,
+  loadProseSplitEnabled,
+  parsePlanningSessionStructure,
+  PLANNING_SESSION_STRUCTURE_OUTPUT,
+  planningProseText,
+  PROSE_ONLY_CONTRACT,
+  releasePlanningSessionTurn,
+  SESSION_EXTRACTION_PROMPT,
+  sessionExtractionMessage,
+} from "./session-extract.ts";
 import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.ts";
 import { replayedSessionConfirmation } from "./session-confirmation.ts";
 import {
@@ -74,6 +87,7 @@ import {
 import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMergeState } from "./session-runtime.ts";
 import {
   acknowledgeEquivalentQuarterlyArea,
+  buildAdaptiveStyleObservationMetadata,
   challengeQuarterlyPriorityOverload,
   buildAdaptiveRepairDirective,
   deferUnchallengedQuarterlyProposal,
@@ -82,6 +96,7 @@ import {
   normalizeReadyProposalEnvelope,
   normalizeProposalConfirmationEnvelope,
   normalizeStrategicHistoricalLessons,
+  partitionAdaptiveValidationReasons,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   resumeDeferredQuarterlyProposal,
   validateAdaptiveEnvelope,
@@ -96,6 +111,15 @@ export {
 type Client = any;
 
 export type PlanningSessionType = "strategic" | "quarterly" | "monthly" | "month_close" | "quarter_close" | "strategic_review";
+
+type ProcessPlanningMessageParams = {
+  sessionId: string;
+  message: string;
+  userId: string;
+  channel?: "web" | "whatsapp";
+  skipUserMessageInsert?: boolean;
+  transientContext?: string | null;
+};
 
 const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: string }> = {
   strategic: {
@@ -303,20 +327,50 @@ async function createFollowUpSessionAfterClose(
 
 export async function processPlanningMessage(
   client: Client,
-  params: {
-    sessionId: string;
-    message: string;
-    userId: string;
-    channel?: "web" | "whatsapp";
-    skipUserMessageInsert?: boolean;
-    transientContext?: string | null;
-  },
+  params: ProcessPlanningMessageParams,
 ) {
   const { data: session, error } = await client.from("planning_sessions").select("*").eq("id", params.sessionId).maybeSingle();
   if (error) throw error;
   if (!session) throw new Error("Sessão não encontrada");
   if (session.user_id !== params.userId) throw new Error("Sessão pertence a outro usuário");
   if (session.status !== "active") throw new Error("Sessão não está ativa");
+
+  const proseSplitEnabled = await loadProseSplitEnabled(client, session.org_id);
+  if (!proseSplitEnabled) {
+    return processPlanningMessageCore(client, params, session, false, null);
+  }
+
+  const turnToken = crypto.randomUUID();
+  const claimedSession = await claimPlanningSessionTurn(client, {
+    sessionId: session.id,
+    userId: params.userId,
+    token: turnToken,
+  });
+  if (!claimedSession) {
+    throw Object.assign(
+      new Error("Ainda estou processando a mensagem anterior. Tente novamente em alguns instantes."),
+      { code: "SESSION_TURN_BUSY" },
+    );
+  }
+
+  try {
+    return await processPlanningMessageCore(client, params, claimedSession, true, turnToken);
+  } finally {
+    try {
+      await releasePlanningSessionTurn(client, { sessionId: session.id, token: turnToken });
+    } catch (releaseError) {
+      console.error("Erro ao liberar turno da sessão", releaseError instanceof Error ? releaseError.message : "unknown");
+    }
+  }
+}
+
+async function processPlanningMessageCore(
+  client: Client,
+  params: ProcessPlanningMessageParams,
+  session: any,
+  proseSplitEnabled: boolean,
+  turnToken: string | null,
+) {
 
   const channel = params.channel ?? "web";
   const ensured = await ensureSessionConversation(client, session, channel);
@@ -424,7 +478,7 @@ export async function processPlanningMessage(
 
   const systemPrompt = [
     NUCLEO_ORACULO,
-    CONTRATO_TECNICO,
+    proseSplitEnabled ? PROSE_ONLY_CONTRACT : CONTRATO_TECNICO,
     UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
@@ -442,12 +496,15 @@ export async function processPlanningMessage(
 
   const modelMessages = conversationMessagesForModel(history);
   const transientRetryBudget = createTransientAiRetryBudget(1);
+  const extractionTransientRetryBudget = createTransientAiRetryBudget(1);
   const planningRequestDeadline = Date.now() + PLANNING_REQUEST_DEADLINE_MS;
   let aiRoute: Awaited<ReturnType<typeof resolveAiFunction>> | null = null;
-  const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
+  let extractionRoute: Awaited<ReturnType<typeof resolveAiFunction>> | null = null;
+  const callPlanningModel = async (prompt: string, attempt: number) => {
     aiRoute ??= await resolveAiFunction(client, session.org_id, "planning");
     const route = aiRoute;
     if (!route) throw new Error("IA de planejamento não configurada");
+    const startedAt = Date.now();
     const output = await withTransientAiRetry(() => callModelForFunction(
       client,
       session.org_id,
@@ -458,31 +515,126 @@ export async function processPlanningMessage(
       {
         ...route.limits,
         timeoutMs: planningModelTimeout(planningRequestDeadline),
-        structuredOutput: PLANNING_SESSION_OUTPUT,
+        structuredOutput: proseSplitEnabled ? undefined : PLANNING_SESSION_OUTPUT,
       },
       { userId: params.userId },
     ), transientRetryBudget);
+    return {
+      attempt,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      output,
+      route,
+    };
+  };
+  const callExtractionModel = async (oracleReply: string, attempt: number, reasons: string[]) => {
+    extractionRoute ??= await resolveAiFunction(client, session.org_id, "background");
+    const route = extractionRoute;
+    if (!route) throw new Error("IA de bastidores não configurada");
+    const startedAt = Date.now();
+    const repairDirective = reasons.length
+      ? `A extracao anterior foi rejeitada por estes codigos: ${[...new Set(reasons)].join(", ")}. Releia as fontes e devolva uma estrutura corrigida sem inventar fatos.`
+      : "";
+    const output = await withTransientAiRetry(() => callModelForFunction(
+      client,
+      session.org_id,
+      "background",
+      route,
+      [
+        SESSION_EXTRACTION_PROMPT,
+        "CONTRATO E FORMATO DO RITUAL PARA REFERENCIA ESTRUTURAL:",
+        conductorPrompt(session.type, session.phase),
+        repairDirective,
+      ].filter(Boolean).join("\n\n"),
+      [{
+        role: "user",
+        content: sessionExtractionMessage({
+          sessionType: session.type,
+          period: session.period,
+          currentPhase: session.phase,
+          allowedPhases: CONDUCTORS[session.type].phases,
+          state: session.state ?? {},
+          userMessage: groundedTurnInput,
+          previousOracleReply,
+          oracleReply,
+          recentConversation: conversationText,
+          planContext: context,
+          situationKind: detectedSituation?.kind ?? null,
+        }),
+      }],
+      {
+        ...route.limits,
+        timeoutMs: planningModelTimeout(planningRequestDeadline),
+        structuredOutput: PLANNING_SESSION_STRUCTURE_OUTPUT,
+      },
+      { userId: params.userId },
+    ), extractionTransientRetryBudget);
+    return {
+      attempt,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      output,
+      route,
+    };
+  };
+  const recordPlanningModelUsage = async (
+    call: Awaited<ReturnType<typeof callPlanningModel>>,
+    repairReasons: string[],
+    observationReasons: string[],
+  ) => {
     await recordAiUsage({
       client,
       orgId: session.org_id,
-      provider: route.provider,
-      model: route.model,
+      provider: call.route.provider,
+      model: call.route.model,
       channel: params.channel ?? "web",
-      usage: output.usage,
-      settings: route.legacySettings,
+      usage: call.output.usage,
+      settings: call.route.legacySettings,
       metadata: {
         aiFunction: "planning",
         sessionId: session.id,
         sessionType: session.type,
         phase: session.phase,
         conversationId: conversation?.id ?? ensured.session.conversation_id,
-        adaptiveAttempt: attempt,
+        adaptiveAttempt: call.attempt,
         adaptiveRepairReasons: repairReasons,
         planningSituationKind: detectedSituation?.kind ?? null,
         planningSituationCount: detectedSituation ? 1 : 0,
+        proseSplitEnabled,
+        ...buildAdaptiveStyleObservationMetadata({
+          reasons: observationReasons,
+          ritual: session.type,
+          channel: params.channel ?? "web",
+          aiFunction: "planning",
+          latencyMs: call.latencyMs,
+        }),
       },
     });
-    return output;
+  };
+  const recordExtractionModelUsage = async (
+    call: Awaited<ReturnType<typeof callExtractionModel>>,
+    repairReasons: string[],
+  ) => {
+    await recordAiUsage({
+      client,
+      orgId: session.org_id,
+      provider: call.route.provider,
+      model: call.route.model,
+      channel: params.channel ?? "web",
+      usage: call.output.usage,
+      settings: call.route.legacySettings,
+      metadata: {
+        ...extractionUsageMetadata({
+          attempt: call.attempt,
+          latencyMs: call.latencyMs,
+          repairReasons,
+          sessionType: session.type,
+          channel: params.channel ?? "web",
+        }),
+        sessionId: session.id,
+        phase: session.phase,
+        conversationId: conversation?.id ?? ensured.session.conversation_id,
+        proseSplitEnabled: true,
+      },
+    });
   };
 
   const parseEnvelope = (value: string) => {
@@ -596,45 +748,120 @@ export async function processPlanningMessage(
     userMessage: groundedTurnInput,
     sessionState: session.state,
   });
-  let result: { text: string; [key: string]: unknown } = await callPlanningModel(systemPrompt, 1);
+  const classifyEnvelope = (candidate: any, priorStyleReasons: string[] = []) => {
+    let normalized = normalizeEnvelope(candidate);
+    let partition = partitionAdaptiveValidationReasons(validateEnvelope(normalized));
+    let dataRepairReasons = partition.dataRepairReasons;
+    let styleReasons = [...new Set([...priorStyleReasons, ...partition.styleObservationReasons])];
+    const normalizedReadyProposal = normalizeReadyProposalEnvelope({
+      envelope: normalized ?? {},
+      reasons: dataRepairReasons,
+      sessionType: session.type,
+      currentPhase: session.phase,
+      phases: CONDUCTORS[session.type].phases,
+      userMessage: params.message,
+      sessionState: session.state,
+    });
+    if (normalizedReadyProposal) {
+      normalized = normalizeEnvelope({
+        ...normalizedReadyProposal,
+        ...(detectedSituation && normalized?.reply ? { reply: normalized.reply } : {}),
+      });
+      partition = partitionAdaptiveValidationReasons(validateEnvelope(normalized));
+      dataRepairReasons = partition.dataRepairReasons;
+      styleReasons = [...new Set([...styleReasons, ...partition.styleObservationReasons])];
+    }
+    return { parsed: normalized, repairReasons: dataRepairReasons, styleObservationReasons: styleReasons };
+  };
+
+  const firstCall = await callPlanningModel(systemPrompt, 1);
+  let result: { text: string; [key: string]: unknown } = firstCall.output;
   let parsed: any = null;
   let repairReasons: string[] = [];
-  try {
-    parsed = normalizeEnvelope(parseEnvelope(result.text));
-    repairReasons = validateEnvelope(parsed);
-  } catch {
-    repairReasons = ["invalid_json_envelope"];
-  }
+  let styleObservationReasons: string[] = [];
 
-  const normalizedReadyProposal = normalizeReadyProposalEnvelope({
-    envelope: parsed ?? {},
-    reasons: repairReasons,
-    sessionType: session.type,
-    currentPhase: session.phase,
-    phases: CONDUCTORS[session.type].phases,
-    userMessage: params.message,
-    sessionState: session.state,
-  });
-  if (normalizedReadyProposal) {
-    parsed = normalizeEnvelope({
-      ...normalizedReadyProposal,
-      ...(detectedSituation && parsed?.reply ? { reply: parsed.reply } : {}),
-    });
-    repairReasons = validateEnvelope(parsed);
-  }
+  if (proseSplitEnabled) {
+    const naturalReply = planningProseText(result.text);
+    let extractionSucceeded = false;
+    let retryReasons: string[] = [];
+    let planningObservationReasons: string[] = [];
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      let extractionCall: Awaited<ReturnType<typeof callExtractionModel>>;
+      try {
+        extractionCall = await callExtractionModel(naturalReply, attempt, retryReasons);
+      } catch {
+        retryReasons = ["structure_extraction_unavailable"];
+        planningObservationReasons = [...new Set([...planningObservationReasons, ...retryReasons])];
+        continue;
+      }
 
-  if (repairReasons.length) {
-    const rejectedEnvelope = parsed;
-    const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
-    result = await callPlanningModel(repairPrompt, 2, repairReasons);
-    try {
-      parsed = normalizeEnvelope(parseEnvelope(result.text));
-    } catch {
-      parsed = normalizeEnvelope(recoverEnvelope(rejectedEnvelope, repairReasons));
+      let currentRepairReasons: string[] = [];
+      let currentStyleReasons: string[] = [];
+      try {
+        const classified = classifyEnvelope({
+          ...parsePlanningSessionStructure(extractionCall.output.text),
+          reply: naturalReply,
+        }, styleObservationReasons);
+        parsed = classified.parsed;
+        currentRepairReasons = classified.repairReasons;
+        currentStyleReasons = classified.styleObservationReasons;
+      } catch {
+        currentRepairReasons = ["invalid_json_envelope"];
+      }
+
+      await recordExtractionModelUsage(extractionCall, attempt === 1 ? currentRepairReasons : retryReasons);
+      planningObservationReasons = [...new Set([...planningObservationReasons, ...currentRepairReasons])];
+      styleObservationReasons = [...new Set([...styleObservationReasons, ...currentStyleReasons])];
+      if (!currentRepairReasons.length) {
+        extractionSucceeded = true;
+        break;
+      }
+      retryReasons = currentRepairReasons;
     }
-    const remainingReasons = validateEnvelope(parsed);
-    if (remainingReasons.length) {
-      parsed = normalizeEnvelope(recoverEnvelope(parsed, remainingReasons));
+
+    await recordPlanningModelUsage(firstCall, planningObservationReasons, styleObservationReasons);
+    if (!extractionSucceeded) {
+      const safeReply = extractionFailureReply();
+      await insertMessage(client, ensured.session, "oracle", safeReply, params.channel ?? "web");
+      return { session: ensured.session, reply: safeReply, pendingProposal: ensured.session.pending_proposal ?? null };
+    }
+    repairReasons = [];
+  } else {
+    try {
+      const classified = classifyEnvelope(parseEnvelope(result.text));
+      parsed = classified.parsed;
+      repairReasons = classified.repairReasons;
+      styleObservationReasons = classified.styleObservationReasons;
+    } catch {
+      repairReasons = ["invalid_json_envelope"];
+    }
+    await recordPlanningModelUsage(firstCall, repairReasons, styleObservationReasons);
+
+    if (repairReasons.length) {
+      const rejectedEnvelope = parsed;
+      const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
+      const secondCall = await callPlanningModel(repairPrompt, 2);
+      result = secondCall.output;
+      let remainingRepairReasons: string[] = [];
+      let remainingStyleObservationReasons: string[] = [];
+      let secondCallParsed = true;
+      try {
+        const classified = classifyEnvelope(parseEnvelope(result.text));
+        parsed = classified.parsed;
+        remainingRepairReasons = classified.repairReasons;
+        remainingStyleObservationReasons = classified.styleObservationReasons;
+      } catch {
+        secondCallParsed = false;
+        remainingRepairReasons = ["invalid_json_envelope"];
+        parsed = normalizeEnvelope(recoverEnvelope(rejectedEnvelope, repairReasons));
+      }
+      if (!secondCallParsed) {
+        remainingStyleObservationReasons = [];
+      }
+      await recordPlanningModelUsage(secondCall, repairReasons, remainingStyleObservationReasons);
+      if (remainingRepairReasons.length) {
+        parsed = normalizeEnvelope(recoverEnvelope(parsed, remainingRepairReasons));
+      }
     }
   }
 
@@ -655,7 +882,7 @@ export async function processPlanningMessage(
   const nextState = shallowMergeState(session.state ?? {}, statePatch);
   const completed = parsed?.done === true && !pendingProposal;
 
-  const { data: updated, error: updateError } = await client
+  let updateQuery = client
     .from("planning_sessions")
     .update({
       phase: nextPhase,
@@ -663,11 +890,25 @@ export async function processPlanningMessage(
       pending_proposal: pendingProposal,
       status: completed ? "completed" : "active",
       completed_at: completed ? new Date().toISOString() : null,
+      ...(proseSplitEnabled ? { revision: Number(session.revision ?? 0) + 1 } : {}),
     })
-    .eq("id", ensured.session.id)
-    .select("*")
-    .single();
+    .eq("id", ensured.session.id);
+  if (proseSplitEnabled && turnToken) {
+    updateQuery = updateQuery
+      .eq("processing_token", turnToken)
+      .eq("revision", Number(session.revision ?? 0));
+  }
+  const updateResult = proseSplitEnabled
+    ? await updateQuery.select("*").maybeSingle()
+    : await updateQuery.select("*").single();
+  const { data: updated, error: updateError } = updateResult;
   if (updateError) throw updateError;
+  if (!updated) {
+    throw Object.assign(
+      new Error("A sessão mudou enquanto esta resposta era processada. Nenhum dado foi sobrescrito; tente novamente."),
+      { code: "SESSION_STATE_CONFLICT" },
+    );
+  }
 
   const followUp = completed ? await createFollowUpSessionAfterClose(client, updated, nextState, channel) : null;
   const finalReply = followUp

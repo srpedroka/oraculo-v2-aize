@@ -1,5 +1,28 @@
 # Changelog
 
+- Concluida somente no staging a F4 do `Equilibrio da IA`. A chamada
+  `planning` produz prosa natural e a funcao `background` extrai a estrutura;
+  os mesmos normalizadores, validadores, proposta unica e confirmacao
+  server-side continuam obrigatorios. A flag por empresa nasce desligada e
+  uma lease com revisao otimista impede turnos concorrentes de sobrescrever o
+  estado. O primeiro piloto encontrou o contrato trimestral incompleto (12/15),
+  foi corrigido e passou no reteste 6/6; a rodada geral terminou 15/15 e o
+  fechamento obteve 86,25/100/91,25, media 92,50. Gate: 586 unitarios, 32
+  arquivos de integracao, 7 testes de seguranca, lint/build/bundle verdes.
+  Custo total F4 US$ 0,211855; ciclo em aproximadamente US$ 0,410834 de
+  US$ 20. Migration e seis Functions foram publicadas apenas no staging;
+  frontend, dados reais e producao seguem intactos. Subplano em 90%.
+
+- Concluida somente no staging a F3 do `Equilibrio da IA`. Heuristicas de
+  estilo agora sao observacoes sanitizadas; somente defeitos de JSON, estado,
+  escopo, periodo, proposta, confirmacao e gravacao podem disparar a tentativa
+  2. Motivo desconhecido continua fail-closed. Gate: 578/578 unitarios, lint,
+  build, bundle e 31 arquivos de integracao verdes. No mesmo Q4W da baseline
+  F2, chamadas cairam de 5 para 3, reparos de estilo de 2 para 0 e custo de
+  geracao de US$ 0,027006 para US$ 0,016164; qualidade final 95. Custo total F3
+  US$ 0,078225. Quatro Functions foram publicadas somente no staging; sem
+  migration, frontend, dado real ou producao. O subplano passou a 65%.
+
 - Concluida somente no staging a F2 do `Equilibrio da IA`. Seis deteccoes de
   pendencia, capacidade e fechamento agora entregam situacoes canonicas ao
   modelo em vez de substituir sua fala por templates; estado, fase, IDs,

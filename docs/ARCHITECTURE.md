@@ -259,6 +259,8 @@ Desde 2026-07-09, `org_ai_tone` permite calibrar a forma das respostas por empre
 
 Na Fase 2, `oracle-session` usa `planning` para conduzir sessoes. O modelo responde no envelope JSON Schema com `reply`, `state_patch`, `next_phase`, `proposal` e `done`. xAI usa `json_schema` estrito; OpenAI usa o mesmo schema em modo guiado porque `state_patch` e `proposal` possuem objetos internos variaveis, ainda revalidados pelo servidor; provedores sem suporte explicito preservam o caminho compativel com parsing e validacao fail-closed. O modelo sugere fatos de negocio, mas nao e autoridade para escopo, periodo, prontidao interna ou texto/quantidade da confirmacao. O sistema canoniza esses campos e so entao persiste `state`, `phase` e `pending_proposal` em `planning_sessions`.
 
+No subplano Equilibrio da IA F3, `_shared/session-adaptive.ts` separa os motivos em `DATA_REPAIR_REASONS` e `STYLE_OBSERVATION_REASONS`. JSON invalido, estado inconsistente, periodo/escopo incorreto, proposta incompleta, fase sem evidencia e encerramento sem confirmacao continuam podendo causar a unica regeneracao. Pergunta parecida, bordao, excesso de frases e outras heuristicas de forma apenas alimentam `ai_usage_logs.metadata`; motivo novo ou desconhecido continua sendo tratado como dado por padrao. A metadata de estilo contem somente codigos, contagem, ritual, canal, funcao e latencia, sem fala, prompt, mensagem, contexto, documento ou telefone.
+
 Na Fase 3, as chamadas de conversa deixam de usar historico geral da empresa. `oracle-chat` e `whatsapp-webhook` carregam apenas a conversa ativa daquele usuario e canal. Quando existem mais de 40 mensagens novas desde o ultimo resumo, `_shared/conversations.ts` usa a funcao `background` para gerar um resumo curto em `conversations.summary`; depois disso, o modelo recebe o resumo e as ultimas mensagens, reduzindo custo e evitando perda de contexto. Desde 2026-07-11, 4 horas de inatividade encerram o episodio: a conversa anterior fica arquivada, uma nova fica ativa e recebe uma ponte compacta com o resumo existente e as ultimas 8 falas como memoria de referencia. Uma sessao estruturada antiga so e religada ao episodio atual por confirmacao pendente ou pedido explicito de retomada.
 
 O contexto do plano tambem deixa de ser JSON cru. `_shared/plan-context.ts` devolve texto estruturado para a IA, incluindo objetivos, progresso, donos, prazos, entregas e acoes-chave. Isso permite que perguntas como "como está o mês da minha área?" enxerguem tambem as ações-chave, não só os objetivos.
@@ -281,7 +283,7 @@ Plano pronto importado pela tela ou por documento no WhatsApp segue a mesma regr
 
 Plano trimestral pronto importado pela tela de Planos Trimestrais segue a mesma fronteira de seguranca. O usuario escolhe o departamento antes de anexar o arquivo; o texto extraido entra em `prepareReadyQuarterlyPlanProposal`, que exige `proposal.type = save_quarterly_plan`; a gravacao em `area_plans` e `objectives` so acontece depois de "Confirmar e gravar" no painel lateral.
 
-Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto.
+Cada chamada bem-sucedida grava `ai_usage_logs`, com tokens, custo estimado, canal e metadata. A tela de Configuracoes agrega esses logs para acompanhamento de gasto. O laboratorio tambem consolida tentativas, motivos de reparo, observacoes de estilo e latencia para comparar custo e comportamento sem acessar o conteudo da conversa.
 
 Na Fase 4, a funcao `background` tambem virou o classificador operacional do Oraculo. Ela decide a rota da mensagem antes da resposta diaria:
 
@@ -375,3 +377,21 @@ Backend e dados:
 - Chaves de IA devem passar apenas por Edge Functions.
 - Rotas diretas do app dependem do fallback SPA do Netlify.
 - A qualidade automatizada é organizada por risco: Vitest local para domínio e parsers, integração/RLS em Supabase de staging e Playwright autenticado em frontend local contra staging, com organizações descartáveis. A matriz está em `docs/TESTING.md`; produção recebe apenas smoke E2E público e de leitura.
+
+## Separacao experimental entre fala e estrutura
+
+A F4 do Equilibrio da IA adiciona um caminho por empresa, desligado por padrao.
+Com `ai_control_policies.prose_split_enabled=false`, o motor preserva o envelope
+legado. Quando o owner ativa a flag, `planning` devolve somente a fala visivel e
+`background` extrai `state_patch`, `next_phase`, `proposal` e `done` usando o
+contrato estrutural do ritual ativo.
+
+O objeto extraido atravessa os mesmos normalizadores, validadores e aplicadores
+do caminho anterior. `planning_sessions.processing_token` concede uma lease por
+turno e `revision` impede update atrasado. O estado validado e persistido antes
+de liberar a lease. Depois de duas extracoes sem estrutura valida, o turno grava
+somente uma resposta recuperavel no chat, sem alterar fase, estado ou proposta.
+
+O rollback e operacional: o endpoint owner-only `save-ai-control-policy`
+desliga a flag sem migration ou deploy. Restauracoes de backup sempre limpam
+leases e restauram a flag como desligada.

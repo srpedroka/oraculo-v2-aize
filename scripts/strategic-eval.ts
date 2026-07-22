@@ -317,6 +317,13 @@ export async function configureDisposableAi(handle: EvaluationOrg, config: Runti
       updated_at: now,
     }, { onConflict: "org_id,function" }),
   ];
+  if (process.env.ORACULO_EVAL_PROSE_SPLIT === "true") {
+    operations.push(admin.from("ai_control_policies").upsert({
+      org_id: handle.orgId,
+      prose_split_enabled: true,
+      enforcement_mode: "monitor",
+    }, { onConflict: "org_id" }));
+  }
   const results = await Promise.all(operations);
   const failure = results.find((result) => result.error)?.error;
   if (failure) throw failure;
@@ -378,6 +385,9 @@ export async function generationUsage(handle: EvaluationOrg, startedAt: string) 
     const repairReasons = Array.isArray(metadata.adaptiveRepairReasons)
       ? metadata.adaptiveRepairReasons.map(String).filter(Boolean)
       : [];
+    const styleObservationCodes = Array.isArray(metadata.adaptiveStyleObservationCodes)
+      ? metadata.adaptiveStyleObservationCodes.map(String).filter(Boolean)
+      : [];
     return {
       promptTokens: total.promptTokens + Number(item.prompt_tokens ?? 0),
       completionTokens: total.completionTokens + Number(item.completion_tokens ?? 0),
@@ -392,6 +402,14 @@ export async function generationUsage(handle: EvaluationOrg, startedAt: string) 
         ...counts,
         [reason]: (counts[reason] ?? 0) + 1,
       }), total.adaptiveRepairReasonCounts),
+      adaptiveStyleObservationCount: total.adaptiveStyleObservationCount
+        + Number(metadata.adaptiveStyleObservationCount ?? 0),
+      adaptiveStyleObservationLatencyMs: total.adaptiveStyleObservationLatencyMs
+        + Number(metadata.adaptiveStyleObservationLatencyMs ?? 0),
+      adaptiveStyleObservationCounts: styleObservationCodes.reduce((counts, reason) => ({
+        ...counts,
+        [reason]: (counts[reason] ?? 0) + 1,
+      }), total.adaptiveStyleObservationCounts),
     };
   }, {
     promptTokens: 0,
@@ -401,6 +419,9 @@ export async function generationUsage(handle: EvaluationOrg, startedAt: string) 
     callCount: 0,
     adaptiveAttemptCounts: {} as Record<string, number>,
     adaptiveRepairReasonCounts: {} as Record<string, number>,
+    adaptiveStyleObservationCount: 0,
+    adaptiveStyleObservationLatencyMs: 0,
+    adaptiveStyleObservationCounts: {} as Record<string, number>,
   });
 }
 
@@ -540,6 +561,7 @@ export async function runJudge(params: {
     "Na rubrica do plano, avalie a qualidade objetiva da proposal e das saidas derivadas. Nao reduza a nota do artefato apenas porque os dados vieram em uma resposta completa do gestor.",
     "Na conducao, quantidade de turnos nao e qualidade: uma pergunta diagnostica ou um desafio forte pode ser suficiente quando a resposta seguinte ja resolve as lacunas. Penalize repeticao, superficialidade real ou ausencia de escolha, nao concisao adaptativa.",
     "O sessionScope recebido e contexto canonico do servidor. Citar exatamente seu periodo, tipo ou area nao e fabricacao, mesmo que o gestor nao repita esses dados na conversa.",
+    "No documento canonico de fechamento, objetivos[].atual e o baseline historico e objetivos[].atingido e o valor final. Nao marque divergencia quando atual corresponde a proposal.reviews[].baseline e atingido corresponde a achieved/current; compare os significados, nao apenas os nomes legados.",
   ].join("\n");
   const input = sanitizeEvaluationValue({
     evaluationCase: params.evaluationCase,

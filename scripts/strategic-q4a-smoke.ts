@@ -143,6 +143,10 @@ async function runSmoke() {
   const rubric = await readJson(RUBRIC_PATH) as Record<string, any>;
   const policy = rubric.costPolicy;
   const config = runtimeConfiguration();
+  const scenario = String(process.env.ORACULO_Q4A_SCENARIO ?? "all");
+  if (!["all", "complete", "vague", "loop"].includes(scenario)) {
+    throw new Error("ORACULO_Q4A_SCENARIO aceita all, complete, vague ou loop");
+  }
   const ledger = await readLedger();
   assertBudgetAllowsNextCall({
     cumulativePlanCostUsd: ledger.cumulativePlanCostUsd,
@@ -168,7 +172,8 @@ async function runSmoke() {
     const token = await ownerToken(handle);
     const beforeHash = await businessSnapshot(handle);
 
-    const completeStart = await startQuarterly(handle, token, `q4a-${id}-complete-start`);
+    if (scenario === "all" || scenario === "complete") {
+      const completeStart = await startQuarterly(handle, token, `q4a-${id}-complete-start`);
     const completeMessage = [
       "Considere este bloco completo para o plano Comercial do T3 2027.",
       "Desafio principal: a previsao de vendas inconsistente gera excesso de estoque e pressiona o caixa.",
@@ -192,11 +197,13 @@ async function runSmoke() {
       check("COMPLETE-NO-TECHNICAL-LEAK", !TECHNICAL_STATE_PATTERN.test(completeReply), "resposta completa nao expoe estado tecnico"),
     );
     evidence.complete = { opening: completeStart.reply, reply: completeReply, proposalType: complete.pendingProposal?.type ?? null, confirmedFacts };
-    await abandonSession(token, String(completeStart.session?.id ?? ""), `q4a-${id}-complete-abandon`);
+      await abandonSession(token, String(completeStart.session?.id ?? ""), `q4a-${id}-complete-abandon`);
+    }
 
-    usage = await generationUsage(handle, startedAt);
-    assertBudgetAllowsNextCall({ cumulativePlanCostUsd: ledger.cumulativePlanCostUsd, currentCaseCostUsd: usage.totalCostUsd, reserveUsd: CALL_RESERVE_USD, policy });
-    const vagueStart = await startQuarterly(handle, token, `q4a-${id}-vague-start`);
+    if (scenario === "all" || scenario === "vague") {
+      usage = await generationUsage(handle, startedAt);
+      assertBudgetAllowsNextCall({ cumulativePlanCostUsd: ledger.cumulativePlanCostUsd, currentCaseCostUsd: usage.totalCostUsd, reserveUsd: CALL_RESERVE_USD, policy });
+      const vagueStart = await startQuarterly(handle, token, `q4a-${id}-vague-start`);
     const vague = await sendMessage(token, String(vagueStart.session?.id ?? ""), "Precisamos vender mais.", `q4a-${id}-vague-message`);
     const vagueReply = String(vague.reply ?? "");
     checks.push(
@@ -207,11 +214,13 @@ async function runSmoke() {
     );
     evidence.vague = { opening: vagueStart.reply, reply: vagueReply };
     checks.push(check("VAGUE-FRESH-SESSION", !/retomei sua sessao/i.test(String(vagueStart.reply ?? "")), "cenario vago usa sessao isolada"));
-    await abandonSession(token, String(vagueStart.session?.id ?? ""), `q4a-${id}-vague-abandon`);
+      await abandonSession(token, String(vagueStart.session?.id ?? ""), `q4a-${id}-vague-abandon`);
+    }
 
-    usage = await generationUsage(handle, startedAt);
-    assertBudgetAllowsNextCall({ cumulativePlanCostUsd: ledger.cumulativePlanCostUsd, currentCaseCostUsd: usage.totalCostUsd, reserveUsd: CALL_RESERVE_USD, policy });
-    const loopStart = await startQuarterly(handle, token, `q4a-${id}-loop-start`);
+    if (scenario === "all" || scenario === "loop") {
+      usage = await generationUsage(handle, startedAt);
+      assertBudgetAllowsNextCall({ cumulativePlanCostUsd: ledger.cumulativePlanCostUsd, currentCaseCostUsd: usage.totalCostUsd, reserveUsd: CALL_RESERVE_USD, policy });
+      const loopStart = await startQuarterly(handle, token, `q4a-${id}-loop-start`);
     const loop = await sendMessage(token, String(loopStart.session?.id ?? ""), "O principal desafio e a baixa conversao das oportunidades em vendas.", `q4a-${id}-loop-message`);
     const loopReply = String(loop.reply ?? "");
     checks.push(
@@ -221,7 +230,8 @@ async function runSmoke() {
     );
     evidence.loop = { opening: loopStart.reply, reply: loopReply };
     checks.push(check("LOOP-FRESH-SESSION", !/retomei sua sessao/i.test(String(loopStart.reply ?? "")), "cenario anti-loop usa sessao isolada"));
-    await abandonSession(token, String(loopStart.session?.id ?? ""), `q4a-${id}-loop-abandon`);
+      await abandonSession(token, String(loopStart.session?.id ?? ""), `q4a-${id}-loop-abandon`);
+    }
 
     const afterHash = await businessSnapshot(handle);
     checks.push(check("NO-PREMATURE-MUTATION", beforeHash === afterHash, "nenhum plano foi gravado antes de confirmacao"));
@@ -247,7 +257,7 @@ async function runSmoke() {
     cumulativePlanCostUsd: ledger.cumulativePlanCostUsd + usage.totalCostUsd,
     runs: [...ledger.runs, {
       runId: id,
-      caseId: "Q4A-ADAPTIVE-SMOKE",
+      caseId: `Q4A-ADAPTIVE-SMOKE-${scenario.toUpperCase()}`,
       totalCostUsd: usage.totalCostUsd,
       completedAt: new Date().toISOString(),
       status: passed ? "approved" : "blocked",
@@ -257,7 +267,7 @@ async function runSmoke() {
     schemaVersion: 1,
     reportVersion: "2026-07-16.q4a-smoke",
     environment: "staging",
-    runtime: { provider: config.provider, model: config.planningModel },
+    runtime: { provider: config.provider, model: config.planningModel, scenario },
     startedAt,
     completedAt: new Date().toISOString(),
     checks,

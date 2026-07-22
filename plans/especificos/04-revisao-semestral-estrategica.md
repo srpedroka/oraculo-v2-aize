@@ -6,7 +6,7 @@ Progresso especifico: **50%**
 
 Contribuicao atual ao geral: **7,5%**
 
-Status: **R1A APROVADA - EQUILIBRIO IA F1-F4 ANTES DA R1B REAL**
+Status: **R1A APROVADA - EQUILIBRIO IA F1-F4 VERDE NO STAGING; RELEASE F4 ANTES DA R1B**
 
 ## Objetivo
 
@@ -19,8 +19,8 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 | Fatia | Pontos | Estado | Gate |
 | --- | ---: | --- | --- |
 | R1A. Preflight e contrato para o ciclo real | 50 | Aprovada em 2026-07-20 | Contexto semestral, contrato e testes aprovados |
-| Equilibrio da IA F1-F4 | 0 extra | F1/F2 concluidas no staging; 45% interno | Fala natural com gravacao server-side intacta |
-| R1B. Revisao e novo planejamento reais com owner | 50 | Aguarda F1-F4 | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
+| Equilibrio da IA F1-F4 | 0 extra | F1-F4 concluidas no staging; 90% interno | Fala natural com gravacao server-side intacta |
+| R1B. Revisao e novo planejamento reais com owner | 50 | Aguarda release F4 | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
 | **Total** | **100** | **Em andamento** | **50%** |
 
 ## Entregas
@@ -47,10 +47,15 @@ piloto e da observacao.
 A F1 foi aceita para continuidade depois do piloto trimestral 8/8. A F2
 substituiu seis envelopes de fala por situacoes seguras, mantendo estrutura e
 gravacao sob autoridade do servidor. O piloto final de fechamento mensal teve
-media 92,50 e cleanup completo. O subplano esta em 45%; a qualidade global sera
-avaliada na conversa pratica. Evidencias:
+media 92,50 e cleanup completo. A F3 separou estilo de dados e, na mesma
+baseline Q4W, reduziu chamadas de 5 para 3 e zerou dois reparos de estilo, com
+media final 95. A F4 separou fala e estrutura, protegeu concorrencia e passou a
+rodada geral com media 92,50 no fechamento. O subplano esta em 90%; a qualidade global sera avaliada na
+conversa pratica. Evidencias:
 `plans/ddr/Equilibrio-IA-F1-staging.md` e
-`plans/ddr/Equilibrio-IA-F2-staging.md`.
+`plans/ddr/Equilibrio-IA-F2-staging.md` e
+`plans/ddr/Equilibrio-IA-F3-staging.md` e
+`plans/ddr/Equilibrio-IA-F4-staging.md`.
 
 ## Evidencia R1A
 

@@ -1029,3 +1029,21 @@ Decisao: durante uma `strategic_review` ativa, a extração comprovada do arquiv
 Motivo: o arquivo Markdown real chegou por uma URL de mídia com metadados válidos, mas bytes possivelmente ainda criptografados; o código confiava em `.md` e decodificava ruído. Em nova tentativa, o texto foi extraído, porém uma falha posterior no classificador devolveu fallback e retirou o conteúdo da revisão. As duas respostas pareciam falha do arquivo, embora os problemas fossem do pipeline.
 
 Consequencias: `/message/downloadmedia` precede URL direta, mídia opaca com `mediaKey` é descriptografada, e relatórios de até 60 mil caracteres entram apenas no contexto transitório do turno. O histórico mantém recibo/resumo limitado, nunca nome, bytes, URL, chave ou bruto. O guard rejeita alegação de corrupção após extração comprovada; nenhuma gravação deixa de exigir proposta, confirmação e validação server-side.
+
+## 2026-07-22 - Fala natural e estrutura em chamadas separadas
+
+Decisao: em empresas que ativarem `prose_split_enabled`, o modelo `planning`
+produz somente a fala e o modelo `background` extrai o envelope tecnico. A
+mudanca nasce desligada, e o caminho anterior permanece disponivel como rollback
+sem deploy. O extrator recebe o contrato estrutural do ritual, mas nao controla
+o texto mostrado ao gestor.
+
+Motivo: exigir que a mesma geracao seja simultaneamente conversa natural e JSON
+estrito voltou a mecanizar a fala. A separacao permite liberdade de linguagem
+sem entregar ao modelo autoridade de IDs, escopo, confirmacao ou gravacao.
+
+Consequencias: cada turno com a flag ativa tem custo e latencia adicionais. A
+estrutura continua fail-closed, com um retry logico; falha dupla nao atualiza
+estado. Lease e revisao otimista serializam mensagens da mesma sessao. A F4 so
+pode ser ligada primeiro na empresa piloto, e producao exige autorizacao de
+release separada.
