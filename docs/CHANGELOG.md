@@ -1,5 +1,61 @@
 # Changelog
 
+- Estabilizado o readiness do Supabase local no CI durante a propagacao da F4.
+  Duas execucoes da PR #22 receberam `502` em Functions administrativas
+  diferentes enquanto o log ainda parava em `Setting up Edge Functions
+  runtime...`; nenhum contrato funcional ou migration falhou. O workflow agora
+  aquece `set-member-role` com o JWT efemero persistido entre os passos locais e
+  somente libera a integracao quando a propria Function responde o `400`
+  esperado ao corpo vazio.
+  `502`/`503` deixam de contar como ambiente pronto. Os testes permanecem
+  estritos, sem retry, e producao continua inalterada.
+
+- Concluida somente no staging a F4 do `Equilibrio da IA`. A chamada
+  `planning` produz prosa natural e a funcao `background` extrai a estrutura;
+  os mesmos normalizadores, validadores, proposta unica e confirmacao
+  server-side continuam obrigatorios. A flag por empresa nasce desligada e
+  uma lease com revisao otimista impede turnos concorrentes de sobrescrever o
+  estado. O primeiro piloto encontrou o contrato trimestral incompleto (12/15),
+  foi corrigido e passou no reteste 6/6; a rodada geral terminou 15/15 e o
+  fechamento obteve 86,25/100/91,25, media 92,50. Gate: 586 unitarios, 32
+  arquivos de integracao, 7 testes de seguranca, lint/build/bundle verdes.
+  Custo total F4 US$ 0,211855; ciclo em aproximadamente US$ 0,410834 de
+  US$ 20. Migration e seis Functions foram publicadas apenas no staging;
+  frontend, dados reais e producao seguem intactos. Subplano em 90%.
+
+- Concluida somente no staging a F3 do `Equilibrio da IA`. Heuristicas de
+  estilo agora sao observacoes sanitizadas; somente defeitos de JSON, estado,
+  escopo, periodo, proposta, confirmacao e gravacao podem disparar a tentativa
+  2. Motivo desconhecido continua fail-closed. Gate: 578/578 unitarios, lint,
+  build, bundle e 31 arquivos de integracao verdes. No mesmo Q4W da baseline
+  F2, chamadas cairam de 5 para 3, reparos de estilo de 2 para 0 e custo de
+  geracao de US$ 0,027006 para US$ 0,016164; qualidade final 95. Custo total F3
+  US$ 0,078225. Quatro Functions foram publicadas somente no staging; sem
+  migration, frontend, dado real ou producao. O subplano passou a 65%.
+
+- Concluida somente no staging a F2 do `Equilibrio da IA`. Seis deteccoes de
+  pendencia, capacidade e fechamento agora entregam situacoes canonicas ao
+  modelo em vez de substituir sua fala por templates; estado, fase, IDs,
+  proposta e gravacao continuam sob autoridade do servidor. Gate: 574/574
+  unitarios, lint/build/bundle, secret scan e 31 arquivos de integracao verdes.
+  O piloto final de fechamento mensal obteve 96,25 em conducao, 100 em
+  fechamento, 81,25 em saida e media 92,50, com cleanup completo. Tres
+  medicoes F2 custaram US$ 0,115403; consumo do ciclo com F1: US$ 0,120754.
+  F1 e F2 somam 45% internos; producao, frontend e banco permanecem intactos.
+
+- Implementada somente no staging a F1 do `Equilibrio da IA`. O prompt
+  principal das sessoes agora usa um nucleo conversacional positivo e um
+  contrato tecnico curto; os condutores preservam metodo e regras de qualidade,
+  enquanto repeticoes genericas de estilo foram removidas. Estado, proposta,
+  confirmacao, transacao, idempotencia e gravacao continuam server-side. Gate:
+  571/571 unitarios, lint/build/bundle e 31 arquivos de integracao verdes;
+  `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker`
+  publicados no staging. Depois da renovacao da chave, o piloto trimestral
+  passou 8/8 controles com pergunta ancorada, uma pergunta visivel, zero
+  mutacao e cleanup concluido. Geracao US$ 0,005351, judge US$ 0, producao
+  intacta. O owner aceitou a continuidade e reservou a avaliacao da conducao
+  completa para a conversa pratica; F1 passou a 20% internos.
+
 - Aprovado e registrado o subplano `Equilibrio da IA`, que antecede a R1B e
   separa em cinco fases a naturalidade da conversa da seguranca da gravacao.
   F1-F4 tratam prompt destilado, situacoes no lugar de templates, estilo em

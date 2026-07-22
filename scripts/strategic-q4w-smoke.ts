@@ -37,7 +37,10 @@ export async function main() {
     const learnings = Array.isArray(proposal.learnings) ? proposal.learnings : [];
     const transcript = Array.isArray(report.transcript) ? report.transcript : [];
     const oracleReplies = transcript.filter((entry: any) => entry.role === "oracle").map((entry: any) => text(entry.content));
-    const focusedReply = oracleReplies.find((reply: string) => comparable(reply).includes("qual novo prazo assumimos")) ?? "";
+    const focusedReply = oracleReplies.find((reply: string) => {
+      const normalized = comparable(reply);
+      return normalized.includes("novo prazo") && (reply.match(/\?/g) ?? []).length === 1;
+    }) ?? "";
     const content = buildPlanDocumentPreview(proposal, {
       organizationName: "ORG_FIXTURE_A",
       areaName: "Comercial",
@@ -54,17 +57,19 @@ export async function main() {
       ...summary.failedChecks.map((check) => `check ${check}`),
       ...summary.criticalFailureCandidates.map((failure) => `falha critica ${failure}`),
       ...(!focusedReply ? ["transicao focada sobre a unica pendencia ausente"] : []),
-      ...(focusedReply && ((focusedReply.match(/\?/g) ?? []).length !== 1 || !comparable(focusedReply).includes("50%")
-        || !comparable(focusedReply).includes("meta de 60%") || !comparable(focusedReply).includes("parcial"))
-        ? ["transicao nao preserva veredito, numeros ou pergunta unica"] : []),
+      ...(focusedReply && (!comparable(focusedReply).includes("50%")
+        || !comparable(focusedReply).includes("meta de 60%"))
+        ? ["transicao nao preserva os numeros do veredito"] : []),
       ...(oracleReplies.some((reply: string) => comparable(reply).includes("o que destrava o avanco agora"))
         ? ["pergunta generica reapareceu"] : []),
       ...(text(review.current) !== "50%" || text(review.target) !== "60%"
         ? ["atingido ou meta ausente na revisao"] : []),
       ...(!learnings.some((learning: unknown) => comparable(learning).includes("fornecedor")) ? ["aprendizado estruturado ausente"] : []),
       ...(text(proposal.nextPeriod) !== "Jul 2027" ? ["proximo periodo ausente"] : []),
-      ...(!content || text(content.objetivos?.[0]?.atual) !== "50%" || text(content.objetivos?.[0]?.meta) !== "60%"
-        ? ["documento canonico perdeu atingido ou meta"] : []),
+      ...(!content || text(content.objetivos?.[0]?.atual) !== "40%"
+        || text(content.objetivos?.[0]?.atingido) !== "50%"
+        || text(content.objetivos?.[0]?.meta) !== "60%"
+        ? ["documento canonico perdeu baseline, atingido ou meta"] : []),
       ...(text(content?.fechamento?.pendencias?.[0]).includes("[object Object]") || whatsapp.includes("[object Object]")
         ? ["pendencia sofreu coercao de objeto"] : []),
       ...(!comparable(whatsapp).includes("aprendizados: envolver o fornecedor")

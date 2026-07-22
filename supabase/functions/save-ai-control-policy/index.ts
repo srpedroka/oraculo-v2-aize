@@ -28,11 +28,12 @@ serve(async (req) => {
       throw new Error("Orçamento mensal inválido");
     }
     const enforcementMode = body.enforcementMode === "block" ? "block" : "monitor";
+    const requestedProseSplit = typeof body.proseSplitEnabled === "boolean" ? body.proseSplitEnabled : null;
 
     const client = serviceClient();
     const { data: previous, error: previousError } = await client
       .from("ai_control_policies")
-      .select("person_calls_per_minute,org_calls_per_minute,monthly_budget_usd,enforcement_mode")
+      .select("person_calls_per_minute,org_calls_per_minute,monthly_budget_usd,enforcement_mode,prose_split_enabled")
       .eq("org_id", orgId)
       .maybeSingle();
     if (previousError) throw previousError;
@@ -42,6 +43,7 @@ serve(async (req) => {
       org_calls_per_minute: orgCallsPerMinute,
       monthly_budget_usd: monthlyBudgetUsd,
       enforcement_mode: enforcementMode,
+      prose_split_enabled: requestedProseSplit ?? previous?.prose_split_enabled ?? false,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     }).select("*").single();
@@ -60,6 +62,7 @@ serve(async (req) => {
         orgCallsPerMinute,
         monthlyBudgetUsd,
         enforcementMode,
+        proseSplitEnabled: requestedProseSplit ?? previous?.prose_split_enabled ?? false,
       },
     });
     return jsonResponse({ ok: true, policy: data });

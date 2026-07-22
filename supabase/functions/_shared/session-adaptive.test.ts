@@ -1,20 +1,24 @@
 import { describe, expect, it } from "vitest";
+import { CONTRATO_TECNICO, NUCLEO_ORACULO } from "./conductors/nucleo.ts";
 import {
-  ADAPTIVE_SESSION_RULES,
   acknowledgeEquivalentQuarterlyArea,
   adaptiveFallbackReply,
+  buildAdaptiveStyleObservationMetadata,
   buildAdaptiveRepairDirective,
   challengeQuarterlyPriorityOverload,
+  DATA_REPAIR_REASONS,
   deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeProposalConfirmationEnvelope,
   normalizeStrategicHistoricalLessons,
   normalizeReadyProposalEnvelope,
+  partitionAdaptiveValidationReasons,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   repeatsPreviousQuestion,
   resumeDeferredQuarterlyProposal,
   safeAdaptiveNextPhase,
+  STYLE_OBSERVATION_REASONS,
   validateAdaptiveEnvelope,
   visibleQuestions,
 } from "./session-adaptive.ts";
@@ -49,6 +53,68 @@ function reasons(overrides: Record<string, unknown> = {}, input: Partial<Paramet
   });
 }
 
+describe("adaptive validation classes F3", () => {
+  it("observes style without requesting a data repair", () => {
+    expect(STYLE_OBSERVATION_REASONS).toContain("repeated_question");
+    expect(STYLE_OBSERVATION_REASONS).toContain("quarterly_complete_block_overquestioned");
+    expect(DATA_REPAIR_REASONS).not.toContain("repeated_question");
+    expect(partitionAdaptiveValidationReasons([
+      "repeated_question",
+      "mechanical_acknowledgement",
+      "verbose_regular_turn",
+    ])).toEqual({
+      dataRepairReasons: [],
+      styleObservationReasons: [
+        "repeated_question",
+        "mechanical_acknowledgement",
+        "verbose_regular_turn",
+      ],
+    });
+  });
+
+  it("keeps data defects and unknown reasons closed by default", () => {
+    expect(DATA_REPAIR_REASONS).toContain("strategic_wrong_year");
+    expect(DATA_REPAIR_REASONS).toContain("strategic_incomplete_proposal");
+    expect(DATA_REPAIR_REASONS).toContain("quarterly_missing_objectives");
+    expect(DATA_REPAIR_REASONS).toContain("monthly_incomplete_actions");
+    expect(DATA_REPAIR_REASONS).toContain("phase_advance_without_evidence");
+    expect(DATA_REPAIR_REASONS).toContain("done_without_confirmation");
+    expect(partitionAdaptiveValidationReasons([
+      "repeated_question",
+      "strategic_wrong_year",
+      "future_unclassified_reason",
+    ])).toEqual({
+      dataRepairReasons: ["strategic_wrong_year", "future_unclassified_reason"],
+      styleObservationReasons: ["repeated_question"],
+    });
+  });
+
+  it("builds telemetry with codes and numbers only", () => {
+    const metadata = buildAdaptiveStyleObservationMetadata({
+      reasons: ["repeated_question", "strategic_wrong_year", "repeated_question"],
+      ritual: "quarterly",
+      channel: "whatsapp",
+      aiFunction: "planning",
+      latencyMs: 123.6,
+    });
+
+    expect(metadata).toEqual({
+      adaptiveStyleObservationCodes: ["repeated_question"],
+      adaptiveStyleObservationCount: 1,
+      adaptiveStyleObservationFunction: "planning",
+      adaptiveStyleObservationRitual: "quarterly",
+      adaptiveStyleObservationChannel: "whatsapp",
+      adaptiveStyleObservationLatencyMs: 124,
+    });
+    expect(Object.keys(metadata).every((key) => !/(?:reply|prompt|message|context|phone|document)/i.test(key))).toBe(true);
+  });
+
+  it("blocks a planning session that tries to finish without server confirmation", () => {
+    expect(reasons({ done: true }, { sessionType: "quarterly" })).toContain("done_without_confirmation");
+    expect(reasons({ done: true }, { sessionType: "quarter_close" })).not.toContain("done_without_confirmation");
+  });
+});
+
 describe("adaptive planning session guard Q4A", () => {
   it("derives internal adaptive metadata on the server", () => {
     expect(ensureAdaptiveStatePatch(
@@ -67,8 +133,7 @@ describe("adaptive planning session guard Q4A", () => {
         action_direction: "transformar a resposta em acao",
       },
     });
-    expect(ADAPTIVE_SESSION_RULES).toContain("O servidor classifica prontidao");
-    expect(ADAPTIVE_SESSION_RULES).not.toContain("Cada state_patch deve incluir _adaptive");
+    expect(CONTRATO_TECNICO).not.toContain("Cada state_patch deve incluir _adaptive");
   });
 
   it("reproduces and blocks the semantic question loop seen in the pilot", () => {
@@ -1740,9 +1805,9 @@ describe("adaptive planning session guard Q4A", () => {
     const repair = buildAdaptiveRepairDirective(["repeated_question"], "Qual é o desafio?");
     expect(repair).toContain("repete semanticamente");
     expect(repair).toContain("Nao mencione esta correcao");
-    expect(ADAPTIVE_SESSION_RULES).toContain("checklist de decisoes");
-    expect(ADAPTIVE_SESSION_RULES).toContain("2 ou 3 possibilidades");
-    expect(ADAPTIVE_SESSION_RULES).toContain("proxima acao executavel");
+    expect(CONTRATO_TECNICO).toContain("mapa de decisões");
+    expect(NUCLEO_ORACULO).toContain("2 ou 3 caminhos concretos");
+    expect(NUCLEO_ORACULO).toContain("decisão, resultado ou ação");
   });
 
   it("recusa alegação de arquivo corrompido depois da extração comprovada", () => {

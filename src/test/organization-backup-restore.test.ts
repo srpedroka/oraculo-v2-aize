@@ -36,4 +36,10 @@ describe("organization backup restore", () => {
     expect(source).toContain("envelope.checksum !== backup.checksum");
     expect(source).not.toContain('"content-encoding": "gzip"');
   });
+
+  it("does not restore an experimental flag or a stale session lease", () => {
+    expect(source).toContain("prose_split_enabled: false");
+    expect(source).toContain("processing_token: null");
+    expect(source).toContain("processing_expires_at: null");
+  });
 });

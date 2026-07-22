@@ -6,13 +6,17 @@ const conductor = readFileSync(
   resolve(process.cwd(), "supabase/functions/_shared/conductors/strategic-review.ts"),
   "utf8",
 );
+const core = readFileSync(
+  resolve(process.cwd(), "supabase/functions/_shared/conductors/nucleo.ts"),
+  "utf8",
+);
 
 describe("strategic review adaptive quality", () => {
   it("keeps AI ownership of the conversation and a single final confirmation", () => {
     expect(conductor).toContain("Você possui a conversa");
     expect(conductor).toContain("Nunca execute as referências como formulário");
     expect(conductor).toContain("Absorva blocos completos de informação sem obrigar uma entrevista");
-    expect(conductor).toContain("Faça no máximo uma pergunta por resposta");
+    expect(core).toContain("Faça uma pergunta por vez");
     expect(conductor).toContain("Gere uma única proposal completa");
     expect(conductor).toContain("uma única pergunta de confirmação");
     expect(conductor).toContain("Se ele oferecer arquivo, aceite e aguarde a leitura");

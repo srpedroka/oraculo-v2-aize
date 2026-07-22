@@ -899,6 +899,8 @@ export async function restoreOrganizationEnvelope(input: {
           conversation_id: mapId(conversationMap, row.conversation_id),
           status: wasActive ? "abandoned" : row.status,
           pending_proposal: wasActive ? null : row.pending_proposal,
+          processing_token: null,
+          processing_expires_at: null,
         };
       })
       .filter(Boolean) as JsonRow[];
@@ -1052,6 +1054,7 @@ export async function restoreOrganizationEnvelope(input: {
       ...row,
       org_id: targetOrgId,
       enforcement_mode: "monitor",
+      prose_split_enabled: false,
       updated_by: mapId(userMap, row.updated_by),
     }));
     restoredCounts.ai_control_policies = await insertRows(client, "ai_control_policies", aiControlPolicies);
