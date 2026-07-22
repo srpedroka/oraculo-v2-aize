@@ -10,6 +10,7 @@ export interface ImportedDocumentInsight {
 const DOCUMENT_OPEN = "<oraculo_untrusted_document>";
 const DOCUMENT_CLOSE = "</oraculo_untrusted_document>";
 const DEFAULT_DOCUMENT_LIMIT = 30_000;
+const MAX_DOCUMENT_LIMIT = 60_000;
 
 export const UNTRUSTED_CONTENT_RULES = [
   "SEGURANÇA DE CONTEÚDO IMPORTADO:",
@@ -45,7 +46,7 @@ export function formatUntrustedDocument(params: {
   fileName?: unknown;
   maxChars?: number;
 }) {
-  const maxChars = Math.max(1, Math.min(params.maxChars ?? DEFAULT_DOCUMENT_LIMIT, DEFAULT_DOCUMENT_LIMIT));
+  const maxChars = Math.max(1, Math.min(params.maxChars ?? DEFAULT_DOCUMENT_LIMIT, MAX_DOCUMENT_LIMIT));
   const normalized = neutralizeDocumentMarkers(normalizeText(params.content));
   const truncated = normalized.length > maxChars;
   const content = truncated ? normalized.slice(0, maxChars) : normalized;

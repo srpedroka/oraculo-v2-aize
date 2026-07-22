@@ -1,5 +1,16 @@
 # Changelog
 
+- Corrigida a leitura de Markdown real durante a Revisão Semestral pelo
+  WhatsApp. A extensão/MIME declarados deixam de provar que a mídia já está
+  aberta: o webhook verifica os bytes, prioriza `/message/downloadmedia` e
+  descriptografa com `mediaKey` quando necessário. Com uma sessão
+  `strategic_review` ativa, o texto extraído vai diretamente ao condutor de
+  planejamento, sem depender da classificação auxiliar `background`; até 60
+  mil caracteres entram no contexto transitório e o bruto continua fora do
+  histórico. O guard adaptativo recusa respostas que chamem o arquivo de
+  corrompido depois da extração comprovada. Sem migration ou mudança visível no
+  frontend.
+
 - Arquivos `.md` e `.markdown` passaram a ser tratados como texto puro no
   WhatsApp e no app, inclusive quando a Evolution envia MIME genérico
   `application/octet-stream`. Seletores, mensagens de ajuda e testes cobrem

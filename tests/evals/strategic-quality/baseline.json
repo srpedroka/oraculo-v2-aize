@@ -6,6 +6,11 @@
   "description": "Linha de partida anterior a qualquer correcao orientada pelas avaliacoes Q0-Q6.",
   "intentionalCorrections": [
     {
+      "date": "2026-07-21",
+      "gate": "R1B-markdown-review",
+      "reason": "Documento extraido durante a revisao semestral passa direto ao condutor principal, fundamenta o turno sem persistir o bruto e bloqueia a falsa alegacao de arquivo corrompido."
+    },
+    {
       "date": "2026-07-16",
       "gate": "Q1",
       "reason": "Uma confirmacao final, preservacao de baseline, riscos, renuncias, estrategias e aprendizado historico no plano anual."
@@ -217,12 +222,12 @@
     { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "5875b9ef3754996c93a4f34df9623f3059820b5cea6556e1a7a58db1b9cbf2b3" },
     { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "93dac956ea9d6c2bc25f8627a7fd0d3d56dbfc5723481679b5334761443b4e3b" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
-    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "7d85b2297a352a7917f6c283cb1df7c19d6ed8a63f2cf0130b12944691ea0f17" },
+    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "8393416dd900a45766d53bea97942cfd62011e068c5230476963d1809abc7435" },
     { "path": "supabase/functions/_shared/session-confirmation.ts", "sha256": "a658e5d17b9d91cc73c763cf6de319a6eec42e108950c93d94ad683179d79ab2" },
     { "path": "supabase/functions/_shared/session-output-schema.ts", "sha256": "dd64b089c64d504e7a1cee6050e4eccc11c11c8fae2441021796044da19a1927" },
     { "path": "supabase/functions/_shared/session-canonical-envelope.ts", "sha256": "7311ef113b53fc9538ea7db3a49b9fae27864d28e9c76247ee4dd60f22279af7" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "483b77633d81fc36f8f2741a2ff0bfef9377bfb158e7bf7339e1334b4a2fb9ca" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "48077453666dfc588924209047ae26e326aaef5fb43ace1c43c34186faf586b8" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "4b48e7814caa4a00708eacfbda0a6acced975ac1fb099179ce62609c558b33fd" },
     { "path": "supabase/functions/_shared/quarterly-kpis.ts", "sha256": "4cb3aa37dbc4c451b2cc0988f6cd68d70f3c70db7e643854f168a71d8b13e577" },
     { "path": "supabase/functions/_shared/quarterly-actions.ts", "sha256": "5fc44ff140563b23fae00cc4aac02210dd6e9f5e75105fc0c71f9fc2c0476516" },

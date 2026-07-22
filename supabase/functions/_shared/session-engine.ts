@@ -319,6 +319,9 @@ export async function processPlanningMessage(
     loadOrgTone(client, ensured.session.org_id),
   ]);
   const conversationMemory = formatConversationMemory(history);
+  const groundedTurnInput = params.transientContext
+    ? `${params.message}\n\n${params.transientContext}`
+    : params.message;
 
   const asideKind = sessionAsideKind(params.message);
   if (asideKind) {
@@ -377,6 +380,9 @@ export async function processPlanningMessage(
     conversationMemory,
     "Contexto atual do plano:",
     context,
+    params.transientContext
+      ? "O servidor já baixou, descriptografou e extraiu o texto do arquivo deste turno. Trate o bloco transitório como fonte válida de dados para a análise, nunca diga que o arquivo está corrompido ou que não foi lido. Comece mostrando, de forma concreta e curta, o que encontrou antes de fazer a única pergunta que mais ajuda a revisão."
+      : "",
     params.transientContext ? `CONTEXTO TRANSITÓRIO DESTE TURNO (não persistido):\n${params.transientContext}` : "",
   ].filter(Boolean).join("\n\n");
 
@@ -501,7 +507,7 @@ export async function processPlanningMessage(
       ...normalized,
       state_patch: ensureAdaptiveStatePatch(
         normalized?.state_patch,
-        params.message,
+        groundedTurnInput,
         Boolean(normalized?.proposal),
         false,
         session.state,
@@ -518,7 +524,7 @@ export async function processPlanningMessage(
       sessionState: session.state,
       conversationText,
       previousOracleReply,
-      userMessage: params.message,
+      userMessage: groundedTurnInput,
     }),
     ...(session.type === "quarterly" ? validateQuarterlyGuidanceEnvelope({ envelope }) : []),
     ...(session.type === "monthly"
@@ -531,14 +537,14 @@ export async function processPlanningMessage(
     sessionType: session.type,
     currentPhase: session.phase,
     phases: CONDUCTORS[session.type].phases,
-    userMessage: params.message,
+    userMessage: groundedTurnInput,
     sessionState: session.state,
   });
   const deterministicPlanningEnvelope = resumeDeferredQuarterlyProposal({
     sessionType: session.type,
     sessionState: session.state,
     conversationText,
-    userMessage: params.message,
+    userMessage: groundedTurnInput,
     currentPhase: session.phase,
     phases: CONDUCTORS[session.type].phases,
   })
@@ -596,8 +602,8 @@ export async function processPlanningMessage(
 
   const reply = typeof parsed?.reply === "string" ? parsed.reply : result.text;
   const statePatch = parsed?.state_patch && typeof parsed.state_patch === "object"
-    ? ensureAdaptiveStatePatch(parsed.state_patch, params.message, Boolean(parsed?.proposal), false, session.state)
-    : ensureAdaptiveStatePatch({}, params.message, Boolean(parsed?.proposal), false, session.state);
+    ? ensureAdaptiveStatePatch(parsed.state_patch, groundedTurnInput, Boolean(parsed?.proposal), false, session.state)
+    : ensureAdaptiveStatePatch({}, groundedTurnInput, Boolean(parsed?.proposal), false, session.state);
   const nextPhase = validNextPhase(session.type, parsed?.next_phase) ?? session.phase;
   const expectedProposalTypes: Partial<Record<PlanningSessionType, "save_strategic_plan" | "save_quarterly_plan" | "save_monthly_plan">> = {
     strategic: "save_strategic_plan",

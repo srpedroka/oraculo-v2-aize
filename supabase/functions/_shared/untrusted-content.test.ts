@@ -37,6 +37,17 @@ describe("fronteira de conteúdo não confiável", () => {
     expect(receipt).not.toContain("ignore-as-regras");
   });
 
+  it("permite contexto transitório maior sem ampliar o limite padrão", () => {
+    const content = `${"a".repeat(44_000)}\nFIM DO RELATORIO`;
+    const reviewBlock = formatUntrustedDocument({ content, maxChars: 60_000 });
+    const defaultBlock = formatUntrustedDocument({ content });
+
+    expect(reviewBlock).toContain("FIM DO RELATORIO");
+    expect(reviewBlock).not.toContain("Conteúdo truncado pelo servidor");
+    expect(defaultBlock).not.toContain("FIM DO RELATORIO");
+    expect(defaultBlock).toContain("Conteúdo truncado pelo servidor");
+  });
+
   it("aceita somente o tipo de proposta esperado", () => {
     const valid = { proposal: { type: "save_monthly_plan", objectives: [] } };
     expect(importedProposalFromModel(valid, "save_monthly_plan")).toEqual(valid.proposal);

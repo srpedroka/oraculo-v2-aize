@@ -5,9 +5,13 @@ import { normalizeAudioFile, transcribeAudioWithOpenAi, type AudioFile } from ".
 import { audioFileFromBase64, extractAudioInfo, extractDocumentInfo, extractText, firstText, mediaFileFromBase64 } from "./whatsapp-event.ts";
 import {
   extractWhatsAppPlainTextDocument,
-  isWhatsAppPlainTextDocument,
   whatsappFileExtension as fileExtension,
 } from "./whatsapp-text.ts";
+import {
+  decryptWhatsAppAudio,
+  decryptWhatsAppDocument,
+  looksLikeDecryptedDocumentBytes,
+} from "./whatsapp-media-crypto.ts";
 
 const MAX_MEDIA_DOWNLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -190,38 +194,8 @@ function asciiSignature(bytes: Uint8Array) {
     .join("");
 }
 
-function looksLikeZip(bytes: Uint8Array) {
-  return bytes[0] === 0x50 && bytes[1] === 0x4b;
-}
-
 function looksLikePdf(bytes: Uint8Array) {
   return asciiSignature(bytes).startsWith("%PDF");
-}
-
-function looksLikeDocumentBytes(bytes: Uint8Array, fileName: string, mimeType: string) {
-  return (
-    looksLikePdf(bytes) ||
-    looksLikeZip(bytes) ||
-    isWhatsAppPlainTextDocument(fileName, mimeType) ||
-    mimeType.includes("pdf") ||
-    mimeType.includes("presentation") ||
-    mimeType.includes("wordprocessing")
-  );
-}
-
-function base64ToBytes(value: string) {
-  const clean = value
-    .replace(/^data:[^,]+,/, "")
-    .replace(/-/g, "+")
-    .replace(/_/g, "/")
-    .replace(/\s/g, "");
-  const padded = clean.padEnd(Math.ceil(clean.length / 4) * 4, "=");
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
 }
 
 function looksLikeAudioBytes(bytes: Uint8Array) {
@@ -237,42 +211,6 @@ function looksLikeAudioBytes(bytes: Uint8Array) {
     (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) ||
     (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3)
   );
-}
-
-async function decryptWhatsAppMedia(bytes: Uint8Array, mediaKey: string, info: string) {
-  const mediaKeyBytes = base64ToBytes(mediaKey);
-  const salt = new Uint8Array(32);
-  const baseKey = await crypto.subtle.importKey("raw", mediaKeyBytes, "HKDF", false, ["deriveBits"]);
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "HKDF",
-      hash: "SHA-256",
-      salt,
-      info: new TextEncoder().encode(info),
-    },
-    baseKey,
-    112 * 8,
-  );
-  const derived = new Uint8Array(derivedBits);
-  const iv = derived.slice(0, 16);
-  const cipherKey = derived.slice(16, 48);
-  const encrypted = bytes.length > 10 ? bytes.slice(0, -10) : bytes;
-  const cryptoKey = await crypto.subtle.importKey("raw", cipherKey, { name: "AES-CBC" }, false, ["decrypt"]);
-  const decrypted = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, encrypted));
-  const padding = decrypted[decrypted.length - 1];
-
-  if (padding > 0 && padding <= 16) {
-    return decrypted.slice(0, -padding);
-  }
-  return decrypted;
-}
-
-async function decryptWhatsAppAudio(bytes: Uint8Array, mediaKey: string) {
-  return await decryptWhatsAppMedia(bytes, mediaKey, "WhatsApp Audio Keys");
-}
-
-async function decryptWhatsAppDocument(bytes: Uint8Array, mediaKey: string) {
-  return await decryptWhatsAppMedia(bytes, mediaKey, "WhatsApp Document Keys");
 }
 
 async function maybeDecryptWhatsAppAudio(file: AudioFile, audioInfo: NonNullable<ReturnType<typeof extractAudioInfo>>, diagnostics: string[]) {
@@ -300,7 +238,11 @@ async function maybeDecryptWhatsAppAudio(file: AudioFile, audioInfo: NonNullable
 
 async function maybeDecryptWhatsAppDocument(file: AudioFile, documentInfo: NonNullable<ReturnType<typeof extractDocumentInfo>>, diagnostics: string[]) {
   const mediaKey = firstText(documentInfo.documentMessage?.mediaKey, documentInfo.documentMessage?.MediaKey);
-  if (!mediaKey || looksLikeDocumentBytes(file.bytes, file.fileName, file.mimeType)) return file;
+  if (looksLikeDecryptedDocumentBytes(file.bytes, file.fileName, file.mimeType)) return file;
+  if (!mediaKey) {
+    diagnostics.push("doc-decrypt:no-media-key");
+    return file;
+  }
 
   try {
     const decryptedBytes = await decryptWhatsAppDocument(file.bytes, mediaKey);
@@ -634,8 +576,8 @@ export async function resolveDocumentFile(settings: any, keyRow: any, payload: a
 
   let file: AudioFile | null = null;
   if (documentInfo.base64) file = mediaFileFromBase64(documentInfo.base64, documentInfo.mimeType, documentInfo.fileName);
-  if (!file && documentInfo.url) file = await downloadMediaFromUrl(documentInfo.url, keyRow, documentInfo.mimeType, documentInfo.fileName, diagnostics, hostFromInstanceUrl(settings));
   if (!file) file = await downloadDocumentFromEvolution(settings, keyRow, documentInfo, diagnostics);
+  if (!file && documentInfo.url) file = await downloadMediaFromUrl(documentInfo.url, keyRow, documentInfo.mimeType, documentInfo.fileName, diagnostics, hostFromInstanceUrl(settings));
 
   if (!file) return null;
   return await maybeDecryptWhatsAppDocument(file, documentInfo, diagnostics);
