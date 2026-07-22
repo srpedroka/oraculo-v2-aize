@@ -317,6 +317,13 @@ export async function configureDisposableAi(handle: EvaluationOrg, config: Runti
       updated_at: now,
     }, { onConflict: "org_id,function" }),
   ];
+  if (process.env.ORACULO_EVAL_PROSE_SPLIT === "true") {
+    operations.push(admin.from("ai_control_policies").upsert({
+      org_id: handle.orgId,
+      prose_split_enabled: true,
+      enforcement_mode: "monitor",
+    }, { onConflict: "org_id" }));
+  }
   const results = await Promise.all(operations);
   const failure = results.find((result) => result.error)?.error;
   if (failure) throw failure;
