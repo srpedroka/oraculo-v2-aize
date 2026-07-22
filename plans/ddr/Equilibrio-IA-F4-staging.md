@@ -105,7 +105,7 @@ migration e aditiva e nao precisa ser removida para desativar o experimento.
 O subplano Equilibrio da IA passa de 65% para **90%**. O plano geral permanece
 em 52,5% e o Plano 4 em 50%, pois a F4 e uma correcao interna da R1.
 
-Proximo passo: merge/release da F4 em producao somente com autorizacao explicita
-do owner. A flag continua desligada por padrao; depois do release, ela deve ser
-ligada apenas na empresa piloto para a R1B real. A F5 continua depois do piloto
-e do periodo de observacao.
+O merge/release posterior foi autorizado e concluido com a flag desligada. A
+rastreabilidade de producao esta em `plans/ddr/Equilibrio-IA-F4-producao.md`.
+O proximo passo e aprovar a ativacao somente na empresa piloto para a R1B real.
+A F5 continua depois do piloto e do periodo de observacao.

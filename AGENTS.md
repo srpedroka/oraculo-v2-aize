@@ -612,7 +612,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Antes da R1B, o
   owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
   naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
-  F1 a F4 foram implementadas e publicadas apenas no staging. A F1 passou
+  F1 a F4 foram implementadas, aprovadas no staging e publicadas em producao
+  com a flag desligada por padrao. A F1 passou
   no piloto trimestral 8/8 e foi aceita para continuidade. A F2 substituiu seis
   envelopes de fala por situacoes seguras, mantendo estado, fase e proposta no
   servidor. A F3 separou defeitos de dado de observacoes de estilo: na mesma
@@ -622,15 +623,19 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   turnos concorrentes. Gate F4: 586 unitarios, 32 arquivos de integracao, 7
   verificacoes de seguranca, lint/build/bundle e rodada geral com media 92,50.
   O subplano esta em 90%, enquanto geral permanece 52,5% e Plano 4 em 50%.
-  Custo total F4 US$ 0,211855; consumo estimado do ciclo US$ 0,410834. Producao
-  continua intacta. Proxima acao: autorizar merge/release da F4 e depois R1B.
+  Custo total F4 US$ 0,211855; consumo estimado do ciclo US$ 0,410834. O pacote
+  entrou pela PR #21 e a correcao aditiva/CI pela PR #25; CI final
+  `29965071770`, migration `29965389449` e Functions `29965501405` verdes.
+  Sem deploy do frontend ou custo adicional. Proxima acao: aprovar a ativacao
+  da flag somente na empresa piloto e depois executar a R1B.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e
   `plans/2026-07-22-equilibrio-da-ia.md` e
   `plans/ddr/Equilibrio-IA-F2-staging.md` e
   `plans/ddr/Equilibrio-IA-F3-staging.md` e
-  `plans/ddr/Equilibrio-IA-F4-staging.md`.
+  `plans/ddr/Equilibrio-IA-F4-staging.md` e
+  `plans/ddr/Equilibrio-IA-F4-producao.md`.
 - A leitura de Markdown real na R1B foi corrigida e publicada em producao em
   2026-07-22: PR #19, merge `28bc422`, CI `29935040723` e release protegido
   `29935471951`. Foram publicadas somente `oracle-session`, `oracle-chat`,
