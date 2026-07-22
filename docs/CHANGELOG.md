@@ -1,5 +1,13 @@
 # Changelog
 
+- A prontidao do Supabase local passou a cobrir a falha residual comprovada na
+  PR #25: mesmo depois do `400` da sonda administrativa, o Edge Runtime fechou
+  o socket da primeira chamada autenticada com `UND_ERR_SOCKET` e
+  `other side closed`. O CI agora espera dois segundos apos o aquecimento e
+  repete somente o arquivo de integracao afetado, uma unica vez e apenas para
+  essa assinatura exata. Assertions, HTTP inesperado, seguranca e uma segunda
+  falha continuam bloqueantes; nenhum comportamento de producao foi alterado.
+
 - O primeiro disparo protegido da migration F4 (`29964088183`) foi recusado no
   preflight, antes de abrir os segredos ou escrever em producao, porque o SQL
   removia e recriava uma constraint apenas para ser idempotente. A operacao foi
