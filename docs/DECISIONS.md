@@ -1,5 +1,25 @@
 # Decisoes tecnicas
 
+## 2026-07-22 - Liberdade na fala, rigor na gravacao
+
+Decisao: executar antes da R1B o subplano
+`plans/2026-07-22-equilibrio-da-ia.md`. A fala do Oraculo sera progressivamente
+liberada de prompts redundantes, templates deterministas e reparos de estilo;
+estado canonico, escopo, IDs, proposta, confirmacao, transacao e gravacao
+continuam pertencendo ao servidor.
+
+Correcoes obrigatorias ao plano de origem: situacoes deterministas orientam o
+modelo sem entregar a ele a autoridade de persistencia; telemetria de estilo e
+sanitizada e nao inclui trechos privados; a extracao estrutural e persistida
+antes do proximo turno; a separacao prosa/estrutura usa flag reversivel por
+empresa, desativada por padrao.
+
+Consequencias: F1-F4 precedem a R1B real e F5 ocorre depois do piloto e do
+periodo de observacao. O subplano possui percentual interno, mas nao cria
+progresso adicional no plano mestre. Cada fase exige briefing, staging, testes,
+gate do owner e autorizacao separada para producao. Nenhuma compra foi
+autorizada por esta decisao.
+
 ## 2026-07-20 - A IA possui a conversa; o servidor possui a gravacao
 
 Decisao: os guias estrategicos passam a ser referencias de raciocinio e

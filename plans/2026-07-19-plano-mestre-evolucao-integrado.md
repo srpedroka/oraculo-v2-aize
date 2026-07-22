@@ -2,7 +2,14 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - Plano 3 concluido; ciclo real R1 aguardando autorizacao**
+Status: **ATIVO - Plano 3 concluido; Equilibrio IA antes do ciclo real R1B**
+
+Atualizacao de 2026-07-22: o owner aprovou o subplano corretivo
+`plans/2026-07-22-equilibrio-da-ia.md`. As Fases 1 a 4 serao executadas antes da
+R1B para devolver naturalidade a fala mantendo proposta, confirmacao e gravacao
+sob autoridade do servidor. A Fase 5 fica depois do piloto e da observacao.
+Como correcao dentro da R1, o subplano nao altera o progresso: 52,5% geral e
+50% no Plano 4. Proxima acao: briefing e execucao separada da Fase 1.
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -241,7 +248,7 @@ UX-C0 -> UX-C1 -> UX-C2 -> UX-C3 -> UX-C4
                          |
                          v
 VALIDACAO ESTRATEGICA
-R1A prontidao -> R1B revisao semestral real
+R1A prontidao -> Equilibrio IA F1-F4 -> R1B revisao semestral real
                          |
                          v
 BETA COLETIVO EM PRODUCAO
@@ -1181,16 +1188,17 @@ continuam abertas sem risco critico.
 | 7 | UX-C3 | UX | Owner no staging | Uma confirmacao |
 | 8 | UX-C4 | UX | Owner no staging | Mobile/AA verdes |
 | 9 | R1A | Suporte a revisao semestral | Owner no staging | Contrato verde |
-| 10 | R1B | Revisao semestral real | Owner | Revisao aprovada |
-| 11 | B0 | Preparacao e convites | Owner | Preflight verde |
-| 12 | B1 | Beta coletivo | Todos os gestores | Uso real iniciado |
-| 13 | B2 | Correcoes P0/P1 | Gestores + owner | Triagem continua |
-| 14 | O1-O5 | Jornadas operacionais | Gestores por area | Cobertura suficiente |
-| 15 | O6 | Consolidacao | Owner | Diagnostico completo |
-| 16 | O7 | Aceite coletivo | Todos os gestores | Beta aprovado |
-| 17 | UX-R0/R2 | UX comprovada | Gestores validam | H1 encerrado |
-| 18 | O8 | Operacao assistida | Todos os gestores | Operacao oficial |
-| 19 | EV individual | Evolucao | Conforme gatilho | Valor comprovado |
+| 10 | Equilibrio IA F1-F4 | Conversa natural e gravacao segura | Owner no staging/piloto | Quatro gates aprovados |
+| 11 | R1B | Revisao semestral real | Owner | Revisao aprovada |
+| 12 | B0 | Preparacao e convites | Owner | Preflight verde |
+| 13 | B1 | Beta coletivo | Todos os gestores | Uso real iniciado |
+| 14 | B2 | Correcoes P0/P1 | Gestores + owner | Triagem continua |
+| 15 | O1-O5 | Jornadas operacionais | Gestores por area | Cobertura suficiente |
+| 16 | O6 | Consolidacao | Owner | Diagnostico completo |
+| 17 | O7 | Aceite coletivo | Todos os gestores | Beta aprovado |
+| 18 | UX-R0/R2 | UX comprovada | Gestores validam | H1 encerrado |
+| 19 | O8 | Operacao assistida | Todos os gestores | Operacao oficial |
+| 20 | EV individual | Evolucao | Conforme gatilho | Valor comprovado |
 
 ## 24. Proximo passo
 
@@ -1203,6 +1211,8 @@ calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: iniciar a R1B em producao. O owner conduz a revisao real com o
-Plano Anual e seus relatorios de T1/T2,
-avalia a conversa e as duas secoes do pacote antes de uma unica confirmacao.
+Proximo passo: executar a Fase 1 de
+`plans/2026-07-22-equilibrio-da-ia.md`, primeiro com briefing e autorizacao
+especifica. Depois dos gates F1-F4, o owner conduz a R1B real com o Plano Anual
+e seus relatorios de T1/T2, avalia a conversa e as duas secoes do pacote antes
+de uma unica confirmacao.

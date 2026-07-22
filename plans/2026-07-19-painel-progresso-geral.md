@@ -1,6 +1,6 @@
 # Painel de progresso do plano geral do Oraculo
 
-Data-base: 2026-07-20
+Data-base: 2026-07-22
 
 Status: **ATIVO - fonte oficial das porcentagens**
 
@@ -16,7 +16,9 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: R1B - owner executar a revisao semestral real em producao**
+**Proxima acao: Equilibrio da IA F1 - destilar o prompt antes da R1B**
+
+**Subplano corretivo Equilibrio da IA: 0% (nao altera a porcentagem geral)**
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -124,6 +126,15 @@ R1A foi implementada, validada no staging e aprovada em 2026-07-20:
   headers/cache e smoke publico desktop/mobile;
 - Plano 4 passa de 0% para 50% e o geral de 45% para 52,5%.
 
+Antes da R1B, o owner aprovou em 2026-07-22 o subplano corretivo
+`plans/2026-07-22-equilibrio-da-ia.md`:
+
+- F1-F4 separam fala natural de gravacao segura e serao executadas uma por vez;
+- F5 fica depois do piloto e do periodo de observacao;
+- o subplano tem acompanhamento interno proprio, iniciando em 0%;
+- por ser correcao dentro da R1, nao cria pontos extras nem altera 52,5% geral
+  ou 50% no Plano 4 antes do gate R1B.
+
 ## 2. Os oito planos
 
 | Plano | Peso geral | Progresso especifico | Contribuicao geral | Estado |
@@ -131,7 +142,7 @@ R1A foi implementada, validada no staging e aprovada em 2026-07-20:
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
 | [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 100% | 10,0% | Concluido |
-| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | R1A aprovada; R1B real e a proxima |
+| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | Equilibrio IA F1-F4 antes da R1B |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [7. Acabamento e operacao assistida](especificos/07-acabamento-e-operacao-assistida.md) | 10% | 0% | 0,0% | Nao iniciado |
@@ -189,7 +200,8 @@ Antes de executar a proxima fatia:
 ```text
 Plano geral: 52,5%
 Plano especifico: Revisao Semestral Estrategica - 50,0%
-Proxima fatia: R1B - vale 50 pontos do especifico e 7,5 pontos do geral
+Proxima fatia mestre: R1B - vale 50 pontos do especifico e 7,5 pontos do geral
+Subplano atual: Equilibrio da IA F1 - vale 20% interno e 0 ponto adicional
 Se aprovada: especifico 100,0% | geral 60,0%
 ```
 

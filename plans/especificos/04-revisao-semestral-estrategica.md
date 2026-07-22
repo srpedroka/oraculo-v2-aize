@@ -6,7 +6,7 @@ Progresso especifico: **50%**
 
 Contribuicao atual ao geral: **7,5%**
 
-Status: **R1A APROVADA - RELEASE AUTORIZADO; R1B SERA O TESTE REAL DO OWNER**
+Status: **R1A APROVADA - EQUILIBRIO IA F1-F4 ANTES DA R1B REAL**
 
 ## Objetivo
 
@@ -19,7 +19,8 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 | Fatia | Pontos | Estado | Gate |
 | --- | ---: | --- | --- |
 | R1A. Preflight e contrato para o ciclo real | 50 | Aprovada em 2026-07-20 | Contexto semestral, contrato e testes aprovados |
-| R1B. Revisao e novo planejamento reais com owner | 50 | Nao iniciado | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
+| Equilibrio da IA F1-F4 | 0 extra | Aprovado; F1 nao iniciada | Fala natural com gravacao server-side intacta |
+| R1B. Revisao e novo planejamento reais com owner | 50 | Aguarda F1-F4 | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
 | **Total** | **100** | **Em andamento** | **50%** |
 
 ## Entregas
@@ -37,6 +38,11 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 Fonte: secao 10, R1A e R1B do plano mestre.
 
 Briefing executavel: `plans/ddr/R1A-prontidao-contrato-briefing.md`.
+
+Subplano corretivo aprovado:
+`plans/2026-07-22-equilibrio-da-ia.md`. Ele possui progresso interno proprio,
+mas nao altera os pontos deste plano. F1-F4 precedem a R1B; F5 ocorre depois do
+piloto e da observacao.
 
 ## Evidencia R1A
 
