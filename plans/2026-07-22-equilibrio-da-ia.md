@@ -180,7 +180,12 @@ fechamento, mas entregar seus fatos ao modelo em vez de substituir a fala.
 
 ### Implementacao
 
-1. Criar versoes `*Situation` para as deteccoes hoje convertidas em envelopes.
+1. Criar versoes `*Situation`, nos mesmos arquivos de origem
+   (`monthly-ready-block.ts` e `close-quality.ts`), para as deteccoes hoje
+   convertidas em envelopes: `monthlyInheritedPendingEnvelope`,
+   `completeMonthlyReadyEnvelope`, `monthlyExperiencedActionsChallengeEnvelope`,
+   `monthlyCapacityDecisionEnvelope`, `monthClosePartialDecisionEnvelope` e
+   `quarterCloseOpenDecisionEnvelope`.
 2. Cada situacao retorna `kind`, fatos canonicos e a decisao que precisa ser
    tratada; nao retorna frase pronta ao usuario.
 3. Injetar as situacoes no prompt sob `SITUACOES DETECTADAS PELO SISTEMA`.
@@ -207,12 +212,14 @@ estilo medem a conversa, mas nao bloqueiam nem atrasam a resposta.
 
 ### Implementacao
 
-1. Separar razoes em `DATA_REPAIR_REASONS` e
+1. Exportar de `session-adaptive.ts` as listas `DATA_REPAIR_REASONS` e
    `STYLE_OBSERVATION_REASONS`.
-2. Manter bloqueio para JSON invalido, proposta incompleta, ano errado,
-   `done` sem confirmacao, avanco de fase sem evidencia e equivalentes.
-3. Tornar repeticao semantica, bordao, tamanho e excesso de perguntas apenas
-   observacoes.
+2. Manter bloqueio para envelope JSON invalido, `strategic_wrong_year`,
+   `strategic_incomplete_proposal`, propostas trimestrais/mensais incompletas,
+   `done` sem confirmacao, `phase_advance_without_evidence` e equivalentes.
+3. Tornar `questionsAreSimilar`, bordoes, contagem de frases,
+   `quarterly_complete_block_overquestioned` e demais heuristicas de estilo
+   apenas observacoes.
 4. Registrar dados sanitizados: codigo da heuristica, contagem, ritual, canal,
    funcao e latencia. Proibido registrar a fala ou qualquer trecho do contexto.
 5. Documentar consulta semanal no RUNBOOK.
@@ -236,9 +243,10 @@ Gerar a fala em texto livre e extrair a estrutura por uma segunda chamada
 ### Implementacao
 
 1. Criar `session-extract.ts` para extrair `state_patch`, `next_phase`,
-   `proposal` e `done` somente de fatos explicitos.
-2. A chamada `planning` produz apenas a fala; a chamada `background` extrai a
-   estrutura usando mensagem, fala, estado e fase.
+   `proposal` e `done` somente de fatos explicitos, usando uma versao de
+   `PLANNING_SESSION_OUTPUT` sem `reply`.
+2. A chamada `planning` produz apenas a fala, sem `structuredOutput`; a chamada
+   `background` extrai a estrutura usando mensagem, fala, estado e fase.
 3. Aplicar os mesmos validadores, normalizadores e confirmacao atuais ao objeto
    extraido.
 4. Executar retry unico de extracao. Se continuar invalido, nao persistir patch
