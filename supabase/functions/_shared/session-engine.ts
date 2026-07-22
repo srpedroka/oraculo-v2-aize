@@ -1,5 +1,6 @@
 import { resolveAiFunction } from "./ai-router.ts";
-import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
+import { CONTRATO_TECNICO, NUCLEO_ORACULO } from "./conductors/nucleo.ts";
+import { PERSONA_ORACULO } from "./conductors/persona.ts";
 import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
@@ -57,7 +58,6 @@ import {
 } from "./session-ready-plans.ts";
 import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMergeState } from "./session-runtime.ts";
 import {
-  ADAPTIVE_SESSION_RULES,
   acknowledgeEquivalentQuarterlyArea,
   challengeQuarterlyPriorityOverload,
   buildAdaptiveRepairDirective,
@@ -369,9 +369,8 @@ export async function processPlanningMessage(
   }
 
   const systemPrompt = [
-    PERSONA_ORACULO,
-    REGRAS_DE_SESSAO,
-    ADAPTIVE_SESSION_RULES,
+    NUCLEO_ORACULO,
+    CONTRATO_TECNICO,
     UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),

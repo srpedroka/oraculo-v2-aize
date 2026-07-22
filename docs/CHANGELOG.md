@@ -1,5 +1,16 @@
 # Changelog
 
+- Implementada somente no staging a F1 do `Equilibrio da IA`. O prompt
+  principal das sessoes agora usa um nucleo conversacional positivo e um
+  contrato tecnico curto; os condutores preservam metodo e regras de qualidade,
+  enquanto repeticoes genericas de estilo foram removidas. Estado, proposta,
+  confirmacao, transacao, idempotencia e gravacao continuam server-side. Gate:
+  571/571 unitarios, lint/build/bundle e 31 arquivos de integracao verdes;
+  `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker`
+  publicados no staging. O piloto trimestral nao gerou resposta porque a chave
+  temporaria da xAI foi recusada como invalida; custo US$ 0, cleanup concluido,
+  producao intacta e progresso interno ainda 0%.
+
 - Aprovado e registrado o subplano `Equilibrio da IA`, que antecede a R1B e
   separa em cinco fases a naturalidade da conversa da seguranca da gravacao.
   F1-F4 tratam prompt destilado, situacoes no lugar de templates, estilo em

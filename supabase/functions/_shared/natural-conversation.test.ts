@@ -1,25 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { MONTH_CLOSE_CONDUCTOR } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR } from "./conductors/monthly.ts";
-import { PERSONA_ORACULO, REGRAS_DE_SESSAO } from "./conductors/persona.ts";
+import { CONTRATO_TECNICO, NUCLEO_ORACULO } from "./conductors/nucleo.ts";
 import { QUARTER_CLOSE_CONDUCTOR } from "./conductors/quarter-close.ts";
 import { QUARTERLY_CONDUCTOR } from "./conductors/quarterly.ts";
 import { STRATEGIC_REVIEW_CONDUCTOR } from "./conductors/strategic-review.ts";
 import { STRATEGIC_CONDUCTOR } from "./conductors/strategic.ts";
-import { ADAPTIVE_SESSION_RULES } from "./session-adaptive.ts";
 
 describe("naturalidade dos rituais Q4D", () => {
   it("treats phases as an internal decision map instead of a visible form", () => {
-    expect(REGRAS_DE_SESSAO).toContain("mapa interno de decisões");
-    expect(REGRAS_DE_SESSAO).toContain("pule o que já estiver cumprido");
-    expect(PERSONA_ORACULO).not.toContain("primeiro reflete em uma linha");
-    expect(PERSONA_ORACULO).toContain("1 a 3 frases curtas");
+    expect(CONTRATO_TECNICO).toContain("mapa de decisões, não um formulário");
+    expect(CONTRATO_TECNICO).toContain("pule o que já estiver satisfeito");
+    expect(NUCLEO_ORACULO).not.toContain("primeiro reflete em uma linha");
+    expect(NUCLEO_ORACULO).not.toContain("1 a 3 frases");
   });
 
-  it("forbids canned paraphrase and grounds each next question", () => {
-    expect(ADAPTIVE_SESSION_RULES).toContain('Nao use "Entendi: voce quer..."');
-    expect(ADAPTIVE_SESSION_RULES).toContain("Cite o fato que motivou a pergunta");
-    expect(ADAPTIVE_SESSION_RULES).toContain("Listas servem apenas para opcoes de decisao");
+  it("gives positive direction for grounded, natural conversation", () => {
+    expect(NUCLEO_ORACULO).toContain("sempre nascida de um fato");
+    expect(NUCLEO_ORACULO).toContain("2 ou 3 caminhos concretos");
+    expect(NUCLEO_ORACULO).toContain("naturalidade e critério próprio");
   });
 
   it("does not force annual, quarterly or monthly metadata recaps", () => {

@@ -70,7 +70,7 @@ Objetivo: decidir o destino do que não terminou.
 pulso
 Objetivo: sair do retrovisor e testar a confianca no caminho adiante.
 - O avanço, sucesso, evidência e aprendizado já foram coletados na revisão. Não pergunte tudo de novo.
-- Faça UMA pergunta por vez, nesta ordem:
+- Colete nesta ordem:
   1. "Olhando para o trimestre, sua confiança hoje está verde, amarela ou vermelha? Por quê?"
   2. "Existe alguma trava que precisa de decisão ou ajuda de outra pessoa?" Se não houver, aceite "não" sem insistir.
   3. "Qual é o compromisso mais importante para o próximo mês?"

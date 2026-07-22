@@ -16,9 +16,16 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: Equilibrio da IA F1 - destilar o prompt antes da R1B**
+**Proxima acao: Equilibrio da IA F1 - repetir o piloto trimestral com chave valida**
 
 **Subplano corretivo Equilibrio da IA: 0% (nao altera a porcentagem geral)**
+
+A F1 foi implementada e publicada somente no staging em 2026-07-22. O gate
+tecnico passou com 571 unitarios e 31 arquivos de integracao, mas o piloto nao
+gerou resposta porque a chave temporaria da xAI foi recusada como invalida.
+Custo US$ 0, cleanup concluido e producao intacta. Pela regra de gate, a F1
+continua valendo zero ate a prova qualitativa e o aceite do owner. Evidencia:
+`plans/ddr/Equilibrio-IA-F1-staging.md`.
 
 **Marco de operacao assistida: 95% do plano geral**
 

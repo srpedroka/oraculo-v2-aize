@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { CONTRATO_TECNICO, NUCLEO_ORACULO } from "./conductors/nucleo.ts";
 import {
-  ADAPTIVE_SESSION_RULES,
   acknowledgeEquivalentQuarterlyArea,
   adaptiveFallbackReply,
   buildAdaptiveRepairDirective,
@@ -67,8 +67,7 @@ describe("adaptive planning session guard Q4A", () => {
         action_direction: "transformar a resposta em acao",
       },
     });
-    expect(ADAPTIVE_SESSION_RULES).toContain("O servidor classifica prontidao");
-    expect(ADAPTIVE_SESSION_RULES).not.toContain("Cada state_patch deve incluir _adaptive");
+    expect(CONTRATO_TECNICO).not.toContain("Cada state_patch deve incluir _adaptive");
   });
 
   it("reproduces and blocks the semantic question loop seen in the pilot", () => {
@@ -1740,9 +1739,9 @@ describe("adaptive planning session guard Q4A", () => {
     const repair = buildAdaptiveRepairDirective(["repeated_question"], "Qual é o desafio?");
     expect(repair).toContain("repete semanticamente");
     expect(repair).toContain("Nao mencione esta correcao");
-    expect(ADAPTIVE_SESSION_RULES).toContain("checklist de decisoes");
-    expect(ADAPTIVE_SESSION_RULES).toContain("2 ou 3 possibilidades");
-    expect(ADAPTIVE_SESSION_RULES).toContain("proxima acao executavel");
+    expect(CONTRATO_TECNICO).toContain("mapa de decisões");
+    expect(NUCLEO_ORACULO).toContain("2 ou 3 caminhos concretos");
+    expect(NUCLEO_ORACULO).toContain("decisão, resultado ou ação");
   });
 
   it("recusa alegação de arquivo corrompido depois da extração comprovada", () => {

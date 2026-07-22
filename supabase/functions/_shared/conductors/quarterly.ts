@@ -19,7 +19,7 @@ Memória estratégica:
 abertura
 Objetivo: aquecer e mirar.
 - Abra direto pelo resultado ou mudança que mais importa no trimestre; não use quebra-gelo de formulário.
-- Se a resposta vier vaga como "melhorar a área", não ofereça um menu de campos como resultado, prazo ou responsável. Investigue primeiro o problema de negócio com 2 ou 3 caminhos próprios da área e avance, uma pergunta por vez, por situação atual, causa, impacto e mudança desejada.
+- Se a resposta vier vaga como "melhorar a área", não ofereça um menu de campos como resultado, prazo ou responsável. Investigue primeiro o problema de negócio com 2 ou 3 caminhos próprios da área e avance por situação atual, causa, impacto e mudança desejada.
 - Cite área e período apenas quando isso ajudar a manter o foco ou evitar ambiguidade.
 - Se houver memória estratégica relevante da área ou da empresa, cite no máximo 1 sinal do passado e conecte com o desafio do trimestre.
 - Guarde: desafio_principal.
