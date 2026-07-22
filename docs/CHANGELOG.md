@@ -1,5 +1,15 @@
 # Changelog
 
+- Publicado em producao o pacote F1-F4 do `Equilibrio da IA`, mantendo a flag
+  desligada por padrao. O pacote entrou pela PR #21 (`4402b29`) e a migration
+  puramente aditiva + estabilizacao do CI pela PR #25 (`c7a5e14`). O CI final
+  `29965071770` passou nos tres gates. A migration foi aplicada e verificada no
+  release `29965389449`; `oracle-session`, `oracle-chat`, `whatsapp-webhook`,
+  `whatsapp-worker`, `save-ai-control-policy` e `operational-health` foram
+  publicadas e verificadas em `29965501405`. Nao houve frontend, chamada extra
+  de IA ou compra; o custo F4 permanece US$ 0,21185525. A proxima ativacao e
+  somente na empresa piloto, mediante briefing e autorizacao.
+
 - A prontidao do Supabase local passou a cobrir a falha residual comprovada na
   PR #25: mesmo depois do `400` da sonda administrativa, o Edge Runtime fechou
   o socket da primeira chamada autenticada com `UND_ERR_SOCKET` e
@@ -20,9 +30,9 @@
   runtime...`; nenhum contrato funcional ou migration falhou. O workflow agora
   aquece `set-member-role` com o JWT efemero persistido entre os passos locais e
   somente libera a integracao quando a propria Function responde o `400`
-  esperado ao corpo vazio.
-  `502`/`503` deixam de contar como ambiente pronto. Os testes permanecem
-  estritos, sem retry, e producao continua inalterada.
+  esperado ao corpo vazio. `502`/`503` deixam de contar como ambiente pronto.
+  A falha residual posterior e sua repeticao unica e estrita estao registradas
+  na entrada mais recente acima.
 
 - Concluida somente no staging a F4 do `Equilibrio da IA`. A chamada
   `planning` produz prosa natural e a funcao `background` extrai a estrutura;

@@ -2,7 +2,7 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - Plano 3 concluido; Equilibrio IA antes do ciclo real R1B**
+Status: **ATIVO - Plano 3 concluido; F1-F4 publicadas antes do ciclo real R1B**
 
 Atualizacao de 2026-07-22: o owner aprovou o subplano corretivo
 `plans/2026-07-22-equilibrio-da-ia.md`. As Fases 1 a 4 serao executadas antes da
@@ -14,8 +14,10 @@ O owner reservou a avaliacao da conducao completa para a conversa pratica. A
 F3 separou estilo de defeitos de dado. A F4 separou prosa `planning` de
 estrutura `background`, adicionou flag default off e protegeu turnos
 concorrentes. Sua rodada geral terminou com media 92,50 no fechamento e custo
-total de US$ 0,211855. Migration e Functions ficaram somente no staging; a
-proxima decisao e autorizar merge/release antes da R1B real.
+total de US$ 0,211855. F1-F4 foram publicadas em producao com a flag desligada:
+PRs #21/#25, CI final `29965071770`, migration `29965389449` e Functions
+`29965501405`. A proxima decisao e ativar a flag somente na empresa piloto
+antes da R1B real.
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -1217,9 +1219,10 @@ calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: pedir autorizacao explicita para merge/release da F4 de
-`plans/2026-07-22-equilibrio-da-ia.md`. F1 a F4 estao concluidas somente no
-staging, com 90% internos. Depois do release, a flag permanece desligada por
-padrao e sera ligada apenas na empresa piloto; entao o owner conduz a R1B real com o Plano Anual
-e seus relatorios de T1/T2, avalia a conversa e as duas secoes do pacote antes
-de uma unica confirmacao.
+Proximo passo: apresentar e aprovar a ativacao piloto da F4 de
+`plans/2026-07-22-equilibrio-da-ia.md`. F1 a F4 estao publicadas em producao,
+com 90% internos, mas a flag permanece desligada por padrao. Depois de liga-la
+somente na empresa piloto, o owner conduz a R1B real com o Plano Anual e seus
+relatorios de T1/T2, avalia a conversa e as duas secoes do pacote antes de uma
+unica confirmacao. Evidencia do release:
+`plans/ddr/Equilibrio-IA-F4-producao.md`.

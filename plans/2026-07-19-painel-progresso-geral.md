@@ -16,7 +16,7 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: autorizar merge/release da F4; depois executar a R1B real**
+**Proxima acao: aprovar a ativacao da F4 somente na empresa piloto e executar a R1B real**
 
 **Subplano corretivo Equilibrio da IA: 90% (nao altera a porcentagem geral)**
 
@@ -30,11 +30,15 @@ de 2 para 0 e custo de geracao em cerca de 40%, mantendo nota final 95. Seu
 custo total foi US$ 0,078225. A F4 separou prosa `planning` de estrutura
 `background`, adicionou flag default off e protegeu turnos concorrentes. A
 rodada geral passou com fechamento em media 92,50; custo F4 US$ 0,211855 e
-consumo estimado do ciclo US$ 0,410834. Cleanup concluido e producao intacta. Evidencias:
+consumo estimado do ciclo US$ 0,410834. Cleanup concluido. F1-F4 foram
+publicadas em producao pela PR #21 e complementadas pela PR #25; a migration e
+as seis Functions passaram nos releases protegidos `29965389449` e
+`29965501405`. A flag continua desligada para todas as empresas. Evidencias:
 `plans/ddr/Equilibrio-IA-F1-staging.md` e
 `plans/ddr/Equilibrio-IA-F2-staging.md` e
 `plans/ddr/Equilibrio-IA-F3-staging.md` e
-`plans/ddr/Equilibrio-IA-F4-staging.md`.
+`plans/ddr/Equilibrio-IA-F4-staging.md` e
+`plans/ddr/Equilibrio-IA-F4-producao.md`.
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -218,7 +222,7 @@ Antes de executar a proxima fatia:
 Plano geral: 52,5%
 Plano especifico: Revisao Semestral Estrategica - 50,0%
 Proxima fatia mestre: R1B - vale 50 pontos do especifico e 7,5 pontos do geral
-Subplano atual: Equilibrio da IA F4 - vale 25% interno e 0 ponto adicional
+Subplano atual: ativacao piloto da F4 - 90% interno e 0 ponto adicional
 Se aprovada: especifico 100,0% | geral 60,0%
 ```
 
