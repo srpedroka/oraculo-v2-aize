@@ -74,6 +74,7 @@ import {
 import { assertCanStartSession, insertSessionMessage as insertMessage, shallowMergeState } from "./session-runtime.ts";
 import {
   acknowledgeEquivalentQuarterlyArea,
+  buildAdaptiveStyleObservationMetadata,
   challengeQuarterlyPriorityOverload,
   buildAdaptiveRepairDirective,
   deferUnchallengedQuarterlyProposal,
@@ -82,6 +83,7 @@ import {
   normalizeReadyProposalEnvelope,
   normalizeProposalConfirmationEnvelope,
   normalizeStrategicHistoricalLessons,
+  partitionAdaptiveValidationReasons,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   resumeDeferredQuarterlyProposal,
   validateAdaptiveEnvelope,
@@ -444,10 +446,11 @@ export async function processPlanningMessage(
   const transientRetryBudget = createTransientAiRetryBudget(1);
   const planningRequestDeadline = Date.now() + PLANNING_REQUEST_DEADLINE_MS;
   let aiRoute: Awaited<ReturnType<typeof resolveAiFunction>> | null = null;
-  const callPlanningModel = async (prompt: string, attempt: number, repairReasons: string[] = []) => {
+  const callPlanningModel = async (prompt: string, attempt: number) => {
     aiRoute ??= await resolveAiFunction(client, session.org_id, "planning");
     const route = aiRoute;
     if (!route) throw new Error("IA de planejamento não configurada");
+    const startedAt = Date.now();
     const output = await withTransientAiRetry(() => callModelForFunction(
       client,
       session.org_id,
@@ -462,27 +465,45 @@ export async function processPlanningMessage(
       },
       { userId: params.userId },
     ), transientRetryBudget);
+    return {
+      attempt,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      output,
+      route,
+    };
+  };
+  const recordPlanningModelUsage = async (
+    call: Awaited<ReturnType<typeof callPlanningModel>>,
+    repairReasons: string[],
+    observationReasons: string[],
+  ) => {
     await recordAiUsage({
       client,
       orgId: session.org_id,
-      provider: route.provider,
-      model: route.model,
+      provider: call.route.provider,
+      model: call.route.model,
       channel: params.channel ?? "web",
-      usage: output.usage,
-      settings: route.legacySettings,
+      usage: call.output.usage,
+      settings: call.route.legacySettings,
       metadata: {
         aiFunction: "planning",
         sessionId: session.id,
         sessionType: session.type,
         phase: session.phase,
         conversationId: conversation?.id ?? ensured.session.conversation_id,
-        adaptiveAttempt: attempt,
+        adaptiveAttempt: call.attempt,
         adaptiveRepairReasons: repairReasons,
         planningSituationKind: detectedSituation?.kind ?? null,
         planningSituationCount: detectedSituation ? 1 : 0,
+        ...buildAdaptiveStyleObservationMetadata({
+          reasons: observationReasons,
+          ritual: session.type,
+          channel: params.channel ?? "web",
+          aiFunction: "planning",
+          latencyMs: call.latencyMs,
+        }),
       },
     });
-    return output;
   };
 
   const parseEnvelope = (value: string) => {
@@ -596,12 +617,16 @@ export async function processPlanningMessage(
     userMessage: groundedTurnInput,
     sessionState: session.state,
   });
-  let result: { text: string; [key: string]: unknown } = await callPlanningModel(systemPrompt, 1);
+  const firstCall = await callPlanningModel(systemPrompt, 1);
+  let result: { text: string; [key: string]: unknown } = firstCall.output;
   let parsed: any = null;
   let repairReasons: string[] = [];
+  let styleObservationReasons: string[] = [];
   try {
     parsed = normalizeEnvelope(parseEnvelope(result.text));
-    repairReasons = validateEnvelope(parsed);
+    const partition = partitionAdaptiveValidationReasons(validateEnvelope(parsed));
+    repairReasons = partition.dataRepairReasons;
+    styleObservationReasons = partition.styleObservationReasons;
   } catch {
     repairReasons = ["invalid_json_envelope"];
   }
@@ -620,21 +645,39 @@ export async function processPlanningMessage(
       ...normalizedReadyProposal,
       ...(detectedSituation && parsed?.reply ? { reply: parsed.reply } : {}),
     });
-    repairReasons = validateEnvelope(parsed);
+    const partition = partitionAdaptiveValidationReasons(validateEnvelope(parsed));
+    repairReasons = partition.dataRepairReasons;
+    styleObservationReasons = [...new Set([
+      ...styleObservationReasons,
+      ...partition.styleObservationReasons,
+    ])];
   }
+
+  await recordPlanningModelUsage(firstCall, repairReasons, styleObservationReasons);
 
   if (repairReasons.length) {
     const rejectedEnvelope = parsed;
     const repairPrompt = [systemPrompt, buildAdaptiveRepairDirective(repairReasons, parsed?.reply ?? result.text)].join("\n\n");
-    result = await callPlanningModel(repairPrompt, 2, repairReasons);
+    const secondCall = await callPlanningModel(repairPrompt, 2);
+    result = secondCall.output;
+    let remainingRepairReasons: string[] = [];
+    let remainingStyleObservationReasons: string[] = [];
+    let secondCallParsed = true;
     try {
       parsed = normalizeEnvelope(parseEnvelope(result.text));
     } catch {
+      secondCallParsed = false;
+      remainingRepairReasons = ["invalid_json_envelope"];
       parsed = normalizeEnvelope(recoverEnvelope(rejectedEnvelope, repairReasons));
     }
-    const remainingReasons = validateEnvelope(parsed);
-    if (remainingReasons.length) {
-      parsed = normalizeEnvelope(recoverEnvelope(parsed, remainingReasons));
+    if (secondCallParsed) {
+      const partition = partitionAdaptiveValidationReasons(validateEnvelope(parsed));
+      remainingRepairReasons = partition.dataRepairReasons;
+      remainingStyleObservationReasons = partition.styleObservationReasons;
+    }
+    await recordPlanningModelUsage(secondCall, repairReasons, remainingStyleObservationReasons);
+    if (remainingRepairReasons.length) {
+      parsed = normalizeEnvelope(recoverEnvelope(parsed, remainingRepairReasons));
     }
   }
 

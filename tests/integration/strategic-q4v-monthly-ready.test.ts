@@ -126,10 +126,26 @@ d("Q4V — bloco mensal completo com capacidade", () => {
     expect(proposal.confidence).toBe("amarela");
     expect(String(response.reply).match(/\?/g)).toHaveLength(1);
 
-    const { count: usageBefore, error: usageBeforeError } = await admin.from("ai_usage_logs")
-      .select("id", { count: "exact", head: true }).eq("org_id", org.orgId);
+    const { data: usageRows, error: usageBeforeError } = await admin.from("ai_usage_logs")
+      .select("total_cost_usd,metadata").eq("org_id", org.orgId).order("created_at", { ascending: true });
     if (usageBeforeError) throw usageBeforeError;
-    expect(usageBefore).toBeGreaterThanOrEqual(2);
+    expect(usageRows?.length).toBeGreaterThanOrEqual(2);
+    const metadataRows = (usageRows ?? []).map((row) => row.metadata as Record<string, unknown>);
+    expect(metadataRows.every((metadata) => Array.isArray(metadata.adaptiveStyleObservationCodes))).toBe(true);
+    expect(metadataRows.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationCount)))).toBe(true);
+    expect(metadataRows.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationLatencyMs)))).toBe(true);
+    expect(metadataRows
+      .filter((metadata) => Number(metadata.adaptiveAttempt) === 2)
+      .every((metadata) => Array.isArray(metadata.adaptiveRepairReasons)
+        && (metadata.adaptiveRepairReasons as unknown[]).length > 0)).toBe(true);
+    expect(JSON.stringify(metadataRows)).not.toMatch(/(?:reply|prompt|message|context|phone|document)/i);
+    console.info("F3_STYLE_OBSERVATION", JSON.stringify({
+      calls: metadataRows.length,
+      repairs: metadataRows.filter((metadata) => Number(metadata.adaptiveAttempt) === 2).length,
+      observations: metadataRows.reduce((sum, metadata) => sum + Number(metadata.adaptiveStyleObservationCount ?? 0), 0),
+      latencyMs: metadataRows.reduce((sum, metadata) => sum + Number(metadata.adaptiveStyleObservationLatencyMs ?? 0), 0),
+      costUsd: (usageRows ?? []).reduce((sum, row) => sum + Number(row.total_cost_usd ?? 0), 0),
+    }));
 
     await call({ action: "confirm", sessionId, channel: "web" });
     const { data: objective, error: objectiveError } = await admin.from("objectives")

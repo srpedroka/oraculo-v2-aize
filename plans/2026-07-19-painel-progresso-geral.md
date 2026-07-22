@@ -16,18 +16,22 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: Equilibrio da IA F3 - briefing e autorizacao do owner**
+**Proxima acao: Equilibrio da IA F4 - briefing e autorizacao do owner**
 
-**Subplano corretivo Equilibrio da IA: 45% (nao altera a porcentagem geral)**
+**Subplano corretivo Equilibrio da IA: 65% (nao altera a porcentagem geral)**
 
 A F1 foi aceita para continuidade com 20% internos; a qualidade global sera
 avaliada na conversa pratica. A F2 trocou seis falas prontas por situacoes
 seguras, preservando estrutura e gravacao server-side. Seu gate final passou no
 staging com 574 unitarios, 31 arquivos de integracao e piloto de media 92,50.
-As tres medicoes F2 custaram US$ 0,115403; consumo do ciclo com F1: US$ 0,120754.
-Cleanup concluido e producao intacta. Evidencias:
+As tres medicoes F2 custaram US$ 0,115403. A F3 separou estilo de defeitos de
+dado e, na mesma baseline Q4W, reduziu chamadas de 5 para 3, reparos de estilo
+de 2 para 0 e custo de geracao em cerca de 40%, mantendo nota final 95. Seu
+custo total foi US$ 0,078225; consumo estimado do ciclo com F1-F3:
+US$ 0,198979. Cleanup concluido e producao intacta. Evidencias:
 `plans/ddr/Equilibrio-IA-F1-staging.md` e
-`plans/ddr/Equilibrio-IA-F2-staging.md`.
+`plans/ddr/Equilibrio-IA-F2-staging.md` e
+`plans/ddr/Equilibrio-IA-F3-staging.md`.
 
 **Marco de operacao assistida: 95% do plano geral**
 
@@ -140,8 +144,8 @@ Antes da R1B, o owner aprovou em 2026-07-22 o subplano corretivo
 
 - F1-F4 separam fala natural de gravacao segura e serao executadas uma por vez;
 - F5 fica depois do piloto e do periodo de observacao;
-- o subplano tem acompanhamento interno proprio e esta em 45% depois dos gates
-  F1 e F2 no staging;
+- o subplano tem acompanhamento interno proprio e esta em 65% depois dos gates
+  F1, F2 e F3 no staging;
 - por ser correcao dentro da R1, nao cria pontos extras nem altera 52,5% geral
   ou 50% no Plano 4 antes do gate R1B.
 
@@ -211,7 +215,7 @@ Antes de executar a proxima fatia:
 Plano geral: 52,5%
 Plano especifico: Revisao Semestral Estrategica - 50,0%
 Proxima fatia mestre: R1B - vale 50 pontos do especifico e 7,5 pontos do geral
-Subplano atual: Equilibrio da IA F3 - vale 20% interno e 0 ponto adicional
+Subplano atual: Equilibrio da IA F4 - vale 25% interno e 0 ponto adicional
 Se aprovada: especifico 100,0% | geral 60,0%
 ```
 

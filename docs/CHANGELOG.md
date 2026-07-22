@@ -1,5 +1,15 @@
 # Changelog
 
+- Concluida somente no staging a F3 do `Equilibrio da IA`. Heuristicas de
+  estilo agora sao observacoes sanitizadas; somente defeitos de JSON, estado,
+  escopo, periodo, proposta, confirmacao e gravacao podem disparar a tentativa
+  2. Motivo desconhecido continua fail-closed. Gate: 578/578 unitarios, lint,
+  build, bundle e 31 arquivos de integracao verdes. No mesmo Q4W da baseline
+  F2, chamadas cairam de 5 para 3, reparos de estilo de 2 para 0 e custo de
+  geracao de US$ 0,027006 para US$ 0,016164; qualidade final 95. Custo total F3
+  US$ 0,078225. Quatro Functions foram publicadas somente no staging; sem
+  migration, frontend, dado real ou producao. O subplano passou a 65%.
+
 - Concluida somente no staging a F2 do `Equilibrio da IA`. Seis deteccoes de
   pendencia, capacidade e fechamento agora entregam situacoes canonicas ao
   modelo em vez de substituir sua fala por templates; estado, fase, IDs,

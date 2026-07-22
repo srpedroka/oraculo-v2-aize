@@ -610,18 +610,22 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Antes da R1B, o
   owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
   naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
-  F1 e F2 foram implementadas e publicadas apenas no staging. A F1 passou no
-  piloto trimestral 8/8 e foi aceita para continuidade. A F2 substituiu seis
+  F1, F2 e F3 foram implementadas e publicadas apenas no staging. A F1 passou
+  no piloto trimestral 8/8 e foi aceita para continuidade. A F2 substituiu seis
   envelopes de fala por situacoes seguras, mantendo estado, fase e proposta no
-  servidor; gate com 574 unitarios, 31 arquivos de integracao e piloto final de
-  media 92,50. O subplano esta em 45%, enquanto geral permanece 52,5% e Plano 4
-  em 50%. Custo F2 US$ 0,115403; consumo do ciclo com F1 US$ 0,120754.
-  Producao continua intacta. Proxima acao: briefing e autorizacao da F3.
+  servidor. A F3 separou defeitos de dado de observacoes de estilo: na mesma
+  baseline Q4W, chamadas cairam de 5 para 3, reparos de estilo de 2 para 0 e
+  custo de geracao cerca de 40%, com qualidade final 95. Gate F3: 578 unitarios,
+  31 arquivos de integracao, lint/build/bundle e cleanup verdes. O subplano esta
+  em 65%, enquanto geral permanece 52,5% e Plano 4 em 50%. Custo total F3
+  US$ 0,078225; consumo estimado do ciclo com F1-F3 US$ 0,198979. Producao
+  continua intacta. Proxima acao: briefing e autorizacao da F4.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e
   `plans/2026-07-22-equilibrio-da-ia.md` e
-  `plans/ddr/Equilibrio-IA-F2-staging.md`.
+  `plans/ddr/Equilibrio-IA-F2-staging.md` e
+  `plans/ddr/Equilibrio-IA-F3-staging.md`.
 - A leitura de Markdown real na R1B foi corrigida e publicada em producao em
   2026-07-22: PR #19, merge `28bc422`, CI `29935040723` e release protegido
   `29935471951`. Foram publicadas somente `oracle-session`, `oracle-chat`,

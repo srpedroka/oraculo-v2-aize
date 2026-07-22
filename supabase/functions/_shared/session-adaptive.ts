@@ -184,7 +184,58 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   strategic_final_tension_missing: "a sintese anual ignorou que o portfolio ja pressiona uma capacidade explicitamente limitada",
   strategic_incomplete_proposal: "a proposta anual nao possui objetivos verificaveis nem o portfolio concreto informado pelo gestor",
   strategic_wrong_year: "o ano da proposta anual diverge do periodo da sessao",
+  done_without_confirmation: "a sessao tentou encerrar antes da confirmacao server-side",
 };
+
+export const STYLE_OBSERVATION_REASONS = [
+  "repeated_question",
+  "multiple_questions",
+  "missing_next_question",
+  "mechanical_acknowledgement",
+  "repeated_acknowledgement",
+  "ungrounded_question",
+  "verbose_regular_turn",
+  "vague_without_options",
+  "strategic_generic_decision_question",
+  "strategic_fact_block_restart",
+  "quarterly_repeated_goal_malformed_echo",
+  "quarterly_repeated_goal_reinterview",
+  "quarterly_repeated_goal_memory_omitted",
+  "quarterly_complete_block_overquestioned",
+] as const;
+
+const STYLE_OBSERVATION_REASON_SET = new Set<string>(STYLE_OBSERVATION_REASONS);
+
+export const DATA_REPAIR_REASONS = Object.freeze(
+  Object.keys(REPAIR_REASON_LABELS).filter((reason) => !STYLE_OBSERVATION_REASON_SET.has(reason)),
+);
+
+export function partitionAdaptiveValidationReasons(reasons: string[]) {
+  const uniqueReasons = [...new Set(reasons)];
+  return {
+    dataRepairReasons: uniqueReasons.filter((reason) => !STYLE_OBSERVATION_REASON_SET.has(reason)),
+    styleObservationReasons: uniqueReasons.filter((reason) => STYLE_OBSERVATION_REASON_SET.has(reason)),
+  };
+}
+
+export function buildAdaptiveStyleObservationMetadata(input: {
+  reasons: string[];
+  ritual: string;
+  channel: "web" | "whatsapp";
+  aiFunction?: string;
+  latencyMs: number;
+}) {
+  const { styleObservationReasons } = partitionAdaptiveValidationReasons(input.reasons);
+  const latencyMs = Number.isFinite(input.latencyMs) ? Math.max(0, Math.round(input.latencyMs)) : 0;
+  return {
+    adaptiveStyleObservationCodes: styleObservationReasons,
+    adaptiveStyleObservationCount: styleObservationReasons.length,
+    adaptiveStyleObservationFunction: input.aiFunction ?? "planning",
+    adaptiveStyleObservationRitual: input.ritual,
+    adaptiveStyleObservationChannel: input.channel,
+    adaptiveStyleObservationLatencyMs: latencyMs,
+  };
+}
 
 const DETERMINISTIC_PROPOSAL_REPAIR_REASONS = new Set([
   "missing_adaptive_state",
@@ -877,6 +928,10 @@ export function validateAdaptiveEnvelope(input: ValidationInput) {
     reasons.push("ignored_completion_request");
   }
   if (hasProposal && questions.length !== 1) reasons.push("proposal_confirmation_count");
+  if (["strategic", "strategic_review", "quarterly", "monthly"].includes(input.sessionType)
+    && input.envelope.done === true && !hasProposal) {
+    reasons.push("done_without_confirmation");
+  }
 
   return [...new Set(reasons)];
 }

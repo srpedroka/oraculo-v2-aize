@@ -3,18 +3,22 @@ import { CONTRATO_TECNICO, NUCLEO_ORACULO } from "./conductors/nucleo.ts";
 import {
   acknowledgeEquivalentQuarterlyArea,
   adaptiveFallbackReply,
+  buildAdaptiveStyleObservationMetadata,
   buildAdaptiveRepairDirective,
   challengeQuarterlyPriorityOverload,
+  DATA_REPAIR_REASONS,
   deferUnchallengedQuarterlyProposal,
   ensureAdaptiveStatePatch,
   latestOracleReply,
   normalizeProposalConfirmationEnvelope,
   normalizeStrategicHistoricalLessons,
   normalizeReadyProposalEnvelope,
+  partitionAdaptiveValidationReasons,
   recoverAdaptiveEnvelopeAfterRepairFailure,
   repeatsPreviousQuestion,
   resumeDeferredQuarterlyProposal,
   safeAdaptiveNextPhase,
+  STYLE_OBSERVATION_REASONS,
   validateAdaptiveEnvelope,
   visibleQuestions,
 } from "./session-adaptive.ts";
@@ -48,6 +52,68 @@ function reasons(overrides: Record<string, unknown> = {}, input: Partial<Paramet
     ...input,
   });
 }
+
+describe("adaptive validation classes F3", () => {
+  it("observes style without requesting a data repair", () => {
+    expect(STYLE_OBSERVATION_REASONS).toContain("repeated_question");
+    expect(STYLE_OBSERVATION_REASONS).toContain("quarterly_complete_block_overquestioned");
+    expect(DATA_REPAIR_REASONS).not.toContain("repeated_question");
+    expect(partitionAdaptiveValidationReasons([
+      "repeated_question",
+      "mechanical_acknowledgement",
+      "verbose_regular_turn",
+    ])).toEqual({
+      dataRepairReasons: [],
+      styleObservationReasons: [
+        "repeated_question",
+        "mechanical_acknowledgement",
+        "verbose_regular_turn",
+      ],
+    });
+  });
+
+  it("keeps data defects and unknown reasons closed by default", () => {
+    expect(DATA_REPAIR_REASONS).toContain("strategic_wrong_year");
+    expect(DATA_REPAIR_REASONS).toContain("strategic_incomplete_proposal");
+    expect(DATA_REPAIR_REASONS).toContain("quarterly_missing_objectives");
+    expect(DATA_REPAIR_REASONS).toContain("monthly_incomplete_actions");
+    expect(DATA_REPAIR_REASONS).toContain("phase_advance_without_evidence");
+    expect(DATA_REPAIR_REASONS).toContain("done_without_confirmation");
+    expect(partitionAdaptiveValidationReasons([
+      "repeated_question",
+      "strategic_wrong_year",
+      "future_unclassified_reason",
+    ])).toEqual({
+      dataRepairReasons: ["strategic_wrong_year", "future_unclassified_reason"],
+      styleObservationReasons: ["repeated_question"],
+    });
+  });
+
+  it("builds telemetry with codes and numbers only", () => {
+    const metadata = buildAdaptiveStyleObservationMetadata({
+      reasons: ["repeated_question", "strategic_wrong_year", "repeated_question"],
+      ritual: "quarterly",
+      channel: "whatsapp",
+      aiFunction: "planning",
+      latencyMs: 123.6,
+    });
+
+    expect(metadata).toEqual({
+      adaptiveStyleObservationCodes: ["repeated_question"],
+      adaptiveStyleObservationCount: 1,
+      adaptiveStyleObservationFunction: "planning",
+      adaptiveStyleObservationRitual: "quarterly",
+      adaptiveStyleObservationChannel: "whatsapp",
+      adaptiveStyleObservationLatencyMs: 124,
+    });
+    expect(Object.keys(metadata).every((key) => !/(?:reply|prompt|message|context|phone|document)/i.test(key))).toBe(true);
+  });
+
+  it("blocks a planning session that tries to finish without server confirmation", () => {
+    expect(reasons({ done: true }, { sessionType: "quarterly" })).toContain("done_without_confirmation");
+    expect(reasons({ done: true }, { sessionType: "quarter_close" })).not.toContain("done_without_confirmation");
+  });
+});
 
 describe("adaptive planning session guard Q4A", () => {
   it("derives internal adaptive metadata on the server", () => {
