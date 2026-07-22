@@ -76,7 +76,7 @@ O plano de origem foi preservado com quatro correcoes obrigatorias:
 
 | Fase | Peso | Estado | Gate principal |
 | --- | ---: | --- | --- |
-| F1. Destilar o prompt | 20% | Implementada no staging; piloto bloqueado por chave invalida | Prompt unico, testes e piloto natural |
+| F1. Destilar o prompt | 20% | Piloto sintetico verde; aceite do owner pendente | Prompt unico, testes e piloto natural |
 | F2. Situacoes em vez de templates | 25% | Nao iniciada | Modelo fala; deteccoes permanecem |
 | F3. Estilo em observacao | 20% | Nao iniciada | So defeito de dado regenera |
 | F4. Separar prosa e estrutura | 25% | Nao iniciada | Flag por empresa, dados consistentes |
@@ -177,10 +177,13 @@ e preserve a sessao quando houver pausa.
 - 571/571 unitarios, lint, build, bundle e 31 arquivos de integracao verdes;
 - `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker`
   publicados somente no staging;
-- piloto trimestral interrompido antes da geracao porque a chave temporaria da
-  xAI recebeu HTTP 400 `Incorrect API key`; custo US$ 0 e cleanup concluido;
-- gate e progresso interno continuam pendentes ate repetir o piloto com chave
-  valida e obter aceite do owner.
+- chave renovada validada no Grok 4.3 e piloto trimestral repetido no staging;
+- resposta ancorada e natural, 8/8 controles verdes, nenhuma mutacao e cleanup
+  concluido;
+- custo de geracao US$ 0,005351, judge US$ 0 e acumulado historico
+  US$ 17,358162;
+- gate e progresso interno continuam pendentes somente ate o aceite qualitativo
+  do owner.
 
 Evidencia detalhada: `plans/ddr/Equilibrio-IA-F1-staging.md`.
 

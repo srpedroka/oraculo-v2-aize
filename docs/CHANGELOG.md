@@ -7,9 +7,10 @@
   confirmacao, transacao, idempotencia e gravacao continuam server-side. Gate:
   571/571 unitarios, lint/build/bundle e 31 arquivos de integracao verdes;
   `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker`
-  publicados no staging. O piloto trimestral nao gerou resposta porque a chave
-  temporaria da xAI foi recusada como invalida; custo US$ 0, cleanup concluido,
-  producao intacta e progresso interno ainda 0%.
+  publicados no staging. Depois da renovacao da chave, o piloto trimestral
+  passou 8/8 controles com pergunta ancorada, uma pergunta visivel, zero
+  mutacao e cleanup concluido. Geracao US$ 0,005351, judge US$ 0, producao
+  intacta e progresso interno ainda 0% ate o aceite qualitativo do owner.
 
 - Aprovado e registrado o subplano `Equilibrio da IA`, que antecede a R1B e
   separa em cinco fases a naturalidade da conversa da seguranca da gravacao.

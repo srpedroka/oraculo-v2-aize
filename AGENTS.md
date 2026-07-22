@@ -611,10 +611,11 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
   naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
   A F1 foi implementada e publicada apenas no staging: 571 unitarios, 31
-  arquivos de integracao, lint/build/bundle verdes. O piloto trimestral foi
-  bloqueado antes da geracao porque a chave temporaria da xAI esta invalida;
-  custo US$ 0 e cleanup concluido. Proxima acao: repetir somente o piloto com
-  chave valida; F1 permanece 0% ate o aceite e producao continua intacta.
+  arquivos de integracao, lint/build/bundle verdes. Depois da renovacao da
+  chave, o piloto trimestral passou 8/8 controles com pergunta ancorada, zero
+  mutacao e cleanup concluido; geracao US$ 0,005351 e judge US$ 0. Proxima
+  acao: aceite qualitativo do owner; F1 permanece 0% e producao continua
+  intacta.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e

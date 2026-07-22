@@ -9,7 +9,9 @@ Atualizacao de 2026-07-22: o owner aprovou o subplano corretivo
 R1B para devolver naturalidade a fala mantendo proposta, confirmacao e gravacao
 sob autoridade do servidor. A Fase 5 fica depois do piloto e da observacao.
 Como correcao dentro da R1, o subplano nao altera o progresso: 52,5% geral e
-50% no Plano 4. Proxima acao: briefing e execucao separada da Fase 1.
+50% no Plano 4. A F1 esta implementada no staging e seu piloto trimestral
+sintetico passou 8/8 controles em 2026-07-22; falta o aceite qualitativo do
+owner antes de merge, producao ou inicio da F2.
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify

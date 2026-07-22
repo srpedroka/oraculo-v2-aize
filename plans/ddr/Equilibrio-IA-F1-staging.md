@@ -2,7 +2,7 @@
 
 Data: 2026-07-22
 
-Status: **IMPLEMENTADA NO STAGING - GATE QUALITATIVO PENDENTE**
+Status: **PILOTO VERDE NO STAGING - ACEITE QUALITATIVO DO OWNER PENDENTE**
 
 ## Resumo funcional
 
@@ -44,29 +44,42 @@ confirmacao unica, transacao, idempotencia, auditoria ou regra de gravacao.
 
 ## Piloto qualitativo
 
-O piloto trimestral sintetico foi iniciado em modo diagnostico, mas a xAI
-recusou a chave temporaria antes de gerar qualquer resposta. Uma sonda minima
-confirmou HTTP 400 `Incorrect API key`. O laboratorio removeu empresa, usuario
-e chave descartaveis normalmente.
+Depois da renovacao da chave temporaria, uma sonda minima validou o Grok 4.3
+com HTTP 200. O caso trimestral sintetico foi repetido no staging em modo
+diagnostico, sem judge pago, e passou nos oito controles aplicaveis.
 
-- geracao: US$ 0;
+Contexto do gestor:
+
+> Tenho oito prioridades para o trimestre, mas a equipe comporta duas. O funil
+> esta imprevisivel e quero escolher o que mais ajuda o objetivo anual de
+> torna-lo confiavel.
+
+Resposta do Oraculo:
+
+> Quais duas das oito prioridades mais diretamente ajudam a tornar o funil
+> confiavel?
+
+A fala ficou curta, ancorada no contexto, sem bordao, sem parafrase mecanica e
+com uma unica pergunta voltada a decisao. Nao houve proposta nem mutacao
+prematura. Empresa, usuario e chave descartaveis foram removidos no cleanup.
+
+- controles: 8/8;
+- geracao: US$ 0,005351;
 - judge: US$ 0;
-- total do caso: US$ 0;
-- acumulado historico: US$ 17,352811;
-- consumo do ciclo atual de US$ 20: US$ 0.
+- total do caso: US$ 0,005351;
+- acumulado historico: US$ 17,352811 -> US$ 17,358162;
+- consumo do ciclo atual de US$ 20: US$ 0,005351.
 
-Portanto, o runtime esta tecnicamente validado, mas a naturalidade ainda nao
-foi observada. O gate F1 permanece pendente e vale zero ate um piloto com chave
-valida ser avaliado pelo owner.
+O runtime e o piloto sintetico estao verdes. Pela regra de governanca, a F1
+continua valendo zero ate o owner avaliar a fala acima e dar o aceite
+qualitativo. Producao permanece intacta.
 
 ## Proximo gate
 
-1. substituir somente a chave temporaria do laboratorio por uma chave valida;
-2. repetir `Q4D` em modo diagnostico apenas para `QUARTERLY` no staging;
-3. conferir pergunta ancorada, ausencia de bordao, uma pergunta visivel, zero
-   mutacao e cleanup;
-4. apresentar a transcricao ao owner;
-5. somente apos o aceite, marcar F1 como 20% interno e decidir merge/release.
+1. apresentar a transcricao ao owner;
+2. obter o aceite ou registrar o ajuste qualitativo solicitado;
+3. somente apos o aceite, marcar F1 como 20% interno e decidir merge/release;
+4. nao iniciar F2 nem publicar em producao antes desse gate.
 
 Rollback: restaurar a composicao anterior do prompt e republicar as mesmas
 quatro Functions. Nao existe migration para desfazer.
