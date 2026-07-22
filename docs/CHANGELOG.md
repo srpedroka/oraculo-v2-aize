@@ -1,5 +1,14 @@
 # Changelog
 
+- Estabilizado o readiness do Supabase local no CI durante a propagacao da F4.
+  Duas execucoes da PR #22 receberam `502` em Functions administrativas
+  diferentes enquanto o log ainda parava em `Setting up Edge Functions
+  runtime...`; nenhum contrato funcional ou migration falhou. O workflow agora
+  aquece `set-member-role` com JWT efemero local e somente libera a integracao
+  quando a propria Function responde o `400` esperado ao corpo vazio.
+  `502`/`503` deixam de contar como ambiente pronto. Os testes permanecem
+  estritos, sem retry, e producao continua inalterada.
+
 - Concluida somente no staging a F4 do `Equilibrio da IA`. A chamada
   `planning` produz prosa natural e a funcao `background` extrai a estrutura;
   os mesmos normalizadores, validadores, proposta unica e confirmacao

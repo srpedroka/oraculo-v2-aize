@@ -8,6 +8,13 @@ O workflow `.github/workflows/ci.yml` roda em pull requests e em todo push para 
 - `Local Supabase integration`: aplica todas as migrations em Supabase local, serve as Edge Functions, roda integracao, RLS/seguranca e E2E autenticado em desktop/mobile;
 - `CI required`: fica verde somente quando os dois jobs anteriores terminam com sucesso.
 
+Antes da integracao, o job aquece tanto o caminho publico do worker quanto uma
+Function administrativa protegida por JWT. A sonda administrativa usa apenas
+as credenciais efemeras do Supabase local, envia corpo vazio e espera o `400`
+da propria Function; `502`/`503` do gateway nunca contam como prontidao. Isso
+evita iniciar a primeira suite enquanto o Edge Runtime ainda esta carregando,
+sem adicionar retry aos testes nem esconder falha funcional.
+
 O fluxo atual preserva push direto para não transformar toda alteração de frontend em pull request. Publicações sensíveis não confiam nisso: o `Production release` consulta o check **CI required** do SHA exato e falha antes do Environment quando ele não está verde. Se a equipe crescer e adotar revisão por pull request, torne o mesmo status obrigatório na proteção da `main` e exija branch atualizada.
 
 ## Segredos e artefatos
@@ -38,3 +45,7 @@ Configuração remota atual: Environment restrito à branch `main`, reviewer obr
 4. Em falha de Supabase, rode `supabase start`, exporte as variaveis locais e inicie `supabase functions serve` conforme o workflow. O CI fixa a CLI em `2.109.1`; o runtime provisiona as variaveis reservadas `SUPABASE_*` automaticamente. O TOTP local fica habilitado para manter paridade com os testes de MFA do ambiente hospedado.
 5. Ao testar ausencia de autenticacao no gateway local, omita `Authorization` e `apikey`: a anon key local legada e um JWT e pode autenticar a chamada quando enviada apenas como `apikey`.
 6. Nunca contorne o gate publicando outro commit ou desligando o check; corrija a causa ou registre formalmente a excecao de emergencia.
+7. Se varias Functions sem relacao retornarem `502` no primeiro arquivo e o
+   artefato `functions.log` parar em `Setting up Edge Functions runtime...`,
+   trate como falha de prontidao do runtime. A sonda de `set-member-role` deve
+   chegar ao `400` esperado antes de liberar a integracao.

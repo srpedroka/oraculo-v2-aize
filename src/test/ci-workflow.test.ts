@@ -37,6 +37,13 @@ describe("CI workflow contract", () => {
     expect(workflow).not.toContain("bkswkfazkjilwfzwzthz");
     expect(workflow).not.toContain("SUPABASE_ACCESS_TOKEN");
   });
+
+  it("aquece uma Function administrativa antes da primeira integracao", () => {
+    expect(workflow).toContain("admin_status");
+    expect(workflow).toContain("functions/v1/set-member-role");
+    expect(workflow).toContain('Authorization: Bearer $SERVICE_ROLE_KEY');
+    expect(workflow).toContain('[ "$admin_status" = "400" ]');
+  });
 });
 
 describe("protected production workflow contract", () => {
