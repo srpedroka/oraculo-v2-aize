@@ -377,3 +377,21 @@ Backend e dados:
 - Chaves de IA devem passar apenas por Edge Functions.
 - Rotas diretas do app dependem do fallback SPA do Netlify.
 - A qualidade automatizada é organizada por risco: Vitest local para domínio e parsers, integração/RLS em Supabase de staging e Playwright autenticado em frontend local contra staging, com organizações descartáveis. A matriz está em `docs/TESTING.md`; produção recebe apenas smoke E2E público e de leitura.
+
+## Separacao experimental entre fala e estrutura
+
+A F4 do Equilibrio da IA adiciona um caminho por empresa, desligado por padrao.
+Com `ai_control_policies.prose_split_enabled=false`, o motor preserva o envelope
+legado. Quando o owner ativa a flag, `planning` devolve somente a fala visivel e
+`background` extrai `state_patch`, `next_phase`, `proposal` e `done` usando o
+contrato estrutural do ritual ativo.
+
+O objeto extraido atravessa os mesmos normalizadores, validadores e aplicadores
+do caminho anterior. `planning_sessions.processing_token` concede uma lease por
+turno e `revision` impede update atrasado. O estado validado e persistido antes
+de liberar a lease. Depois de duas extracoes sem estrutura valida, o turno grava
+somente uma resposta recuperavel no chat, sem alterar fase, estado ou proposta.
+
+O rollback e operacional: o endpoint owner-only `save-ai-control-policy`
+desliga a flag sem migration ou deploy. Restauracoes de backup sempre limpam
+leases e restauram a flag como desligada.

@@ -1,5 +1,18 @@
 # Changelog
 
+- Concluida somente no staging a F4 do `Equilibrio da IA`. A chamada
+  `planning` produz prosa natural e a funcao `background` extrai a estrutura;
+  os mesmos normalizadores, validadores, proposta unica e confirmacao
+  server-side continuam obrigatorios. A flag por empresa nasce desligada e
+  uma lease com revisao otimista impede turnos concorrentes de sobrescrever o
+  estado. O primeiro piloto encontrou o contrato trimestral incompleto (12/15),
+  foi corrigido e passou no reteste 6/6; a rodada geral terminou 15/15 e o
+  fechamento obteve 86,25/100/91,25, media 92,50. Gate: 586 unitarios, 32
+  arquivos de integracao, 7 testes de seguranca, lint/build/bundle verdes.
+  Custo total F4 US$ 0,211855; ciclo em aproximadamente US$ 0,410834 de
+  US$ 20. Migration e seis Functions foram publicadas apenas no staging;
+  frontend, dados reais e producao seguem intactos. Subplano em 90%.
+
 - Concluida somente no staging a F3 do `Equilibrio da IA`. Heuristicas de
   estilo agora sao observacoes sanitizadas; somente defeitos de JSON, estado,
   escopo, periodo, proposta, confirmacao e gravacao podem disparar a tentativa

@@ -2,7 +2,7 @@
 
 Data: 2026-07-22
 
-Status: **EM EXECUCAO - F1, F2 E F3 CONCLUIDAS NO STAGING; F4 E A PROXIMA**
+Status: **EM EXECUCAO - F1 A F4 CONCLUIDAS NO STAGING; RELEASE F4 E O PROXIMO GATE**
 
 Regido por:
 
@@ -79,9 +79,9 @@ O plano de origem foi preservado com quatro correcoes obrigatorias:
 | F1. Destilar o prompt | 20% | Aprovada para continuidade; qualidade global na pratica | Prompt unico, testes e piloto natural |
 | F2. Situacoes em vez de templates | 25% | Gate tecnico aprovado no staging | Modelo fala; deteccoes permanecem |
 | F3. Estilo em observacao | 20% | Gate aprovado no staging | So defeito de dado regenera |
-| F4. Separar prosa e estrutura | 25% | Nao iniciada | Flag por empresa, dados consistentes |
+| F4. Separar prosa e estrutura | 25% | Gate aprovado no staging | Flag por empresa, dados consistentes |
 | F5. Limpeza e E2E | 10% | Bloqueada pelo piloto | Codigo morto removido e regressao verde |
-| **Total** | **100%** | **65% concluido** | - |
+| **Total** | **100%** | **90% concluido** | - |
 
 As Fases 1 a 4 acontecem antes da R1B. A Fase 5 so acontece depois do piloto e
 do periodo de observacao; portanto, a R1B pode ocorrer com este subplano em 90%.
@@ -326,6 +326,29 @@ Gerar a fala em texto livre e extrair a estrutura por uma segunda chamada
 - flag desligada preserva o comportamento anterior;
 - custo adicional e latencia documentados;
 - teste de concorrencia prova que um novo turno nao le estado antigo.
+
+### Resultado F4 no staging
+
+- `planning` passou a gerar apenas prosa e `background` a extrair a estrutura,
+  sempre sob os normalizadores e validadores server-side existentes;
+- a flag por empresa nasce desligada, so muda pelo endpoint de owner e permite
+  rollback sem deploy;
+- lease e revisao otimista impedem turnos concorrentes ou atrasados de
+  sobrescrever o estado canonico;
+- o primeiro piloto trimestral encontrou o contrato estrutural incompleto e
+  ficou em 12/15; depois da correcao, o reteste falho passou 6/6 e a rodada geral
+  passou 15/15;
+- plano mensal, atualizacoes rapidas e fechamento mensal passaram com banco,
+  documento e confirmacao coerentes; qualidade final do fechamento: conducao
+  86,25, fechamento 100, saida 91,25 e media 92,50;
+- gate tecnico: 586 unitarios, 32 arquivos de integracao, 7 verificacoes de
+  seguranca, lint, build e bundle verdes;
+- custo total F4 US$ 0,211855; consumo estimado do ciclo US$ 0,410834 de
+  US$ 20; nenhuma compra ou aviso financeiro;
+- migration e seis Functions publicadas somente no staging; frontend, dados
+  reais e producao permanecem intactos.
+
+Evidencia detalhada: `plans/ddr/Equilibrio-IA-F4-staging.md`.
 
 ## 11. R1B entre F4 e F5
 

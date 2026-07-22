@@ -1555,3 +1555,39 @@ pnpm run test:e2e:staging
 ```
 
 Publicação exige a migration `20260715193000_administrative_audit.sql`, as Functions `invite-member`, `remove-member`, `set-member-role`, `set-member-area`, `save-ai-settings`, `save-whatsapp-settings`, `save-security-settings`, `save-ai-control-policy`, `organization-backup` e `personal-account`, além do frontend. Depois do deploy, faça uma alteração administrativa reversível em empresa descartável, confirme um único evento sem dados sensíveis e reverta a alteração.
+
+## Operar e reverter a F4 de prosa/estrutura
+
+Pre-condicoes:
+
+1. aplicar `20260722180000_prose_split_sessions.sql`;
+2. publicar `oracle-session`, `oracle-chat`, `whatsapp-webhook`,
+   `whatsapp-worker`, `save-ai-control-policy` e `operational-health`;
+3. confirmar que a politica da empresa piloto esta `false` antes do primeiro
+   teste;
+4. ativar somente pelo endpoint `save-ai-control-policy` com JWT de owner;
+5. nunca usar service role para contornar o aceite do owner.
+
+Diagnostico sanitizado, somente em ambiente autorizado:
+
+```sql
+select prose_split_enabled
+from public.ai_control_policies
+where org_id = '<org_id>';
+
+select revision,
+       processing_token is not null as turn_in_progress,
+       processing_expires_at
+from public.planning_sessions
+where org_id = '<org_id>' and status = 'active';
+```
+
+Se a conversa falhar ou a latencia ficar inaceitavel, o owner envia novamente a
+politica com `proseSplitEnabled=false`. Nao apague colunas, sessoes ou mensagens.
+Uma lease expirada pode ser adquirida pelo proximo turno; uma lease presa nao
+deve ser limpa manualmente sem antes confirmar que nao ha Function executando.
+
+No staging atual existem cinco migrations historicas locais sem registro
+remoto. A F4 foi aplicada isoladamente pela Management API. Antes de qualquer
+`db push` no staging, rode `supabase migration list --linked` e reconcilie o
+escopo; nao aplique as cinco versoes antigas por acidente.

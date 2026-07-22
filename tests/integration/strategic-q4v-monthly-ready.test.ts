@@ -131,13 +131,20 @@ d("Q4V — bloco mensal completo com capacidade", () => {
     if (usageBeforeError) throw usageBeforeError;
     expect(usageRows?.length).toBeGreaterThanOrEqual(2);
     const metadataRows = (usageRows ?? []).map((row) => row.metadata as Record<string, unknown>);
-    expect(metadataRows.every((metadata) => Array.isArray(metadata.adaptiveStyleObservationCodes))).toBe(true);
-    expect(metadataRows.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationCount)))).toBe(true);
-    expect(metadataRows.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationLatencyMs)))).toBe(true);
-    expect(metadataRows
+    const planningMetadata = metadataRows.filter((metadata) => metadata.aiFunction === "planning");
+    const extractionMetadata = metadataRows.filter((metadata) => metadata.aiFunction === "background");
+    expect(planningMetadata.every((metadata) => Array.isArray(metadata.adaptiveStyleObservationCodes))).toBe(true);
+    expect(planningMetadata.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationCount)))).toBe(true);
+    expect(planningMetadata.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationLatencyMs)))).toBe(true);
+    expect(planningMetadata
       .filter((metadata) => Number(metadata.adaptiveAttempt) === 2)
       .every((metadata) => Array.isArray(metadata.adaptiveRepairReasons)
         && (metadata.adaptiveRepairReasons as unknown[]).length > 0)).toBe(true);
+    if (process.env.ORACULO_EVAL_PROSE_SPLIT === "true") {
+      expect(extractionMetadata.length).toBe(planningMetadata.length);
+      expect(extractionMetadata.every((metadata) => Number(metadata.extractionAttempt) === 1)).toBe(true);
+      expect(extractionMetadata.every((metadata) => Number(metadata.extractionRepairCount) === 0)).toBe(true);
+    }
     expect(JSON.stringify(metadataRows)).not.toMatch(/(?:reply|prompt|message|context|phone|document)/i);
     console.info("F3_STYLE_OBSERVATION", JSON.stringify({
       calls: metadataRows.length,
@@ -165,5 +172,5 @@ d("Q4V — bloco mensal completo com capacidade", () => {
       backlog: ["As demais demandas ficam no backlog do mes"],
       capacidade: { acoes_comprometidas: 5, maximo_acoes_comprometidas: 5 },
     });
-  }, 60_000);
+  }, 150_000);
 });
