@@ -137,6 +137,7 @@ jobs:
             sleep 1
           done
           [ "$admin_status" = "400" ]
+          sleep 2
       - name: Integration tests
         run: node --experimental-strip-types scripts/run-ci-command.ts integration -- pnpm run test:integration
       - name: RLS and security tests

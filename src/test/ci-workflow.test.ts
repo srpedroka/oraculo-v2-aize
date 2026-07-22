@@ -43,6 +43,7 @@ describe("CI workflow contract", () => {
     expect(workflow).toContain("functions/v1/set-member-role");
     expect(workflow).toContain('Authorization: Bearer $SUPABASE_STAGING_SERVICE_ROLE_KEY');
     expect(workflow).toContain('[ "$admin_status" = "400" ]');
+    expect(workflow).toContain("sleep 2");
   });
 });
 

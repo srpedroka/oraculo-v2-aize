@@ -13,7 +13,11 @@ Function administrativa protegida por JWT. A sonda administrativa usa apenas
 as credenciais efemeras do Supabase local, envia corpo vazio e espera o `400`
 da propria Function; `502`/`503` do gateway nunca contam como prontidao. Isso
 evita iniciar a primeira suite enquanto o Edge Runtime ainda esta carregando,
-sem adicionar retry aos testes nem esconder falha funcional.
+e o job aguarda mais dois segundos para o worker estabilizar. Se o runtime
+local ainda encerrar o socket com a assinatura exata `UND_ERR_SOCKET` +
+`other side closed`, somente aquele arquivo de integracao e repetido uma vez,
+com novo dado descartavel. Assertion, resposta HTTP inesperada e segunda falha
+continuam encerrando o CI; suites de seguranca nunca recebem repeticao.
 
 O fluxo atual preserva push direto para não transformar toda alteração de frontend em pull request. Publicações sensíveis não confiam nisso: o `Production release` consulta o check **CI required** do SHA exato e falha antes do Environment quando ele não está verde. Se a equipe crescer e adotar revisão por pull request, torne o mesmo status obrigatório na proteção da `main` e exija branch atualizada.
 
@@ -49,3 +53,7 @@ Configuração remota atual: Environment restrito à branch `main`, reviewer obr
    artefato `functions.log` parar em `Setting up Edge Functions runtime...`,
    trate como falha de prontidao do runtime. A sonda de `set-member-role` deve
    chegar ao `400` esperado antes de liberar a integracao.
+8. Se o primeiro arquivo registrar `UND_ERR_SOCKET` + `other side closed`, a
+   repeticao unica e automatica e aceitavel como recuperacao do runtime local.
+   Qualquer segunda falha deve ser investigada; nao reexecute o workflow em
+   loop nem amplie o retry para erros funcionais.
