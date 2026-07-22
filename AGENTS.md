@@ -610,16 +610,18 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Antes da R1B, o
   owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
   naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
-  A F1 foi implementada e publicada apenas no staging: 571 unitarios, 31
-  arquivos de integracao, lint/build/bundle verdes. Depois da renovacao da
-  chave, o piloto trimestral passou 8/8 controles com pergunta ancorada, zero
-  mutacao e cleanup concluido; geracao US$ 0,005351 e judge US$ 0. Proxima
-  acao: aceite qualitativo do owner; F1 permanece 0% e producao continua
-  intacta.
+  F1 e F2 foram implementadas e publicadas apenas no staging. A F1 passou no
+  piloto trimestral 8/8 e foi aceita para continuidade. A F2 substituiu seis
+  envelopes de fala por situacoes seguras, mantendo estado, fase e proposta no
+  servidor; gate com 574 unitarios, 31 arquivos de integracao e piloto final de
+  media 92,50. O subplano esta em 45%, enquanto geral permanece 52,5% e Plano 4
+  em 50%. Custo F2 US$ 0,115403; consumo do ciclo com F1 US$ 0,120754.
+  Producao continua intacta. Proxima acao: briefing e autorizacao da F3.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e
-  `plans/2026-07-22-equilibrio-da-ia.md`.
+  `plans/2026-07-22-equilibrio-da-ia.md` e
+  `plans/ddr/Equilibrio-IA-F2-staging.md`.
 - A leitura de Markdown real na R1B foi corrigida e publicada em producao em
   2026-07-22: PR #19, merge `28bc422`, CI `29935040723` e release protegido
   `29935471951`. Foram publicadas somente `oracle-session`, `oracle-chat`,

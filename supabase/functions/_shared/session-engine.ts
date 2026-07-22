@@ -5,7 +5,12 @@ import { loadOrgTone, toneDirective } from "./conductors/tone.ts";
 import { MONTH_CLOSE_CONDUCTOR, MONTH_CLOSE_PHASES } from "./conductors/month-close.ts";
 import { MONTHLY_CONDUCTOR, MONTHLY_PHASES } from "./conductors/monthly.ts";
 import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
-import { completeMonthlyReadyEnvelope, monthlyCapacityDecisionEnvelope, monthlyExperiencedActionsChallengeEnvelope, monthlyInheritedPendingEnvelope } from "./monthly-ready-block.ts";
+import {
+  completeMonthlyReadySituation,
+  monthlyCapacityDecisionSituation,
+  monthlyExperiencedActionsChallengeSituation,
+  monthlyInheritedPendingSituation,
+} from "./monthly-ready-block.ts";
 import {
   conversationMessagesForModel,
   formatConversationMemory,
@@ -28,7 +33,17 @@ import { callModelForFunction } from "./call-for-function.ts";
 import { PLANNING_SESSION_OUTPUT } from "./session-output-schema.ts";
 import { canonicalizePlanningEnvelopeScope } from "./session-canonical-envelope.ts";
 import { replayedSessionConfirmation } from "./session-confirmation.ts";
-import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
+import {
+  monthClosePartialDecisionSituation,
+  normalizeCloseQualityEnvelope,
+  quarterCloseOpenDecisionSituation,
+} from "./close-quality.ts";
+import {
+  applyPlanningSituation,
+  planningSituationFromEnvelope,
+  planningSituationPrompt,
+  type PlanningSituation,
+} from "./planning-situation.ts";
 import { buildPlanContext } from "./plan-context.ts";
 import { sessionAsideDirective, sessionAsideKind } from "./session-conversation.ts";
 import { applyProposal } from "./proposals.ts";
@@ -368,12 +383,52 @@ export async function processPlanningMessage(
     return { session: ensured.session, reply, pendingProposal: ensured.session.pending_proposal ?? null };
   }
 
+  const previousOracleReply = latestOracleReply(history.messages);
+  const conversationText = history.messages
+    .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
+    .join("\n");
+  const resumedDeferredProposal = resumeDeferredQuarterlyProposal({
+    sessionType: session.type,
+    sessionState: session.state,
+    conversationText,
+    userMessage: groundedTurnInput,
+    currentPhase: session.phase,
+    phases: CONDUCTORS[session.type].phases,
+  });
+  let detectedSituation: PlanningSituation | null = resumedDeferredProposal
+    ? planningSituationFromEnvelope(
+      "quarterly_deferred_proposal_ready",
+      { period: session.period, proposalType: "save_quarterly_plan" },
+      "Apresentar a proposta trimestral consolidada e pedir uma unica confirmacao para gravar.",
+      resumedDeferredProposal,
+    )
+    : null;
+  if (!detectedSituation) {
+    detectedSituation = await monthlyInheritedPendingSituation(client, ensured.session, params.message);
+  }
+  if (!detectedSituation) {
+    detectedSituation = await completeMonthlyReadySituation(client, ensured.session, params.message);
+  }
+  if (!detectedSituation) {
+    detectedSituation = monthlyExperiencedActionsChallengeSituation(ensured.session, params.message, conversationText);
+  }
+  if (!detectedSituation) {
+    detectedSituation = monthlyCapacityDecisionSituation(ensured.session, params.message, context);
+  }
+  if (!detectedSituation) {
+    detectedSituation = monthClosePartialDecisionSituation(ensured.session, params.message, conversationText);
+  }
+  if (!detectedSituation) {
+    detectedSituation = quarterCloseOpenDecisionSituation(ensured.session, params.message, conversationText, context);
+  }
+
   const systemPrompt = [
     NUCLEO_ORACULO,
     CONTRATO_TECNICO,
     UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
+    planningSituationPrompt(detectedSituation),
     "Estado já coletado:",
     JSON.stringify(session.state ?? {}, null, 2),
     conversationMemory,
@@ -423,6 +478,8 @@ export async function processPlanningMessage(
         conversationId: conversation?.id ?? ensured.session.conversation_id,
         adaptiveAttempt: attempt,
         adaptiveRepairReasons: repairReasons,
+        planningSituationKind: detectedSituation?.kind ?? null,
+        planningSituationCount: detectedSituation ? 1 : 0,
       },
     });
     return output;
@@ -434,12 +491,11 @@ export async function processPlanningMessage(
     return envelope;
   };
 
-  const previousOracleReply = latestOracleReply(history.messages);
-  const conversationText = history.messages
-    .map((message: any) => `${String(message.author ?? "")}: ${String(message.text ?? "")}`)
-    .join("\n");
   const normalizeEnvelope = (envelope: any) => {
-    let normalized = envelope;
+    const naturalSituationReply = detectedSituation && typeof envelope?.reply === "string"
+      ? envelope.reply
+      : null;
+    let normalized = applyPlanningSituation(envelope, detectedSituation);
     if (session.type === "monthly") {
       normalized = normalizeProposalConfirmationEnvelope(normalized, session.type);
     }
@@ -504,6 +560,7 @@ export async function processPlanningMessage(
     }
     return {
       ...normalized,
+      ...(naturalSituationReply ? { reply: naturalSituationReply } : {}),
       state_patch: ensureAdaptiveStatePatch(
         normalized?.state_patch,
         groundedTurnInput,
@@ -539,35 +596,14 @@ export async function processPlanningMessage(
     userMessage: groundedTurnInput,
     sessionState: session.state,
   });
-  const deterministicPlanningEnvelope = resumeDeferredQuarterlyProposal({
-    sessionType: session.type,
-    sessionState: session.state,
-    conversationText,
-    userMessage: groundedTurnInput,
-    currentPhase: session.phase,
-    phases: CONDUCTORS[session.type].phases,
-  })
-    ?? await monthlyInheritedPendingEnvelope(client, ensured.session, params.message)
-    ?? await completeMonthlyReadyEnvelope(client, ensured.session, params.message)
-    ?? monthlyExperiencedActionsChallengeEnvelope(ensured.session, params.message, conversationText)
-    ?? monthlyCapacityDecisionEnvelope(ensured.session, params.message, context)
-    ?? monthClosePartialDecisionEnvelope(ensured.session, params.message, conversationText)
-    ?? quarterCloseOpenDecisionEnvelope(ensured.session, params.message, conversationText, context);
-  let result: { text: string; [key: string]: unknown } = { text: "" };
+  let result: { text: string; [key: string]: unknown } = await callPlanningModel(systemPrompt, 1);
   let parsed: any = null;
   let repairReasons: string[] = [];
-  if (deterministicPlanningEnvelope) {
-    parsed = normalizeEnvelope(deterministicPlanningEnvelope);
+  try {
+    parsed = normalizeEnvelope(parseEnvelope(result.text));
     repairReasons = validateEnvelope(parsed);
-  }
-  if (!deterministicPlanningEnvelope || repairReasons.length) {
-    result = await callPlanningModel(systemPrompt, 1);
-    try {
-      parsed = normalizeEnvelope(parseEnvelope(result.text));
-      repairReasons = validateEnvelope(parsed);
-    } catch {
-      repairReasons = ["invalid_json_envelope"];
-    }
+  } catch {
+    repairReasons = ["invalid_json_envelope"];
   }
 
   const normalizedReadyProposal = normalizeReadyProposalEnvelope({
@@ -580,7 +616,10 @@ export async function processPlanningMessage(
     sessionState: session.state,
   });
   if (normalizedReadyProposal) {
-    parsed = normalizedReadyProposal;
+    parsed = normalizeEnvelope({
+      ...normalizedReadyProposal,
+      ...(detectedSituation && parsed?.reply ? { reply: parsed.reply } : {}),
+    });
     repairReasons = validateEnvelope(parsed);
   }
 
@@ -591,11 +630,11 @@ export async function processPlanningMessage(
     try {
       parsed = normalizeEnvelope(parseEnvelope(result.text));
     } catch {
-      parsed = recoverEnvelope(rejectedEnvelope, repairReasons);
+      parsed = normalizeEnvelope(recoverEnvelope(rejectedEnvelope, repairReasons));
     }
     const remainingReasons = validateEnvelope(parsed);
     if (remainingReasons.length) {
-      parsed = recoverEnvelope(parsed, remainingReasons);
+      parsed = normalizeEnvelope(recoverEnvelope(parsed, remainingReasons));
     }
   }
 

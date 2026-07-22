@@ -1,5 +1,15 @@
 # Changelog
 
+- Concluida somente no staging a F2 do `Equilibrio da IA`. Seis deteccoes de
+  pendencia, capacidade e fechamento agora entregam situacoes canonicas ao
+  modelo em vez de substituir sua fala por templates; estado, fase, IDs,
+  proposta e gravacao continuam sob autoridade do servidor. Gate: 574/574
+  unitarios, lint/build/bundle, secret scan e 31 arquivos de integracao verdes.
+  O piloto final de fechamento mensal obteve 96,25 em conducao, 100 em
+  fechamento, 81,25 em saida e media 92,50, com cleanup completo. Tres
+  medicoes F2 custaram US$ 0,115403; consumo do ciclo com F1: US$ 0,120754.
+  F1 e F2 somam 45% internos; producao, frontend e banco permanecem intactos.
+
 - Implementada somente no staging a F1 do `Equilibrio da IA`. O prompt
   principal das sessoes agora usa um nucleo conversacional positivo e um
   contrato tecnico curto; os condutores preservam metodo e regras de qualidade,
@@ -10,7 +20,8 @@
   publicados no staging. Depois da renovacao da chave, o piloto trimestral
   passou 8/8 controles com pergunta ancorada, uma pergunta visivel, zero
   mutacao e cleanup concluido. Geracao US$ 0,005351, judge US$ 0, producao
-  intacta e progresso interno ainda 0% ate o aceite qualitativo do owner.
+  intacta. O owner aceitou a continuidade e reservou a avaliacao da conducao
+  completa para a conversa pratica; F1 passou a 20% internos.
 
 - Aprovado e registrado o subplano `Equilibrio da IA`, que antecede a R1B e
   separa em cinco fases a naturalidade da conversa da seguranca da gravacao.

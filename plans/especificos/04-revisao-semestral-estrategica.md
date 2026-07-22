@@ -19,7 +19,7 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 | Fatia | Pontos | Estado | Gate |
 | --- | ---: | --- | --- |
 | R1A. Preflight e contrato para o ciclo real | 50 | Aprovada em 2026-07-20 | Contexto semestral, contrato e testes aprovados |
-| Equilibrio da IA F1-F4 | 0 extra | F1 no staging; piloto verde e aceite pendente | Fala natural com gravacao server-side intacta |
+| Equilibrio da IA F1-F4 | 0 extra | F1/F2 concluidas no staging; 45% interno | Fala natural com gravacao server-side intacta |
 | R1B. Revisao e novo planejamento reais com owner | 50 | Aguarda F1-F4 | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
 | **Total** | **100** | **Em andamento** | **50%** |
 
@@ -44,12 +44,13 @@ Subplano corretivo aprovado:
 mas nao altera os pontos deste plano. F1-F4 precedem a R1B; F5 ocorre depois do
 piloto e da observacao.
 
-A F1 esta implementada no staging com gate tecnico verde. Depois da renovacao
-da chave, o piloto trimestral passou 8/8 controles com fala ancorada, uma
-pergunta visivel, zero mutacao e cleanup concluido. O custo foi US$ 0,005351 de
-geracao e US$ 0 de judge. O progresso interno permanece 0% somente ate o aceite
-qualitativo do owner. Evidencia:
-`plans/ddr/Equilibrio-IA-F1-staging.md`.
+A F1 foi aceita para continuidade depois do piloto trimestral 8/8. A F2
+substituiu seis envelopes de fala por situacoes seguras, mantendo estrutura e
+gravacao sob autoridade do servidor. O piloto final de fechamento mensal teve
+media 92,50 e cleanup completo. O subplano esta em 45%; a qualidade global sera
+avaliada na conversa pratica. Evidencias:
+`plans/ddr/Equilibrio-IA-F1-staging.md` e
+`plans/ddr/Equilibrio-IA-F2-staging.md`.
 
 ## Evidencia R1A
 

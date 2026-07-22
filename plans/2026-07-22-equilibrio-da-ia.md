@@ -2,7 +2,7 @@
 
 Data: 2026-07-22
 
-Status: **APROVADO PARA EXECUCAO FATIADA - FASE 1 E A PROXIMA**
+Status: **EM EXECUCAO - F1 E F2 CONCLUIDAS NO STAGING; F3 E A PROXIMA**
 
 Regido por:
 
@@ -76,12 +76,12 @@ O plano de origem foi preservado com quatro correcoes obrigatorias:
 
 | Fase | Peso | Estado | Gate principal |
 | --- | ---: | --- | --- |
-| F1. Destilar o prompt | 20% | Piloto sintetico verde; aceite do owner pendente | Prompt unico, testes e piloto natural |
-| F2. Situacoes em vez de templates | 25% | Nao iniciada | Modelo fala; deteccoes permanecem |
+| F1. Destilar o prompt | 20% | Aprovada para continuidade; qualidade global na pratica | Prompt unico, testes e piloto natural |
+| F2. Situacoes em vez de templates | 25% | Gate tecnico aprovado no staging | Modelo fala; deteccoes permanecem |
 | F3. Estilo em observacao | 20% | Nao iniciada | So defeito de dado regenera |
 | F4. Separar prosa e estrutura | 25% | Nao iniciada | Flag por empresa, dados consistentes |
 | F5. Limpeza e E2E | 10% | Bloqueada pelo piloto | Codigo morto removido e regressao verde |
-| **Total** | **100%** | **0% concluido** | - |
+| **Total** | **100%** | **45% concluido** | - |
 
 As Fases 1 a 4 acontecem antes da R1B. A Fase 5 so acontece depois do piloto e
 do periodo de observacao; portanto, a R1B pode ocorrer com este subplano em 90%.
@@ -182,8 +182,8 @@ e preserve a sessao quando houver pausa.
   concluido;
 - custo de geracao US$ 0,005351, judge US$ 0 e acumulado historico
   US$ 17,358162;
-- gate e progresso interno continuam pendentes somente ate o aceite qualitativo
-  do owner.
+- owner aceitou a continuidade e reservou a avaliacao da conducao completa para
+  uma conversa pratica; F1 contabilizada em 20% internos.
 
 Evidencia detalhada: `plans/ddr/Equilibrio-IA-F1-staging.md`.
 
@@ -218,6 +218,26 @@ fechamento, mas entregar seus fatos ao modelo em vez de substituir a fala.
 - nenhum ID, periodo ou dado e inferido sem validacao;
 - testes deixam de exigir texto literal e passam a exigir situacao + contrato;
 - piloto: fechamento mensal com pendencia tratado com voz propria.
+
+### Execucao F2 em 2026-07-22
+
+- criado o contrato de situacao com `kind`, fatos canonicos e decisao, sem
+  entregar estado, fase ou proposta como autoridade do modelo;
+- seis envelopes de pendencia, capacidade e fechamento passaram a orientar o
+  modelo; wrappers legados ficaram apenas para rollback e limpeza na F5;
+- o servidor preserva `state_patch`, `next_phase`, `proposal` e `done`, enquanto
+  a fala visivel nasce do modelo;
+- 574/574 unitarios, lint, build, bundle, secret scan e 31 arquivos de
+  integracao verdes;
+- quatro Functions publicadas somente no staging, sem migration, frontend,
+  dado real ou producao;
+- tres medicoes do fechamento mensal parcial: a final foi aprovada com 96,25
+  de conducao, 100 de fechamento, 81,25 de saida e media 92,50;
+- custo F2 US$ 0,115403; acumulado historico US$ 17,473565; consumo do ciclo,
+  incluindo F1, US$ 0,120754 de US$ 20;
+- cleanup descartavel confirmado em todas as rodadas.
+
+Evidencia detalhada: `plans/ddr/Equilibrio-IA-F2-staging.md`.
 
 ## 9. Fase 3 - Validadores de fala em observacao
 

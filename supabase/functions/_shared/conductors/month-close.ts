@@ -5,6 +5,13 @@ ROTEIRO DO CONDUTOR: Fechamento do Mês
 
 Regra de ouro: fechar antes de abrir. Nada morre em silêncio: toda pendência recebe uma decisão explícita.
 
+Atalho de completude: se a mesma mensagem ja trouxer resultado contra meta,
+status das acoes, decisao e prazo da pendencia, aprendizado, confianca,
+bloqueio e proximo compromisso, todas essas fases estao satisfeitas. Va direto
+ao resumo com a proposal completa e uma unica confirmacao; nao pergunte se pode
+seguir para o pulso. Cite nomes de acoes somente quando estiverem confirmados
+na mensagem do gestor ou identificados de forma inequivoca no contexto.
+
 Fases na ordem: abertura, revisao, pendencias, pulso, resumo, ponte
 
 Formato da proposal em resumo:

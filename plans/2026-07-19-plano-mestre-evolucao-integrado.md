@@ -9,9 +9,11 @@ Atualizacao de 2026-07-22: o owner aprovou o subplano corretivo
 R1B para devolver naturalidade a fala mantendo proposta, confirmacao e gravacao
 sob autoridade do servidor. A Fase 5 fica depois do piloto e da observacao.
 Como correcao dentro da R1, o subplano nao altera o progresso: 52,5% geral e
-50% no Plano 4. A F1 esta implementada no staging e seu piloto trimestral
-sintetico passou 8/8 controles em 2026-07-22; falta o aceite qualitativo do
-owner antes de merge, producao ou inicio da F2.
+50% no Plano 4. F1 e F2 foram concluidas no staging, somando 45% internos. O
+owner reservou a avaliacao da conducao completa para a conversa pratica. A F2
+substituiu falas prontas por situacoes seguras e passou o piloto final com
+media 92,50, sem migration, frontend ou producao. A proxima fase e a F3, ainda
+dependente de briefing e autorizacao.
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -1213,8 +1215,9 @@ calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: executar a Fase 1 de
-`plans/2026-07-22-equilibrio-da-ia.md`, primeiro com briefing e autorizacao
-especifica. Depois dos gates F1-F4, o owner conduz a R1B real com o Plano Anual
+Proximo passo: apresentar o briefing da Fase 3 de
+`plans/2026-07-22-equilibrio-da-ia.md` e aguardar autorizacao especifica. F1 e
+F2 estao concluidas somente no staging, com 45% internos. Depois dos gates F1-F4,
+o owner conduz a R1B real com o Plano Anual
 e seus relatorios de T1/T2, avalia a conversa e as duas secoes do pacote antes
 de uma unica confirmacao.

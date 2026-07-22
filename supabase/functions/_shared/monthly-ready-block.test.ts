@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   matchingQuarterlyObjective,
-  monthlyCapacityDecisionEnvelope,
-  monthlyExperiencedActionsChallengeEnvelope,
-  monthlyInheritedPendingEnvelope,
+  monthlyCapacityDecisionSituation,
+  monthlyExperiencedActionsChallengeSituation,
+  monthlyInheritedPendingSituation,
   parseCompleteMonthlyReadyBlock,
   parseInheritedMonthlyPendingBlock,
 } from "./monthly-ready-block.ts";
+import { applyPlanningSituation } from "./planning-situation.ts";
 import { normalizeProposalConfirmationEnvelope, validateAdaptiveEnvelope } from "./session-adaptive.ts";
 import { validateMonthlyGuidanceEnvelope } from "./monthly-guidance.ts";
 
@@ -78,17 +79,28 @@ describe("complete monthly ready block Q4V", () => {
       "Tres acoes contribuem diretamente para o objetivo trimestral; duas reduzem risco operacional.",
       "As demais podem ser adiadas sem comprometer a meta do trimestre.",
     ].join("\n");
-    const envelope = monthlyCapacityDecisionEnvelope(
+    const situation = monthlyCapacityDecisionSituation(
       { type: "monthly" },
       message,
       "Mes anterior terminou com sete acoes abertas por excesso de compromisso.",
-    ) as any;
+    );
+    const envelope = applyPlanningSituation({
+      reply: "O histórico mostra excesso de compromisso, e agora cabem cinco ações. Quais cinco entram com prazo e critério de conclusão?",
+    }, situation) as any;
 
-    expect(envelope.reply).toContain("sete ações abertas por excesso de compromisso");
-    expect(envelope.reply).toContain("três ações ligadas ao objetivo trimestral e duas para reduzir risco");
+    expect(situation).toMatchObject({
+      kind: "monthly_capacity_choice",
+      facts: {
+        capacity: 5,
+        demands: 12,
+        quarterlyResultActions: 3,
+        operationalRiskActions: 2,
+        previousOvercommitment: "O mes anterior terminou com sete acoes abertas por excesso de compromisso.",
+      },
+    });
     expect(envelope.reply.match(/\?/g)).toHaveLength(1);
     expect(envelope.state_patch._adaptive).toMatchObject({ readiness: "partial", blocking_gap: "cinco ações prioritárias executáveis" });
-    expect(envelope.proposal).toBeUndefined();
+    expect(envelope.proposal).toBeNull();
     expect(validateAdaptiveEnvelope({
       envelope,
       sessionType: "monthly",
@@ -127,13 +139,15 @@ describe("complete monthly ready block Q4V", () => {
         error: null,
       }),
     };
-    const envelope = await monthlyInheritedPendingEnvelope(
+    const situation = await monthlyInheritedPendingSituation(
       { from: () => query },
       { type: "monthly", period: "Jul 2027", org_id: "org-1", area_id: "area-1" },
       inheritedBlock,
     );
+    const envelope = applyPlanningSituation({ reply: "O plano está pronto. Posso gravar?" }, situation);
     const normalized = normalizeProposalConfirmationEnvelope(envelope as any, "monthly") as any;
 
+    expect(situation).toMatchObject({ kind: "monthly_inherited_pending_ready" });
     expect(normalized.proposal).toMatchObject({
       type: "save_monthly_plan",
       pendingDecisions: [{
@@ -157,12 +171,16 @@ describe("complete monthly ready block Q4V", () => {
   });
 
   it("challenges capacity once after an experienced manager lists the actions", () => {
-    const envelope = monthlyExperiencedActionsChallengeEnvelope(
+    const situation = monthlyExperiencedActionsChallengeSituation(
       { type: "monthly", period: "Jul 2027" },
       experiencedActionList,
       experiencedConversation,
-    ) as any;
+    );
+    const envelope = applyPlanningSituation({
+      reply: "As três ações estão claras. Elas cabem na capacidade do time, e o que vai para o backlog se o mês apertar?",
+    }, situation) as any;
 
+    expect(situation).toMatchObject({ kind: "monthly_experienced_actions_capacity_check" });
     expect(envelope).toMatchObject({
       next_phase: "capacidade",
       state_patch: {
@@ -172,17 +190,17 @@ describe("complete monthly ready block Q4V", () => {
         },
       },
     });
-    expect(envelope.reply).toMatch(/capacidade real do time/i);
+    expect(envelope.reply).toMatch(/capacidade do time/i);
     expect(envelope.reply).toMatch(/backlog/i);
   });
 
   it("does not repeat the capacity challenge or intercept a complete block", () => {
-    expect(monthlyExperiencedActionsChallengeEnvelope(
+    expect(monthlyExperiencedActionsChallengeSituation(
       { type: "monthly", period: "Jul 2027" },
       experiencedActionList,
       `${experiencedConversation}\noracle: Elas cabem na capacidade real do time, e o que fica no backlog?`,
     )).toBeNull();
-    expect(monthlyExperiencedActionsChallengeEnvelope(
+    expect(monthlyExperiencedActionsChallengeSituation(
       { type: "monthly", period: "Jul 2027" },
       completeBlock,
       experiencedConversation,
