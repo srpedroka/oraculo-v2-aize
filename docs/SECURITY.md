@@ -359,3 +359,22 @@ A exportação inclui somente o perfil da própria pessoa, vínculos atuais, con
 Para excluir a conta, a pessoa digita o email atual e a Function respeita a política opcional de MFA de qualquer empresa vinculada. Um trigger em `profiles` repete a proteção sob lock no mesmo `DELETE` iniciado pelo Admin Auth: se a pessoa for o último owner, a operação inteira falha. Quando permitida, Auth, perfil e memberships são removidos; referências em planos, conversas, sessões, documentos, evidências, KPIs e restaurações usam `ON DELETE SET NULL`. A auditoria de ciclo da empresa e a auditoria administrativa sobrevivem sem email/ID do ator e com marca de anonimização.
 
 Um trigger de `memberships` limpa `profiles.phone` apenas quando não resta vínculo com nenhuma empresa. Assim, sair de uma empresa não interrompe o WhatsApp de outra; perder o último acesso interrompe a identificação pelo canal imediatamente.
+
+## Controle de concorrencia e extracao F4
+
+`prose_split_enabled` e uma politica por empresa com default `false`. Membros
+podem ler a politica pelas regras existentes, mas o navegador nao possui escrita
+direta; somente o endpoint autenticado de owner pode altera-la. A operacao nao
+exibe nem recebe chave de provedor.
+
+As RPCs `claim_planning_session_turn` e `release_planning_session_turn` foram
+revogadas de `public`, `anon` e `authenticated` e concedidas somente a
+`service_role`. O token da lease e efemero, nao entra em prompt, telemetria ou
+documento. O update final exige simultaneamente token e revisao esperados; zero
+linha atualizada e tratado como conflito seguro, nunca como sucesso.
+
+O payload do extrator e limitado e tratado como conteudo nao confiavel. A
+telemetria permite funcao, ritual, canal, tentativa, codigo, custo e latencia,
+mas proibe fala, prompt, mensagem, telefone, documento ou contexto. Falha dupla
+do extrator nao persiste estrutura. Backups restaurados limpam lease e mantem a
+flag desligada para impedir ativacao acidental em clones.

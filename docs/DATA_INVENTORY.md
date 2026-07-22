@@ -281,3 +281,20 @@ O pacote atual exporta `organizations`, `profiles` e 27 tabelas do catálogo `TA
 - Nenhum segredo, telefone, email, documento ou ID real foi copiado.
 - Base legal, papel dos agentes e prazo contratual permanecem explicitamente pendentes de validação responsável.
 - A 6A não cria tabela, tela, aceite, limpeza automática nem bloqueio operacional.
+
+## 11. Campos tecnicos da F4
+
+A migration `20260722180000_prose_split_sessions.sql` nao cria tabela nova.
+Ela adiciona:
+
+- `ai_control_policies.prose_split_enabled`: booleano por empresa, default
+  `false`, sem segredo ou conteudo de negocio;
+- `planning_sessions.revision`: contador de concorrencia otimista;
+- `planning_sessions.processing_token`: UUID efemero da lease do turno;
+- `planning_sessions.processing_expires_at`: expiracao tecnica da lease.
+
+O backup inclui a politica e a sessao no contrato existente, mas a restauracao
+forca `prose_split_enabled=false`, limpa token/expiracao e abandona sessoes que
+estavam ativas. A telemetria de extracao permanece em `ai_usage_logs.metadata`
+somente com codigos e medidas sanitizadas; nenhum novo destino externo foi
+adicionado.

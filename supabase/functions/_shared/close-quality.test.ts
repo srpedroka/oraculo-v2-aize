@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { monthClosePartialDecisionEnvelope, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionEnvelope } from "./close-quality.ts";
+import { monthClosePartialDecisionSituation, normalizeCloseQualityEnvelope, quarterCloseOpenDecisionSituation } from "./close-quality.ts";
+import { applyPlanningSituation } from "./planning-situation.ts";
 import { validateAdaptiveEnvelope } from "./session-adaptive.ts";
 
 describe("close quality Q4W", () => {
@@ -10,15 +11,23 @@ describe("close quality Q4W", () => {
       "O aprendizado e envolver o fornecedor no inicio do proximo ciclo.",
       "A confianca para o proximo mes e amarela.",
     ].join("\n");
-    const envelope = monthClosePartialDecisionEnvelope(
+    const situation = monthClosePartialDecisionSituation(
       { type: "month_close" },
       message,
       "user: Fechamos o mes em cinquenta por cento, abaixo da meta de sessenta, mas partimos de quarenta.",
-    ) as any;
+    );
+    const envelope = applyPlanningSituation({
+      reply: "Fechamos em 50% contra a meta de 60%, com duas ações concluídas e a integração ainda aberta. Qual novo prazo assumimos para ela?",
+    }, situation) as any;
 
+    expect(situation).toMatchObject({
+      kind: "month_close_partial_pending_deadline",
+      facts: { baseline: "40%", achieved: "50%", target: "60%" },
+    });
+    expect(situation?.decision).toMatch(/parcial.*atingido e meta/i);
     expect(envelope.reply).toContain("50%");
     expect(envelope.reply).toContain("meta de 60%");
-    expect(envelope.reply).toContain("integração segue aberta");
+    expect(envelope.reply).toContain("integração ainda aberta");
     expect(envelope.reply).toContain("Qual novo prazo");
     expect(envelope.reply.match(/\?/g)).toHaveLength(1);
     expect(validateAdaptiveEnvelope({
@@ -93,13 +102,17 @@ describe("close quality Q4W", () => {
       "user: O trimestre terminou com setenta e oito por cento de adocao contra meta de oitenta.",
       `user: ${message}\nContexto superior: Objetivo anual: aumentar previsibilidade comercial com adocao consistente do processo.`,
     ].join("\n");
-    const envelope = quarterCloseOpenDecisionEnvelope(
+    const situation = quarterCloseOpenDecisionSituation(
       { type: "quarter_close" },
       message,
       conversation,
       "Check-ins do trimestre registram dependencia externa desde o segundo mes.",
-    ) as any;
+    );
+    const envelope = applyPlanningSituation({
+      reply: "Fechamos em 78% contra a meta de 80%, e a dependência já aparecia desde o segundo mês. Como a integração ainda sustenta o objetivo anual de aumentar previsibilidade comercial, qual será o escopo reduzido e o prazo assumido?",
+    }, situation) as any;
 
+    expect(situation).toMatchObject({ kind: "quarter_close_selective_roll_scope" });
     expect(envelope.reply).toContain("78%");
     expect(envelope.reply).toContain("meta de 80%");
     expect(envelope.reply).toContain("desde o segundo mês");

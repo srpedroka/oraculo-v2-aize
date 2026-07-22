@@ -2,7 +2,7 @@
 
 Data: 2026-07-22
 
-Status: **PILOTO VERDE NO STAGING - ACEITE QUALITATIVO DO OWNER PENDENTE**
+Status: **APROVADA PARA CONTINUIDADE - QUALIDADE GLOBAL SERA AVALIADA NA PRATICA**
 
 ## Resumo funcional
 
@@ -70,16 +70,16 @@ prematura. Empresa, usuario e chave descartaveis foram removidos no cleanup.
 - acumulado historico: US$ 17,352811 -> US$ 17,358162;
 - consumo do ciclo atual de US$ 20: US$ 0,005351.
 
-O runtime e o piloto sintetico estao verdes. Pela regra de governanca, a F1
-continua valendo zero ate o owner avaliar a fala acima e dar o aceite
-qualitativo. Producao permanece intacta.
+O runtime e o piloto sintetico estao verdes. O owner aceitou a F1 para
+continuidade em 2026-07-22 e decidiu avaliar a qualidade global da conducao em
+uma conversa pratica, porque uma unica pergunta nao representa o ritual
+completo. A F1 passa a valer 20% internos. Producao permanece intacta.
 
 ## Proximo gate
 
-1. apresentar a transcricao ao owner;
-2. obter o aceite ou registrar o ajuste qualitativo solicitado;
-3. somente apos o aceite, marcar F1 como 20% interno e decidir merge/release;
-4. nao iniciar F2 nem publicar em producao antes desse gate.
+1. preservar a transcricao e o custo como baseline;
+2. executar a F2 somente no staging;
+3. nao publicar F1/F2 em producao antes do gate acumulado do subplano.
 
 Rollback: restaurar a composicao anterior do prompt e republicar as mesmas
 quatro Functions. Nao existe migration para desfazer.

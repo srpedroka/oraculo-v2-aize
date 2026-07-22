@@ -197,6 +197,7 @@ Migrations principais:
 - `supabase/migrations/20260715100000_data_notice_acknowledgements.sql`: versões públicas do aviso e ciência imutável por empresa, com RLS membro-lê/owner-insere.
 - `supabase/migrations/20260715140000_data_retention.sql`: retenção técnica diária, prévia service-only, resumo sanitizado e preservação explícita da memória estratégica.
 - `supabase/migrations/20260715170000_personal_account_lifecycle.sql`: exportação/exclusão pessoal, proteção transacional do último owner, anonimização de autoria e retirada do telefone sem vínculos.
+- `supabase/migrations/20260722180000_prose_split_sessions.sql`: flag por empresa para separar prosa/estrutura, revisao otimista e lease service-only por turno.
 
 Tabelas publicas importantes:
 
@@ -257,7 +258,7 @@ Observacao: migrations antigas podem citar schema `private`, mas o caminho opera
 - `personal-account`: exporta dados pessoais/autorais acessíveis e exclui Auth/perfil/vínculos com proteção do último owner, MFA opcional e autoria empresarial anonimizada.
 - `operational-lifecycle`: arquiva/restaura objetivos, ações, projetos, evidências, check-ins e documentos com validação server-side.
 - `save-ai-settings`: salva chaves de IA, provider/modelo e configuracoes por funcao.
-- `save-ai-control-policy`: salva limites e orçamento da IA; defaults permanecem em observacao sem bloqueio.
+- `save-ai-control-policy`: salva limites, orçamento e a flag experimental de prosa/estrutura; defaults permanecem em observacao e a flag nasce desligada.
 - `save-whatsapp-settings`: salva configuracao publica e segredos da Evolution API/Evo Go.
 - `save-security-settings`: ativa/desativa a exigencia opcional de AAL2, sempre a partir de sessao AAL2.
 - `oracle-chat`: chat web em episodios de 4 horas, historico por conversa, contexto do plano e inicio de sessoes.
@@ -287,6 +288,7 @@ Compartilhados criticos:
 - `_shared/conductors/persona.ts`: fonte unica de persona, tom e guias por contexto.
 - `_shared/conductors/tone.ts`: carrega o ajuste de tom da empresa e monta a diretiva segura para os prompts.
 - `_shared/session-engine.ts`: estado e ciclo de sessoes, com validacao adaptativa antes de persistir respostas da IA.
+- `_shared/session-extract.ts`: schema sem `reply`, contexto limitado, extracao `background`, telemetria sanitizada e helpers da lease F4.
 - `_shared/session-adaptive.ts`: contrato `vague|partial|ready`, fatos canonicos, anti-loop, reparo unico e fallback deterministico.
 - `_shared/quarterly-guidance.ts`: contrato verificavel do plano trimestral, limite de prioridades, vinculo anual real ou excecao explicita e bloqueio de atividade tratada como resultado.
 - `_shared/monthly-guidance.ts`: contrato verificavel do plano mensal, limite global de cinco acoes, datas no mes, vinculo trimestral real ou excecao explicita e decisoes de pendencia/capacidade.
@@ -610,16 +612,25 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Antes da R1B, o
   owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
   naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
-  A F1 foi implementada e publicada apenas no staging: 571 unitarios, 31
-  arquivos de integracao, lint/build/bundle verdes. Depois da renovacao da
-  chave, o piloto trimestral passou 8/8 controles com pergunta ancorada, zero
-  mutacao e cleanup concluido; geracao US$ 0,005351 e judge US$ 0. Proxima
-  acao: aceite qualitativo do owner; F1 permanece 0% e producao continua
-  intacta.
+  F1 a F4 foram implementadas e publicadas apenas no staging. A F1 passou
+  no piloto trimestral 8/8 e foi aceita para continuidade. A F2 substituiu seis
+  envelopes de fala por situacoes seguras, mantendo estado, fase e proposta no
+  servidor. A F3 separou defeitos de dado de observacoes de estilo: na mesma
+  baseline Q4W, chamadas cairam de 5 para 3, reparos de estilo de 2 para 0 e
+  custo de geracao cerca de 40%, com qualidade final 95. A F4 separou fala
+  `planning` de estrutura `background`, adicionou flag default off e protegeu
+  turnos concorrentes. Gate F4: 586 unitarios, 32 arquivos de integracao, 7
+  verificacoes de seguranca, lint/build/bundle e rodada geral com media 92,50.
+  O subplano esta em 90%, enquanto geral permanece 52,5% e Plano 4 em 50%.
+  Custo total F4 US$ 0,211855; consumo estimado do ciclo US$ 0,410834. Producao
+  continua intacta. Proxima acao: autorizar merge/release da F4 e depois R1B.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e
-  `plans/2026-07-22-equilibrio-da-ia.md`.
+  `plans/2026-07-22-equilibrio-da-ia.md` e
+  `plans/ddr/Equilibrio-IA-F2-staging.md` e
+  `plans/ddr/Equilibrio-IA-F3-staging.md` e
+  `plans/ddr/Equilibrio-IA-F4-staging.md`.
 - A leitura de Markdown real na R1B foi corrigida e publicada em producao em
   2026-07-22: PR #19, merge `28bc422`, CI `29935040723` e release protegido
   `29935471951`. Foram publicadas somente `oracle-session`, `oracle-chat`,

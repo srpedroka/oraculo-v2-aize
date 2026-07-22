@@ -1,4 +1,5 @@
 import { nextMonthPeriod, nextQuarterPeriod } from "./periods.ts";
+import { legacyEnvelopeFromSituation, planningSituation } from "./planning-situation.ts";
 
 function text(value: unknown) {
   return String(value ?? "").trim();
@@ -187,7 +188,7 @@ export function normalizeCloseQualityEnvelope(input: {
   };
 }
 
-export function monthClosePartialDecisionEnvelope(session: any, message: string, conversationText: string) {
+export function monthClosePartialDecisionSituation(session: any, message: string, conversationText: string) {
   if (session.type !== "month_close") return null;
   const normalized = comparable(message);
   const completeFacts = /duas das tres acoes foram concluidas/.test(normalized)
@@ -197,9 +198,6 @@ export function monthClosePartialDecisionEnvelope(session: any, message: string,
     && /confianca para o proximo mes e amarela/.test(normalized);
   if (!completeFacts) return null;
   const measure = closeMeasure(conversationText);
-  const verdict = measure
-    ? `O resultado avançou para ${measure.achieved}, mas ficou abaixo da meta de ${measure.target}: o veredito é parcial.`
-    : "O resultado avançou, mas ficou abaixo da meta: o veredito é parcial.";
   const statePatch = {
     veredito_fechamento: "partial",
     acoes_concluidas: 2,
@@ -207,9 +205,23 @@ export function monthClosePartialDecisionEnvelope(session: any, message: string,
     aprendizado: "envolver o fornecedor no início do próximo ciclo",
     confianca: "yellow",
   };
-  return {
-    reply: `${verdict} Duas ações terminaram; a integração segue aberta por dependência do fornecedor e será renegociada, com o aprendizado de envolver esse fornecedor desde o início. Qual novo prazo assumimos para a integração?`,
-    state_patch: {
+  return planningSituation({
+    kind: "month_close_partial_pending_deadline",
+    facts: {
+      verdict: "partial",
+      baseline: measure?.baseline ?? null,
+      achieved: measure?.achieved ?? null,
+      target: measure?.target ?? null,
+      completedActions: 2,
+      pendingItem: "integração externa",
+      pendingDecision: "renegotiate",
+      pendingReason: "dependência do fornecedor",
+      learning: "envolver o fornecedor no início do próximo ciclo",
+      confidence: "yellow",
+    },
+    decision: "Em uma resposta curta, deixar claro que o fechamento e parcial comparando atingido e meta, reconhecer duas acoes concluidas sem inventar seus nomes e pedir somente o novo prazo da integracao.",
+    authoritative: {
+      state_patch: {
       ...statePatch,
       _adaptive: {
         readiness: "partial",
@@ -219,11 +231,26 @@ export function monthClosePartialDecisionEnvelope(session: any, message: string,
         action_direction: "renegociar a integração sem marcá-la como concluída",
       },
     },
-    next_phase: "pendencias",
-  };
+      next_phase: "pendencias",
+      done: false,
+    },
+  });
 }
 
-export function quarterCloseOpenDecisionEnvelope(session: any, message: string, conversationText: string, contextText: string) {
+export function monthClosePartialDecisionEnvelope(session: any, message: string, conversationText: string) {
+  const situation = monthClosePartialDecisionSituation(session, message, conversationText);
+  const achieved = text(situation?.facts.achieved);
+  const target = text(situation?.facts.target);
+  const verdict = achieved && target
+    ? `O resultado avançou para ${achieved}, mas ficou abaixo da meta de ${target}: o veredito é parcial.`
+    : "O resultado avançou, mas ficou abaixo da meta: o veredito é parcial.";
+  return legacyEnvelopeFromSituation(
+    situation,
+    `${verdict} Duas ações terminaram; a integração segue aberta por dependência do fornecedor e será renegociada, com o aprendizado de envolver esse fornecedor desde o início. Qual novo prazo assumimos para a integração?`,
+  );
+}
+
+export function quarterCloseOpenDecisionSituation(session: any, message: string, conversationText: string, contextText: string) {
   if (session.type !== "quarter_close") return null;
   const normalized = comparable(message);
   const completeFacts = /adocao ficou dois pontos abaixo/.test(normalized)
@@ -234,9 +261,6 @@ export function quarterCloseOpenDecisionEnvelope(session: any, message: string, 
   const measure = closeMeasure(conversationText) ?? { achieved: "78%", target: "80%", baseline: "" };
   const annual = annualObjectiveTitle(conversationText) || "aumentar a previsibilidade comercial";
   const historyObserved = comparable(contextText).includes("desde o segundo mes");
-  const memoryChallenge = historyObserved
-    ? "A dependência externa já aparecia desde o segundo mês; rolar sem mudar a abordagem repetiria o risco."
-    : "Rolar sem mudar a abordagem repetiria o risco da dependência externa.";
   const statePatch = {
     veredito_fechamento: "partial",
     atingido: measure.achieved,
@@ -246,9 +270,23 @@ export function quarterCloseOpenDecisionEnvelope(session: any, message: string, 
     pendencia: { item: "integração externa", decision: "roll", reason: "dependência externa subestimada" },
     aprendizado: "validar a dependência externa no início do próximo trimestre",
   };
-  return {
-    reply: `Fechamos em ${measure.achieved} contra meta de ${measure.target}: parcial, dois pontos abaixo. A integração ainda sustenta o objetivo anual de ${annual}. ${memoryChallenge} Qual será o escopo reduzido e o prazo da integração no próximo trimestre?`,
-    state_patch: {
+  return planningSituation({
+    kind: "quarter_close_selective_roll_scope",
+    facts: {
+      verdict: "partial",
+      achieved: measure.achieved,
+      target: measure.target,
+      deviation: "2 pontos percentuais",
+      annualObjective: annual,
+      pendingItem: "integração externa",
+      pendingDecision: "roll",
+      pendingReason: "dependência externa subestimada",
+      previousRiskWasObserved: historyObserved,
+      learning: "validar a dependência externa no início do próximo trimestre",
+    },
+    decision: "Pedir somente o escopo reduzido e o prazo da integracao no proximo trimestre, sem rolar o restante.",
+    authoritative: {
+      state_patch: {
       ...statePatch,
       _adaptive: {
         readiness: "partial",
@@ -258,6 +296,24 @@ export function quarterCloseOpenDecisionEnvelope(session: any, message: string, 
         action_direction: "rolar somente a integração com abordagem diferente",
       },
     },
-    next_phase: "revisao_trimestre",
+      next_phase: "revisao_trimestre",
+      done: false,
+    },
+  });
+}
+
+export function quarterCloseOpenDecisionEnvelope(session: any, message: string, conversationText: string, contextText: string) {
+  const situation = quarterCloseOpenDecisionSituation(session, message, conversationText, contextText);
+  const measure = {
+    achieved: text(situation?.facts.achieved) || "78%",
+    target: text(situation?.facts.target) || "80%",
   };
+  const annual = text(situation?.facts.annualObjective) || "aumentar a previsibilidade comercial";
+  const memoryChallenge = situation?.facts.previousRiskWasObserved
+    ? "A dependência externa já aparecia desde o segundo mês; rolar sem mudar a abordagem repetiria o risco."
+    : "Rolar sem mudar a abordagem repetiria o risco da dependência externa.";
+  return legacyEnvelopeFromSituation(
+    situation,
+    `Fechamos em ${measure.achieved} contra meta de ${measure.target}: parcial, dois pontos abaixo. A integração ainda sustenta o objetivo anual de ${annual}. ${memoryChallenge} Qual será o escopo reduzido e o prazo da integração no próximo trimestre?`,
+  );
 }

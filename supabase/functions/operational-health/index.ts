@@ -4,7 +4,7 @@ import { evaluateOperationalSignals, percentile95, type OperationalMetrics } fro
 import { logStructured, requestId, safeErrorCode } from "../_shared/structured-log.ts";
 import { recordAdministrativeAudit } from "../_shared/administrative-audit.ts";
 
-const EXPECTED_MIGRATION_COUNT = 54;
+const EXPECTED_MIGRATION_COUNT = 55;
 const FRONTEND_URL = "https://oraculo-v2-aize.netlify.app";
 type Client = ReturnType<typeof serviceClient>;
 

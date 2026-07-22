@@ -2,7 +2,7 @@
 
 Data: 2026-07-22
 
-Status: **APROVADO PARA EXECUCAO FATIADA - FASE 1 E A PROXIMA**
+Status: **EM EXECUCAO - F1 A F4 CONCLUIDAS NO STAGING; RELEASE F4 E O PROXIMO GATE**
 
 Regido por:
 
@@ -76,12 +76,12 @@ O plano de origem foi preservado com quatro correcoes obrigatorias:
 
 | Fase | Peso | Estado | Gate principal |
 | --- | ---: | --- | --- |
-| F1. Destilar o prompt | 20% | Piloto sintetico verde; aceite do owner pendente | Prompt unico, testes e piloto natural |
-| F2. Situacoes em vez de templates | 25% | Nao iniciada | Modelo fala; deteccoes permanecem |
-| F3. Estilo em observacao | 20% | Nao iniciada | So defeito de dado regenera |
-| F4. Separar prosa e estrutura | 25% | Nao iniciada | Flag por empresa, dados consistentes |
+| F1. Destilar o prompt | 20% | Aprovada para continuidade; qualidade global na pratica | Prompt unico, testes e piloto natural |
+| F2. Situacoes em vez de templates | 25% | Gate tecnico aprovado no staging | Modelo fala; deteccoes permanecem |
+| F3. Estilo em observacao | 20% | Gate aprovado no staging | So defeito de dado regenera |
+| F4. Separar prosa e estrutura | 25% | Gate aprovado no staging | Flag por empresa, dados consistentes |
 | F5. Limpeza e E2E | 10% | Bloqueada pelo piloto | Codigo morto removido e regressao verde |
-| **Total** | **100%** | **0% concluido** | - |
+| **Total** | **100%** | **90% concluido** | - |
 
 As Fases 1 a 4 acontecem antes da R1B. A Fase 5 so acontece depois do piloto e
 do periodo de observacao; portanto, a R1B pode ocorrer com este subplano em 90%.
@@ -182,8 +182,8 @@ e preserve a sessao quando houver pausa.
   concluido;
 - custo de geracao US$ 0,005351, judge US$ 0 e acumulado historico
   US$ 17,358162;
-- gate e progresso interno continuam pendentes somente ate o aceite qualitativo
-  do owner.
+- owner aceitou a continuidade e reservou a avaliacao da conducao completa para
+  uma conversa pratica; F1 contabilizada em 20% internos.
 
 Evidencia detalhada: `plans/ddr/Equilibrio-IA-F1-staging.md`.
 
@@ -219,6 +219,26 @@ fechamento, mas entregar seus fatos ao modelo em vez de substituir a fala.
 - testes deixam de exigir texto literal e passam a exigir situacao + contrato;
 - piloto: fechamento mensal com pendencia tratado com voz propria.
 
+### Execucao F2 em 2026-07-22
+
+- criado o contrato de situacao com `kind`, fatos canonicos e decisao, sem
+  entregar estado, fase ou proposta como autoridade do modelo;
+- seis envelopes de pendencia, capacidade e fechamento passaram a orientar o
+  modelo; wrappers legados ficaram apenas para rollback e limpeza na F5;
+- o servidor preserva `state_patch`, `next_phase`, `proposal` e `done`, enquanto
+  a fala visivel nasce do modelo;
+- 574/574 unitarios, lint, build, bundle, secret scan e 31 arquivos de
+  integracao verdes;
+- quatro Functions publicadas somente no staging, sem migration, frontend,
+  dado real ou producao;
+- tres medicoes do fechamento mensal parcial: a final foi aprovada com 96,25
+  de conducao, 100 de fechamento, 81,25 de saida e media 92,50;
+- custo F2 US$ 0,115403; acumulado historico US$ 17,473565; consumo do ciclo,
+  incluindo F1, US$ 0,120754 de US$ 20;
+- cleanup descartavel confirmado em todas as rodadas.
+
+Evidencia detalhada: `plans/ddr/Equilibrio-IA-F2-staging.md`.
+
 ## 9. Fase 3 - Validadores de fala em observacao
 
 ### Objetivo
@@ -248,6 +268,31 @@ estilo medem a conversa, mas nao bloqueiam nem atrasam a resposta.
 - defeitos de dados continuam fechados;
 - consulta semanal sanitizada funciona;
 - latencia e numero de regeneracoes sao comparados com a baseline.
+
+### Resultado F3 no staging
+
+- motivos foram separados em `DATA_REPAIR_REASONS` e
+  `STYLE_OBSERVATION_REASONS`; codigo novo/desconhecido continua sendo tratado
+  como reparo de dado por padrao;
+- falhas de JSON, estado, escopo, periodo, proposta, confirmacao e gravacao
+  continuam bloqueantes; estilo apenas alimenta metadata sanitizada;
+- toda tentativa registra somente codigos, contagem, ritual, canal, funcao e
+  latencia, sem fala, prompt, documento, telefone ou contexto;
+- 578/578 unitarios, lint, build, bundle e 31 arquivos de integracao verdes;
+- no mesmo Q4W usado como baseline da F2, as chamadas cairam de 5 para 3 e os
+  reparos por estilo de 2 para 0; o custo de geracao caiu de US$ 0,027006 para
+  US$ 0,016164, reducao aproximada de 40%; tempo total medido caiu de 174,043 s
+  para 165,804 s, sujeito a oscilacao do provedor e incluindo judge/cleanup;
+- o gate qualitativo final passou com conducao 96,25, fechamento 100, saida
+  88,75 e media 95; a primeira leitura do judge foi descartada porque confundiu
+  o campo legado `atual` (baseline) com `atingido`, e o prompt de avaliacao foi
+  alinhado ao contrato ja testado do documento canonico;
+- custo pago total da F3: US$ 0,078225; acumulado operacional estimado
+  US$ 17,551790; consumo estimado do ciclo US$ 0,198979 de US$ 20;
+- quatro Functions publicadas somente no staging; sem migration, frontend,
+  dado real ou producao. Cleanup descartavel confirmado.
+
+Evidencia detalhada: `plans/ddr/Equilibrio-IA-F3-staging.md`.
 
 ## 10. Fase 4 - Separar prosa e estrutura
 
@@ -281,6 +326,29 @@ Gerar a fala em texto livre e extrair a estrutura por uma segunda chamada
 - flag desligada preserva o comportamento anterior;
 - custo adicional e latencia documentados;
 - teste de concorrencia prova que um novo turno nao le estado antigo.
+
+### Resultado F4 no staging
+
+- `planning` passou a gerar apenas prosa e `background` a extrair a estrutura,
+  sempre sob os normalizadores e validadores server-side existentes;
+- a flag por empresa nasce desligada, so muda pelo endpoint de owner e permite
+  rollback sem deploy;
+- lease e revisao otimista impedem turnos concorrentes ou atrasados de
+  sobrescrever o estado canonico;
+- o primeiro piloto trimestral encontrou o contrato estrutural incompleto e
+  ficou em 12/15; depois da correcao, o reteste falho passou 6/6 e a rodada geral
+  passou 15/15;
+- plano mensal, atualizacoes rapidas e fechamento mensal passaram com banco,
+  documento e confirmacao coerentes; qualidade final do fechamento: conducao
+  86,25, fechamento 100, saida 91,25 e media 92,50;
+- gate tecnico: 586 unitarios, 32 arquivos de integracao, 7 verificacoes de
+  seguranca, lint, build e bundle verdes;
+- custo total F4 US$ 0,211855; consumo estimado do ciclo US$ 0,410834 de
+  US$ 20; nenhuma compra ou aviso financeiro;
+- migration e seis Functions publicadas somente no staging; frontend, dados
+  reais e producao permanecem intactos.
+
+Evidencia detalhada: `plans/ddr/Equilibrio-IA-F4-staging.md`.
 
 ## 11. R1B entre F4 e F5
 

@@ -1,4 +1,5 @@
 import { monthPeriodParts, quarterPeriodForMonth } from "./periods.ts";
+import { legacyEnvelopeFromSituation, planningSituation } from "./planning-situation.ts";
 
 type Client = any;
 
@@ -248,7 +249,7 @@ async function loadQuarterlyParent(client: Client, session: any, hint: string, a
     ?? (allowUnique && candidates.length === 1 ? candidates[0] : null);
 }
 
-export async function monthlyInheritedPendingEnvelope(client: Client, session: any, message: string) {
+export async function monthlyInheritedPendingSituation(client: Client, session: any, message: string) {
   if (session.type !== "monthly") return null;
   const block = parseInheritedMonthlyPendingBlock(message, session.period);
   if (!block) return null;
@@ -307,9 +308,18 @@ export async function monthlyInheritedPendingEnvelope(client: Client, session: a
     acoes_mes: proposal.objectives[0].actions,
     alinhamento_trimestral: parent.title,
   };
-  return {
-    reply: "A pendência e o resultado mensal estão completos para a confirmação final.",
-    state_patch: {
+  return planningSituation({
+    kind: "monthly_inherited_pending_ready",
+    facts: {
+      period: session.period,
+      result: statePatch.resultado_mensal,
+      pendingDecision: proposal.pendingDecisions[0],
+      quarterlyObjective: parent.title,
+      actions: proposal.objectives[0].actions,
+    },
+    decision: "Apresentar uma sintese curta do plano mensal e pedir uma unica confirmacao para gravar.",
+    authoritative: {
+      state_patch: {
       ...statePatch,
       _adaptive: {
         readiness: "ready",
@@ -319,12 +329,21 @@ export async function monthlyInheritedPendingEnvelope(client: Client, session: a
         action_direction: "gravar o plano confirmado",
       },
     },
-    next_phase: "sintese",
-    proposal,
-  };
+      next_phase: "sintese",
+      proposal,
+      done: false,
+    },
+  });
 }
 
-export function monthlyExperiencedActionsChallengeEnvelope(
+export async function monthlyInheritedPendingEnvelope(client: Client, session: any, message: string) {
+  return legacyEnvelopeFromSituation(
+    await monthlyInheritedPendingSituation(client, session, message),
+    "A pendência e o resultado mensal estão completos para a confirmação final.",
+  );
+}
+
+export function monthlyExperiencedActionsChallengeSituation(
   session: any,
   message: string,
   conversationText: string,
@@ -342,9 +361,16 @@ export function monthlyExperiencedActionsChallengeEnvelope(
   if (!managerClaimedReadyActions || capacityWasChallenged) return null;
 
   const listedActions = actionLines.map((line) => text(line.replace(/^a[cç][aã]o\s+(?:\d+|um|dois|duas|tr[eê]s|quatro|cinco)\s*:\s*/i, "")));
-  return {
-    reply: `Você já trouxe ${listedActions.length === 2 ? "duas" : listedActions.length} ações. Antes de fechar: elas cabem na capacidade real do time, e o que fica no backlog se a execução apertar?`,
-    state_patch: {
+  return planningSituation({
+    kind: "monthly_experienced_actions_capacity_check",
+    facts: {
+      actionCount: listedActions.length,
+      actions: listedActions,
+      capacityWasChallenged: false,
+    },
+    decision: "Testar se as acoes cabem na capacidade real e qual renuncia vai para o backlog.",
+    authoritative: {
+      state_patch: {
       acoes_listadas: listedActions,
       _adaptive: {
         readiness: "partial",
@@ -354,11 +380,26 @@ export function monthlyExperiencedActionsChallengeEnvelope(
         action_direction: "confirmar o que permanece comprometido e o que vai ao backlog",
       },
     },
-    next_phase: "capacidade",
-  };
+      next_phase: "capacidade",
+      done: false,
+    },
+  });
 }
 
-export async function completeMonthlyReadyEnvelope(client: Client, session: any, message: string) {
+export function monthlyExperiencedActionsChallengeEnvelope(
+  session: any,
+  message: string,
+  conversationText: string,
+) {
+  const situation = monthlyExperiencedActionsChallengeSituation(session, message, conversationText);
+  const count = Number(situation?.facts.actionCount ?? 0);
+  return legacyEnvelopeFromSituation(
+    situation,
+    `Você já trouxe ${count === 2 ? "duas" : count} ações. Antes de fechar: elas cabem na capacidade real do time, e o que fica no backlog se a execução apertar?`,
+  );
+}
+
+export async function completeMonthlyReadySituation(client: Client, session: any, message: string) {
   if (session.type !== "monthly") return null;
   const block = parseCompleteMonthlyReadyBlock(message, session.period);
   if (!block) return null;
@@ -413,9 +454,21 @@ export async function completeMonthlyReadyEnvelope(client: Client, session: any,
     confianca: block.confidence,
     proximo_compromisso: proposal.nextCommitment,
   };
-  return {
-    reply: "O plano mensal está completo para a confirmação final.",
-    state_patch: {
+  return planningSituation({
+    kind: "monthly_complete_plan_ready",
+    facts: {
+      period: session.period,
+      result: block.result,
+      quarterlyObjective: parent.title,
+      actions: block.actions,
+      backlog: [block.backlog],
+      blockers: [block.blocker],
+      cadence: block.cadence,
+      confidence: block.confidence,
+    },
+    decision: "Apresentar a proposta mensal completa e pedir uma unica confirmacao para gravar.",
+    authoritative: {
+      state_patch: {
       ...statePatch,
       _adaptive: {
         readiness: "ready",
@@ -425,12 +478,21 @@ export async function completeMonthlyReadyEnvelope(client: Client, session: any,
         action_direction: "gravar o plano confirmado",
       },
     },
-    next_phase: "sintese",
-    proposal,
-  };
+      next_phase: "sintese",
+      proposal,
+      done: false,
+    },
+  });
 }
 
-export function monthlyCapacityDecisionEnvelope(session: any, message: string, planContext: string) {
+export async function completeMonthlyReadyEnvelope(client: Client, session: any, message: string) {
+  return legacyEnvelopeFromSituation(
+    await completeMonthlyReadySituation(client, session, message),
+    "O plano mensal está completo para a confirmação final.",
+  );
+}
+
+export function monthlyCapacityDecisionSituation(session: any, message: string, planContext: string) {
   if (session.type !== "monthly") return null;
   const normalized = comparable(message);
   const hasCapacity = /capacidade estimada para cinco acoes relevantes/.test(normalized);
@@ -440,17 +502,26 @@ export function monthlyCapacityDecisionEnvelope(session: any, message: string, p
   if (!hasCapacity || !hasPrioritySplit || !hasBacklogChoice) return null;
   const history = comparable(planContext);
   const remembersOvercommitment = /mes anterior terminou com sete acoes abertas por excesso de compromisso/.test(history);
-  const memoryLine = remembersOvercommitment
-    ? "O mês anterior terminou com sete ações abertas por excesso de compromisso, então repetir doze agora manteria o mesmo risco. "
-    : "";
   const statePatch = {
     capacidade: { comprometidas: 5, demandas: 12 },
     criterio_priorizacao: { resultado_trimestral: 3, risco_operacional: 2 },
     decisao_backlog: "As demais demandas podem ser adiadas sem comprometer a meta do trimestre",
   };
-  return {
-    reply: `${memoryLine}A capacidade é cinco: três ações ligadas ao objetivo trimestral e duas para reduzir risco; as demais vão ao backlog. Quais são essas cinco ações prioritárias, cada uma com prazo e critério de conclusão?`,
-    state_patch: {
+  return planningSituation({
+    kind: "monthly_capacity_choice",
+    facts: {
+      capacity: 5,
+      demands: 12,
+      quarterlyResultActions: 3,
+      operationalRiskActions: 2,
+      remainingItemsGoToBacklog: true,
+      previousOvercommitment: remembersOvercommitment
+        ? "O mes anterior terminou com sete acoes abertas por excesso de compromisso."
+        : null,
+    },
+    decision: "Pedir as cinco acoes prioritarias, cada uma com prazo e criterio de conclusao.",
+    authoritative: {
+      state_patch: {
       ...statePatch,
       _adaptive: {
         readiness: "partial",
@@ -460,6 +531,19 @@ export function monthlyCapacityDecisionEnvelope(session: any, message: string, p
         action_direction: "transformar prioridades em ações com prazo e critério",
       },
     },
-    next_phase: "capacidade",
-  };
+      next_phase: "capacidade",
+      done: false,
+    },
+  });
+}
+
+export function monthlyCapacityDecisionEnvelope(session: any, message: string, planContext: string) {
+  const situation = monthlyCapacityDecisionSituation(session, message, planContext);
+  const memoryLine = situation?.facts.previousOvercommitment
+    ? "O mês anterior terminou com sete ações abertas por excesso de compromisso, então repetir doze agora manteria o mesmo risco. "
+    : "";
+  return legacyEnvelopeFromSituation(
+    situation,
+    `${memoryLine}A capacidade é cinco: três ações ligadas ao objetivo trimestral e duas para reduzir risco; as demais vão ao backlog. Quais são essas cinco ações prioritárias, cada uma com prazo e critério de conclusão?`,
+  );
 }

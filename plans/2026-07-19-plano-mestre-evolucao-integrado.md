@@ -9,9 +9,13 @@ Atualizacao de 2026-07-22: o owner aprovou o subplano corretivo
 R1B para devolver naturalidade a fala mantendo proposta, confirmacao e gravacao
 sob autoridade do servidor. A Fase 5 fica depois do piloto e da observacao.
 Como correcao dentro da R1, o subplano nao altera o progresso: 52,5% geral e
-50% no Plano 4. A F1 esta implementada no staging e seu piloto trimestral
-sintetico passou 8/8 controles em 2026-07-22; falta o aceite qualitativo do
-owner antes de merge, producao ou inicio da F2.
+50% no Plano 4. F1 a F4 foram concluidas no staging, somando 90% internos.
+O owner reservou a avaliacao da conducao completa para a conversa pratica. A
+F3 separou estilo de defeitos de dado. A F4 separou prosa `planning` de
+estrutura `background`, adicionou flag default off e protegeu turnos
+concorrentes. Sua rodada geral terminou com media 92,50 no fechamento e custo
+total de US$ 0,211855. Migration e Functions ficaram somente no staging; a
+proxima decisao e autorizar merge/release antes da R1B real.
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify
@@ -1213,8 +1217,9 @@ calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: executar a Fase 1 de
-`plans/2026-07-22-equilibrio-da-ia.md`, primeiro com briefing e autorizacao
-especifica. Depois dos gates F1-F4, o owner conduz a R1B real com o Plano Anual
+Proximo passo: pedir autorizacao explicita para merge/release da F4 de
+`plans/2026-07-22-equilibrio-da-ia.md`. F1 a F4 estao concluidas somente no
+staging, com 90% internos. Depois do release, a flag permanece desligada por
+padrao e sera ligada apenas na empresa piloto; entao o owner conduz a R1B real com o Plano Anual
 e seus relatorios de T1/T2, avalia a conversa e as duas secoes do pacote antes
 de uma unica confirmacao.

@@ -261,6 +261,57 @@ from public.ai_limit_events where org_id = '<ORG_ID>' order by created_at desc l
 select * from public.ai_monthly_usage where org_id = '<ORG_ID>' order by month_start desc;
 ```
 
+## Revisao semanal das observacoes de estilo da IA
+
+Durante as quatro semanas posteriores a F3, rode no SQL Editor com acesso
+administrativo. A consulta usa somente metadata sanitizada; nao adicione
+mensagem, prompt, documento, telefone, `session_id` ou `conversation_id` ao
+relatorio compartilhado.
+
+```sql
+with usage as (
+  select
+    date_trunc('week', created_at) as semana,
+    metadata,
+    metadata->>'adaptiveStyleObservationRitual' as ritual,
+    metadata->>'adaptiveStyleObservationChannel' as canal,
+    metadata->>'adaptiveStyleObservationFunction' as funcao,
+    coalesce((metadata->>'adaptiveStyleObservationLatencyMs')::numeric, 0) as latencia_ms,
+    coalesce((metadata->>'adaptiveAttempt')::integer, 1) as tentativa
+  from public.ai_usage_logs
+  where created_at >= now() - interval '28 days'
+    and metadata ? 'adaptiveStyleObservationCodes'
+), expanded as (
+  select usage.*, observed.codigo
+  from usage
+  left join lateral jsonb_array_elements_text(
+    case
+      when jsonb_typeof(metadata->'adaptiveStyleObservationCodes') = 'array'
+        then metadata->'adaptiveStyleObservationCodes'
+      else '[]'::jsonb
+    end
+  ) as observed(codigo) on true
+)
+select
+  semana,
+  ritual,
+  canal,
+  funcao,
+  coalesce(codigo, 'sem_observacao') as codigo,
+  count(*) as chamadas,
+  count(*) filter (where tentativa = 2) as regeneracoes,
+  round(avg(latencia_ms), 0) as latencia_media_ms
+from expanded
+group by semana, ritual, canal, funcao, coalesce(codigo, 'sem_observacao')
+order by semana desc, chamadas desc, codigo;
+```
+
+Interprete junto com volume e ritual. Heuristica sem sinal util por quatro
+semanas vira candidata a remocao na F5. Heuristica frequente gera ajuste no
+nucleo ou no condutor; nao a transforme novamente em bloqueio de resposta sem
+nova decisao explicita e teste no staging. Tentativa 2 sem
+`adaptiveRepairReasons` nao e permitida e deve ser tratada como regressao.
+
 ## Problema: acesso negado em escrita
 
 Possiveis causas:
@@ -1504,3 +1555,39 @@ pnpm run test:e2e:staging
 ```
 
 Publicação exige a migration `20260715193000_administrative_audit.sql`, as Functions `invite-member`, `remove-member`, `set-member-role`, `set-member-area`, `save-ai-settings`, `save-whatsapp-settings`, `save-security-settings`, `save-ai-control-policy`, `organization-backup` e `personal-account`, além do frontend. Depois do deploy, faça uma alteração administrativa reversível em empresa descartável, confirme um único evento sem dados sensíveis e reverta a alteração.
+
+## Operar e reverter a F4 de prosa/estrutura
+
+Pre-condicoes:
+
+1. aplicar `20260722180000_prose_split_sessions.sql`;
+2. publicar `oracle-session`, `oracle-chat`, `whatsapp-webhook`,
+   `whatsapp-worker`, `save-ai-control-policy` e `operational-health`;
+3. confirmar que a politica da empresa piloto esta `false` antes do primeiro
+   teste;
+4. ativar somente pelo endpoint `save-ai-control-policy` com JWT de owner;
+5. nunca usar service role para contornar o aceite do owner.
+
+Diagnostico sanitizado, somente em ambiente autorizado:
+
+```sql
+select prose_split_enabled
+from public.ai_control_policies
+where org_id = '<org_id>';
+
+select revision,
+       processing_token is not null as turn_in_progress,
+       processing_expires_at
+from public.planning_sessions
+where org_id = '<org_id>' and status = 'active';
+```
+
+Se a conversa falhar ou a latencia ficar inaceitavel, o owner envia novamente a
+politica com `proseSplitEnabled=false`. Nao apague colunas, sessoes ou mensagens.
+Uma lease expirada pode ser adquirida pelo proximo turno; uma lease presa nao
+deve ser limpa manualmente sem antes confirmar que nao ha Function executando.
+
+No staging atual existem cinco migrations historicas locais sem registro
+remoto. A F4 foi aplicada isoladamente pela Management API. Antes de qualquer
+`db push` no staging, rode `supabase migration list --linked` e reconcilie o
+escopo; nao aplique as cinco versoes antigas por acidente.

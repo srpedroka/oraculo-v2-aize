@@ -1,8 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDisposableOrg, destroyDisposableOrg, type DisposableOrg } from "../helpers/factory";
 import { anonClient, hasStagingEnv, serviceClient } from "../helpers/staging";
+import { configureDisposableAi, runtimeConfiguration } from "../../scripts/strategic-eval";
 
-const RUN = hasStagingEnv();
+// This journey now calls the real planning model by design. Keep it opt-in so
+// ordinary CI never spends API credits; the tracked strategic smoke is the gate.
+const RUN = hasStagingEnv()
+  && process.env.RUN_F2_LIVE_SITUATIONS === "true"
+  && Boolean(process.env.ORACULO_EVAL_API_KEY);
 const d = RUN ? describe : describe.skip;
 const FUNCTIONS_URL = `${process.env.SUPABASE_STAGING_URL}/functions/v1/oracle-session`;
 const admin = RUN ? serviceClient() : (null as ReturnType<typeof serviceClient>);
@@ -36,6 +41,12 @@ d("Q4V — bloco mensal completo com capacidade", () => {
     const login = await anonClient().auth.signInWithPassword({ email: org.owner.email, password: org.owner.password });
     if (login.error || !login.data.session) throw login.error ?? new Error("login Q4V falhou");
     ownerJwt = login.data.session.access_token;
+    await configureDisposableAi({
+      orgId: org.orgId,
+      label: org.label,
+      owner: org.owner,
+      areaId: org.areas.comercialId,
+    }, runtimeConfiguration());
     const { error } = await admin.from("objectives").insert({
       org_id: org.orgId,
       area_id: org.areas.comercialId,
@@ -72,7 +83,7 @@ d("Q4V — bloco mensal completo com capacidade", () => {
     if (org) await destroyDisposableOrg(org);
   }, 60_000);
 
-  it("gera uma proposta sem IA, confirma uma vez e preserva escolhas no documento", async () => {
+  it("usa a IA para a fala, confirma uma vez e preserva escolhas canônicas no documento", async () => {
     const start = await call({
       action: "start",
       orgId: org.orgId,
@@ -95,9 +106,12 @@ d("Q4V — bloco mensal completo com capacidade", () => {
       ].join("\n"),
     });
     expect(capacity.pendingProposal).toBeFalsy();
-    expect(String(capacity.reply)).toContain("sete ações abertas por excesso de compromisso");
-    expect(String(capacity.reply)).toContain("três ações ligadas ao objetivo trimestral e duas para reduzir risco");
+    expect(String(capacity.reply)).not.toMatch(/state_patch|next_phase|proposal/i);
     expect(String(capacity.reply).match(/\?/g)).toHaveLength(1);
+    expect(capacity.session?.state).toMatchObject({
+      capacidade: { comprometidas: 5, demandas: 12 },
+      criterio_priorizacao: { resultado_trimestral: 3, risco_operacional: 2 },
+    });
 
     const response = await call({ action: "message", sessionId, message: completeBlock, channel: "web" });
     const proposal = response.pendingProposal as Record<string, any>;
@@ -112,10 +126,33 @@ d("Q4V — bloco mensal completo com capacidade", () => {
     expect(proposal.confidence).toBe("amarela");
     expect(String(response.reply).match(/\?/g)).toHaveLength(1);
 
-    const { count: usageBefore, error: usageBeforeError } = await admin.from("ai_usage_logs")
-      .select("id", { count: "exact", head: true }).eq("org_id", org.orgId);
+    const { data: usageRows, error: usageBeforeError } = await admin.from("ai_usage_logs")
+      .select("total_cost_usd,metadata").eq("org_id", org.orgId).order("created_at", { ascending: true });
     if (usageBeforeError) throw usageBeforeError;
-    expect(usageBefore).toBe(0);
+    expect(usageRows?.length).toBeGreaterThanOrEqual(2);
+    const metadataRows = (usageRows ?? []).map((row) => row.metadata as Record<string, unknown>);
+    const planningMetadata = metadataRows.filter((metadata) => metadata.aiFunction === "planning");
+    const extractionMetadata = metadataRows.filter((metadata) => metadata.aiFunction === "background");
+    expect(planningMetadata.every((metadata) => Array.isArray(metadata.adaptiveStyleObservationCodes))).toBe(true);
+    expect(planningMetadata.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationCount)))).toBe(true);
+    expect(planningMetadata.every((metadata) => Number.isFinite(Number(metadata.adaptiveStyleObservationLatencyMs)))).toBe(true);
+    expect(planningMetadata
+      .filter((metadata) => Number(metadata.adaptiveAttempt) === 2)
+      .every((metadata) => Array.isArray(metadata.adaptiveRepairReasons)
+        && (metadata.adaptiveRepairReasons as unknown[]).length > 0)).toBe(true);
+    if (process.env.ORACULO_EVAL_PROSE_SPLIT === "true") {
+      expect(extractionMetadata.length).toBe(planningMetadata.length);
+      expect(extractionMetadata.every((metadata) => Number(metadata.extractionAttempt) === 1)).toBe(true);
+      expect(extractionMetadata.every((metadata) => Number(metadata.extractionRepairCount) === 0)).toBe(true);
+    }
+    expect(JSON.stringify(metadataRows)).not.toMatch(/(?:reply|prompt|message|context|phone|document)/i);
+    console.info("F3_STYLE_OBSERVATION", JSON.stringify({
+      calls: metadataRows.length,
+      repairs: metadataRows.filter((metadata) => Number(metadata.adaptiveAttempt) === 2).length,
+      observations: metadataRows.reduce((sum, metadata) => sum + Number(metadata.adaptiveStyleObservationCount ?? 0), 0),
+      latencyMs: metadataRows.reduce((sum, metadata) => sum + Number(metadata.adaptiveStyleObservationLatencyMs ?? 0), 0),
+      costUsd: (usageRows ?? []).reduce((sum, row) => sum + Number(row.total_cost_usd ?? 0), 0),
+    }));
 
     await call({ action: "confirm", sessionId, channel: "web" });
     const { data: objective, error: objectiveError } = await admin.from("objectives")
@@ -135,5 +172,5 @@ d("Q4V — bloco mensal completo com capacidade", () => {
       backlog: ["As demais demandas ficam no backlog do mes"],
       capacidade: { acoes_comprometidas: 5, maximo_acoes_comprometidas: 5 },
     });
-  }, 60_000);
+  }, 150_000);
 });
