@@ -607,10 +607,18 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   PR #16, merge `688707b`, release protegido `29771409862` e deploy Netlify
   `6a5e7543f33863cd34980d37`. A verificacao confirmou 31 Functions, 54/54
   migrations, HTTP 200, headers/cache e smoke publico desktop/mobile.
-  Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Proximo passo:
-  R1B real com o owner em producao. Fontes:
+  Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Antes da R1B, o
+  owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
+  naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
+  Proxima acao: briefing e execucao da Fase 1, sem mudar o progresso mestre.
+  Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
-  `plans/ddr/R1A-prontidao-contrato-briefing.md`.
+  `plans/ddr/R1A-prontidao-contrato-briefing.md` e
+  `plans/2026-07-22-equilibrio-da-ia.md`.
+- A leitura de Markdown real na R1B foi corrigida e publicada em producao em
+  2026-07-22: PR #19, merge `28bc422`, CI `29935040723` e release protegido
+  `29935471951`. Foram publicadas somente `oracle-session`, `oracle-chat`,
+  `whatsapp-webhook` e `whatsapp-worker`, sem migration, frontend ou IA paga.
 - Principio conversacional aprovado pelo owner: a IA possui a conversa e o
   servidor possui a gravacao. Guias sao referencias de raciocinio/qualidade,
   nao scripts de formulario. Fases nao podem absorver perguntas laterais nem

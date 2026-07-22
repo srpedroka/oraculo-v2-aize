@@ -1,7 +1,16 @@
 # Changelog
 
-- Corrigida a leitura de Markdown real durante a Revisão Semestral pelo
-  WhatsApp. A extensão/MIME declarados deixam de provar que a mídia já está
+- Aprovado e registrado o subplano `Equilibrio da IA`, que antecede a R1B e
+  separa em cinco fases a naturalidade da conversa da seguranca da gravacao.
+  F1-F4 tratam prompt destilado, situacoes no lugar de templates, estilo em
+  observacao e prosa separada da estrutura; F5 limpa codigo e executa E2E depois
+  do piloto. O desenho preserva estado e proposta canonicos no servidor, proibe
+  conteudo privado na telemetria e evita corrida de estado entre turnos. Esta
+  decisao nao altera runtime, banco, producao ou os 52,5% do plano mestre.
+
+- Publicada em producao pela PR #19, merge `28bc422` e release protegido
+  `29935471951` a correcao da leitura de Markdown real durante a Revisao
+  Semestral pelo WhatsApp. A extensao/MIME declarados deixam de provar que a midia ja esta
   aberta: o webhook verifica os bytes, prioriza `/message/downloadmedia` e
   descriptografa com `mediaKey` quando necessário. Com uma sessão
   `strategic_review` ativa, o texto extraído vai diretamente ao condutor de
@@ -9,7 +18,9 @@
   mil caracteres entram no contexto transitório e o bruto continua fora do
   histórico. O guard adaptativo recusa respostas que chamem o arquivo de
   corrompido depois da extração comprovada. Sem migration ou mudança visível no
-  frontend.
+  frontend ou custo de IA. O CI da `main` foi o run `29935040723`, com os tres
+  gates verdes; o release publicou e verificou `oracle-session`, `oracle-chat`,
+  `whatsapp-webhook` e `whatsapp-worker`.
 
 - Arquivos `.md` e `.markdown` passaram a ser tratados como texto puro no
   WhatsApp e no app, inclusive quando a Evolution envia MIME genérico
