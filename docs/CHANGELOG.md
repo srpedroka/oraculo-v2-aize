@@ -1,5 +1,16 @@
 # Changelog
 
+- Publicada em producao a correcao da R1B pela PR #28 e merge `53d3a28`.
+  O PDF do WhatsApp passou a usar o conteudo integral da revisao estrategica,
+  o reenvio preserva a sessao ativa e a revisao de meio do ano pode atualizar
+  o Plano Estrategico Anual com proposta unica, antes/depois, nova versao
+  canonica e uma confirmacao. O fechamento anual preserva o ano encerrado e
+  prepara o briefing do proximo ciclo. CI `30044748975`, release das quatro
+  Functions `30045174770`, Netlify `6a6283fbe10de3d0c8522063` e verificacao
+  protegida `30045393468` ficaram verdes. O smoke autenticado abriu o documento
+  real completo em producao. Sem migration, chamada paga de IA ou mutacao do
+  plano real durante o release; a R1B ainda aguarda o reteste do owner.
+
 - Validada no staging a correcao da saida da R1B real antes do novo gate. O PDF enviado
   pelo WhatsApp agora renderiza leitura executiva, avancos, lacunas, resultados
   por area, plano do segundo semestre, prioridades e impacto no plano anual,
