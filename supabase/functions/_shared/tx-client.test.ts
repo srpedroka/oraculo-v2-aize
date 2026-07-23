@@ -96,6 +96,25 @@ describe("TxClient builder — UPDATE", () => {
   });
 });
 
+describe("TxClient builder — RPC", () => {
+  it("executa função pública com argumentos nomeados dentro da transação", async () => {
+    const { tx, calls } = fakeTx([[{ result: { affected: 3 } }]]);
+    const client = new TxClient(tx as any);
+    const { data, error } = await client.rpc("set_operational_item_archived", {
+      p_org_id: "org-1",
+      p_entity_type: "objective",
+      p_archived: true,
+    });
+
+    expect(error).toBeNull();
+    expect(data).toEqual({ affected: 3 });
+    expect(calls[0].text).toBe(
+      'select public."set_operational_item_archived"("p_org_id" => $1, "p_entity_type" => $2, "p_archived" => $3) as result',
+    );
+    expect(calls[0].args).toEqual(["org-1", "objective", true]);
+  });
+});
+
 describe("TxClient builder — SELECT/filtros", () => {
   it("select com eq/is-null/order/limit + maybeSingle", async () => {
     const { tx, calls } = fakeTx([[{ id: "d1" }]]);

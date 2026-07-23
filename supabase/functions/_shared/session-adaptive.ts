@@ -1151,24 +1151,52 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
     const adjustments = Array.isArray(value.adjustments) ? value.adjustments.map(asRecord) : [];
     const semesterReview = asRecord(value.semester_review ?? value.revisao_semestre);
     const secondSemesterPlan = asRecord(value.second_semester_plan ?? value.plano_segundo_semestre);
+    const annualUpdate = asRecord(value.annual_plan_update ?? value.annualPlanUpdate ?? value.atualizacao_plano_anual);
+    const planChanges = asRecord(annualUpdate.planChanges ?? annualUpdate.plan_changes ?? annualUpdate.alteracoes_plano);
+    const objectiveChanges = Array.isArray(annualUpdate.objectiveChanges ?? annualUpdate.objective_changes ?? annualUpdate.mudancas_objetivos)
+      ? (annualUpdate.objectiveChanges ?? annualUpdate.objective_changes ?? annualUpdate.mudancas_objetivos as unknown[]).map(asRecord)
+      : [];
+    const reviewCycle = text(value.review_cycle ?? value.reviewCycle ?? value.ciclo_revisao);
+    const updateMode = text(annualUpdate.mode ?? annualUpdate.modo)
+      || (adjustments.length || objectiveChanges.length || Object.keys(planChanges).length ? "update_current_year" : "preserve");
     const priorities = Array.isArray(secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades)
       ? (secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades as unknown[]).map(asRecord)
       : [];
     const reviewSummary = text(semesterReview.executiveSummary ?? semesterReview.executive_summary ?? semesterReview.resumo_executivo);
-    if (reviewSummary || priorities.length) {
+    if (reviewSummary || priorities.length || objectiveChanges.length || Object.keys(planChanges).length) {
       const priorityLines = priorities.slice(0, 5).map((priority, index) =>
         `${index + 1}. ${text(priority.title ?? priority.titulo) || "Prioridade"}${text(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado) ? `: ${text(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado)}` : ""}`
       );
-      const adjustmentLine = adjustments.length
-        ? `${adjustments.length} ajuste(s) explícito(s) no plano anual aparecem abaixo e só serão aplicados após esta confirmação.`
-        : "O plano anual original será preservado sem alteração de objetivos.";
+      const objectiveChangeLines = objectiveChanges.slice(0, 8).map((change) => {
+        const operation = text(change.operation ?? change.operacao);
+        const objective = asRecord(change.objective ?? change.objetivo ?? change.after ?? change.depois);
+        const title = text(change.title ?? change.titulo ?? objective.title ?? objective.titulo) || "Objetivo";
+        const operationLabel = operation === "create" ? "Criar" : operation === "archive" ? "Retirar" : "Atualizar";
+        return `- ${operationLabel}: ${title}${text(change.because ?? change.porque) ? `, porque ${text(change.because ?? change.porque)}` : ""}.`;
+      });
+      const annualImpact = updateMode === "update_current_year"
+        ? [
+          `**Atualização do plano anual vigente**`,
+          Object.keys(planChanges).length ? `${Object.keys(planChanges).length} bloco(s) geral(is) do plano serão atualizado(s).` : "",
+          ...objectiveChangeLines,
+          adjustments.length ? `${adjustments.length} alteração(ões) de campo adicional(is) serão aplicada(s).` : "",
+        ]
+        : updateMode === "prepare_next_year" || reviewCycle === "year_end"
+        ? ["O plano do ano encerrado será preservado e o direcionamento servirá de base para o próximo Plano Estratégico."]
+        : ["O plano anual original será preservado sem alteração de objetivos."];
       return [
-        `**Revisão do primeiro semestre ${text(value.period)}**`,
+        reviewCycle === "year_end"
+          ? `**Fechamento estratégico ${text(value.period)}**`
+          : `**Revisão do primeiro semestre ${text(value.period)}**`,
         reviewSummary,
-        "**Plano do segundo semestre**",
+        reviewCycle === "year_end" ? "**Direcionamento do próximo ano**" : "**Plano do segundo semestre**",
         ...priorityLines,
-        adjustmentLine,
-        "Confirma gravar esta revisão e o direcionamento do segundo semestre?",
+        ...annualImpact,
+        updateMode === "update_current_year"
+          ? "Confirma gravar esta revisão e atualizar o plano anual vigente com as mudanças acima?"
+          : reviewCycle === "year_end"
+          ? "Confirma gravar o fechamento e o direcionamento do próximo ano?"
+          : "Confirma gravar esta revisão e o direcionamento do segundo semestre?",
       ].filter(Boolean).join("\n");
     }
     if (adjustments.length > 0) {

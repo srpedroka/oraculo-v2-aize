@@ -92,7 +92,7 @@ export async function classifyOracleIntent(
     "- quick_update: a pessoa informa claramente um avanço pontual (concluiu uma ação, atualizou um número, quer registrar uma evidência curta).",
     "- Respostas curtas de confirmação, como ok, sim, recebido, piloto ok ou teste ok, são smalltalk e nunca quick_update.",
     "- start_planning: pede para criar ou revisar plano (do ano, do trimestre ou do mês).",
-    "- strategic_review: revisão do plano estratégico anual existente, inclusive revisão semestral com evidências do primeiro semestre. Não confunda com criação de strategic.",
+    "- strategic_review: revisão do plano estratégico anual existente, no meio ou no fim do ano, com evidências do ciclo. Não confunda com criação de strategic.",
     "- close_period: quer fazer o fechamento ou check-in do mês ou do trimestre.",
     "- document_question: pergunta sobre um documento ou plano gravado (quer receber, resumir).",
     "- other: nada acima.",

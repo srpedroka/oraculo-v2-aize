@@ -1,5 +1,26 @@
 # Decisoes tecnicas
 
+## 2026-07-23 - Revisao Estrategica atualiza o plano vigente com versao e diff
+
+Decisao: substituir a fronteira antiga de "microajuste" por uma revisao
+versionada. No meio do ano, o owner pode preservar ou atualizar explicitamente
+o plano atual, incluindo blocos gerais e objetivos atualizados, criados ou
+arquivados. No fim do ano, o plano encerrado e preservado e a revisao prepara o
+briefing do proximo ano.
+
+Motivo: a R1B real produziu uma boa analise e um bom plano do segundo semestre,
+mas o Plano Estrategico Anual permaneceu intacto. Isso criava duas verdades no
+produto. O mesmo teste revelou que o PDF do WhatsApp nao tinha paridade com o
+documento do app.
+
+Consequencias: `apply_strategic_review` ganhou `review_cycle` e
+`annual_plan_update`; uma confirmacao executa a mutacao e os documentos dentro
+da mesma transacao. Arquivamento reutiliza o lifecycle reversivel e toda
+alteracao preserva antes/depois. Quando o plano muda, nasce uma nova versao
+canonica `strategic`, alem da revisao. PDF e WhatsApp leem o mesmo conteudo. A
+decisao de 2026-07-08 permanece como historia, mas sua restricao de microajuste
+foi superada por esta decisao.
+
 ## 2026-07-22 - Liberdade na fala, rigor na gravacao
 
 Decisao: executar antes da R1B o subplano

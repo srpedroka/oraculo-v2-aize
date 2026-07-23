@@ -108,4 +108,74 @@ describe("PDF canônico do plano", () => {
       "Aprendizados: Treinar por equipe", "Pendências: Concluir migração", "Próximo período: Jul 2027",
     ]) expect(text).toContain(expected);
   });
+
+  it("leva a revisão semestral completa dos Documentos para o PDF do WhatsApp", async () => {
+    const result = await renderPlanDocumentPdf({
+      title: "Revisão Semestral e Plano do Segundo Semestre 2026",
+      period: "2026",
+      version: 1,
+      origin: "session",
+      content: {
+        empresa: "Gaam/Aize",
+        area: "Empresa",
+        tipo: "strategic_review",
+        periodo: "2026",
+        motivo_revisao: "Revisar o plano com as evidências do primeiro semestre.",
+        plano_anual_original_preservado: true,
+        revisao_semestre: {
+          resumo_executivo: "O grupo avançou em receita, mas margem e produtividade exigem decisões no segundo semestre.",
+          avancos_confirmados: ["AIZE ganhou tração comercial", "Receita do grupo cresceu"],
+          lacunas: ["Margem pressionada", "Paradas reduziram produtividade"],
+          padroes_repetidos: ["Metas sem evidência formal"],
+          aprendizados: ["Poucas prioridades melhoram a execução"],
+          riscos: ["Aumento de custo fixo sem ganho de produtividade"],
+          lacunas_evidencia: ["Indicadores fabris incompletos"],
+          resultados_por_area: [{
+            area: "Industrial",
+            avancos: ["Novo fluxo de produção iniciado"],
+            lacunas: ["Paradas ainda recorrentes"],
+            evidencias: ["Relatórios de janeiro a junho"],
+          }],
+        },
+        plano_segundo_semestre: {
+          foco: "Consolidar resultado com três prioridades executáveis.",
+          decisoes: ["Priorizar produtividade", "Sustentar faturamento"],
+          renuncias: ["Não ampliar custo fixo"],
+          riscos: ["Adoção lenta dos novos rituais"],
+          cadencia: ["Revisão mensal dos indicadores"],
+          prioridades: [{
+            titulo: "Evolução da fábrica",
+            justificativa: "Recuperar produtividade sem aumentar a estrutura.",
+            resultado_esperado: "Ganho de 20% no ano.",
+            indicador: "Produtividade industrial",
+            meta: "20%",
+            responsavel: "Marcelo",
+            prazo: "2026-12-31",
+            primeira_acao: "Validar o baseline do primeiro semestre.",
+          }],
+        },
+        ajustes: [],
+      },
+    });
+    const parsed = await PDFDocument.load(result.bytes);
+    const text = (await extractText(result.bytes)).replace(/\s+/g, " ");
+
+    if (process.env.WRITE_PDF_FIXTURE === "1") {
+      const outputDir = resolve("tmp/pdfs");
+      mkdirSync(outputDir, { recursive: true });
+      writeFileSync(resolve(outputDir, "strategic-review-designed.pdf"), result.bytes);
+    }
+
+    expect(parsed.getPageCount()).toBeGreaterThanOrEqual(1);
+    expect(result.bytes.byteLength).toBeGreaterThan(3_000);
+    for (const expected of [
+      "Leitura executiva: O grupo avançou em receita",
+      "RESULTADOS POR ÁREA",
+      "Industrial",
+      "PLANO DO SEGUNDO SEMESTRE",
+      "Prioridade 1: Evolução da fábrica",
+      "Responsável e prazo: Marcelo",
+      "O Plano Estratégico Anual original foi preservado.",
+    ]) expect(text).toContain(expected);
+  });
 });

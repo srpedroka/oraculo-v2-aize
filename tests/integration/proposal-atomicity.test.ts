@@ -712,4 +712,232 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     if (countError) throw countError;
     expect(count).toBe(1);
   });
+
+  it("R1B: atualiza, cria e retira objetivos do plano anual em uma confirmação reversível", async () => {
+    const updateHierarchy = await seedAnnualHierarchy(org.areas.comercialId, "Objetivo anual atualizado R1B");
+    const archiveHierarchy = await seedAnnualHierarchy(org.areas.producaoId, "Objetivo anual retirado R1B");
+    const createdTitle = "Objetivo anual criado R1B";
+
+    const { error: planError } = await admin.from("strategic_plans").upsert({
+      org_id: org.orgId,
+      year: 2026,
+      profile: {
+        renunciations: [],
+        risks: ["Risco anterior"],
+        pendingDecisions: [],
+        historicalLessons: [],
+      },
+      drivers: {},
+      swot: {},
+      themes: ["Tema anterior"],
+      rituals: ["Revisão trimestral"],
+      executive_summary: "Plano original antes da revisão",
+      updated_by: org.owner.id,
+    }, { onConflict: "org_id,year" });
+    if (planError) throw planError;
+
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: null,
+      user_id: org.owner.id,
+      type: "strategic_review",
+      period: "2026",
+      pending_proposal: {
+        type: "apply_strategic_review",
+        period: "2026",
+        review_cycle: "midyear",
+        motivo_revisao: "Evidências do primeiro semestre alteraram as prioridades",
+        semester_review: {
+          executiveSummary: "Produtividade e margem passaram a concentrar a atenção executiva.",
+          confirmedAdvances: ["Receita cresceu"],
+          gaps: ["Produtividade abaixo do plano"],
+        },
+        second_semester_plan: {
+          focus: "Recuperar produtividade e margem",
+          priorities: [{
+            title: "Elevar produtividade",
+            linkedObjectiveId: updateHierarchy.strategic.id,
+            expectedResult: "20% de ganho anual",
+            metric: "Produtividade industrial",
+            target: "20%",
+            deadline: "2026-12-31",
+            owner: "Diretoria Industrial",
+            firstAction: "Validar baseline",
+          }],
+        },
+        annual_plan_update: {
+          mode: "update_current_year",
+          planChanges: {
+            executiveSummary: "Segundo semestre focado em produtividade e margem.",
+            themes: ["Produtividade com margem"],
+            risks: ["Execução sem evidência mensal"],
+          },
+          objectiveChanges: [{
+            operation: "update",
+            objectiveId: updateHierarchy.strategic.id,
+            because: "O primeiro semestre mostrou uma restrição maior que a prevista",
+            changes: {
+              target: "20%",
+              owner: "Diretoria Industrial",
+              evidence_plan: "Painel mensal de produtividade",
+            },
+          }, {
+            operation: "create",
+            because: "A margem precisa de responsabilidade e meta explícitas",
+            objective: {
+              title: createdTitle,
+              type: "resultado",
+              result: "Margem operacional recuperada",
+              metric: "Margem operacional",
+              target: "8%",
+              current: "5%",
+              deadline: "2026-12-31",
+              owner: "Diretoria Financeira",
+              source: "DRE mensal",
+              deliverables: ["Rotina mensal de decisão sobre margem"],
+            },
+          }, {
+            operation: "archive",
+            objectiveId: archiveHierarchy.strategic.id,
+            because: "A prioridade foi substituída após a revisão das evidências",
+          }],
+        },
+        unchanged: [],
+      },
+    });
+
+    const first = await confirm(sessionId);
+    expect(first.status).toBe(200);
+    expect(first.body.reply).toContain("plano anual atualizado");
+
+    const { data: updatedObjective, error: updatedObjectiveError } = await admin
+      .from("objectives")
+      .select("target, owner, evidence_plan, archived_at")
+      .eq("id", updateHierarchy.strategic.id)
+      .single();
+    if (updatedObjectiveError) throw updatedObjectiveError;
+    expect(updatedObjective).toMatchObject({
+      target: "20%",
+      owner: "Diretoria Industrial",
+      evidence_plan: "Painel mensal de produtividade",
+      archived_at: null,
+    });
+
+    const { data: archivedObjectives, error: archivedError } = await admin
+      .from("objectives")
+      .select("id, archived_at")
+      .in("id", [archiveHierarchy.strategic.id, archiveHierarchy.areaAnnual.id]);
+    if (archivedError) throw archivedError;
+    expect(archivedObjectives).toHaveLength(2);
+    expect(archivedObjectives.every((objective: any) => Boolean(objective.archived_at))).toBe(true);
+
+    const { data: createdObjectives, error: createdError } = await admin
+      .from("objectives")
+      .select("id, title, target, period, archived_at")
+      .eq("org_id", org.orgId)
+      .eq("title", createdTitle);
+    if (createdError) throw createdError;
+    expect(createdObjectives).toHaveLength(1);
+    expect(createdObjectives[0]).toMatchObject({ target: "8%", period: "2026", archived_at: null });
+
+    const { data: updatedPlan, error: updatedPlanError } = await admin
+      .from("strategic_plans")
+      .select("executive_summary, themes, profile")
+      .eq("org_id", org.orgId)
+      .eq("year", 2026)
+      .single();
+    if (updatedPlanError) throw updatedPlanError;
+    expect(updatedPlan.executive_summary).toContain("produtividade e margem");
+    expect(updatedPlan.themes).toEqual(["Produtividade com margem"]);
+    expect(updatedPlan.profile.risks).toEqual(["Execução sem evidência mensal"]);
+
+    const { data: documents, error: documentsError } = await admin
+      .from("plan_documents")
+      .select("content")
+      .eq("org_id", org.orgId)
+      .eq("session_id", sessionId)
+      .eq("type", "strategic_review");
+    if (documentsError) throw documentsError;
+    expect(documents).toHaveLength(1);
+    expect(documents[0].content.plano_anual_original_preservado).toBe(false);
+    expect(documents[0].content.plano_anual_atualizado).toBe(true);
+    expect(documents[0].content.atualizacao_plano_anual.mudancas_objetivos).toHaveLength(3);
+    expect(documents[0].content.documento_plano_anual_atualizado).toMatchObject({
+      titulo: "Plano Estratégico 2026",
+    });
+
+    const { data: annualDocuments, error: annualDocumentsError } = await admin
+      .from("plan_documents")
+      .select("title, version, content")
+      .eq("org_id", org.orgId)
+      .eq("session_id", sessionId)
+      .eq("type", "strategic");
+    if (annualDocumentsError) throw annualDocumentsError;
+    expect(annualDocuments).toHaveLength(1);
+    expect(annualDocuments[0].content.objetivos).toEqual(expect.arrayContaining([
+      expect.objectContaining({ titulo: createdTitle, meta: "8%" }),
+      expect.objectContaining({ titulo: "Objetivo anual atualizado R1B", meta: "20%" }),
+    ]));
+    expect(annualDocuments[0].content.objetivos).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ titulo: "Objetivo anual retirado R1B" }),
+    ]));
+
+    const retry = await confirm(sessionId);
+    expect(retry.status).toBe(200);
+    expect(await countObjectivesByTitle(createdTitle)).toBe(1);
+  });
+
+  it("R1B: fechamento anual preserva o ciclo encerrado mesmo se a proposta tentar alterá-lo", async () => {
+    const originalTitle = "Objetivo anual encerrado R1B";
+    const hierarchy = await seedAnnualHierarchy(org.areas.comercialId, originalTitle);
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: null,
+      user_id: org.owner.id,
+      type: "strategic_review",
+      period: "2026",
+      pending_proposal: {
+        type: "apply_strategic_review",
+        period: "2026",
+        review_cycle: "year_end",
+        motivo_revisao: "Fechamento do exercício",
+        semester_review: {
+          executiveSummary: "O exercício foi encerrado e será usado como referência para o próximo ciclo.",
+        },
+        annual_plan_update: {
+          mode: "prepare_next_year",
+          objectiveChanges: [{
+            operation: "update",
+            objectiveId: hierarchy.strategic.id,
+            because: "Tentativa que deve ser recusada",
+            changes: { title: "Título que não pode substituir o ano encerrado" },
+          }],
+          nextYearBrief: {
+            executiveSummary: "Direcionamento inicial do próximo ciclo",
+            priorities: ["Preservar margem com crescimento"],
+          },
+        },
+      },
+    });
+
+    const { status, body } = await confirm(sessionId);
+    expect(status).toBe(400);
+    expect(body.error).toContain("não pode alterar o plano encerrado");
+
+    const { data: objective, error: objectiveError } = await admin
+      .from("objectives")
+      .select("title")
+      .eq("id", hierarchy.strategic.id)
+      .single();
+    if (objectiveError) throw objectiveError;
+    expect(objective.title).toBe(originalTitle);
+
+    const { count, error: countError } = await admin
+      .from("plan_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org.orgId)
+      .eq("session_id", sessionId);
+    if (countError) throw countError;
+    expect(count).toBe(0);
+  });
 });

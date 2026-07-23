@@ -190,7 +190,7 @@ export async function answerDocumentQuestion(
 
   if (!document) {
     const typeText = type === "strategic_review"
-      ? "Revisão Semestral"
+      ? "Revisão Estratégica"
       : targetLabel(type === "strategic" ? "strategic" : type === "quarterly" || type === "quarter_close" ? "quarterly" : "monthly");
     const areas = await loadActiveAreas(client, params.orgId);
     const areaName = areas.find((area: any) => area.id === areaId)?.name;

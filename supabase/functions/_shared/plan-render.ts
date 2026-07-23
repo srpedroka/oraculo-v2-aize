@@ -146,6 +146,8 @@ function strategicReviewBlock(content: any) {
   const adjustments = asArray<any>(content?.ajustes);
   const review = asRecord(content?.revisao_semestre);
   const plan = asRecord(content?.plano_segundo_semestre);
+  const annualUpdate = asRecord(content?.atualizacao_plano_anual);
+  const objectiveChanges = asArray<any>(annualUpdate.mudancas_objetivos);
   const priorities = asArray<any>(plan.prioridades);
   if (!adjustments.length && !asText(content?.motivo_revisao) && !asText(review.resumo_executivo) && !priorities.length) return "";
   const lines = ["*Revisão do primeiro semestre*"];
@@ -163,8 +165,19 @@ function strategicReviewBlock(content: any) {
   if (adjustments.length) {
     lines.push("", "*Ajustes explícitos no plano anual*");
     lines.push(...adjustments.map((adjustment) => `- ${asText(adjustment.titulo, "Objetivo")}: ${asText(adjustment.campo)} de ${asText(adjustment.de)} para ${asText(adjustment.para)}${asText(adjustment.porque) ? `, porque ${asText(adjustment.porque)}` : ""}`));
-  } else if (content?.plano_anual_original_preservado === true) {
+  }
+  if (objectiveChanges.length) {
+    lines.push("", "*Mudanças estruturais no plano anual*");
+    lines.push(...objectiveChanges.map((change) => {
+      const operation = asText(change.operacao);
+      const operationLabel = operation === "create" ? "Criado" : operation === "archive" ? "Retirado" : "Atualizado";
+      return `- ${operationLabel}: ${asText(change.titulo, "Objetivo")}${asText(change.porque) ? `, porque ${asText(change.porque)}` : ""}`;
+    }));
+  }
+  if (content?.plano_anual_original_preservado === true) {
     lines.push("", "O Plano Estratégico Anual original foi preservado sem alteração de objetivos.");
+  } else if (content?.plano_anual_atualizado === true) {
+    lines.push("", "O Plano Estratégico Anual vigente foi atualizado. A versão anterior permanece no histórico.");
   }
   return lines.join("\n");
 }

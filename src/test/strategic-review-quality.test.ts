@@ -22,11 +22,13 @@ describe("strategic review adaptive quality", () => {
     expect(conductor).toContain("Se ele oferecer arquivo, aceite e aguarde a leitura");
   });
 
-  it("preserves the annual plan while allowing an evidence-based semester direction", () => {
-    expect(conductor).toContain("A revisão não apaga, recria ou substitui o Plano Estratégico Anual");
-    expect(conductor).toContain("Só altere objetivos estratégicos existentes");
-    expect(conductor).toContain("Novas prioridades do segundo semestre ficam no documento da revisão");
+  it("preserves history while allowing an explicit, evidence-based annual plan revision", () => {
+    expect(conductor).toContain("O histórico nunca é apagado");
+    expect(conductor).toContain("No meio do ano, a revisão pode atualizar o plano vigente");
+    expect(conductor).toContain("Nunca transforme automaticamente toda prioridade do segundo semestre em objetivo anual");
     expect(conductor).toContain("Não invente número, resultado, causalidade, decisão, responsável ou prazo");
-    expect(conductor).toContain("plano anual original permanece intacto");
+    expect(conductor).toContain("No fechamento do ano, preserve o plano do ano encerrado");
+    expect(conductor).toContain('annual_plan_update.mode = "update_current_year"');
+    expect(conductor).toContain('annual_plan_update.mode = "prepare_next_year"');
   });
 });

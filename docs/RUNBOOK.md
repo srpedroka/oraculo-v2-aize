@@ -953,6 +953,29 @@ Diagnóstico:
 
 Incidente de 2026-07-13: a frase "Planejar o calendário de migração" abriu uma sessão `strategic/2026`, sobrescreveu o plano anual e gerou documento anual com conteúdo Comercial/T3. A revisão operacional permitiu restaurar o anual exatamente; o conteúdo foi reconstruído como Comercial/T3 e os registros errados foram arquivados.
 
+## Problema: PDF da revisao incompleto ou plano anual nao atualizado
+
+1. Compare o `plan_documents.type = strategic_review` salvo com o PDF. O PDF
+   deve conter leitura executiva, avancos, lacunas, resultados por area,
+   direcionamento, prioridades e impacto no plano anual.
+2. Se o documento estiver completo e o PDF parcial, revise
+   `_shared/plan-pdf.ts`; nao regenere a analise por IA.
+3. Pedido como "reenvie o arquivo da revisao" deve herdar o tipo da sessao.
+   `inferWhatsAppDocumentType()` nao pode converter `revisao` isolada em
+   `month_close`.
+4. Antes de confirmar uma revisao que muda o plano, confira
+   `annual_plan_update.mode = update_current_year` e o diff de todos os blocos
+   e objetivos. Deve existir uma unica pergunta de confirmacao.
+5. Depois de confirmar, verifique na mesma sessao:
+   - um documento `strategic_review`;
+   - uma nova versao `strategic`;
+   - `plano_anual_atualizado = true`;
+   - snapshots em `operational_revisions`;
+   - ausencia de duplicatas no retry.
+6. Em `review_cycle = year_end`, o servidor deve recusar
+   `update_current_year`. O resultado esperado e plano encerrado preservado +
+   briefing para o proximo ano.
+
 ## Problema: arquivo enviado pelo WhatsApp nao direciona o plano
 
 Fluxo esperado:

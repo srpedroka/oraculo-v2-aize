@@ -98,4 +98,46 @@ describe("PlanDocumentView", () => {
     expect(screen.getByText("O relatório semanal consolidou o resultado")).toBeInTheDocument();
     expect(screen.queryByText("Referência")).not.toBeInTheDocument();
   });
+
+  it("expõe a atualização versionada do plano anual na revisão", () => {
+    const document: PlanDocument = {
+      id: "document-review-update",
+      orgId: "org-review",
+      areaId: null,
+      sessionId: "session-review-update",
+      type: "strategic_review",
+      origin: "session",
+      period: "2026",
+      title: "Revisão Semestral 2026",
+      version: 3,
+      createdBy: "owner-review",
+      createdAt: "2026-07-23T12:00:00.000Z",
+      content: {
+        empresa: "Empresa R1B",
+        tipo: "strategic_review",
+        periodo: "2026",
+        plano_anual_original_preservado: false,
+        plano_anual_atualizado: true,
+        atualizacao_plano_anual: {
+          modo: "update_current_year",
+          mudancas_objetivos: [{
+            operacao: "update",
+            objetivo_id: "objective-review",
+            titulo: "Evolução da fábrica",
+            porque: "As evidências mostraram perda de produtividade",
+            antes: { titulo: "Evolução da fábrica", meta: "10%", prazo: "2026-12-31" },
+            depois: { titulo: "Evolução da fábrica", meta: "20%", prazo: "2026-12-31" },
+          }],
+        },
+      },
+    };
+
+    render(<PlanDocumentView document={document} />);
+
+    expect(screen.getByText("Atualização do plano anual")).toBeInTheDocument();
+    expect(screen.getByText("Atualizado: Evolução da fábrica")).toBeInTheDocument();
+    expect(screen.getByText(/Meta: 10%/)).toBeInTheDocument();
+    expect(screen.getByText(/Meta: 20%/)).toBeInTheDocument();
+    expect(screen.getByText(/versão anterior permanece no histórico/i)).toBeInTheDocument();
+  });
 });

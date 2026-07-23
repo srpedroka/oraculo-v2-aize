@@ -4,6 +4,18 @@ Data: 2026-07-19
 
 Status: **ATIVO - Plano 3 concluido; F1-F4 ativas no ciclo real R1B**
 
+Atualizacao de 2026-07-23 (R1B): a conducao real e o documento salvo no app
+foram bons, mas o gate nao foi aprovado. O PDF enviado no WhatsApp perdeu quase
+todo o conteudo, o pedido de reenvio caiu em fechamento mensal e a revisao
+preservou o Plano Estrategico Anual quando o owner queria atualiza-lo. A
+correcao local iguala app/PDF/WhatsApp, permite atualizacao transacional e
+reversivel do plano vigente com uma confirmacao, gera nova versao canonica
+anual e preserva o ano encerrado na revisao de fim de ano. O gate de staging
+passou com 594 unitarios, 32 arquivos de integracao, 7 provas de seguranca,
+lint e build. Aguarda release e reteste real. O progresso permanece 52,5%
+geral e 50% no Plano 4.
+Fonte: `plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
+
 Atualizacao de 2026-07-23: o owner autorizou o rollout integral das Fases 1 a
 4 na unica empresa real acessivel, Gaam/Aize, para sessoes estruturadas no app
 e no WhatsApp. Antes da ativacao, foi criado e verificado um backup externo de
@@ -1227,10 +1239,10 @@ calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: apresentar e aprovar a ativacao piloto da F4 de
-`plans/2026-07-22-equilibrio-da-ia.md`. F1 a F4 estao publicadas em producao,
-com 90% internos, mas a flag permanece desligada por padrao. Depois de liga-la
-somente na empresa piloto, o owner conduz a R1B real com o Plano Anual e seus
-relatorios de T1/T2, avalia a conversa e as duas secoes do pacote antes de uma
-unica confirmacao. Evidencia do release:
-`plans/ddr/Equilibrio-IA-F4-producao.md`.
+Proximo passo: publicar Functions e frontend pelo release protegido e repetir
+somente a confirmacao real com o
+owner. O gate exige PDF completo no WhatsApp, reenvio contextual, Plano
+Estrategico vigente atualizado quando confirmado, nova versao canonica e
+historico anterior preservado. Evidencias:
+`plans/ddr/Equilibrio-IA-F4-producao.md` e
+`plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.

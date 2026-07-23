@@ -25,7 +25,7 @@ const SESSION_TYPE_LABEL = {
   monthly: "Plano Mensal",
   month_close: "Fechamento do Mês",
   quarter_close: "Fechamento do Trimestre",
-  strategic_review: "Revisão Semestral",
+  strategic_review: "Revisão Estratégica",
 };
 
 const SESSION_PHASES = {
@@ -74,7 +74,7 @@ function proposalTitle(proposal: Record<string, unknown> | null) {
   if (type === "save_monthly_plan") return "Plano Mensal";
   if (type === "month_close") return "Fechamento do Mês";
   if (type === "quarter_close") return "Fechamento do Trimestre";
-  if (type === "apply_strategic_review") return "Revisão Semestral";
+  if (type === "apply_strategic_review") return "Revisão Estratégica";
   return "Proposta";
 }
 
@@ -506,10 +506,16 @@ function CloseProposalPreview({ proposal }: { proposal: Record<string, unknown> 
 
 function fieldLabel(value: unknown) {
   const field = asText(value);
+  if (field === "title") return "Título";
+  if (field === "type") return "Tipo";
+  if (field === "result") return "Resultado";
   if (field === "metric") return "Indicador";
   if (field === "target") return "Meta";
   if (field === "current") return "Valor atual";
   if (field === "deadline") return "Prazo";
+  if (field === "owner") return "Responsável";
+  if (field === "evidence_plan" || field === "evidencePlan") return "Fonte de evidência";
+  if (field === "deliverables") return "Entregas";
   if (field === "status") return "Status";
   return field || "Campo";
 }
@@ -521,17 +527,50 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
   const unchanged = asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual);
   const semesterReview = asRecord(proposal.semester_review ?? proposal.revisao_semestre);
   const secondSemesterPlan = asRecord(proposal.second_semester_plan ?? proposal.plano_segundo_semestre);
+  const annualUpdate = asRecord(proposal.annual_plan_update ?? proposal.annualPlanUpdate ?? proposal.atualizacao_plano_anual);
+  const planChanges = asRecord(annualUpdate.planChanges ?? annualUpdate.plan_changes ?? annualUpdate.alteracoes_plano);
+  const objectiveChanges = asRecordArray(
+    annualUpdate.objectiveChanges ?? annualUpdate.objective_changes ?? annualUpdate.mudancas_objetivos,
+  );
+  const reviewCycle = asText(proposal.review_cycle ?? proposal.reviewCycle ?? proposal.ciclo_revisao);
+  const updateMode = asText(annualUpdate.mode ?? annualUpdate.modo)
+    || (adjustments.length || objectiveChanges.length || Object.keys(planChanges).length ? "update_current_year" : "preserve");
   const advances = asTextArray(semesterReview.confirmedAdvances ?? semesterReview.confirmed_advances ?? semesterReview.avancos_confirmados);
   const gaps = asTextArray(semesterReview.gaps ?? semesterReview.lacunas);
   const priorities = asRecordArray(secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades);
+  const planChangeLabels: Record<string, string> = {
+    executiveSummary: "Resumo executivo",
+    executive_summary: "Resumo executivo",
+    resumo_executivo: "Resumo executivo",
+    themes: "Temas",
+    temas: "Temas",
+    rituals: "Rituais",
+    rituais: "Rituais",
+    renunciations: "Renúncias",
+    renuncias: "Renúncias",
+    risks: "Riscos",
+    riscos: "Riscos",
+    pendingDecisions: "Decisões pendentes",
+    pending_decisions: "Decisões pendentes",
+    decisoes_pendentes: "Decisões pendentes",
+    historicalLessons: "Aprendizados históricos",
+    historical_lessons: "Aprendizados históricos",
+    aprendizados_historicos: "Aprendizados históricos",
+  };
 
   return (
     <div tabIndex={0} aria-label="Conteúdo da proposta" className="mt-3 max-h-[42vh] space-y-3 overflow-auto rounded-2xl border border-black/10 bg-white p-3 text-[12px] leading-5 text-[#5F6368]">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">Prévia do que será ajustado</p>
-        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">Revisão Semestral {asText(proposal.period ?? proposal.periodo)}</p>
+        <p className="mt-1 text-base font-semibold text-[#1D1D1F]">
+          {reviewCycle === "year_end" ? "Fechamento Estratégico" : "Revisão Semestral"} {asText(proposal.period ?? proposal.periodo)}
+        </p>
         <p className="text-[12px] text-text-tertiary">
-          O plano anual original será preservado. Só ajustes explícitos abaixo alteram objetivos existentes após sua confirmação.
+          {updateMode === "update_current_year"
+            ? "O plano anual vigente será atualizado somente com as mudanças explícitas abaixo, após sua confirmação."
+            : updateMode === "prepare_next_year"
+            ? "O ano encerrado será preservado. Este conteúdo orientará a criação do próximo Plano Estratégico."
+            : "O plano anual original será preservado sem alteração."}
         </p>
       </div>
 
@@ -554,9 +593,45 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
         </div>
       ) : null}
 
+      {Object.keys(planChanges).length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Blocos do plano anual que serão atualizados</p>
+          {Object.entries(planChanges).map(([key, value]) => (
+            <DetailLine
+              key={key}
+              label={planChangeLabels[key] ?? key}
+              value={Array.isArray(value) ? asTextArray(value).join("; ") : value}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {objectiveChanges.length ? (
+        <div className="space-y-2">
+          <p className="font-semibold text-[#1D1D1F]">Mudanças nos objetivos ({objectiveChanges.length})</p>
+          {objectiveChanges.map((change, index) => {
+            const operation = asText(change.operation ?? change.operacao);
+            const objective = asRecord(change.objective ?? change.objetivo ?? change.after ?? change.depois);
+            const changes = asRecord(change.changes ?? change.alteracoes ?? change.after ?? change.depois);
+            const operationLabel = operation === "create" ? "Criar" : operation === "archive" ? "Retirar" : "Atualizar";
+            return (
+              <div key={`${asText(change.objectiveId ?? change.objetivo_id)}-${index}`} className="border-t border-black/10 pt-2 first:border-t-0 first:pt-0">
+                <p className="font-semibold text-[#1D1D1F]">
+                  {operationLabel}: {asText(change.title ?? change.titulo ?? objective.title ?? objective.titulo) || `Objetivo ${index + 1}`}
+                </p>
+                {operation === "update"
+                  ? <DetailLine label="Campos" value={Object.keys(changes).map((key) => fieldLabel(key)).join(", ")} />
+                  : null}
+                <DetailLine label="Por quê" value={change.because ?? change.porque ?? change.justificativa} />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
       {adjustments.length ? (
         <div className="space-y-2">
-          <p className="font-semibold text-[#1D1D1F]">Vai mudar ({adjustments.length})</p>
+          <p className="font-semibold text-[#1D1D1F]">Alterações de campo ({adjustments.length})</p>
           {adjustments.map((adjustment, index) => (
             <div key={`${asText(adjustment.objectiveId ?? adjustment.objetivo_id)}-${index}`} className="rounded-xl border border-black/10 bg-[#FBFBFC] p-3">
               <p className="font-semibold text-[#1D1D1F]">{asText(adjustment.title ?? adjustment.titulo) || `Objetivo ${index + 1}`}</p>
@@ -568,7 +643,9 @@ function StrategicReviewProposalPreview({ proposal }: { proposal: Record<string,
             </div>
           ))}
         </div>
-      ) : <p className="rounded-xl bg-[#F0F7F2] px-3 py-2 text-[#295C3A]">Nenhum objetivo anual será alterado nesta gravação.</p>}
+      ) : updateMode === "preserve"
+        ? <p className="rounded-xl bg-[#F0F7F2] px-3 py-2 text-[#295C3A]">Nenhum objetivo anual será alterado nesta gravação.</p>
+        : null}
 
       <div className="border-t border-border-subtle pt-2">
         <p className="font-semibold text-text">Permanece igual</p>

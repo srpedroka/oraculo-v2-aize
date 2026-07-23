@@ -150,7 +150,7 @@ const CONDUCTORS: Record<string, { phases: string[]; prompt: string; opening: st
   strategic_review: {
     phases: STRATEGIC_REVIEW_PHASES,
     prompt: STRATEGIC_REVIEW_CONDUCTOR,
-    opening: "Vamos ajustar o plano anual sem recomeçar do zero. O que mudou no contexto e passou a exigir uma revisão agora?",
+    opening: "Vamos revisar o plano anual sem recomeçar do zero, no meio ou no fim do ano. O que mudou no contexto e precisa orientar esta revisão?",
   },
 };
 
@@ -925,6 +925,7 @@ async function loadLatestDocumentForSession(client: Client, session: any) {
     .select("*")
     .eq("org_id", session.org_id)
     .eq("session_id", session.id)
+    .eq("type", session.type)
     .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(1);

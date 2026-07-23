@@ -7,7 +7,7 @@ const DOCUMENT_TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
-  strategic_review: "Revisão Semestral",
+  strategic_review: "Revisão Estratégica",
   kpi_history: "Histórico de KPIs",
   company_profile: "Perfil da empresa",
 };
@@ -243,8 +243,21 @@ function StrategicReviewSection({ content }: { content: Record<string, unknown> 
   const adjustments = asArray<Record<string, unknown>>(content.ajustes);
   const review = asRecord(content.revisao_semestre);
   const plan = asRecord(content.plano_segundo_semestre);
+  const annualUpdate = asRecord(content.atualizacao_plano_anual);
   const areaResults = asArray<Record<string, unknown>>(review.resultados_por_area);
   const priorities = asArray<Record<string, unknown>>(plan.prioridades);
+  const objectiveChanges = asArray<Record<string, unknown>>(annualUpdate.mudancas_objetivos);
+  const snapshotSummary = (value: unknown) => {
+    const snapshot = asRecord(value);
+    return [
+      asText(snapshot.titulo),
+      asText(snapshot.resultado),
+      asText(snapshot.indicador) ? `Indicador: ${asText(snapshot.indicador)}` : "",
+      asText(snapshot.meta) ? `Meta: ${asText(snapshot.meta)}` : "",
+      asText(snapshot.prazo) ? `Prazo: ${asText(snapshot.prazo)}` : "",
+      asText(snapshot.responsavel) ? `Responsável: ${asText(snapshot.responsavel)}` : "",
+    ].filter(Boolean).join(" · ");
+  };
   return (
     <div className="space-y-5">
       <KeyValue label="Motivo" value={content.motivo_revisao} />
@@ -292,9 +305,30 @@ function StrategicReviewSection({ content }: { content: Record<string, unknown> 
           ))}
         </div>
       ) : null}
+      {objectiveChanges.length ? (
+        <div className="border-t border-border pt-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Atualização do plano anual</p>
+          <div className="mt-3 space-y-4">
+            {objectiveChanges.map((change, index) => {
+              const operation = asText(change.operacao);
+              const operationLabel = operation === "create" ? "Criado" : operation === "archive" ? "Retirado" : "Atualizado";
+              return (
+                <article key={`${asText(change.objetivo_id)}-${index}`} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
+                  <p className="text-sm font-semibold text-text">{operationLabel}: {asText(change.titulo, "Objetivo")}</p>
+                  <KeyValue label="Antes" value={snapshotSummary(change.antes)} />
+                  <KeyValue label="Depois" value={snapshotSummary(change.depois)} />
+                  <KeyValue label="Por quê" value={change.porque} />
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
       <p className="rounded-lg bg-surface px-3 py-2 text-xs leading-5 text-text-secondary">
         {content.plano_anual_original_preservado === true
           ? "O Plano Estratégico Anual original foi preservado."
+          : content.plano_anual_atualizado === true
+          ? "O Plano Estratégico Anual vigente foi atualizado com as mudanças confirmadas acima. A versão anterior permanece no histórico."
           : "A revisão mantém o plano anual como referência."}
       </p>
       {adjustments.length ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Ajustes explícitos no plano anual</p> : null}
@@ -412,7 +446,13 @@ export function PlanDocumentView({ document, printMode = false }: { document: Pl
   }
   if (type === "quarterly") addSection("quarterly", "Decisões do Trimestre", <QuarterlySection content={content} />);
   if (type === "monthly") addSection("monthly", "Decisões do Mês", <MonthlySection content={content} />);
-  if (type === "strategic_review") addSection("strategic-review", "Revisão do Semestre e Próximo Ciclo", <StrategicReviewSection content={content} />);
+  if (type === "strategic_review") {
+    addSection(
+      "strategic-review",
+      asText(content.ciclo_revisao) === "year_end" ? "Fechamento do Ano e Próximo Ciclo" : "Revisão do Semestre e Próximo Ciclo",
+      <StrategicReviewSection content={content} />,
+    );
+  }
   if (objectives.length) {
     addSection(
       "objectives",

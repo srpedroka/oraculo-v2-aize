@@ -6,7 +6,7 @@ Progresso especifico: **50%**
 
 Contribuicao atual ao geral: **7,5%**
 
-Status: **R1A APROVADA - EQUILIBRIO IA F1-F4 VERDE NO STAGING; RELEASE F4 ANTES DA R1B**
+Status: **R1A APROVADA - CORRECAO R1B VALIDADA NO STAGING**
 
 ## Objetivo
 
@@ -20,7 +20,7 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 | --- | ---: | --- | --- |
 | R1A. Preflight e contrato para o ciclo real | 50 | Aprovada em 2026-07-20 | Contexto semestral, contrato e testes aprovados |
 | Equilibrio da IA F1-F4 | 0 extra | F1-F4 concluidas no staging; 90% interno | Fala natural com gravacao server-side intacta |
-| R1B. Revisao e novo planejamento reais com owner | 50 | Aguarda release F4 | Duas secoes canonicas, uma confirmacao e qualidade aprovadas |
+| R1B. Revisao e novo planejamento reais com owner | 50 | Correcao validada no staging; aguarda release/reteste | Duas secoes canonicas, plano anual versionado, PDF completo, uma confirmacao e qualidade aprovadas |
 | **Total** | **100** | **Em andamento** | **50%** |
 
 ## Entregas
@@ -56,6 +56,28 @@ conversa pratica. Evidencias:
 `plans/ddr/Equilibrio-IA-F2-staging.md` e
 `plans/ddr/Equilibrio-IA-F3-staging.md` e
 `plans/ddr/Equilibrio-IA-F4-staging.md`.
+
+## Correcao aberta pela R1B real
+
+O owner concluiu uma boa conducao e aprovou a revisao real em 2026-07-23. O
+documento salvo no app ficou completo, mas o PDF do WhatsApp trouxe apenas o
+bloco inicial; o pedido de reenvio perdeu o contexto e pediu area; e o plano
+anual permaneceu intacto embora a intencao fosse atualiza-lo.
+
+A correcao validada no staging:
+
+- iguala o PDF do WhatsApp ao documento completo;
+- preserva a sessao ao reenviar "o arquivo da revisao";
+- permite preservar ou atualizar explicitamente o plano vigente;
+- atualiza, cria ou retira objetivos de forma transacional e reversivel;
+- gera nova versao canonica do Plano Estrategico quando houver mudanca;
+- no fim do ano preserva o ano encerrado e prepara o proximo plano.
+
+Fonte: `plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
+
+O gate tecnico passou com 594 unitarios, 32 arquivos de integracao, 7 provas
+de seguranca, lint, build e bundle. O progresso permanece em 50% ate release e
+reteste real aprovados.
 
 ## Evidencia R1A
 
