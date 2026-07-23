@@ -2,7 +2,7 @@
 
 Data: 2026-07-23
 
-Status: **VALIDADO NO STAGING; AGUARDA RELEASE E RETESTE REAL**
+Status: **PUBLICADO EM PRODUCAO; AGUARDA RETESTE REAL**
 
 ## Problema observado no ciclo real
 
@@ -107,12 +107,26 @@ Concluido:
 - previa web, WhatsApp, documento e PDF alinhados;
 - nenhum dado real foi alterado e nenhuma chamada paga de IA foi feita.
 
+Publicacao:
+
+- PR #28 aprovada e mesclada na `main` pelo commit `53d3a28`;
+- CI da `main` `30044748975` verde nos tres gates;
+- `oracle-session`, `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker`
+  publicadas no release protegido `30045174770`;
+- frontend publicado na Netlify no deploy `6a6283fbe10de3d0c8522063`;
+- verificacao protegida somente leitura `30045393468` verde para 31 Functions,
+  54/54 migrations, frontend, headers e estado publicado;
+- smoke autenticado abriu em producao o documento real completo, com leitura
+  executiva, resultados por area e prioridades do segundo semestre;
+- nenhuma migration, chamada paga de IA ou mutacao do plano real foi executada
+  durante o release.
+
 Pendente:
 
-- CI, merge e release protegido;
-- verificacao pos-deploy;
 - reteste real do owner com uma unica confirmacao;
-- confirmar no WhatsApp o PDF completo e o reenvio sem nova pergunta de area.
+- confirmar no WhatsApp o PDF completo e o reenvio sem nova pergunta de area;
+- executar uma nova revisao com mudanca anual explicita para comprovar a nova
+  versao do plano vigente. A revisao ja gravada nao e alterada retroativamente.
 
 ## Progresso
 
