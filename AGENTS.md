@@ -612,8 +612,10 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Progresso oficial: geral 52,5%, Plano 3 100% e Plano 4 50%. Antes da R1B, o
   owner aprovou `plans/2026-07-22-equilibrio-da-ia.md`: F1-F4 devolvem
   naturalidade a fala mantendo gravacao server-side; F5 fica apos o piloto.
-  F1 a F4 foram implementadas, aprovadas no staging e publicadas em producao
-  com a flag desligada por padrao. A F1 passou
+  F1 a F4 foram implementadas, aprovadas no staging e publicadas em producao.
+  Em 2026-07-23, depois de backup externo verificado de 612 registros, o owner
+  autorizou o rollout integral e `prose_split_enabled` foi ligada na unica
+  empresa real acessivel, Gaam/Aize, para app e WhatsApp. A F1 passou
   no piloto trimestral 8/8 e foi aceita para continuidade. A F2 substituiu seis
   envelopes de fala por situacoes seguras, mantendo estado, fase e proposta no
   servidor. A F3 separou defeitos de dado de observacoes de estilo: na mesma
@@ -626,8 +628,11 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   Custo total F4 US$ 0,211855; consumo estimado do ciclo US$ 0,410834. O pacote
   entrou pela PR #21 e a correcao aditiva/CI pela PR #25; CI final
   `29965071770`, migration `29965389449` e Functions `29965501405` verdes.
-  Sem deploy do frontend ou custo adicional. Proxima acao: aprovar a ativacao
-  da flag somente na empresa piloto e depois executar a R1B.
+  O rollout nao exigiu deploy, migration ou mudanca de frontend. Planning
+  `gpt-5.4`, background `grok-4.3` e a saude do WhatsApp foram validados;
+  nenhuma linha nova de custo foi registrada e a sessao R1B real permaneceu
+  intacta. Proxima acao: o owner executar a R1B e testar planos trimestrais,
+  mensais e fechamentos na pratica; F5 fica depois da observacao.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e

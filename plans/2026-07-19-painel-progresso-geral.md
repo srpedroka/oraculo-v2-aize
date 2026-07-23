@@ -1,6 +1,6 @@
 # Painel de progresso do plano geral do Oraculo
 
-Data-base: 2026-07-22
+Data-base: 2026-07-23
 
 Status: **ATIVO - fonte oficial das porcentagens**
 
@@ -16,7 +16,7 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: aprovar a ativacao da F4 somente na empresa piloto e executar a R1B real**
+**Proxima acao: executar a R1B e os demais rituais reais com F1-F4 ativas em producao**
 
 **Subplano corretivo Equilibrio da IA: 90% (nao altera a porcentagem geral)**
 
@@ -33,7 +33,10 @@ rodada geral passou com fechamento em media 92,50; custo F4 US$ 0,211855 e
 consumo estimado do ciclo US$ 0,410834. Cleanup concluido. F1-F4 foram
 publicadas em producao pela PR #21 e complementadas pela PR #25; a migration e
 as seis Functions passaram nos releases protegidos `29965389449` e
-`29965501405`. A flag continua desligada para todas as empresas. Evidencias:
+`29965501405`. Em 2026-07-23, depois de backup externo verificado, o owner
+autorizou o rollout integral e a flag foi ligada na unica empresa real
+acessivel, Gaam/Aize, para app e WhatsApp. Planning, background e saude do
+WhatsApp foram validados; a sessao real em andamento ficou intacta. Evidencias:
 `plans/ddr/Equilibrio-IA-F1-staging.md` e
 `plans/ddr/Equilibrio-IA-F2-staging.md` e
 `plans/ddr/Equilibrio-IA-F3-staging.md` e
@@ -163,7 +166,7 @@ Antes da R1B, o owner aprovou em 2026-07-22 o subplano corretivo
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
 | [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 100% | 10,0% | Concluido |
-| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | Equilibrio IA F1-F4 antes da R1B |
+| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | F1-F4 ativas; R1B real em execucao |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [7. Acabamento e operacao assistida](especificos/07-acabamento-e-operacao-assistida.md) | 10% | 0% | 0,0% | Nao iniciado |
@@ -222,7 +225,7 @@ Antes de executar a proxima fatia:
 Plano geral: 52,5%
 Plano especifico: Revisao Semestral Estrategica - 50,0%
 Proxima fatia mestre: R1B - vale 50 pontos do especifico e 7,5 pontos do geral
-Subplano atual: ativacao piloto da F4 - 90% interno e 0 ponto adicional
+Subplano atual: F1-F4 ativas em producao - 90% interno e 0 ponto adicional
 Se aprovada: especifico 100,0% | geral 60,0%
 ```
 

@@ -2,7 +2,7 @@
 
 Data: 2026-07-22
 
-Status: **EM EXECUCAO - F1 A F4 CONCLUIDAS NO STAGING; RELEASE F4 E O PROXIMO GATE**
+Status: **EM EXECUCAO - F1 A F4 ATIVAS EM PRODUCAO; R1B PRATICA E O PROXIMO GATE**
 
 Regido por:
 
@@ -76,10 +76,10 @@ O plano de origem foi preservado com quatro correcoes obrigatorias:
 
 | Fase | Peso | Estado | Gate principal |
 | --- | ---: | --- | --- |
-| F1. Destilar o prompt | 20% | Aprovada para continuidade; qualidade global na pratica | Prompt unico, testes e piloto natural |
-| F2. Situacoes em vez de templates | 25% | Gate tecnico aprovado no staging | Modelo fala; deteccoes permanecem |
-| F3. Estilo em observacao | 20% | Gate aprovado no staging | So defeito de dado regenera |
-| F4. Separar prosa e estrutura | 25% | Gate aprovado no staging | Flag por empresa, dados consistentes |
+| F1. Destilar o prompt | 20% | Ativa em producao; qualidade global na pratica | Prompt unico, testes e piloto natural |
+| F2. Situacoes em vez de templates | 25% | Ativa em producao | Modelo fala; deteccoes permanecem |
+| F3. Estilo em observacao | 20% | Ativa em producao | So defeito de dado regenera |
+| F4. Separar prosa e estrutura | 25% | Ativa na empresa real do owner | Flag por empresa, dados consistentes |
 | F5. Limpeza e E2E | 10% | Bloqueada pelo piloto | Codigo morto removido e regressao verde |
 | **Total** | **100%** | **90% concluido** | - |
 
@@ -348,15 +348,20 @@ Gerar a fala em texto livre e extrair a estrutura por uma segunda chamada
 - migration e seis Functions publicadas somente no staging; frontend, dados
   reais e producao permanecem intactos.
 
-Evidencia detalhada: `plans/ddr/Equilibrio-IA-F4-staging.md`.
+Evidencias detalhadas:
+`plans/ddr/Equilibrio-IA-F4-staging.md` e
+`plans/ddr/Equilibrio-IA-F4-producao.md`.
 
 ## 11. R1B entre F4 e F5
 
-Com F1-F4 aprovadas e a flag ativa apenas na empresa piloto, o owner executa a
-R1B real em producao: Revisao do Primeiro Semestre e Plano do Segundo Semestre,
-com o material real de T1/T2, uma conferencia e uma confirmacao. Esse gate mede
-naturalidade, profundidade estrategica, fidelidade, consistencia dos documentos
-e custo. A aprovacao da R1B eleva o Plano 4 e o plano geral conforme o painel.
+Com F1-F4 aprovadas e ativas na unica empresa real acessivel ao owner, o owner
+executa a R1B e os demais rituais em producao: Revisao do Primeiro Semestre e
+Plano do Segundo Semestre, planos trimestrais, planos mensais e fechamentos,
+usando contexto real. A R1B usa o material real de T1/T2, uma conferencia e
+uma confirmacao. Esse gate mede naturalidade, profundidade estrategica,
+fidelidade, consistencia dos documentos e custo. A aprovacao da R1B eleva o
+Plano 4 e o plano geral conforme o painel; os demais testes alimentam a
+observacao que antecede a F5.
 
 ## 12. Fase 5 - Limpeza, documentacao e E2E
 
