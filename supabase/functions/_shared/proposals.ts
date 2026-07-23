@@ -9,7 +9,18 @@ import { assertImportedQuarterlyReferences } from "./untrusted-content.ts";
 type Client = any;
 
 type CloseStatus = "on_track" | "at_risk" | "late" | "done";
-type StrategicReviewField = "metric" | "target" | "current" | "deadline" | "status";
+type StrategicReviewField =
+  | "title"
+  | "type"
+  | "result"
+  | "metric"
+  | "target"
+  | "current"
+  | "deadline"
+  | "owner"
+  | "evidence_plan"
+  | "deliverables"
+  | "status";
 
 function asArray<T = any>(value: unknown): T[] {
   return Array.isArray(value) ? value as T[] : [];
@@ -26,6 +37,17 @@ function asTextArray(value: unknown) {
 
 function asRecord(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function hasOwn(value: Record<string, any>, key: string) {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function firstOwnedValue(value: Record<string, any>, keys: string[]) {
+  for (const key of keys) {
+    if (hasOwn(value, key)) return { found: true, value: value[key] };
+  }
+  return { found: false, value: undefined };
 }
 
 function normalizeSemesterReview(value: unknown) {
@@ -115,10 +137,16 @@ function asCloseStatus(value: unknown): CloseStatus {
 
 function asStrategicReviewField(value: unknown): StrategicReviewField | null {
   const text = asText(value).toLowerCase();
+  if (text === "title" || text === "titulo" || text === "título") return "title";
+  if (text === "type" || text === "tipo") return "type";
+  if (text === "result" || text === "resultado" || text === "resultado_esperado") return "result";
   if (text === "metric" || text === "indicador" || text === "metrica" || text === "métrica") return "metric";
   if (text === "target" || text === "meta") return "target";
   if (text === "current" || text === "atual" || text === "valor_atual" || text === "numero" || text === "número") return "current";
   if (text === "deadline" || text === "prazo") return "deadline";
+  if (text === "owner" || text === "responsavel" || text === "responsável") return "owner";
+  if (text === "evidence_plan" || text === "evidenceplan" || text === "fonte" || text === "evidencia" || text === "evidência") return "evidence_plan";
+  if (text === "deliverables" || text === "entregas" || text === "estrategias" || text === "estratégias") return "deliverables";
   if (text === "status") return "status";
   return null;
 }
@@ -160,16 +188,59 @@ function snapshotStrategicObjective(objective: any) {
     status: asText(objective.status),
     progresso: Number(objective.progress ?? 0),
     responsavel: asText(objective.owner),
+    fonte: asText(objective.evidence_plan),
+    entregas: asTextArray(objective.deliverables),
+    tipo: asText(objective.type),
     periodo: asText(objective.period),
   };
 }
 
 function strategicReviewValue(objective: any, field: StrategicReviewField) {
+  if (field === "title") return asText(objective.title);
+  if (field === "type") return asText(objective.type);
+  if (field === "result") return asText(objective.result);
   if (field === "metric") return asText(objective.metric);
   if (field === "target") return asText(objective.target);
   if (field === "current") return asText(objective.current);
   if (field === "deadline") return asText(objective.deadline);
+  if (field === "owner") return asText(objective.owner);
+  if (field === "evidence_plan") return asText(objective.evidence_plan);
+  if (field === "deliverables") return asTextArray(objective.deliverables).join("; ");
   return asText(objective.status);
+}
+
+function normalizeStrategicReviewValue(field: StrategicReviewField, value: unknown) {
+  if (field === "deadline") {
+    const deadline = cleanDate(value);
+    if (!deadline) throw new Error("Prazo da revisão estratégica precisa estar em formato AAAA-MM-DD");
+    return deadline;
+  }
+  if (field === "status") return asCloseStatus(value);
+  if (field === "type") return asObjectiveType(value);
+  if (field === "deliverables") return asTextArray(value);
+  const text = asText(value);
+  if (!text) throw new Error("Cada alteração do plano anual precisa informar o novo valor");
+  return text;
+}
+
+function strategicReviewDisplayValue(value: unknown) {
+  return Array.isArray(value) ? asTextArray(value).join("; ") : asText(value);
+}
+
+function strategicPlanSnapshot(plan: any) {
+  if (!plan) return null;
+  const profile = asRecord(plan.profile);
+  return {
+    id: plan.id,
+    ano: Number(plan.year),
+    resumo_executivo: asText(plan.executive_summary),
+    temas: asTextArray(plan.themes),
+    rituais: asTextArray(plan.rituals),
+    renuncias: asTextArray(profile.renunciations),
+    riscos: asTextArray(profile.risks),
+    decisoes_pendentes: asTextArray(profile.pendingDecisions),
+    aprendizados_historicos: asTextArray(profile.historicalLessons),
+  };
 }
 
 function normalizeDecision(value: unknown) {
@@ -1012,27 +1083,115 @@ async function nextPlanDocumentVersion(client: Client, orgId: string, areaId: st
 async function saveStrategicReview(client: Client, session: any, proposal: any, userId: string) {
   if (session.area_id) throw new Error("Revisão estratégica é do plano da empresa");
 
+  const period = asText(proposal.period ?? proposal.periodo, session.period);
+  const year = yearFromPeriod(period);
+  const cycleValue = asText(proposal.review_cycle ?? proposal.reviewCycle ?? proposal.ciclo_revisao).toLowerCase();
+  const reviewCycle = cycleValue === "year_end" || cycleValue === "fim_ano" || cycleValue === "anual"
+    ? "year_end"
+    : "midyear";
+  const annualPlanUpdate = asRecord(proposal.annual_plan_update ?? proposal.annualPlanUpdate ?? proposal.atualizacao_plano_anual);
+  const planChanges = asRecord(annualPlanUpdate.planChanges ?? annualPlanUpdate.plan_changes ?? annualPlanUpdate.alteracoes_plano);
+  const nextYearBrief = asRecord(
+    annualPlanUpdate.nextYearBrief ?? annualPlanUpdate.next_year_brief ?? annualPlanUpdate.direcionamento_proximo_ano,
+  );
+  const rawObjectiveChanges = asArray<any>(
+    annualPlanUpdate.objectiveChanges ?? annualPlanUpdate.objective_changes ?? annualPlanUpdate.mudancas_objetivos,
+  );
+  const rawAdjustments = asArray<any>(proposal.adjustments ?? proposal.ajustes);
+  const planChangeKeys = [
+    "executiveSummary", "executive_summary", "resumo_executivo",
+    "themes", "temas", "rituals", "rituais", "renunciations", "renuncias",
+    "risks", "riscos", "pendingDecisions", "pending_decisions", "decisoes_pendentes",
+    "historicalLessons", "historical_lessons", "aprendizados_historicos",
+  ];
+  const hasPlanChanges = planChangeKeys.some((key) => hasOwn(planChanges, key));
+  const hasRequestedAnnualChanges = hasPlanChanges || rawObjectiveChanges.length > 0 || rawAdjustments.length > 0;
+  const requestedMode = asText(annualPlanUpdate.mode ?? annualPlanUpdate.modo).toLowerCase();
+  const updateMode = requestedMode
+    ? requestedMode
+    : hasRequestedAnnualChanges
+    ? "update_current_year"
+    : reviewCycle === "year_end"
+    ? "prepare_next_year"
+    : "preserve";
+
+  if (!["preserve", "update_current_year", "prepare_next_year"].includes(updateMode)) {
+    throw new Error("Modo inválido para atualização do plano anual");
+  }
+  if (updateMode === "preserve" && hasRequestedAnnualChanges) {
+    throw new Error("A proposta diz preservar o plano anual, mas também contém alterações");
+  }
+  if (reviewCycle === "midyear" && updateMode === "prepare_next_year") {
+    throw new Error("A revisão de meio do ano pode preservar ou atualizar o plano vigente");
+  }
+  if (reviewCycle === "year_end" && updateMode !== "prepare_next_year") {
+    throw new Error("O fechamento anual preserva o ano encerrado e prepara o próximo plano");
+  }
+  if (updateMode === "prepare_next_year" && hasRequestedAnnualChanges) {
+    throw new Error("O direcionamento do próximo ano não pode alterar o plano encerrado");
+  }
+  if (updateMode === "prepare_next_year" && Object.keys(nextYearBrief).length === 0) {
+    throw new Error("O fechamento anual precisa de um direcionamento estruturado para o próximo ano");
+  }
+  if (updateMode === "update_current_year" && !hasRequestedAnnualChanges) {
+    throw new Error("A proposta de atualização do plano anual não contém alterações explícitas");
+  }
+
   const { data: strategicObjectives, error: objectivesError } = await client
     .from("objectives")
     .select("*")
     .eq("org_id", session.org_id)
     .is("area_id", null)
     .eq("level", "strategic")
+    .eq("period", String(year))
     .is("archived_at", null)
     .order("created_at");
   if (objectivesError) throw objectivesError;
   if (!(strategicObjectives ?? []).length) throw new Error("Não há objetivos estratégicos para revisar");
 
+  const { data: strategicPlan, error: strategicPlanError } = await client
+    .from("strategic_plans")
+    .select("*")
+    .eq("org_id", session.org_id)
+    .eq("year", year)
+    .maybeSingle();
+  if (strategicPlanError) throw strategicPlanError;
+  if (updateMode === "update_current_year" && !strategicPlan) {
+    throw new Error(`Plano Estratégico ${year} não encontrado para atualização`);
+  }
+
   const objectivesById = new Map((strategicObjectives ?? []).map((objective: any) => [objective.id, objective]));
-  const rawAdjustments = asArray<any>(proposal.adjustments ?? proposal.ajustes);
   const semesterReview = normalizeSemesterReview(proposal.semester_review ?? proposal.revisao_semestre);
   const secondSemesterPlan = normalizeSecondSemesterPlan(proposal.second_semester_plan ?? proposal.plano_segundo_semestre, objectivesById);
-  if (!rawAdjustments.length && !hasSemesterReviewContent(semesterReview) && !hasSecondSemesterPlanContent(secondSemesterPlan)) {
+  if (!hasRequestedAnnualChanges && !hasSemesterReviewContent(semesterReview) && !hasSecondSemesterPlanContent(secondSemesterPlan)) {
     throw new Error("A revisão precisa conter diagnóstico do semestre, plano do segundo semestre ou ajuste explícito");
   }
 
   const updatesByObjective = new Map<string, Record<string, unknown>>();
-  const normalizedAdjustments = [];
+  const normalizedAdjustments: Array<Record<string, unknown>> = [];
+  const normalizedObjectiveChanges: Array<Record<string, unknown>> = [];
+  const archivedObjectiveIds = new Set<string>();
+
+  const queueObjectiveUpdate = (
+    objective: any,
+    field: StrategicReviewField,
+    requestedValue: unknown,
+    because: string,
+  ) => {
+    const nextValue = normalizeStrategicReviewValue(field, requestedValue);
+    const update = updatesByObjective.get(objective.id) ?? {};
+    update[field] = nextValue;
+    update.updated_by = userId;
+    updatesByObjective.set(objective.id, update);
+    normalizedAdjustments.push({
+      objetivo_id: objective.id,
+      titulo: asText(objective.title),
+      campo: field,
+      de: strategicReviewValue(objective, field),
+      para: strategicReviewDisplayValue(nextValue),
+      porque: because,
+    });
+  };
 
   for (const adjustment of rawAdjustments) {
     const objectiveId = asText(adjustment.objectiveId ?? adjustment.objective_id ?? adjustment.objetivo_id);
@@ -1045,36 +1204,150 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     const because = asText(adjustment.because ?? adjustment.porque ?? adjustment.justificativa);
     if (!because) throw new Error("Cada ajuste da revisão estratégica precisa de justificativa");
 
-    let nextValue: string | null = asText(adjustment.to ?? adjustment.para ?? adjustment.valor);
-    if (!nextValue) throw new Error("Cada ajuste precisa informar o novo valor");
+    queueObjectiveUpdate(objective, field, adjustment.to ?? adjustment.para ?? adjustment.valor, because);
+  }
 
-    const update = updatesByObjective.get(objective.id) ?? {};
-    if (field === "deadline") {
-      const deadline = cleanDate(nextValue);
-      if (!deadline) throw new Error("Prazo da revisão estratégica precisa estar em formato AAAA-MM-DD");
-      update.deadline = deadline;
-      nextValue = deadline;
-    } else if (field === "status") {
-      const status = asCloseStatus(nextValue);
-      update.status = status;
-      nextValue = status;
-    } else {
-      update[field] = nextValue;
+  for (const requestedChange of rawObjectiveChanges) {
+    const change = asRecord(requestedChange);
+    const operation = asText(change.operation ?? change.operacao).toLowerCase();
+    const because = asText(change.because ?? change.porque ?? change.justificativa);
+    if (!because) throw new Error("Cada mudança de objetivo precisa de justificativa");
+
+    if (operation === "update") {
+      const objectiveId = asText(change.objectiveId ?? change.objective_id ?? change.objetivo_id);
+      const objective = objectivesById.get(objectiveId);
+      if (!objective) throw new Error("Objetivo estratégico a atualizar não pertence ao plano anual desta empresa");
+      const fields = asRecord(change.changes ?? change.alteracoes ?? change.after ?? change.depois);
+      const fieldEntries = Object.entries(fields)
+        .map(([key, value]) => ({ field: asStrategicReviewField(key), value }))
+        .filter((entry): entry is { field: StrategicReviewField; value: unknown } => Boolean(entry.field));
+      if (!fieldEntries.length) throw new Error("Mudança de objetivo não contém campos válidos");
+      for (const entry of fieldEntries) queueObjectiveUpdate(objective, entry.field, entry.value, because);
+      normalizedObjectiveChanges.push({
+        operacao: "update",
+        objetivo_id: objective.id,
+        titulo: asText(objective.title),
+        porque: because,
+        antes: snapshotStrategicObjective(objective),
+      });
+      continue;
     }
-    updatesByObjective.set(objective.id, update);
 
-    normalizedAdjustments.push({
-      objetivo_id: objective.id,
-      titulo: asText(objective.title),
-      campo: field,
-      de: strategicReviewValue(objective, field),
-      para: nextValue,
-      porque: because,
-    });
+    if (operation === "create") {
+      const objective = asRecord(change.objective ?? change.objetivo ?? change.after ?? change.depois);
+      const title = asText(objective.title ?? objective.titulo);
+      const result = asText(objective.result ?? objective.resultado);
+      const metric = asText(objective.metric ?? objective.indicador);
+      const target = asText(objective.target ?? objective.meta);
+      const deadline = cleanDate(objective.deadline ?? objective.prazo);
+      const owner = asText(objective.owner ?? objective.responsavel);
+      const evidencePlan = asText(objective.source ?? objective.fonte ?? objective.evidencePlan ?? objective.evidence_plan);
+      if (!title || !result || !metric || !target || !deadline || !owner || !evidencePlan) {
+        throw new Error("Novo objetivo anual exige título, resultado, indicador, meta, prazo, responsável e fonte de evidência");
+      }
+      const inserted = await insertObjective(client, {
+        org_id: session.org_id,
+        area_id: null,
+        level: "strategic",
+        type: asObjectiveType(objective.type ?? objective.tipo),
+        title,
+        result,
+        metric,
+        target,
+        current: asText(objective.current ?? objective.atual ?? objective.baseline),
+        deadline,
+        owner,
+        evidence_plan: evidencePlan,
+        deliverables: asTextArray(objective.deliverables ?? objective.entregas ?? objective.strategies ?? objective.estrategias),
+        status: "on_track",
+        progress: 0,
+        period: String(year),
+      });
+      await applyProposedKpiLinks(client, session, inserted, objective, userId);
+      normalizedObjectiveChanges.push({
+        operacao: "create",
+        objetivo_id: inserted.id,
+        titulo: asText(inserted.title),
+        porque: because,
+        antes: null,
+        depois: snapshotStrategicObjective(inserted),
+      });
+      continue;
+    }
+
+    if (operation === "archive") {
+      const objectiveId = asText(change.objectiveId ?? change.objective_id ?? change.objetivo_id);
+      const objective = objectivesById.get(objectiveId);
+      if (!objective) throw new Error("Objetivo estratégico a retirar não pertence ao plano anual desta empresa");
+      const { error: archiveError } = await client.rpc("set_operational_item_archived", {
+        p_org_id: session.org_id,
+        p_entity_type: "objective",
+        p_entity_id: objective.id,
+        p_archived: true,
+        p_actor_id: userId,
+        p_reason: because,
+      });
+      if (archiveError) throw archiveError;
+      archivedObjectiveIds.add(objective.id);
+      normalizedObjectiveChanges.push({
+        operacao: "archive",
+        objetivo_id: objective.id,
+        titulo: asText(objective.title),
+        porque: because,
+        antes: snapshotStrategicObjective(objective),
+        depois: null,
+      });
+      continue;
+    }
+
+    throw new Error("Operação inválida na mudança de objetivo anual");
   }
 
   const before = (strategicObjectives ?? []).map(snapshotStrategicObjective);
+  const planBefore = strategicPlanSnapshot(strategicPlan);
+  let planWasUpdated = false;
+  if (updateMode === "update_current_year" && hasPlanChanges) {
+    const planUpdate: Record<string, unknown> = {
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    };
+    const executiveSummary = firstOwnedValue(planChanges, ["executiveSummary", "executive_summary", "resumo_executivo"]);
+    const themes = firstOwnedValue(planChanges, ["themes", "temas"]);
+    const rituals = firstOwnedValue(planChanges, ["rituals", "rituais"]);
+    if (executiveSummary.found) planUpdate.executive_summary = asText(executiveSummary.value);
+    if (themes.found) planUpdate.themes = asTextArray(themes.value);
+    if (rituals.found) planUpdate.rituals = asTextArray(rituals.value);
+
+    const profile = { ...asRecord(strategicPlan?.profile) };
+    const profileFields = [
+      { target: "renunciations", keys: ["renunciations", "renuncias"] },
+      { target: "risks", keys: ["risks", "riscos"] },
+      { target: "pendingDecisions", keys: ["pendingDecisions", "pending_decisions", "decisoes_pendentes"] },
+      { target: "historicalLessons", keys: ["historicalLessons", "historical_lessons", "aprendizados_historicos"] },
+    ];
+    let profileChanged = false;
+    for (const field of profileFields) {
+      const requested = firstOwnedValue(planChanges, field.keys);
+      if (!requested.found) continue;
+      profile[field.target] = asTextArray(requested.value);
+      profileChanged = true;
+    }
+    if (profileChanged) planUpdate.profile = profile;
+
+    const { error: planUpdateError } = await client
+      .from("strategic_plans")
+      .update(planUpdate)
+      .eq("id", strategicPlan.id)
+      .eq("org_id", session.org_id)
+      .eq("year", year);
+    if (planUpdateError) throw planUpdateError;
+    planWasUpdated = true;
+  }
+
   for (const [objectiveId, update] of updatesByObjective.entries()) {
+    if (archivedObjectiveIds.has(objectiveId)) {
+      throw new Error("O mesmo objetivo não pode ser atualizado e retirado na mesma revisão");
+    }
     const { error } = await client
       .from("objectives")
       .update(update)
@@ -1091,9 +1364,25 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .eq("org_id", session.org_id)
     .is("area_id", null)
     .eq("level", "strategic")
+    .eq("period", String(year))
     .is("archived_at", null)
     .order("created_at");
   if (updatedError) throw updatedError;
+
+  const { data: updatedStrategicPlan, error: updatedStrategicPlanError } = await client
+    .from("strategic_plans")
+    .select("*")
+    .eq("org_id", session.org_id)
+    .eq("year", year)
+    .maybeSingle();
+  if (updatedStrategicPlanError) throw updatedStrategicPlanError;
+
+  const afterById = new Map((updatedObjectives ?? []).map((objective: any) => [objective.id, objective]));
+  for (const change of normalizedObjectiveChanges) {
+    if (change.operacao === "update") {
+      change.depois = snapshotStrategicObjective(afterById.get(change.objetivo_id));
+    }
+  }
 
   const { data: organization, error: organizationError } = await client
     .from("organizations")
@@ -1102,7 +1391,58 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .maybeSingle();
   if (organizationError) throw organizationError;
 
-  const period = asText(proposal.period ?? proposal.periodo, session.period);
+  const annualPlanWasUpdated = planWasUpdated || normalizedAdjustments.length > 0 || normalizedObjectiveChanges.length > 0;
+  let updatedAnnualDocument: any = null;
+  if (annualPlanWasUpdated && updatedStrategicPlan) {
+    const { data: strategicProjects, error: strategicProjectsError } = await client
+      .from("strategic_projects")
+      .select("*")
+      .eq("org_id", session.org_id)
+      .eq("plan_id", updatedStrategicPlan.id)
+      .is("archived_at", null)
+      .order("created_at");
+    if (strategicProjectsError) throw strategicProjectsError;
+
+    const objectiveTitleById = new Map((updatedObjectives ?? []).map((objective: any) => [objective.id, asText(objective.title)]));
+    const profile = asRecord(updatedStrategicPlan.profile);
+    updatedAnnualDocument = await createDocumentForProposal(client, session, {
+      type: "save_strategic_plan",
+      year,
+      period: String(year),
+      profile,
+      drivers: asRecord(updatedStrategicPlan.drivers),
+      swot: asRecord(updatedStrategicPlan.swot),
+      themes: asTextArray(updatedStrategicPlan.themes),
+      rituals: asTextArray(updatedStrategicPlan.rituals),
+      executiveSummary: asText(updatedStrategicPlan.executive_summary),
+      renunciations: asTextArray(profile.renunciations),
+      risks: asTextArray(profile.risks),
+      pendingDecisions: asTextArray(profile.pendingDecisions),
+      historicalLessons: asTextArray(profile.historicalLessons),
+      objectives: (updatedObjectives ?? []).map((objective: any) => ({
+        id: objective.id,
+        title: asText(objective.title),
+        type: asText(objective.type),
+        result: asText(objective.result),
+        metric: asText(objective.metric),
+        target: asText(objective.target),
+        current: asText(objective.current),
+        deadline: asText(objective.deadline),
+        owner: asText(objective.owner),
+        source: asText(objective.evidence_plan),
+        deliverables: asTextArray(objective.deliverables),
+        status: asText(objective.status),
+        progress: Number(objective.progress ?? 0),
+      })),
+      projects: (strategicProjects ?? []).map((project: any) => ({
+        name: asText(project.name),
+        owner: asText(project.owner),
+        deadline: asText(project.deadline),
+        linkedObjectiveTitle: objectiveTitleById.get(project.linked_objective_id) ?? "",
+      })),
+    }, userId);
+  }
+
   const version = await nextPlanDocumentVersion(client, session.org_id, null, "strategic_review", period);
   const content = {
     empresa: asText(organization?.name, "Empresa"),
@@ -1116,14 +1456,34 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
       tipo_sessao: "strategic_review",
     },
     motivo_revisao: asText(proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason),
-    plano_anual_original_preservado: true,
+    ciclo_revisao: reviewCycle,
+    plano_anual_original_preservado: !annualPlanWasUpdated,
+    plano_anual_atualizado: annualPlanWasUpdated,
+    documento_plano_anual_atualizado: updatedAnnualDocument
+      ? {
+        id: updatedAnnualDocument.id,
+        titulo: updatedAnnualDocument.title,
+        versao: updatedAnnualDocument.version,
+      }
+      : null,
     revisao_semestre: semesterReview,
     plano_segundo_semestre: secondSemesterPlan,
     permanece_igual: asTextArray(proposal.unchanged ?? proposal.permaneceIgual ?? proposal.permanece_igual),
     ajustes: normalizedAdjustments,
+    atualizacao_plano_anual: {
+      modo: updateMode,
+      plano_antes: planBefore,
+      plano_depois: strategicPlanSnapshot(updatedStrategicPlan),
+      mudancas_objetivos: normalizedObjectiveChanges,
+    },
+    direcionamento_proximo_ano: nextYearBrief,
     antes: before,
     depois: (updatedObjectives ?? []).map(snapshotStrategicObjective),
   };
+
+  const documentTitle = reviewCycle === "year_end"
+    ? `Fechamento Anual e Direcionamento Estratégico ${period}`
+    : `Revisão Semestral e Plano do Segundo Semestre ${period}`;
 
   const { data: document, error: documentError } = await client
     .from("plan_documents")
@@ -1134,7 +1494,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
       type: "strategic_review",
       origin: "session",
       period,
-      title: `Revisão Semestral e Plano do Segundo Semestre ${period}`,
+      title: documentTitle,
       content,
       version,
       created_by: userId,
@@ -1143,10 +1503,13 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .single();
   if (documentError) throw documentError;
 
-  const adjustmentSummary = normalizedAdjustments.length
-    ? `${normalizedAdjustments.length} ajuste(s) explícito(s) aplicado(s)`
+  if (reviewCycle === "year_end") {
+    return `Fechamento anual gravado com o plano de ${year} preservado e o direcionamento do próximo ano preparado. Documento gerado: ${document.title} (v${document.version}).`;
+  }
+  const annualSummary = annualPlanWasUpdated
+    ? `plano anual atualizado com ${normalizedObjectiveChanges.length} mudança(s) estrutural(is), ${normalizedAdjustments.length} alteração(ões) de campo e nova versão do documento canônico`
     : "plano anual original preservado sem alteração de objetivo";
-  return `Revisão semestral gravada, com ${adjustmentSummary}. Documento gerado: ${document.title} (v${document.version}).`;
+  return `Revisão semestral gravada, com ${annualSummary}. Documento gerado: ${document.title} (v${document.version}).`;
 }
 
 export async function applyProposal(client: Client, session: any, proposal: any, userId: string) {

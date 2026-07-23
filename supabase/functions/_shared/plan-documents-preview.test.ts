@@ -121,6 +121,67 @@ describe("canonical plan document preview", () => {
     expect(whatsapp).toContain("Plano Estratégico Anual original foi preservado");
   });
 
+  it("projects explicit updates to the current annual plan before confirmation", () => {
+    const content = buildPlanDocumentPreview({
+      type: "apply_strategic_review",
+      period: "2026",
+      review_cycle: "midyear",
+      motivo_revisao: "Evidências do primeiro semestre mudaram as prioridades",
+      semester_review: {
+        executiveSummary: "A produtividade passou a ser a principal restrição do ano.",
+      },
+      second_semester_plan: {
+        focus: "Recuperar produtividade sem elevar custo fixo",
+      },
+      annual_plan_update: {
+        mode: "update_current_year",
+        planChanges: {
+          executiveSummary: "O segundo semestre prioriza produtividade e margem.",
+          themes: ["Produtividade com margem"],
+        },
+        objectiveChanges: [{
+          operation: "update",
+          objectiveId: "objective-a",
+          title: "Evolução da fábrica",
+          because: "As paradas reduziram a produtividade no primeiro semestre",
+          changes: { target: "20%", deadline: "2026-12-31" },
+        }, {
+          operation: "create",
+          because: "A margem exige uma prioridade explícita",
+          objective: {
+            title: "Recuperar margem operacional",
+            result: "Margem recuperada no segundo semestre",
+            metric: "Margem operacional",
+            target: "8%",
+            deadline: "2026-12-31",
+            owner: "Diretoria",
+            source: "DRE mensal",
+          },
+        }],
+      },
+    }, {
+      organizationName: "ORG_FIXTURE_A",
+      managerName: "PERSON_FIXTURE_A",
+      sessionType: "strategic_review",
+      period: "2026",
+    }) as any;
+
+    expect(content.plano_anual_original_preservado).toBe(false);
+    expect(content.plano_anual_atualizado).toBe(true);
+    expect(content.atualizacao_plano_anual).toMatchObject({
+      modo: "update_current_year",
+      alteracoes_plano: { themes: ["Produtividade com margem"] },
+      mudancas_objetivos: [
+        { operacao: "update", objetivo_id: "objective-a" },
+        { operacao: "create", titulo: "Recuperar margem operacional" },
+      ],
+    });
+    const whatsapp = renderPlanForWhatsApp(content, { version: 1, origin: "session" });
+    expect(whatsapp).toContain("Atualizado: Evolução da fábrica");
+    expect(whatsapp).toContain("Criado: Recuperar margem operacional");
+    expect(whatsapp).toContain("Plano Estratégico Anual vigente foi atualizado");
+  });
+
   it("renders repeated quarterly actions once as transversal execution", () => {
     const action = {
       description: "Publicar o padrão operacional",

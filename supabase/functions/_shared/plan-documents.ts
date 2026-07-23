@@ -216,11 +216,32 @@ function buildStrategicReviewContent(base: Record<string, unknown>, proposal: an
   }));
   const review = asRecord(proposal.semester_review ?? proposal.revisao_semestre);
   const plan = asRecord(proposal.second_semester_plan ?? proposal.plano_segundo_semestre);
+  const annualUpdate = asRecord(proposal.annual_plan_update ?? proposal.annualPlanUpdate ?? proposal.atualizacao_plano_anual);
+  const planChanges = asRecord(annualUpdate.planChanges ?? annualUpdate.plan_changes ?? annualUpdate.alteracoes_plano);
+  const objectiveChanges = asArray<any>(
+    annualUpdate.objectiveChanges ?? annualUpdate.objective_changes ?? annualUpdate.mudancas_objetivos,
+  ).map((change) => {
+    const objective = asRecord(change.objective ?? change.objetivo ?? change.after ?? change.depois);
+    return {
+      operacao: asText(change.operation ?? change.operacao),
+      objetivo_id: asText(change.objectiveId ?? change.objective_id ?? change.objetivo_id),
+      titulo: asText(change.title ?? change.titulo ?? objective.title ?? objective.titulo, "Objetivo"),
+      porque: asText(change.because ?? change.porque ?? change.justificativa),
+      alteracoes: asRecord(change.changes ?? change.alteracoes ?? change.after ?? change.depois),
+      objetivo: objective,
+    };
+  });
+  const updateMode = asText(annualUpdate.mode ?? annualUpdate.modo)
+    || (adjustments.length || objectiveChanges.length || Object.keys(planChanges).length ? "update_current_year" : "preserve");
+  const annualPlanPreserved = updateMode !== "update_current_year"
+    || (!adjustments.length && !objectiveChanges.length && !Object.keys(planChanges).length);
 
   return {
     ...base,
     motivo_revisao: asText(proposal.motivo_revisao ?? proposal.motivoRevisao ?? proposal.reason),
-    plano_anual_original_preservado: true,
+    ciclo_revisao: asText(proposal.review_cycle ?? proposal.reviewCycle ?? proposal.ciclo_revisao, "midyear"),
+    plano_anual_original_preservado: annualPlanPreserved,
+    plano_anual_atualizado: !annualPlanPreserved,
     revisao_semestre: {
       resumo_executivo: asText(review.executiveSummary ?? review.executive_summary ?? review.resumo_executivo),
       avancos_confirmados: firstFilledArray<string>(review.confirmedAdvances, review.confirmed_advances, review.avancos_confirmados),
@@ -257,6 +278,14 @@ function buildStrategicReviewContent(base: Record<string, unknown>, proposal: an
     },
     permanece_igual: firstFilledArray<string>(proposal.unchanged, proposal.permaneceIgual, proposal.permanece_igual),
     ajustes: adjustments,
+    atualizacao_plano_anual: {
+      modo: updateMode,
+      alteracoes_plano: planChanges,
+      mudancas_objetivos: objectiveChanges,
+    },
+    direcionamento_proximo_ano: asRecord(
+      annualUpdate.nextYearBrief ?? annualUpdate.next_year_brief ?? annualUpdate.direcionamento_proximo_ano,
+    ),
     antes: adjustments.map((adjustment) => ({
       id: adjustment.objetivo_id,
       titulo: adjustment.titulo,

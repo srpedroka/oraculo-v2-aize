@@ -16,7 +16,7 @@ custo. A soma dos oito pesos e 100 pontos.
 
 **Plano especifico atual: Plano 4 - Revisao Semestral Estrategica: 50,0%**
 
-**Proxima acao: executar a R1B e os demais rituais reais com F1-F4 ativas em producao**
+**Proxima acao: publicar a correcao R1B e repetir a confirmacao real**
 
 **Subplano corretivo Equilibrio da IA: 90% (nao altera a porcentagem geral)**
 
@@ -159,6 +159,14 @@ Antes da R1B, o owner aprovou em 2026-07-22 o subplano corretivo
 - por ser correcao dentro da R1, nao cria pontos extras nem altera 52,5% geral
   ou 50% no Plano 4 antes do gate R1B.
 
+Na R1B real de 2026-07-23, a conducao e o documento no app foram aprovados,
+mas o PDF do WhatsApp saiu parcial, o reenvio perdeu o tipo da sessao e o Plano
+Estrategico Anual nao foi atualizado. A correcao foi implementada localmente:
+PDF integral, reenvio contextual, atualizacao transacional/reversivel do plano,
+nova versao canonica anual e contrato de fechamento do ano. Aguarda staging,
+release e reteste real. Fonte:
+`plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
+
 ## 2. Os oito planos
 
 | Plano | Peso geral | Progresso especifico | Contribuicao geral | Estado |
@@ -166,7 +174,7 @@ Antes da R1B, o owner aprovou em 2026-07-22 o subplano corretivo
 | [1. Fundacao tecnica e qualidade](especificos/01-fundacao-tecnica-e-qualidade.md) | 25% | 100% | 25,0% | Concluido |
 | [2. Pesquisa de usabilidade](especificos/02-pesquisa-de-usabilidade.md) | 10% | 100% | 10,0% | Concluido |
 | [3. Calibracao pre-beta](especificos/03-calibracao-pre-beta.md) | 10% | 100% | 10,0% | Concluido |
-| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | F1-F4 ativas; R1B real em execucao |
+| [4. Revisao semestral estrategica](especificos/04-revisao-semestral-estrategica.md) | 15% | 50% | 7,5% | Correcao R1B aguarda staging/release/reteste |
 | [5. Beta coletivo](especificos/05-beta-coletivo.md) | 10% | 0% | 0,0% | Nao iniciado |
 | [6. Validacao operacional](especificos/06-validacao-operacional.md) | 15% | 0% | 0,0% | Nao iniciado |
 | [7. Acabamento e operacao assistida](especificos/07-acabamento-e-operacao-assistida.md) | 10% | 0% | 0,0% | Nao iniciado |

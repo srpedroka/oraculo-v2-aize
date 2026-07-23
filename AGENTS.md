@@ -631,8 +631,12 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   O rollout nao exigiu deploy, migration ou mudanca de frontend. Planning
   `gpt-5.4`, background `grok-4.3` e a saude do WhatsApp foram validados;
   nenhuma linha nova de custo foi registrada e a sessao R1B real permaneceu
-  intacta. Proxima acao: o owner executar a R1B e testar planos trimestrais,
-  mensais e fechamentos na pratica; F5 fica depois da observacao.
+  intacta. A R1B real seguinte aprovou conducao/documento no app, mas revelou
+  PDF parcial no WhatsApp, perda de contexto no reenvio e ausencia de
+  atualizacao do plano anual. A correcao validada no staging adiciona PDF
+  integral, reenvio contextual, atualizacao transacional/reversivel com nova versao canonica e
+  fechamento anual que preserva o ano encerrado. Aguarda staging/release/reteste;
+  F5 fica depois da observacao.
   Fontes:
   `plans/ddr/UX-C4-mobile-acessibilidade.md` e
   `plans/ddr/R1A-prontidao-contrato-briefing.md` e
@@ -640,7 +644,8 @@ Nao reverta mudancas de outro autor sem pedido explicito. Se encontrar worktree 
   `plans/ddr/Equilibrio-IA-F2-staging.md` e
   `plans/ddr/Equilibrio-IA-F3-staging.md` e
   `plans/ddr/Equilibrio-IA-F4-staging.md` e
-  `plans/ddr/Equilibrio-IA-F4-producao.md`.
+  `plans/ddr/Equilibrio-IA-F4-producao.md` e
+  `plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
 - A leitura de Markdown real na R1B foi corrigida e publicada em producao em
   2026-07-22: PR #19, merge `28bc422`, CI `29935040723` e release protegido
   `29935471951`. Foram publicadas somente `oracle-session`, `oracle-chat`,

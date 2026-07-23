@@ -418,6 +418,35 @@ describe("adaptive planning session guard Q4A", () => {
     expect(visibleQuestions(review)).toHaveLength(1);
   });
 
+  it("shows the annual-plan diff and asks for one confirmation in a midyear review", () => {
+    const reply = adaptiveFallbackReply(true, false, ["proposal_confirmation_count"], {
+      sessionType: "strategic_review",
+      proposal: {
+        type: "apply_strategic_review",
+        period: "2026",
+        review_cycle: "midyear",
+        semester_review: { executiveSummary: "A produtividade precisa virar a prioridade central." },
+        second_semester_plan: {
+          priorities: [{ title: "Recuperar produtividade", expectedResult: "20% de ganho no ano" }],
+        },
+        annual_plan_update: {
+          mode: "update_current_year",
+          planChanges: { themes: ["Produtividade com margem"] },
+          objectiveChanges: [{
+            operation: "create",
+            because: "A restrição apareceu nas evidências do semestre",
+            objective: { title: "Recuperar margem operacional" },
+          }],
+        },
+      },
+    });
+
+    expect(reply).toContain("Atualização do plano anual vigente");
+    expect(reply).toContain("Criar: Recuperar margem operacional");
+    expect(reply).toContain("atualizar o plano anual vigente");
+    expect(visibleQuestions(reply)).toHaveLength(1);
+  });
+
   it("rejects an empty annual proposal with the wrong year and asks for the concrete block", () => {
     const envelope = {
       reply: "O plano anual ficou pronto. Posso gravar?",

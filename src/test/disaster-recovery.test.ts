@@ -46,7 +46,9 @@ describe("Fatia 6F — recuperação de desastre", () => {
   });
 
   it("atualiza a contagem esperada de migrations do monitor", () => {
-    const migrationCount = readdirSync("supabase/migrations").filter((file) => file.endsWith(".sql")).length;
+    const migrationCount = readdirSync("supabase/migrations").filter((file) =>
+      /^\d{14}_[a-z0-9_]+\.sql$/.test(file)
+    ).length;
     expect(healthFunction).toContain(`EXPECTED_MIGRATION_COUNT = ${migrationCount}`);
   });
 

@@ -10,6 +10,12 @@ describe("envio de documento no WhatsApp", () => {
       .toBe("strategic_review");
   });
 
+  it("preserva o tipo da sessão ao pedir novamente o arquivo da revisão", () => {
+    expect(inferWhatsAppDocumentType("Gere novamente o arquivo completo da revisão")).toBeNull();
+    expect(inferWhatsAppDocumentType("O PDF da revisão veio em branco, reenvie por favor")).toBeNull();
+    expect(inferWhatsAppDocumentType("Me mande o fechamento mensal de junho")).toBe("month_close");
+  });
+
   it("usa o endpoint de mídia do Evo Go com PDF em base64", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "media-1" }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

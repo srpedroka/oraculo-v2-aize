@@ -207,6 +207,31 @@ export class TxClient {
   from(table: string) {
     return new TxQueryBuilder(this.tx, table, this.serialize);
   }
+
+  rpc(functionName: string, args: Record<string, unknown> = {}) {
+    return this.serialize(async () => {
+      try {
+        if (!/^[a-z_][a-z0-9_]*$/i.test(functionName)) {
+          return { data: null, error: new Error("Nome de função inválido") };
+        }
+        const entries = Object.entries(args);
+        const namedArguments = entries
+          .map(([name], index) => {
+            if (!/^[a-z_][a-z0-9_]*$/i.test(name)) throw new Error("Nome de argumento inválido");
+            return `${quoteIdent(name)} => $${index + 1}`;
+          })
+          .join(", ");
+        const text = `select public.${quoteIdent(functionName)}(${namedArguments}) as result`;
+        const result = await this.tx.queryObject<{ result: unknown }>({
+          text,
+          args: entries.map(([, value]) => value),
+        });
+        return { data: result.rows[0]?.result ?? null, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    });
+  }
 }
 
 // --- Idempotencia: tipos + chave (estavel por conteudo) -----------------------

@@ -20,7 +20,7 @@ const TYPE_LABEL: Record<PlanDocumentType, string> = {
   monthly: "Plano Mensal",
   month_close: "Fechamento Mensal",
   quarter_close: "Fechamento Trimestral",
-  strategic_review: "Revisão Semestral",
+  strategic_review: "Revisão Estratégica",
   kpi_history: "Histórico de KPIs",
   company_profile: "Perfil da empresa",
 };

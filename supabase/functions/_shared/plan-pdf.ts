@@ -350,8 +350,105 @@ export async function renderPlanDocumentPdf(document: PlanPdfDocument) {
 
   if (content.tipo === "strategic_review") {
     const adjustments = asArray<Record<string, unknown>>(content.ajustes);
-    drawSectionHeader(section++, "Ajustes da Revisão");
+    const review = asRecord(content.revisao_semestre);
+    const secondSemesterPlan = asRecord(content.plano_segundo_semestre);
+    const annualUpdate = asRecord(content.atualizacao_plano_anual);
+    const areaResults = asArray<Record<string, unknown>>(review.resultados_por_area);
+    const priorities = asArray<Record<string, unknown>>(secondSemesterPlan.prioridades);
+    const objectiveChanges = asArray<Record<string, unknown>>(annualUpdate.mudancas_objetivos);
+
+    drawSectionHeader(section++, "Revisão do Semestre");
     drawKeyValue("Motivo", content.motivo_revisao);
+    drawKeyValue("Leitura executiva", review.resumo_executivo);
+    drawKeyValue("Avanços confirmados", asArray<string>(review.avancos_confirmados).join("; "));
+    drawKeyValue("Lacunas", asArray<string>(review.lacunas).join("; "));
+    drawKeyValue("Padrões repetidos", asArray<string>(review.padroes_repetidos).join("; "));
+    drawKeyValue("Aprendizados", asArray<string>(review.aprendizados).join("; "));
+    drawKeyValue("Riscos", asArray<string>(review.riscos).join("; "));
+    drawKeyValue("Lacunas de evidência", asArray<string>(review.lacunas_evidencia).join("; "));
+    y -= 8;
+
+    if (areaResults.length) {
+      drawSectionHeader(section++, "Resultados por Área");
+      for (const area of areaResults) {
+        drawKeyValue("Área", area.area);
+        drawKeyValue("Avanços", asArray<string>(area.avancos).join("; "), 14);
+        drawKeyValue("Lacunas", asArray<string>(area.lacunas).join("; "), 14);
+        drawKeyValue("Evidências", asArray<string>(area.evidencias).join("; "), 14);
+        y -= 6;
+      }
+      y -= 8;
+    }
+
+    drawSectionHeader(section++, "Plano do Segundo Semestre");
+    drawKeyValue("Foco", secondSemesterPlan.foco);
+    drawKeyValue("Decisões", asArray<string>(secondSemesterPlan.decisoes).join("; "));
+    drawKeyValue("Renúncias", asArray<string>(secondSemesterPlan.renuncias).join("; "));
+    drawKeyValue("Riscos", asArray<string>(secondSemesterPlan.riscos).join("; "));
+    drawKeyValue("Cadência", asArray<string>(secondSemesterPlan.cadencia).join("; "));
+    y -= 8;
+
+    if (priorities.length) {
+      drawSectionHeader(section++, "Prioridades");
+      for (const [priorityIndex, priority] of priorities.entries()) {
+        drawKeyValue(`Prioridade ${priorityIndex + 1}`, priority.titulo);
+        drawKeyValue("Por quê", priority.justificativa, 14);
+        drawKeyValue("Resultado esperado", priority.resultado_esperado, 14);
+        drawKeyValue(
+          "Métrica e meta",
+          [asText(priority.indicador), asText(priority.meta)].filter(Boolean).join(" · "),
+          14,
+        );
+        drawKeyValue(
+          "Responsável e prazo",
+          [asText(priority.responsavel), asText(priority.prazo)].filter(Boolean).join(" · "),
+          14,
+        );
+        drawKeyValue("Primeira ação", priority.primeira_acao, 14);
+        y -= 6;
+      }
+      y -= 8;
+    }
+
+    drawSectionHeader(section++, "Impacto no Plano Anual");
+    drawKeyValue(
+      "Situação",
+      content.plano_anual_original_preservado === true
+        ? "O Plano Estratégico Anual original foi preservado."
+        : content.plano_anual_atualizado === true
+        ? "O Plano Estratégico Anual vigente foi atualizado. A versão anterior permanece no histórico."
+        : "A revisão mantém o plano anual como referência.",
+    );
+    for (const change of objectiveChanges) {
+      const operation = asText(change.operacao);
+      const operationLabel = operation === "create" ? "Criado" : operation === "archive" ? "Retirado" : "Atualizado";
+      const beforeSnapshot = asRecord(change.antes);
+      const afterSnapshot = asRecord(change.depois);
+      drawKeyValue(`${operationLabel}`, change.titulo);
+      drawKeyValue(
+        "Antes",
+        [
+          asText(beforeSnapshot.resultado),
+          asText(beforeSnapshot.indicador) ? `Indicador: ${asText(beforeSnapshot.indicador)}` : "",
+          asText(beforeSnapshot.meta) ? `Meta: ${asText(beforeSnapshot.meta)}` : "",
+          asText(beforeSnapshot.prazo) ? `Prazo: ${asText(beforeSnapshot.prazo)}` : "",
+        ].filter(Boolean).join(" · "),
+        14,
+      );
+      drawKeyValue(
+        "Depois",
+        [
+          asText(afterSnapshot.resultado),
+          asText(afterSnapshot.indicador) ? `Indicador: ${asText(afterSnapshot.indicador)}` : "",
+          asText(afterSnapshot.meta) ? `Meta: ${asText(afterSnapshot.meta)}` : "",
+          asText(afterSnapshot.prazo) ? `Prazo: ${asText(afterSnapshot.prazo)}` : "",
+        ].filter(Boolean).join(" · "),
+        14,
+      );
+      drawKeyValue("Justificativa", change.porque, 14);
+      y -= 6;
+    }
+    if (adjustments.length) drawKeyValue("Ajustes explícitos", `${adjustments.length} alteração(ões) confirmada(s).`);
     for (const adjustment of adjustments) {
       drawKeyValue("Objetivo", adjustment.titulo);
       drawKeyValue("Alteração", `${asText(adjustment.campo)}: ${asText(adjustment.de)} -> ${asText(adjustment.para)}`, 14);

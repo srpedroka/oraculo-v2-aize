@@ -1,5 +1,21 @@
 # Changelog
 
+- Validada no staging a correcao da saida da R1B real antes do novo gate. O PDF enviado
+  pelo WhatsApp agora renderiza leitura executiva, avancos, lacunas, resultados
+  por area, plano do segundo semestre, prioridades e impacto no plano anual,
+  usando a mesma fonte de Documentos. "Revisao" isolada deixa de virar
+  fechamento mensal e preserva o tipo da sessao no reenvio.
+- A revisao estrategica passou a distinguir meio e fim do ano. No meio do ano,
+  uma unica proposta pode preservar ou atualizar o plano vigente, incluindo
+  blocos gerais e objetivos atualizados, criados ou retirados, com justificativa,
+  antes/depois, arquivo reversivel e uma confirmacao. Quando muda, gera tambem
+  nova versao canonica do Plano Estrategico. No fim do ano, preserva o ano
+  encerrado e prepara o briefing do proximo plano. `oracle-session`,
+  `oracle-chat`, `whatsapp-webhook` e `whatsapp-worker` foram publicadas somente
+  no staging. Passaram 594 unitarios, 32 arquivos de integracao, 7 provas de
+  seguranca/RLS, lint, build e bundle de 135,1 KB gzip. Nenhuma migration,
+  mutacao real ou chamada paga de IA foi executada.
+
 - Ativado integralmente em producao o pacote F1-F4 do `Equilibrio da IA` na
   unica empresa real acessivel ao owner, Gaam/Aize, para sessoes estruturadas
   no app e no WhatsApp. Antes da ativacao, foi criado backup manual verificado
