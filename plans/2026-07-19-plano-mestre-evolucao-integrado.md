@@ -2,7 +2,16 @@
 
 Data: 2026-07-19
 
-Status: **ATIVO - Plano 3 concluido; F1-F4 publicadas antes do ciclo real R1B**
+Status: **ATIVO - Plano 3 concluido; F1-F4 ativas no ciclo real R1B**
+
+Atualizacao de 2026-07-23: o owner autorizou o rollout integral das Fases 1 a
+4 na unica empresa real acessivel, Gaam/Aize, para sessoes estruturadas no app
+e no WhatsApp. Antes da ativacao, foi criado e verificado um backup externo de
+612 registros. Planning, background e a saude do WhatsApp foram validados; a
+sessao real de revisao semestral em andamento foi preservada. Nao houve novo
+deploy, migration ou custo registrado. A proxima acao e a R1B pratica, seguida
+pelos testes reais de planos trimestrais, mensais e fechamentos. As porcentagens
+continuam 52,5% geral, 50% no Plano 4 e 90% no subplano ate a aprovacao da R1B.
 
 Atualizacao de 2026-07-22: o owner aprovou o subplano corretivo
 `plans/2026-07-22-equilibrio-da-ia.md`. As Fases 1 a 4 serao executadas antes da
@@ -16,8 +25,7 @@ estrutura `background`, adicionou flag default off e protegeu turnos
 concorrentes. Sua rodada geral terminou com media 92,50 no fechamento e custo
 total de US$ 0,211855. F1-F4 foram publicadas em producao com a flag desligada:
 PRs #21/#25, CI final `29965071770`, migration `29965389449` e Functions
-`29965501405`. A proxima decisao e ativar a flag somente na empresa piloto
-antes da R1B real.
+`29965501405`. A ativacao ocorreu em 2026-07-23, conforme a atualizacao acima.
 
 Atualizacao de 2026-07-20: o release acumulado UX-C0/UX-C1 foi autorizado,
 validado no CI #101, mesclado em `330190a` e publicado no deploy Netlify

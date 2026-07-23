@@ -1,5 +1,17 @@
 # Changelog
 
+- Ativado integralmente em producao o pacote F1-F4 do `Equilibrio da IA` na
+  unica empresa real acessivel ao owner, Gaam/Aize, para sessoes estruturadas
+  no app e no WhatsApp. Antes da ativacao, foi criado backup manual verificado
+  interna e externamente com 612 registros. A politica preservou os limites
+  efetivos 10/60, orcamento mensal de US$ 100 em modo `monitor`, e o evento
+  administrativo sanitizado `prose_split_rollout_enabled` foi registrado.
+  Planning `gpt-5.4`, background `grok-4.3` e WhatsApp foram validados; a fila
+  permaneceu zerada e sem alertas. A sessao real de revisao em andamento nao
+  recebeu mensagem ou mutacao de teste. Nao houve novo deploy, migration,
+  frontend ou custo incremental registrado; rollback permanece disponivel
+  desligando a flag por empresa.
+
 - Publicado em producao o pacote F1-F4 do `Equilibrio da IA`, mantendo a flag
   desligada por padrao. O pacote entrou pela PR #21 (`4402b29`) e a migration
   puramente aditiva + estabilizacao do CI pela PR #25 (`c7a5e14`). O CI final
