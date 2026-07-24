@@ -1114,9 +1114,13 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     : reviewCycle === "year_end"
     ? "prepare_next_year"
     : "preserve";
+  const requiredUpdateMode = asText(session.state?.required_annual_plan_mode).toLowerCase();
 
   if (!["preserve", "update_current_year", "prepare_next_year"].includes(updateMode)) {
     throw new Error("Modo inválido para atualização do plano anual");
+  }
+  if (requiredUpdateMode && updateMode !== requiredUpdateMode) {
+    throw new Error("Esta revisão foi aberta para atualizar o plano anual vigente e não pode ser preservada novamente");
   }
   if (updateMode === "preserve" && hasRequestedAnnualChanges) {
     throw new Error("A proposta diz preservar o plano anual, mas também contém alterações");

@@ -1068,3 +1068,19 @@ estrutura continua fail-closed, com um retry logico; falha dupla nao atualiza
 estado. Lease e revisao otimista serializam mensagens da mesma sessao. A F4 so
 pode ser ligada primeiro na empresa piloto, e producao exige autorizacao de
 release separada.
+
+## 2026-07-24 - Revisao e plano separados, mas com linhagem e aplicacao contextual
+
+Decisao: a Revisao Semestral permanece um documento proprio e o Plano
+Estrategico Anual permanece a fonte vigente. Quando a revisao de meio do ano
+foi preservada, a tela liga as versoes e permite iniciar uma aplicacao
+contextual pelo ID exato do documento, sem abrir outra revisao generica.
+
+Motivo: fundir os documentos apagaria a trilha do que foi analisado e decidido;
+deixa-los sem uma ponte fazia o owner repetir contexto e nao explicava por que
+o plano continuava igual.
+
+Consequencias: a IA compara revisao e plano e mostra o diff, mas empresa, ano,
+tipo, modo de atualizacao, uma confirmacao e gravacao transacional continuam
+sob autoridade do servidor. Fechamento anual nunca reescreve o ano encerrado.
+Nao ha tabela, migration ou clique administrativo adicional.

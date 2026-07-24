@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileText, Loader2, Plus, RefreshCw, Send, Upload } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck, FileClock, FileText, Loader2, Plus, RefreshCw, Send, Upload } from "lucide-react";
 import { useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -10,8 +10,9 @@ import { ObjectiveCard } from "../features/objective/ObjectiveCard";
 import { importStrategicPlanFile, STRATEGIC_PLAN_FILE_ACCEPT } from "../lib/fileImport";
 import { formatDate } from "../lib/format";
 import { reviewPastedPlan, type PastedPlanReview } from "../lib/oracle";
+import { buildStrategicReviewLineage, type StrategicReviewLineage } from "../lib/strategicReviewLineage";
 import { recoverableFeedback, type RecoverableFeedback } from "../lib/uiFeedback";
-import { useSessionLauncher } from "../hooks/useSessionLauncher";
+import { useSessionLauncher, type SessionLaunchRequest } from "../hooks/useSessionLauncher";
 import { useAppState } from "../state/store";
 
 type StrategicTab = "build" | "paste";
@@ -75,6 +76,64 @@ function ReviewResult({ review }: { review: PastedPlanReview }) {
   );
 }
 
+function AnnualPlanLineage({ lineage, year }: { lineage: StrategicReviewLineage; year: number }) {
+  if (!lineage.review) return null;
+
+  const updateFinished = lineage.updateMode === "update_current_year";
+  const resultTitle = lineage.resultingPlan?.title ?? `Plano Estratégico ${year}`;
+  const resultVersion = lineage.resultingPlan?.version;
+
+  return (
+    <section className="border-y border-border-subtle py-5" aria-labelledby="annual-plan-lineage-title">
+      <div className="mb-4">
+        <p className="text-xs font-medium text-text-tertiary">Histórico do plano · {year}</p>
+        <h2 id="annual-plan-lineage-title" className="mt-1 text-base font-semibold text-text">
+          Ciclo da estratégia
+        </h2>
+      </div>
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center">
+        <div className="min-w-0 border-l-2 border-border pl-3">
+          <p className="text-xs font-medium text-text-tertiary">Plano de origem</p>
+          <p className="mt-1 break-words text-sm font-medium text-text">
+            {lineage.basePlan?.title ?? `Plano Estratégico ${year}`}
+          </p>
+          <p className="mt-1 text-xs text-text-secondary">
+            {lineage.basePlan ? `Versão ${lineage.basePlan.version}` : "Versão vigente"}
+          </p>
+        </div>
+        <ArrowRight aria-hidden="true" className="ml-3 h-4 w-4 rotate-90 text-text-tertiary md:ml-0 md:rotate-0" />
+        <div className="min-w-0 border-l-2 border-accent pl-3">
+          <p className="text-xs font-medium text-text-tertiary">Revisão registrada</p>
+          <p className="mt-1 break-words text-sm font-medium text-text">{lineage.review.title}</p>
+          <p className="mt-1 text-xs text-text-secondary">Versão {lineage.review.version}</p>
+        </div>
+        <ArrowRight aria-hidden="true" className="ml-3 h-4 w-4 rotate-90 text-text-tertiary md:ml-0 md:rotate-0" />
+        <div className={[
+          "min-w-0 border-l-2 pl-3",
+          updateFinished ? "border-status-success" : "border-status-warning",
+        ].join(" ")}>
+          <p className="flex items-center gap-1.5 text-xs font-medium text-text-tertiary">
+            {updateFinished ? (
+              <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-status-success" />
+            ) : (
+              <FileClock aria-hidden="true" className="h-3.5 w-3.5 text-status-warning" />
+            )}
+            {updateFinished ? "Plano atualizado" : "Atualização pendente"}
+          </p>
+          <p className="mt-1 break-words text-sm font-medium text-text">
+            {updateFinished ? resultTitle : `Plano Estratégico ${year}`}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-text-secondary">
+            {updateFinished
+              ? resultVersion ? `Versão ${resultVersion}` : "Nova versão registrada"
+              : "A revisão está salva, mas suas decisões ainda não foram incorporadas ao plano."}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function Strategic() {
   const { state, dispatch } = useAppState();
   const [tab, setTab] = useState<StrategicTab>("build");
@@ -97,9 +156,30 @@ export function Strategic() {
     [state.objectives],
   );
   const currentYear = new Date().getFullYear();
+  const planYear = plan?.year ?? currentYear;
+  const reviewLineage = useMemo(
+    () => buildStrategicReviewLineage(state.planDocuments, planYear),
+    [planYear, state.planDocuments],
+  );
   const sessionLauncher = useSessionLauncher(dispatch);
   const strategicRequest = { sessionType: "strategic" as const, period: String(currentYear) };
-  const reviewRequest = { sessionType: "strategic_review" as const, period: String(plan?.year ?? currentYear) };
+  const reviewRequest: SessionLaunchRequest = reviewLineage.canApplyToCurrentPlan && reviewLineage.review
+    ? {
+        sessionType: "strategic_review",
+        period: String(planYear),
+        sourceDocumentId: reviewLineage.review.id,
+        reviewIntent: "apply_existing_review",
+      }
+    : {
+        sessionType: "strategic_review",
+        period: String(planYear),
+        reviewIntent: "review",
+      };
+  const reviewActionLabel = reviewLineage.canApplyToCurrentPlan
+    ? `Atualizar Plano ${planYear} com a revisão`
+    : reviewLineage.updateMode === "update_current_year"
+      ? "Nova revisão estratégica"
+      : "Iniciar revisão estratégica";
 
   function startStrategicSession() {
     sessionLauncher.startSession(strategicRequest);
@@ -229,7 +309,7 @@ export function Strategic() {
         </div>
         {isOwner && plan ? (
           <Button icon={RefreshCw} loading={sessionLauncher.isStarting(reviewRequest)} onClick={startStrategicReviewSession}>
-            Revisar plano anual
+            {reviewActionLabel}
           </Button>
         ) : null}
       </div>
@@ -375,6 +455,8 @@ export function Strategic() {
         </Card>
       ) : (
         <div className="space-y-6">
+          <AnnualPlanLineage lineage={reviewLineage} year={planYear} />
+
           <section className="border-y border-border-subtle py-5" aria-labelledby="strategic-summary-title">
             <p className="text-xs font-medium text-text-tertiary">Resumo do plano · {plan.year}</p>
             <h2 id="strategic-summary-title" className="mt-1 text-lg font-semibold text-text">Direção executiva</h2>

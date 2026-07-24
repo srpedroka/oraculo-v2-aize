@@ -184,6 +184,9 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   strategic_final_tension_missing: "a sintese anual ignorou que o portfolio ja pressiona uma capacidade explicitamente limitada",
   strategic_incomplete_proposal: "a proposta anual nao possui objetivos verificaveis nem o portfolio concreto informado pelo gestor",
   strategic_wrong_year: "o ano da proposta anual diverge do periodo da sessao",
+  review_application_wrong_proposal: "a aplicacao da revisao nao gerou uma proposta de revisao estrategica",
+  review_application_preserved_plan: "a revisao selecionada deve gerar uma nova versao do plano anual, mas a proposta tentou preserva-lo novamente",
+  review_application_without_changes: "a proposta marcou atualizacao do plano sem mostrar nenhuma mudanca concreta",
   done_without_confirmation: "a sessao tentou encerrar antes da confirmacao server-side",
 };
 

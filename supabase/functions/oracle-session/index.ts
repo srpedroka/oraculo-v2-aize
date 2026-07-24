@@ -33,6 +33,8 @@ serve(async (req) => {
         areaId: payload.areaId ? String(payload.areaId) : null,
         type: String(payload.type ?? "") as PlanningSessionType,
         period: String(payload.period ?? ""),
+        sourceDocumentId: payload.sourceDocumentId ? String(payload.sourceDocumentId) : null,
+        reviewIntent: payload.reviewIntent ? String(payload.reviewIntent) : null,
         userId: user.id,
         channel: payload.channel === "whatsapp" ? "whatsapp" : "web",
       });
