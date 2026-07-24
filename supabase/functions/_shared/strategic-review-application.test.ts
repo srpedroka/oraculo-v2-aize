@@ -136,4 +136,38 @@ describe("aplicação de revisão estratégica", () => {
       },
     })).toEqual([]);
   });
+
+  it("exige estrutura quando a fala já apresentou a integração e pediu confirmação", () => {
+    const state = reviewApplicationState(review);
+    const presentedProposal = [
+      "Atualização do Plano Estratégico 2026",
+      "Objetivo proposto: elevar a produtividade da fábrica em 20%.",
+      "Projetos estratégicos a materializar no plano.",
+      "Confirma a gravação da revisão integrada ao plano anual?",
+    ].join("\n");
+
+    expect(validateReviewApplicationEnvelope(state, {
+      reply: presentedProposal,
+      proposal: null,
+    })).toEqual(["review_application_ready_without_proposal"]);
+  });
+
+  it("recupera confirmação natural quando a proposta estruturada não ficou pendente", () => {
+    const state = reviewApplicationState(review);
+    const conversationText = [
+      "Oráculo: Atualização do Plano Estratégico 2026",
+      "Objetivo proposto: elevar a produtividade da fábrica em 20%.",
+      "Projetos estratégicos a materializar no plano.",
+      "Confirma a gravação da revisão integrada ao plano anual?",
+      "Gestor: pode confirmar",
+    ].join("\n");
+
+    expect(validateReviewApplicationEnvelope(state, {
+      reply: "Vou seguir com o registro.",
+      proposal: null,
+    }, {
+      userMessage: "pode confirmar",
+      conversationText,
+    })).toEqual(["review_application_ready_without_proposal"]);
+  });
 });

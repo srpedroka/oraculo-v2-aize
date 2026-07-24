@@ -654,8 +654,11 @@ async function processPlanningMessageCore(
     const route = extractionRoute;
     if (!route) throw new Error("IA de bastidores não configurada");
     const startedAt = Date.now();
+    const reviewProposalRecovery = reasons.includes("review_application_ready_without_proposal")
+      ? "A conversa ja contem a proposta final de integracao da revisao e a confirmacao natural do gestor pode estar no turno atual. Reconstrua proposal.type=apply_strategic_review a partir da fala do Oraculo, da conversa recente, do documento vinculado e do plano atual. Preserve objectiveChanges, projectChanges, sourcePriorityKey, IDs reais, antes/depois e annual_plan_update.mode=update_current_year. Nao devolva proposal nula."
+      : "";
     const repairDirective = reasons.length
-      ? `A extracao anterior foi rejeitada por estes codigos: ${[...new Set(reasons)].join(", ")}. Releia as fontes e devolva uma estrutura corrigida sem inventar fatos.`
+      ? `A extracao anterior foi rejeitada por estes codigos: ${[...new Set(reasons)].join(", ")}. Releia as fontes e devolva uma estrutura corrigida sem inventar fatos. ${reviewProposalRecovery}`.trim()
       : "";
     const output = await withTransientAiRetry(() => callModelForFunction(
       client,
@@ -861,7 +864,11 @@ async function processPlanningMessageCore(
     ...(session.type === "monthly"
       ? validateMonthlyGuidanceEnvelope({ envelope, sessionPeriod: session.period, userMessage: params.message })
       : []),
-    ...validateReviewApplicationEnvelope(session.state, envelope),
+    ...validateReviewApplicationEnvelope(session.state, envelope, {
+      userMessage: groundedTurnInput,
+      previousOracleReply,
+      conversationText,
+    }),
   ].filter((reason, index, values) => values.indexOf(reason) === index);
   const recoverEnvelope = (envelope: any, reasons: string[]) => recoverAdaptiveEnvelopeAfterRepairFailure({
     envelope,
