@@ -302,6 +302,8 @@ export function useStoreDispatch({
           areaId: action.areaId ?? null,
           type: action.sessionType,
           period: action.period,
+          sourceDocumentId: action.sourceDocumentId ?? null,
+          reviewIntent: action.reviewIntent ?? null,
           channel: "web",
         })
           .then(() => {

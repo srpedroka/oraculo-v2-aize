@@ -1,5 +1,14 @@
 # Changelog
 
+- Ligada a Revisao Semestral ao Plano Estrategico Anual sem fundir seus
+  documentos. A tela passa a mostrar `Plano de origem -> Revisao -> Plano
+  atualizado` e troca a acao generica por `Atualizar Plano {ano} com a revisao`
+  quando existe revisao de meio do ano ainda nao aplicada. A sessao recebe o
+  documento exato, nao reinicia o diagnostico e termina em uma proposta com
+  diff e uma confirmacao. O servidor recusa outra empresa, outro ano, revisao
+  ja aplicada, fechamento anual, nova preservacao e atualizacao vazia. Sem
+  migration ou chamada paga de IA; R1B continua pendente ate o reteste real.
+
 - Publicada em producao a correcao da R1B pela PR #28 e merge `53d3a28`.
   O PDF do WhatsApp passou a usar o conteudo integral da revisao estrategica,
   o reenvio preserva a sessao ativa e a revisao de meio do ano pode atualizar

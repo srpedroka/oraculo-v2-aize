@@ -25,6 +25,21 @@ function Harness({ dispatch }: { dispatch: (action: AppAction) => void }) {
   );
 }
 
+function ReviewHarness({ dispatch }: { dispatch: (action: AppAction) => void }) {
+  const launcher = useSessionLauncher(dispatch);
+  const request = {
+    sessionType: "strategic_review" as const,
+    period: "2026",
+    sourceDocumentId: "review-2026",
+    reviewIntent: "apply_existing_review" as const,
+  };
+  return (
+    <button type="button" onClick={() => launcher.startSession(request)}>
+      Atualizar plano
+    </button>
+  );
+}
+
 describe("useSessionLauncher", () => {
   afterEach(cleanup);
 
@@ -51,5 +66,20 @@ describe("useSessionLauncher", () => {
     if (second.type !== "start_session") throw new Error("Ação inesperada");
     expect(second).toMatchObject({ sessionType: "quarterly", areaId: "area-1", period: "T3 2026" });
   });
-});
 
+  it("preserva o documento e a intenção ao iniciar a aplicação de uma revisão", () => {
+    const actions: AppAction[] = [];
+    const dispatch = vi.fn((action: AppAction) => actions.push(action));
+    render(<ReviewHarness dispatch={dispatch} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar plano" }));
+
+    expect(actions[0]).toMatchObject({
+      type: "start_session",
+      sessionType: "strategic_review",
+      period: "2026",
+      sourceDocumentId: "review-2026",
+      reviewIntent: "apply_existing_review",
+    });
+  });
+});

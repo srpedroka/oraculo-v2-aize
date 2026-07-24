@@ -76,7 +76,16 @@ export type AppAction =
   | { type: "delete_organization"; confirmName: string; finalConfirmation: true; reason?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "add_chat_message"; message: ChatMessage }
   | { type: "send_oracle_message"; text: string; areaId?: string | null; context?: string; onSuccess?: () => void; onError?: (message: string) => void }
-  | { type: "start_session"; sessionType: PlanningSessionType; areaId?: string | null; period: string; onSuccess?: () => void; onError?: (message: string) => void }
+  | {
+      type: "start_session";
+      sessionType: PlanningSessionType;
+      areaId?: string | null;
+      period: string;
+      sourceDocumentId?: string | null;
+      reviewIntent?: "review" | "apply_existing_review";
+      onSuccess?: () => void;
+      onError?: (message: string) => void;
+    }
   | { type: "import_ready_strategic_plan"; period: string; text: string; fileName?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | { type: "import_ready_quarterly_plan"; areaId: string; period: string; text: string; fileName?: string | null; onSuccess?: () => void; onError?: (message: string) => void }
   | {

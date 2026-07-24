@@ -4,6 +4,15 @@ Data: 2026-07-19
 
 Status: **ATIVO - Plano 3 concluido; F1-F4 ativas no ciclo real R1B**
 
+Atualizacao de 2026-07-24 (R1B): revisao e Plano Estrategico Anual continuam
+separados e auditaveis, mas a tela agora explicita sua linhagem e seleciona a
+revisao semestral aprovada ao iniciar a atualizacao do plano. O motor nao
+reinicia o diagnostico, exige diferencas concretas, uma confirmacao e nova
+versao canonica; escopo de empresa/ano e fechamento anual seguem bloqueados
+server-side. Aguarda CI, release e reteste real. O progresso permanece 52,5%
+geral e 50% no Plano 4. Fonte:
+`plans/ddr/R1B-ponte-revisao-plano-anual.md`.
+
 Atualizacao de 2026-07-23 (R1B): a conducao real e o documento salvo no app
 foram bons, mas o gate nao foi aprovado. O PDF enviado no WhatsApp perdeu quase
 todo o conteudo, o pedido de reenvio caiu em fechamento mensal e a revisao
@@ -1239,10 +1248,11 @@ calibracao esta em `plans/ddr/UX-C4-mobile-acessibilidade.md` e o contrato R1A
 em `plans/ddr/R1A-prontidao-contrato-briefing.md`. O Plano 3 esta em 100%, o
 Plano 4 em 50% e o progresso geral em 52,5%.
 
-Proximo passo: publicar Functions e frontend pelo release protegido e repetir
-somente a confirmacao real com o
-owner. O gate exige PDF completo no WhatsApp, reenvio contextual, Plano
-Estrategico vigente atualizado quando confirmado, nova versao canonica e
+Proximo passo: publicar a ponte contextual pelo release protegido e o frontend,
+depois o owner deve abrir `Atualizar Plano 2026 com a revisao`, conferir o diff
+e confirmar uma vez. O gate exige PDF completo no WhatsApp, reenvio
+contextual, Plano Estrategico vigente atualizado, nova versao canonica e
 historico anterior preservado. Evidencias:
 `plans/ddr/Equilibrio-IA-F4-producao.md` e
-`plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
+`plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md` e
+`plans/ddr/R1B-ponte-revisao-plano-anual.md`.

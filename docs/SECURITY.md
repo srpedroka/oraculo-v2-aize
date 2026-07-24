@@ -304,6 +304,14 @@ Atualizacoes rapidas por WhatsApp sao deliberadamente menores que uma proposta. 
 
 Revisao Estrategica (`strategic_review`) e um ritual owner-only no escopo da empresa. O backend bloqueia inicio com `area_id` ou por usuario que nao seja `owner`, e a confirmacao passa novamente por `assertProposalPermission`. No meio do ano, `annual_plan_update` pode preservar ou atualizar o plano vigente. O servidor valida empresa, ano, nivel e estado de cada objetivo; exige justificativa para atualizar, criar ou arquivar; e exige contrato completo para objetivo novo. A retirada usa a RPC service-only `set_operational_item_archived`, que preserva dependencias e reversao. Plano, objetivos, documento da revisao e nova versao canonica sao gravados na mesma transacao, com snapshots em `operational_revisions`; retry nao duplica. No fim do ano, `update_current_year` e recusado para impedir reescrita retroativa: o ano encerrado fica preservado e apenas o briefing do proximo ciclo e gravado.
 
+Quando o owner parte de uma revisao ja salva para atualizar o plano, o
+`sourceDocumentId` e aceito somente se apontar para um `strategic_review`
+ativo, sem area, da mesma empresa e ano. Revisao de fechamento anual ou ja
+aplicada e recusada. O documento e delimitado como conteudo nao confiavel; o
+estado canonico exige `update_current_year`, e tanto o validador do envelope
+quanto `proposals.ts` recusam nova preservacao ou atualizacao sem mudanca
+explicita.
+
 ## Arquivos que nao devem ser versionados
 
 Ja cobertos no `.gitignore`:

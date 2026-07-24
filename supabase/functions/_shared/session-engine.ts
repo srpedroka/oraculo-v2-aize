@@ -25,6 +25,15 @@ import { QUARTERLY_CONDUCTOR, QUARTERLY_PHASES } from "./conductors/quarterly.ts
 import { preserveExplicitQuarterlyCadence, validateQuarterlyGuidanceEnvelope } from "./quarterly-guidance.ts";
 import { QUARTER_CLOSE_CONDUCTOR, QUARTER_CLOSE_PHASES } from "./conductors/quarter-close.ts";
 import { STRATEGIC_REVIEW_CONDUCTOR, STRATEGIC_REVIEW_PHASES } from "./conductors/strategic-review.ts";
+import {
+  isReviewApplicationState,
+  REVIEW_APPLICATION_INTENT,
+  reviewApplicationContext,
+  reviewApplicationDirective,
+  reviewApplicationOpening,
+  reviewApplicationState,
+  validateReviewApplicationEnvelope,
+} from "./strategic-review-application.ts";
 import { STRATEGIC_CONDUCTOR, STRATEGIC_PHASES } from "./conductors/strategic.ts";
 import { parseJsonObject } from "./json.ts";
 import { createTransientAiRetryBudget, withTransientAiRetry } from "./model.ts";
@@ -177,6 +186,80 @@ function planFocusForSession(type: string) {
   return "org" as const;
 }
 
+async function loadStrategicReviewDocument(client: Client, orgId: string, documentId: string) {
+  const { data, error } = await client
+    .from("plan_documents")
+    .select("id,org_id,area_id,type,period,title,content,version,archived_at")
+    .eq("id", documentId)
+    .eq("org_id", orgId)
+    .eq("type", "strategic_review")
+    .is("area_id", null)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("A revisão estratégica selecionada não está disponível nesta empresa");
+  return data;
+}
+
+function periodYear(value: unknown) {
+  return String(value ?? "").match(/\b20\d{2}\b/)?.[0] ?? "";
+}
+
+async function reviewSourceForStart(
+  client: Client,
+  params: {
+    orgId: string;
+    type: PlanningSessionType;
+    period: string;
+    sourceDocumentId?: string | null;
+    reviewIntent?: string | null;
+  },
+) {
+  const sourceDocumentId = String(params.sourceDocumentId ?? "").trim();
+  const reviewIntent = String(params.reviewIntent ?? "").trim();
+  if (reviewIntent && reviewIntent !== REVIEW_APPLICATION_INTENT && reviewIntent !== "review") {
+    throw new Error("Intenção de revisão inválida");
+  }
+  if (reviewIntent === REVIEW_APPLICATION_INTENT && !sourceDocumentId) {
+    throw new Error("Selecione a revisão estratégica que será aplicada ao plano");
+  }
+  if (!sourceDocumentId) return null;
+  if (params.type !== "strategic_review" || reviewIntent !== REVIEW_APPLICATION_INTENT) {
+    throw new Error("Documento de revisão só pode iniciar a aplicação ao plano anual");
+  }
+
+  const document = await loadStrategicReviewDocument(client, params.orgId, sourceDocumentId);
+  if (periodYear(document.period) !== periodYear(params.period)) {
+    throw new Error("A revisão selecionada pertence a outro ano");
+  }
+  const content = document.content && typeof document.content === "object" ? document.content : {};
+  const annualUpdate = (content as any).atualizacao_plano_anual ?? {};
+  if (
+    (content as any).ciclo_revisao === "year_end"
+    || annualUpdate.modo === "prepare_next_year"
+  ) {
+    throw new Error("O fechamento anual prepara o próximo plano e não reescreve o ano encerrado");
+  }
+  if (
+    (content as any).plano_anual_atualizado === true
+    || annualUpdate.modo === "update_current_year"
+    || (content as any).documento_plano_anual_atualizado?.id
+  ) {
+    throw new Error("Esta revisão já gerou uma versão atualizada do plano anual");
+  }
+  return document;
+}
+
+async function linkedReviewContext(client: Client, session: any) {
+  if (!isReviewApplicationState(session.state)) return "";
+  const documentId = String(session.state?.source_review_document_id ?? "").trim();
+  const document = await loadStrategicReviewDocument(client, session.org_id, documentId);
+  return [
+    "REVISÃO ESTRATÉGICA SELECIONADA PARA APLICAÇÃO AO PLANO ANUAL:",
+    reviewApplicationContext(document),
+  ].join("\n");
+}
+
 async function ensureSessionConversation(client: Client, session: any, channel: "web" | "whatsapp") {
   if (session.conversation_id) {
     const existing = await getConversationById(client, session.conversation_id);
@@ -213,6 +296,8 @@ export async function startPlanningSession(
     userId: string;
     channel?: "web" | "whatsapp";
     suppressOpeningMessage?: boolean;
+    sourceDocumentId?: string | null;
+    reviewIntent?: string | null;
   },
 ) {
   const conductor = CONDUCTORS[params.type];
@@ -224,6 +309,12 @@ export async function startPlanningSession(
   if (params.type === "strategic_review" && (params.areaId || membership.role !== "owner")) {
     throw new Error("Apenas owner pode iniciar uma Revisão Estratégica da empresa");
   }
+  const reviewSource = await reviewSourceForStart(client, params);
+  const reviewState = reviewSource ? reviewApplicationState(reviewSource) : {};
+  const opening = reviewSource
+    ? reviewApplicationOpening(reviewSource, params.period)
+    : conductor.opening;
+  const initialPhase = reviewSource ? "decisoes_segundo_semestre" : conductor.phases[0];
 
   let existingQuery = client
     .from("planning_sessions")
@@ -245,21 +336,41 @@ export async function startPlanningSession(
       channel: params.channel ?? "web",
       areaId: params.areaId,
     });
-    if (existing.conversation_id !== conversation.id) {
-      const { data: rebound, error: rebindError } = await client
+    const existingState = existing.state ?? {};
+    const sourceAlreadyLinked = reviewSource
+      && existingState.source_review_document_id === reviewSource.id
+      && existingState.review_intent === REVIEW_APPLICATION_INTENT;
+    if (reviewSource && existing.pending_proposal && !sourceAlreadyLinked) {
+      throw new Error("Existe uma proposta de revisão pendente. Confirme ou descarte antes de aplicar outro documento");
+    }
+    const updatePayload: Record<string, unknown> = {};
+    if (existing.conversation_id !== conversation.id) updatePayload.conversation_id = conversation.id;
+    if (reviewSource && !sourceAlreadyLinked) {
+      updatePayload.state = shallowMergeState(existingState, reviewState);
+      updatePayload.phase = initialPhase;
+    }
+    let resumed = existing;
+    if (Object.keys(updatePayload).length) {
+      const { data: updated, error: updateError } = await client
         .from("planning_sessions")
-        .update({ conversation_id: conversation.id })
+        .update(updatePayload)
         .eq("id", existing.id)
         .select("*")
         .single();
-      if (rebindError) throw rebindError;
-      const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
-      if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") await insertMessage(client, rebound, "oracle", reply, "whatsapp");
-      return { session: rebound, reply };
+      if (updateError) throw updateError;
+      resumed = updated;
     }
-    const reply = "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
-    if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") await insertMessage(client, existing, "oracle", reply, "whatsapp");
-    return { session: existing, reply };
+    const reply = reviewSource
+      ? sourceAlreadyLinked
+        ? "A aplicação desta revisão já está em andamento. Pode continuar de onde paramos."
+        : opening
+      : "Retomei sua sessão em andamento. Pode continuar de onde paramos.";
+    if (!params.suppressOpeningMessage && reviewSource && !sourceAlreadyLinked) {
+      await insertMessage(client, resumed, "oracle", reply, params.channel ?? "web");
+    } else if (!params.suppressOpeningMessage && (params.channel ?? "web") === "whatsapp") {
+      await insertMessage(client, resumed, "oracle", reply, "whatsapp");
+    }
+    return { session: resumed, reply };
   }
 
   const conversation = await getOrCreateConversation(client, {
@@ -277,17 +388,17 @@ export async function startPlanningSession(
       conversation_id: conversation.id,
       type: params.type,
       period: params.period,
-      phase: conductor.phases[0],
-      state: { periodo: params.period },
+      phase: initialPhase,
+      state: { periodo: params.period, ...reviewState },
     })
     .select("*")
     .single();
   if (error) throw error;
 
   if (!params.suppressOpeningMessage) {
-    await insertMessage(client, session, "oracle", conductor.opening, params.channel ?? "web");
+    await insertMessage(client, session, "oracle", opening, params.channel ?? "web");
   }
-  return { session, reply: conductor.opening };
+  return { session, reply: opening };
 }
 
 async function createFollowUpSessionAfterClose(
@@ -378,7 +489,7 @@ async function processPlanningMessageCore(
     await insertMessage(client, ensured.session, "user", params.message, channel);
   }
   const conversation = await maybeSummarize(client, ensured.session.org_id, ensured.conversation);
-  const [history, context, orgTone] = await Promise.all([
+  const [history, baseContext, orgTone, sourceReviewContext] = await Promise.all([
     loadConversationHistory(client, ensured.session.conversation_id),
     buildPlanContext(client, ensured.session.org_id, {
       areaId: ensured.session.area_id,
@@ -386,7 +497,9 @@ async function processPlanningMessageCore(
       period: ensured.session.period,
     }),
     loadOrgTone(client, ensured.session.org_id),
+    linkedReviewContext(client, ensured.session),
   ]);
+  const context = [baseContext, sourceReviewContext].filter(Boolean).join("\n\n");
   const conversationMemory = formatConversationMemory(history);
   const groundedTurnInput = params.transientContext
     ? `${params.message}\n\n${params.transientContext}`
@@ -482,6 +595,7 @@ async function processPlanningMessageCore(
     UNTRUSTED_CONTENT_RULES,
     toneDirective(orgTone),
     conductorPrompt(session.type, session.phase),
+    reviewApplicationDirective(session.state),
     planningSituationPrompt(detectedSituation),
     "Estado já coletado:",
     JSON.stringify(session.state ?? {}, null, 2),
@@ -738,6 +852,7 @@ async function processPlanningMessageCore(
     ...(session.type === "monthly"
       ? validateMonthlyGuidanceEnvelope({ envelope, sessionPeriod: session.period, userMessage: params.message })
       : []),
+    ...validateReviewApplicationEnvelope(session.state, envelope),
   ].filter((reason, index, values) => values.indexOf(reason) === index);
   const recoverEnvelope = (envelope: any, reasons: string[]) => recoverAdaptiveEnvelopeAfterRepairFailure({
     envelope,

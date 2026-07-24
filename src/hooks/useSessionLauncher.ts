@@ -7,10 +7,18 @@ export interface SessionLaunchRequest {
   sessionType: PlanningSessionType;
   areaId?: string | null;
   period: string;
+  sourceDocumentId?: string | null;
+  reviewIntent?: "review" | "apply_existing_review";
 }
 
 function requestKey(request: SessionLaunchRequest) {
-  return [request.sessionType, request.areaId ?? "company", request.period].join(":");
+  return [
+    request.sessionType,
+    request.areaId ?? "company",
+    request.period,
+    request.reviewIntent ?? "default",
+    request.sourceDocumentId ?? "no-source",
+  ].join(":");
 }
 
 export function useSessionLauncher(dispatch: (action: AppAction) => void) {
@@ -58,4 +66,3 @@ export function useSessionLauncher(dispatch: (action: AppAction) => void) {
     startSession,
   };
 }
-

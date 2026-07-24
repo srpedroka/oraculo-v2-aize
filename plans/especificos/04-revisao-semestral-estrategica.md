@@ -6,7 +6,7 @@ Progresso especifico: **50%**
 
 Contribuicao atual ao geral: **7,5%**
 
-Status: **R1A APROVADA - CORRECAO R1B VALIDADA NO STAGING**
+Status: **R1A APROVADA - R1B EM CORRECAO E RETESTE**
 
 ## Objetivo
 
@@ -74,6 +74,20 @@ A correcao validada no staging:
 - no fim do ano preserva o ano encerrado e prepara o proximo plano.
 
 Fonte: `plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
+
+## Ponte contextual entre os documentos
+
+A separacao entre Revisao Semestral e Plano Estrategico Anual foi preservada
+para manter auditoria, mas a tela passou a ligar os dois documentos. Quando a
+revisao de meio do ano esta salva e ainda nao foi aplicada, o owner ve
+`Atualizar Plano {ano} com a revisao` e a linhagem entre versoes.
+
+O motor recebe o ID exato da revisao, usa seu conteudo integral como contexto,
+nao reinicia a entrevista semestral e exige uma proposta com diff explicito e
+uma unica confirmacao. Documento de outra empresa/ano, revisao ja aplicada,
+fechamento anual, nova preservacao ou atualizacao vazia sao recusados
+server-side. Fonte:
+`plans/ddr/R1B-ponte-revisao-plano-anual.md`.
 
 O gate tecnico passou com 594 unitarios, 32 arquivos de integracao, 7 provas
 de seguranca, lint, build e bundle. O progresso permanece em 50% ate release e

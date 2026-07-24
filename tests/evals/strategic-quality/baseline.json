@@ -6,6 +6,11 @@
   "description": "Linha de partida anterior a qualquer correcao orientada pelas avaliacoes Q0-Q6.",
   "intentionalCorrections": [
     {
+      "date": "2026-07-24",
+      "gate": "R1B-review-to-plan",
+      "reason": "A tela do plano anual seleciona uma revisao semestral preservada, o motor recebe esse documento integral como contexto e o servidor exige mudancas explicitas antes de gerar uma nova versao do plano em uma unica confirmacao."
+    },
+    {
       "date": "2026-07-22",
       "gate": "EQUILIBRIO-IA-F1",
       "reason": "Nucleo conversacional positivo e contrato tecnico central substituem repeticoes de persona e estilo no prompt principal, preservando condutores como mapas de decisao e todas as guardas server-side."
@@ -217,7 +222,7 @@
     }
   ],
   "codeArtifacts": [
-    { "path": "supabase/functions/oracle-session/index.ts", "sha256": "9282b413e2ad0980a372cbf2e19d81ca73683fe85505d841205084d585f9d55a" },
+    { "path": "supabase/functions/oracle-session/index.ts", "sha256": "d4640e4770bc27e02e8422f902da4991933c248d9a7e617df37cc8cf5f4a8449" },
     { "path": "supabase/functions/oracle-chat/index.ts", "sha256": "b47a20a4757a9830b0c2826324da2fea7dca5db3962f4c748435eb6bad6d6561" },
     { "path": "supabase/functions/_shared/conductors/month-close.ts", "sha256": "8ca6cddea79e737fbe94e64d41bc71984850eb6188164bffd3e35095d8ec2b58" },
     { "path": "supabase/functions/_shared/conductors/monthly.ts", "sha256": "d1c4747631ca77861a19d9d773496d997dd55ee6ce63bcd5a225efc82e4b315d" },
@@ -228,14 +233,15 @@
     { "path": "supabase/functions/_shared/conductors/strategic-review.ts", "sha256": "8276de1f6fe7fb1fe197862dd4bad1abfa826166c7610f15230a0b04d617a0b8" },
     { "path": "supabase/functions/_shared/conductors/strategic.ts", "sha256": "2d37ed474f760d7d36c4aa91543050315e31ceb82425b05f82814f9c90a2a81b" },
     { "path": "supabase/functions/_shared/conductors/tone.ts", "sha256": "060faa1276a1b0ad98d4ce310f2382851db71603063a680ce71e1e8e7e68d597" },
-    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "522372988c4f5e064fbb4f9df240c748365c339eb15be1a8d6467e86b1771786" },
+    { "path": "supabase/functions/_shared/session-engine.ts", "sha256": "5336169858a9bd0d95ce9759d8f4a4604b4c1e161643a6376fd709ff005c1767" },
     { "path": "supabase/functions/_shared/session-extract.ts", "sha256": "6b0652a8049427e5f950067fb39aca35cdcc1e283f33c466b9be4386aa606aa9" },
     { "path": "supabase/functions/_shared/planning-situation.ts", "sha256": "95cad97f3cfd7ca437faad920e2575f8d153c3267a65f036654bb5ed0f8056a9" },
     { "path": "supabase/functions/_shared/session-confirmation.ts", "sha256": "a658e5d17b9d91cc73c763cf6de319a6eec42e108950c93d94ad683179d79ab2" },
     { "path": "supabase/functions/_shared/session-output-schema.ts", "sha256": "dd64b089c64d504e7a1cee6050e4eccc11c11c8fae2441021796044da19a1927" },
     { "path": "supabase/functions/_shared/session-canonical-envelope.ts", "sha256": "7311ef113b53fc9538ea7db3a49b9fae27864d28e9c76247ee4dd60f22279af7" },
     { "path": "supabase/functions/_shared/planning-timeout.ts", "sha256": "3c64f0a7d01ad9d56521952825efa2e248af2fdd098eb0a8f0cb952dfcc782e6" },
-    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "61ea13ca7964211bfb68419594c18b6bd3822216f2f9b2d8c2432f9197dd41f0" },
+    { "path": "supabase/functions/_shared/session-adaptive.ts", "sha256": "e7df9503edfc7c98dcd616f1394b884ae0bfca73ec16688a530975d75699cfff" },
+    { "path": "supabase/functions/_shared/strategic-review-application.ts", "sha256": "9f2d461cc90b84410e3e8f3b694704cd74ae9fc49898752f674e859fa627d844" },
     { "path": "supabase/functions/_shared/quarterly-guidance.ts", "sha256": "4b48e7814caa4a00708eacfbda0a6acced975ac1fb099179ce62609c558b33fd" },
     { "path": "supabase/functions/_shared/quarterly-kpis.ts", "sha256": "4cb3aa37dbc4c451b2cc0988f6cd68d70f3c70db7e643854f168a71d8b13e577" },
     { "path": "supabase/functions/_shared/quarterly-actions.ts", "sha256": "5fc44ff140563b23fae00cc4aac02210dd6e9f5e75105fc0c71f9fc2c0476516" },
@@ -246,7 +252,7 @@
     { "path": "supabase/functions/_shared/ai-router.ts", "sha256": "70af5cd3f9d23b8a2ee86e9467e94bb7e8ab3c77f187dfceaa024246f7e906a7" },
     { "path": "supabase/functions/_shared/model.ts", "sha256": "308c34138e9d0ec74b42ce6b90bfa13f2a75233e9df4d4918a77770608da0896" },
     { "path": "supabase/functions/_shared/model-structured-output.ts", "sha256": "6bea8c60171081ec8e5d6e770a4ede02c0cdc2b3caa8a00a0165440b809ac6e2" },
-    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "a411dc1816e397b2ea03e94ec99c1bdc4b3a38a5c9daa8199398fe1e5522201e" },
+    { "path": "supabase/functions/_shared/proposals.ts", "sha256": "5d50f4c3f93d0771406cc024bde8e524a1c2b96968b11b1bfa66b744469b26a4" },
     { "path": "supabase/functions/_shared/plan-documents.ts", "sha256": "066160dc794c23f1812abf14fca72d934c9e4cf301a88b8685be3c9aa3d9efd2" },
     { "path": "supabase/functions/_shared/risk-normalization.ts", "sha256": "2dc10a4e8306653f06e049b0ec9e1283ee94dd999d7b419f4fc00734d09628b5" },
     { "path": "supabase/functions/_shared/plan-render.ts", "sha256": "c8f5141153c87bfcfce9242d1d2f76ef4ba47b6fab54bbaaf398c8fd9e7acaf3" },
