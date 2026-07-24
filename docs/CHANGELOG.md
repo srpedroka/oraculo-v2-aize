@@ -1,5 +1,14 @@
 # Changelog
 
+- Corrigida a perda da proposta estruturada entre a fala natural da integracao
+  da Revisao Semestral e a confirmacao. Quando o Oraculo ja mostrou objetivos,
+  projetos, antes/depois e pediu confirmacao, o extrator nao pode salvar o
+  turno com `proposal` nula. Confirmacoes naturais como `pode confirmar`
+  recuperam a proposta imediatamente anterior ou a conversa recente e passam
+  novamente por todas as guardas de cobertura antes de ficarem pendentes. A
+  gravacao continua separada, transacional e dependente da confirmacao
+  server-side; nao existe aplicacao automatica.
+
 - Corrigida a materializacao da Revisao Semestral no Plano Estrategico Anual.
   Uma frase isolada no resumo executivo deixa de contar como atualizacao:
   cada prioridade aprovada precisa de destino em objetivo e cada primeira acao

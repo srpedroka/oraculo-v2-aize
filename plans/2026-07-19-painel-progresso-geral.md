@@ -191,6 +191,14 @@ confirmou o estado `Atualizacao incompleta` e a acao correta, sem mutar dados.
 O progresso permanece em 52,5% geral e 50% no Plano 4 ate o owner revisar os
 destinos propostos e confirmar a nova versao real.
 
+Na tentativa de confirmacao, a fala natural apresentou corretamente 2 objetivos
+atualizados, 1 objetivo novo e 3 projetos, mas o extrator tecnico deixou
+`proposal` nula; `pode confirmar` caiu no fallback sem gravar. A correcao
+R1B de confirmacao passa a exigir a estrutura quando a proposta ja foi
+apresentada e recupera confirmacoes naturais a partir da conversa recente,
+sempre reaplicando as guardas antes de permitir a gravacao. O progresso nao
+muda antes do reteste real.
+
 ## 2. Os oito planos
 
 | Plano | Peso geral | Progresso especifico | Contribuicao geral | Estado |

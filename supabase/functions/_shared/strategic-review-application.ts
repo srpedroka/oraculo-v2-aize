@@ -13,8 +13,30 @@ function asText(value: unknown, fallback = "") {
   return output || fallback;
 }
 
+function normalizedText(value: unknown) {
+  return asText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function asArray(value: unknown) {
   return Array.isArray(value) ? value : [];
+}
+
+const EXPLICIT_CONFIRMATION_PATTERN =
+  /^(?:sim|confirmo|confirmado|confirma|pode\s+confirmar|pode\s+gravar|grave|grava|aprovado|esta\s+aprovado|pode\s+seguir)\b/;
+
+function reviewProposalWasPresented(value: unknown) {
+  const content = normalizedText(value);
+  if (!content) return false;
+  const signals = [
+    /atualiz(?:acao|ar|ado)[\s\S]{0,100}plano\s+(?:estrategico|anual)/.test(content),
+    /objetiv(?:o|os)[\s\S]{0,100}(?:propost|atualiz|nov|criar|manter)/.test(content),
+    /projetos?\s+(?:estrategicos|prioritarios)|projetos?[\s\S]{0,80}materializar/.test(content),
+  ];
+  const asksConfirmation = /confirm(?:a|o|ar|acao)|se\s+estiver\s+de\s+acordo/.test(content);
+  return signals.every(Boolean) && asksConfirmation;
 }
 
 function sourcePriorityKey(value: unknown, index: number) {
@@ -133,11 +155,29 @@ export function reviewApplicationDirective(stateValue: unknown) {
   ].join("\n");
 }
 
-export function validateReviewApplicationEnvelope(stateValue: unknown, envelopeValue: unknown) {
+export function validateReviewApplicationEnvelope(
+  stateValue: unknown,
+  envelopeValue: unknown,
+  context: {
+    userMessage?: unknown;
+    previousOracleReply?: unknown;
+    conversationText?: unknown;
+  } = {},
+) {
   if (!isReviewApplicationState(stateValue)) return [];
   const envelope = asRecord(envelopeValue);
   const proposal = asRecord(envelope.proposal);
-  if (!Object.keys(proposal).length) return [];
+  if (!Object.keys(proposal).length) {
+    const confirmationWithoutPendingProposal = EXPLICIT_CONFIRMATION_PATTERN.test(normalizedText(context.userMessage))
+      && reviewProposalWasPresented([
+        asText(context.previousOracleReply),
+        asText(context.conversationText),
+      ].filter(Boolean).join("\n"));
+    if (reviewProposalWasPresented(envelope.reply) || confirmationWithoutPendingProposal) {
+      return ["review_application_ready_without_proposal"];
+    }
+    return [];
+  }
   if (asText(proposal.type) !== "apply_strategic_review") {
     return ["review_application_wrong_proposal"];
   }
