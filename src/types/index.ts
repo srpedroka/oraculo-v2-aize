@@ -114,6 +114,19 @@ export interface StrategicPlan {
     region: string;
     founded?: string;
     mainPain: string;
+    reviewContext?: {
+      sourceDocumentId: string;
+      sourceTitle: string;
+      sourceVersion: number;
+      summary: string;
+      focus: string;
+      confirmedAdvances: string[];
+      gaps: string[];
+      decisions: string[];
+      priorities: string[];
+      updatedAt: string;
+    };
+    reviewDecisions?: string[];
   };
   drivers: {
     purpose: string;

@@ -1,5 +1,14 @@
 # Changelog
 
+- Corrigida a materializacao da Revisao Semestral no Plano Estrategico Anual.
+  Uma frase isolada no resumo executivo deixa de contar como atualizacao:
+  cada prioridade aprovada precisa de destino em objetivo e cada primeira acao
+  precisa de destino em projeto. O servidor incorpora contexto, foco, cadencia,
+  riscos, renuncias e aprendizados diretamente do documento aprovado. A
+  aplicacao real incompleta e reconhecida e recebe um caminho de reparo com uma
+  confirmacao, preservando todas as versoes anteriores. Sem migration ou
+  chamada paga de IA.
+
 - Publicada em producao pela PR #30 e merge `fc508d0` a ponte entre Revisao
   Semestral e Plano Estrategico Anual sem fundir seus
   documentos. A tela passa a mostrar `Plano de origem -> Revisao -> Plano

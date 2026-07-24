@@ -1084,3 +1084,24 @@ Consequencias: a IA compara revisao e plano e mostra o diff, mas empresa, ano,
 tipo, modo de atualizacao, uma confirmacao e gravacao transacional continuam
 sob autoridade do servidor. Fechamento anual nunca reescreve o ano encerrado.
 Nao ha tabela, migration ou clique administrativo adicional.
+
+## 2026-07-24 - Aplicacao da revisao exige materializacao completa
+
+Decisao: uma revisao aprovada so conta como aplicada quando todas as suas
+prioridades possuem destino explicito em objetivo anual e todas as primeiras
+acoes possuem destino explicito em projeto estrategico. O documento aprovado e
+a fonte imutavel de contexto, foco, cadencia, riscos, renuncias e aprendizados;
+o modelo resolve os vinculos e o servidor incorpora esses blocos de forma
+deterministica dentro da mesma transacao.
+
+Motivo: o primeiro uso real da ponte criou uma nova versao canonica alterando
+apenas um resumo generico. A trilha dizia "plano atualizado", mas contexto,
+objetivos e projetos continuavam iguais, o que era formalmente valido pelo
+contrato antigo e materialmente incorreto para o owner.
+
+Consequencias: resumo isolado deixa de passar no gate. `objectiveChanges` e
+`projectChanges` usam `sourcePriorityKey`, aceitam manter/atualizar/criar e
+mostram antes/depois na confirmacao unica. Uma aplicacao antiga incompleta
+recebe acao de reparo, preserva as versoes anteriores e gera nova revisao e
+novo plano somente apos confirmacao. Nao ha migration nem alteracao automatica
+dos dados reais.

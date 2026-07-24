@@ -187,6 +187,8 @@ const REPAIR_REASON_LABELS: Record<string, string> = {
   review_application_wrong_proposal: "a aplicacao da revisao nao gerou uma proposta de revisao estrategica",
   review_application_preserved_plan: "a revisao selecionada deve gerar uma nova versao do plano anual, mas a proposta tentou preserva-lo novamente",
   review_application_without_changes: "a proposta marcou atualizacao do plano sem mostrar nenhuma mudanca concreta",
+  review_application_incomplete_objective_coverage: "uma ou mais prioridades aprovadas na revisao ficaram sem destino explicito nos objetivos anuais",
+  review_application_incomplete_project_coverage: "uma ou mais primeiras acoes aprovadas na revisao ficaram sem destino explicito nos projetos estrategicos",
   done_without_confirmation: "a sessao tentou encerrar antes da confirmacao server-side",
 };
 
@@ -1159,14 +1161,19 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
     const objectiveChanges = Array.isArray(annualUpdate.objectiveChanges ?? annualUpdate.objective_changes ?? annualUpdate.mudancas_objetivos)
       ? (annualUpdate.objectiveChanges ?? annualUpdate.objective_changes ?? annualUpdate.mudancas_objetivos as unknown[]).map(asRecord)
       : [];
+    const projectChanges = Array.isArray(annualUpdate.projectChanges ?? annualUpdate.project_changes ?? annualUpdate.mudancas_projetos)
+      ? (annualUpdate.projectChanges ?? annualUpdate.project_changes ?? annualUpdate.mudancas_projetos as unknown[]).map(asRecord)
+      : [];
     const reviewCycle = text(value.review_cycle ?? value.reviewCycle ?? value.ciclo_revisao);
     const updateMode = text(annualUpdate.mode ?? annualUpdate.modo)
-      || (adjustments.length || objectiveChanges.length || Object.keys(planChanges).length ? "update_current_year" : "preserve");
+      || (adjustments.length || objectiveChanges.length || projectChanges.length || Object.keys(planChanges).length
+        ? "update_current_year"
+        : "preserve");
     const priorities = Array.isArray(secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades)
       ? (secondSemesterPlan.priorities ?? secondSemesterPlan.prioridades as unknown[]).map(asRecord)
       : [];
     const reviewSummary = text(semesterReview.executiveSummary ?? semesterReview.executive_summary ?? semesterReview.resumo_executivo);
-    if (reviewSummary || priorities.length || objectiveChanges.length || Object.keys(planChanges).length) {
+    if (reviewSummary || priorities.length || objectiveChanges.length || projectChanges.length || Object.keys(planChanges).length) {
       const priorityLines = priorities.slice(0, 5).map((priority, index) =>
         `${index + 1}. ${text(priority.title ?? priority.titulo) || "Prioridade"}${text(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado) ? `: ${text(priority.expectedResult ?? priority.expected_result ?? priority.resultado_esperado)}` : ""}`
       );
@@ -1174,14 +1181,22 @@ function proposalConfirmationReply(proposal: unknown, sessionType: string) {
         const operation = text(change.operation ?? change.operacao);
         const objective = asRecord(change.objective ?? change.objetivo ?? change.after ?? change.depois);
         const title = text(change.title ?? change.titulo ?? objective.title ?? objective.titulo) || "Objetivo";
-        const operationLabel = operation === "create" ? "Criar" : operation === "archive" ? "Retirar" : "Atualizar";
+        const operationLabel = operation === "create" ? "Criar" : operation === "archive" ? "Retirar" : operation === "keep" ? "Manter" : "Atualizar";
         return `- ${operationLabel}: ${title}${text(change.because ?? change.porque) ? `, porque ${text(change.because ?? change.porque)}` : ""}.`;
+      });
+      const projectChangeLines = projectChanges.slice(0, 8).map((change) => {
+        const operation = text(change.operation ?? change.operacao);
+        const project = asRecord(change.project ?? change.projeto ?? change.after ?? change.depois);
+        const title = text(change.title ?? change.titulo ?? project.name ?? project.nome) || "Projeto";
+        const operationLabel = operation === "create" ? "Criar" : operation === "archive" ? "Retirar" : operation === "keep" ? "Manter" : "Atualizar";
+        return `- ${operationLabel} projeto: ${title}${text(change.because ?? change.porque) ? `, porque ${text(change.because ?? change.porque)}` : ""}.`;
       });
       const annualImpact = updateMode === "update_current_year"
         ? [
           `**Atualização do plano anual vigente**`,
           Object.keys(planChanges).length ? `${Object.keys(planChanges).length} bloco(s) geral(is) do plano serão atualizado(s).` : "",
           ...objectiveChangeLines,
+          ...projectChangeLines,
           adjustments.length ? `${adjustments.length} alteração(ões) de campo adicional(is) serão aplicada(s).` : "",
         ]
         : updateMode === "prepare_next_year" || reviewCycle === "year_end"
