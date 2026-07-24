@@ -7,7 +7,14 @@
   riscos, renuncias e aprendizados diretamente do documento aprovado. A
   aplicacao real incompleta e reconhecida e recebe um caminho de reparo com uma
   confirmacao, preservando todas as versoes anteriores. Sem migration ou
-  chamada paga de IA.
+  chamada paga de IA. Publicada pela PR #32 e merge `1b742d3`: CI da main
+  `30112638735`, release protegido de `oracle-session` `30113002368`,
+  verificacao `30113080510` e Netlify `6a63a22877aa69db05ad013f` verdes. O
+  smoke autenticado confirmou `Atualizacao incompleta` e a acao
+  `Completar atualizacao do Plano 2026`, sem iniciar sessao nem alterar o plano
+  real. O primeiro upload Netlify `6a63a1b1e779802fb83f101e`, gerado sem as
+  variaveis publicas do Supabase, foi substituido imediatamente pelo build
+  correto e nao permanece em producao.
 
 - Publicada em producao pela PR #30 e merge `fc508d0` a ponte entre Revisao
   Semestral e Plano Estrategico Anual sem fundir seus

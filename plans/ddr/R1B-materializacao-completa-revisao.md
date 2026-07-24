@@ -1,7 +1,7 @@
 # R1B - Materializacao completa da revisao no Plano Anual
 
 Data: 2026-07-24
-Estado: implementado; aguarda release e reparo real do owner
+Estado: publicado; aguarda reparo real do owner
 
 ## Problema comprovado
 
@@ -47,3 +47,15 @@ Depois do release, o owner abre Plano Estrategico, usa
 e confirma uma vez. O gate R1B so termina quando a tela mostrar o contexto
 revisado, os objetivos corretos, os projetos correspondentes e a nova versao
 canonica sem perda do historico.
+
+## Release
+
+- PR #32; merge `1b742d3`.
+- CI da main `30112638735`.
+- Release protegido de `oracle-session` `30113002368`.
+- Verificacao protegida `30113080510`.
+- Frontend Netlify `6a63a22877aa69db05ad013f`.
+- Smoke autenticado: revisao real reconhecida como `Atualizacao incompleta` e
+  acao `Completar atualizacao do Plano 2026` visivel.
+- Nenhuma sessao foi iniciada e nenhum dado real foi alterado no smoke.
+- Sem migration e sem chamada paga de IA.

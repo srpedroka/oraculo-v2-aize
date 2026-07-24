@@ -184,8 +184,12 @@ projetos permaneciam antigos. A correcao de materializacao completa foi
 implementada em 2026-07-24: cada prioridade exige destino em objetivo, cada
 primeira acao exige destino em projeto e os blocos aprovados da revisao entram
 deterministicamente no plano. A aplicacao incompleta existente recebe caminho
-de reparo sem apagar historico. O progresso permanece em 52,5% geral e 50% no
-Plano 4 ate o owner confirmar a nova versao real.
+de reparo sem apagar historico. O pacote foi publicado pela PR #32, merge
+`1b742d3`, release protegido `30113002368`, Netlify
+`6a63a22877aa69db05ad013f` e verificacao `30113080510`. O smoke autenticado
+confirmou o estado `Atualizacao incompleta` e a acao correta, sem mutar dados.
+O progresso permanece em 52,5% geral e 50% no Plano 4 ate o owner revisar os
+destinos propostos e confirmar a nova versao real.
 
 ## 2. Os oito planos
 
