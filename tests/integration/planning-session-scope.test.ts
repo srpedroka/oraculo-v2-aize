@@ -124,11 +124,11 @@ d("escopo de sessões de planejamento", () => {
 
     const { data: messages, error: messageError } = await admin
       .from("chat_messages")
-      .select("content")
+      .select("text")
       .eq("conversation_id", result.body.session.conversation_id)
-      .eq("role", "oracle");
+      .eq("author", "oracle");
     if (messageError) throw messageError;
-    expect(messages?.some((message) => String(message.content).includes("uma única confirmação"))).toBe(true);
+    expect(messages?.some((message) => String(message.text).includes("uma única confirmação"))).toBe(true);
   });
 
   it("recusa uma revisão que não pertence à empresa", async () => {
