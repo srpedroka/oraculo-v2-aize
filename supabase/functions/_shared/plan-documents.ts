@@ -231,10 +231,26 @@ function buildStrategicReviewContent(base: Record<string, unknown>, proposal: an
       objetivo: objective,
     };
   });
+  const projectChanges = asArray<any>(
+    annualUpdate.projectChanges ?? annualUpdate.project_changes ?? annualUpdate.mudancas_projetos,
+  ).map((change) => {
+    const project = asRecord(change.project ?? change.projeto ?? change.after ?? change.depois);
+    return {
+      operacao: asText(change.operation ?? change.operacao),
+      chave_origem: asText(change.sourcePriorityKey ?? change.source_priority_key ?? change.chave_origem),
+      projeto_id: asText(change.projectId ?? change.project_id ?? change.projeto_id),
+      titulo: asText(change.title ?? change.titulo ?? project.name ?? project.nome, "Projeto"),
+      porque: asText(change.because ?? change.porque ?? change.justificativa),
+      alteracoes: asRecord(change.changes ?? change.alteracoes ?? change.after ?? change.depois),
+      projeto: project,
+    };
+  });
   const updateMode = asText(annualUpdate.mode ?? annualUpdate.modo)
-    || (adjustments.length || objectiveChanges.length || Object.keys(planChanges).length ? "update_current_year" : "preserve");
+    || (adjustments.length || objectiveChanges.length || projectChanges.length || Object.keys(planChanges).length
+      ? "update_current_year"
+      : "preserve");
   const annualPlanPreserved = updateMode !== "update_current_year"
-    || (!adjustments.length && !objectiveChanges.length && !Object.keys(planChanges).length);
+    || (!adjustments.length && !objectiveChanges.length && !projectChanges.length && !Object.keys(planChanges).length);
 
   return {
     ...base,
@@ -260,6 +276,7 @@ function buildStrategicReviewContent(base: Record<string, unknown>, proposal: an
     plano_segundo_semestre: {
       foco: asText(plan.focus ?? plan.foco),
       prioridades: asArray<any>(plan.priorities ?? plan.prioridades).map((priority) => ({
+        chave_origem: asText(priority.sourcePriorityKey ?? priority.source_priority_key ?? priority.chave_origem),
         titulo: asText(priority.title ?? priority.titulo),
         justificativa: asText(priority.rationale ?? priority.justificativa),
         objetivo_vinculado_id: asText(priority.linkedObjectiveId ?? priority.linked_objective_id ?? priority.objetivo_vinculado_id) || null,
@@ -282,6 +299,7 @@ function buildStrategicReviewContent(base: Record<string, unknown>, proposal: an
       modo: updateMode,
       alteracoes_plano: planChanges,
       mudancas_objetivos: objectiveChanges,
+      mudancas_projetos: projectChanges,
     },
     direcionamento_proximo_ano: asRecord(
       annualUpdate.nextYearBrief ?? annualUpdate.next_year_brief ?? annualUpdate.direcionamento_proximo_ano,

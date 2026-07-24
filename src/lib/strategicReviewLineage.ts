@@ -7,6 +7,7 @@ export interface StrategicReviewLineage {
   reviewCycle: "midyear" | "year_end";
   updateMode: "preserve" | "update_current_year" | "prepare_next_year";
   canApplyToCurrentPlan: boolean;
+  needsRepair: boolean;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -17,6 +18,25 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function asText(value: unknown) {
   return String(value ?? "").trim();
+}
+
+function asArray(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function needsMaterializationRepair(content: Record<string, unknown>, wasApplied: boolean) {
+  if (!wasApplied) return false;
+  const materialization = asRecord(content.materializacao_revisao);
+  if (materialization.completa === true) return false;
+  const secondSemesterPlan = asRecord(content.plano_segundo_semestre);
+  const priorities = asArray(secondSemesterPlan.prioridades).map(asRecord);
+  if (!priorities.length) return false;
+  const annualUpdate = asRecord(content.atualizacao_plano_anual);
+  const objectiveChanges = asArray(annualUpdate.mudancas_objetivos);
+  const projectChanges = asArray(annualUpdate.mudancas_projetos);
+  if (objectiveChanges.length < priorities.length) return true;
+  const prioritiesWithAction = priorities.filter((priority) => Boolean(asText(priority.primeira_acao)));
+  return projectChanges.length < prioritiesWithAction.length;
 }
 
 function documentTime(document: PlanDocument) {
@@ -47,6 +67,7 @@ export function buildStrategicReviewLineage(
       reviewCycle: "midyear",
       updateMode: "preserve",
       canApplyToCurrentPlan: false,
+      needsRepair: false,
     };
   }
 
@@ -69,6 +90,7 @@ export function buildStrategicReviewLineage(
   const wasApplied = review.content.plano_anual_atualizado === true
     || updateMode === "update_current_year"
     || Boolean(updatedDocumentId);
+  const needsRepair = needsMaterializationRepair(review.content, wasApplied);
 
   return {
     review,
@@ -76,6 +98,7 @@ export function buildStrategicReviewLineage(
     resultingPlan,
     reviewCycle,
     updateMode,
-    canApplyToCurrentPlan: reviewCycle === "midyear" && !wasApplied,
+    canApplyToCurrentPlan: reviewCycle === "midyear" && (!wasApplied || needsRepair),
+    needsRepair,
   };
 }

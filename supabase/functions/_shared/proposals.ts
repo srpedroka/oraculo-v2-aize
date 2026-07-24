@@ -5,6 +5,11 @@ import { quarterPeriodForMonth } from "./periods.ts";
 import { normalizeQuarterlySharedActions, uniqueQuarterlyActionEntries } from "./quarterly-actions.ts";
 import { normalizeQuarterlyKpiLinks } from "./quarterly-kpis.ts";
 import { assertImportedQuarterlyReferences } from "./untrusted-content.ts";
+import {
+  isReviewApplicationState,
+  reviewApplicationRequirements,
+  validateReviewApplicationEnvelope,
+} from "./strategic-review-application.ts";
 
 type Client = any;
 
@@ -33,6 +38,27 @@ function asText(value: unknown, fallback = "") {
 
 function asTextArray(value: unknown) {
   return asArray(value).map((item) => asText(item)).filter(Boolean);
+}
+
+function normalizedText(value: unknown) {
+  return asText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function uniqueText(values: unknown[]) {
+  const seen = new Set<string>();
+  return values.flatMap((value) => Array.isArray(value) ? value : [value])
+    .map((value) => asText(value))
+    .filter((value) => {
+      const key = normalizedText(value);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }
 
 function asRecord(value: unknown): Record<string, any> {
@@ -76,11 +102,15 @@ function normalizeSecondSemesterPlan(value: unknown, objectivesById: Map<string,
   const plan = asRecord(value);
   return {
     foco: asText(plan.focus ?? plan.foco),
-    prioridades: asArray(plan.priorities ?? plan.prioridades).map((item) => {
+    prioridades: asArray(plan.priorities ?? plan.prioridades).map((item, index) => {
       const priority = asRecord(item);
       const requestedObjectiveId = asText(priority.linkedObjectiveId ?? priority.linked_objective_id ?? priority.objetivo_vinculado_id);
       const linkedObjective = requestedObjectiveId ? objectivesById.get(requestedObjectiveId) : null;
       return {
+        chave_origem: asText(
+          priority.sourcePriorityKey ?? priority.source_priority_key ?? priority.chave_origem,
+          `priority-${index + 1}`,
+        ).toLowerCase(),
         titulo: asText(priority.title ?? priority.titulo),
         justificativa: asText(priority.rationale ?? priority.justificativa),
         objetivo_vinculado_id: linkedObjective?.id ?? null,
@@ -240,6 +270,20 @@ function strategicPlanSnapshot(plan: any) {
     riscos: asTextArray(profile.risks),
     decisoes_pendentes: asTextArray(profile.pendingDecisions),
     aprendizados_historicos: asTextArray(profile.historicalLessons),
+    contexto_revisao: asRecord(profile.reviewContext),
+    decisoes_revisao: asTextArray(profile.reviewDecisions),
+  };
+}
+
+function strategicProjectSnapshot(project: any) {
+  if (!project) return null;
+  return {
+    id: asText(project.id),
+    nome: asText(project.name),
+    responsavel: asText(project.owner),
+    prazo: asText(project.deadline),
+    status: asText(project.status),
+    objetivo_vinculado_id: asText(project.linked_objective_id) || null,
   };
 }
 
@@ -1082,6 +1126,11 @@ async function nextPlanDocumentVersion(client: Client, orgId: string, areaId: st
 
 async function saveStrategicReview(client: Client, session: any, proposal: any, userId: string) {
   if (session.area_id) throw new Error("Revisão estratégica é do plano da empresa");
+  const isReviewApplication = isReviewApplicationState(session.state);
+  const applicationErrors = validateReviewApplicationEnvelope(session.state, { proposal });
+  if (applicationErrors.length) {
+    throw new Error(`A aplicação da revisão está incompleta: ${applicationErrors.join(", ")}`);
+  }
 
   const period = asText(proposal.period ?? proposal.periodo, session.period);
   const year = yearFromPeriod(period);
@@ -1097,6 +1146,9 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
   const rawObjectiveChanges = asArray<any>(
     annualPlanUpdate.objectiveChanges ?? annualPlanUpdate.objective_changes ?? annualPlanUpdate.mudancas_objetivos,
   );
+  const rawProjectChanges = asArray<any>(
+    annualPlanUpdate.projectChanges ?? annualPlanUpdate.project_changes ?? annualPlanUpdate.mudancas_projetos,
+  );
   const rawAdjustments = asArray<any>(proposal.adjustments ?? proposal.ajustes);
   const planChangeKeys = [
     "executiveSummary", "executive_summary", "resumo_executivo",
@@ -1105,7 +1157,10 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     "historicalLessons", "historical_lessons", "aprendizados_historicos",
   ];
   const hasPlanChanges = planChangeKeys.some((key) => hasOwn(planChanges, key));
-  const hasRequestedAnnualChanges = hasPlanChanges || rawObjectiveChanges.length > 0 || rawAdjustments.length > 0;
+  const hasRequestedAnnualChanges = hasPlanChanges
+    || rawObjectiveChanges.length > 0
+    || rawProjectChanges.length > 0
+    || rawAdjustments.length > 0;
   const requestedMode = asText(annualPlanUpdate.mode ?? annualPlanUpdate.modo).toLowerCase();
   const updateMode = requestedMode
     ? requestedMode
@@ -1164,9 +1219,36 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     throw new Error(`Plano Estratégico ${year} não encontrado para atualização`);
   }
 
+  let sourceReviewDocument: any = null;
+  if (isReviewApplication) {
+    const sourceReviewDocumentId = asText(session.state?.source_review_document_id);
+    const { data, error } = await client
+      .from("plan_documents")
+      .select("id,title,version,content")
+      .eq("id", sourceReviewDocumentId)
+      .eq("org_id", session.org_id)
+      .eq("type", "strategic_review")
+      .is("area_id", null)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("A revisão aprovada usada como origem não está mais disponível");
+    sourceReviewDocument = data;
+  }
+
   const objectivesById = new Map((strategicObjectives ?? []).map((objective: any) => [objective.id, objective]));
-  const semesterReview = normalizeSemesterReview(proposal.semester_review ?? proposal.revisao_semestre);
-  const secondSemesterPlan = normalizeSecondSemesterPlan(proposal.second_semester_plan ?? proposal.plano_segundo_semestre, objectivesById);
+  const sourceReviewContent = asRecord(sourceReviewDocument?.content);
+  const semesterReview = normalizeSemesterReview(
+    sourceReviewDocument
+      ? sourceReviewContent.revisao_semestre
+      : proposal.semester_review ?? proposal.revisao_semestre,
+  );
+  const secondSemesterPlan = normalizeSecondSemesterPlan(
+    sourceReviewDocument
+      ? sourceReviewContent.plano_segundo_semestre
+      : proposal.second_semester_plan ?? proposal.plano_segundo_semestre,
+    objectivesById,
+  );
   if (!hasRequestedAnnualChanges && !hasSemesterReviewContent(semesterReview) && !hasSecondSemesterPlanContent(secondSemesterPlan)) {
     throw new Error("A revisão precisa conter diagnóstico do semestre, plano do segundo semestre ou ajuste explícito");
   }
@@ -1174,7 +1256,12 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
   const updatesByObjective = new Map<string, Record<string, unknown>>();
   const normalizedAdjustments: Array<Record<string, unknown>> = [];
   const normalizedObjectiveChanges: Array<Record<string, unknown>> = [];
+  const normalizedProjectChanges: Array<Record<string, unknown>> = [];
   const archivedObjectiveIds = new Set<string>();
+  const objectiveIdByPriorityKey = new Map<string, string>();
+  const priorityByKey = new Map(
+    secondSemesterPlan.prioridades.map((priority) => [priority.chave_origem, priority]),
+  );
 
   const queueObjectiveUpdate = (
     objective: any,
@@ -1211,11 +1298,36 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     queueObjectiveUpdate(objective, field, adjustment.to ?? adjustment.para ?? adjustment.valor, because);
   }
 
-  for (const requestedChange of rawObjectiveChanges) {
+  for (const [changeIndex, requestedChange] of rawObjectiveChanges.entries()) {
     const change = asRecord(requestedChange);
     const operation = asText(change.operation ?? change.operacao).toLowerCase();
     const because = asText(change.because ?? change.porque ?? change.justificativa);
     if (!because) throw new Error("Cada mudança de objetivo precisa de justificativa");
+    const sourcePriorityKey = asText(
+      change.sourcePriorityKey ?? change.source_priority_key ?? change.chave_origem,
+      `priority-${changeIndex + 1}`,
+    ).toLowerCase();
+    const sourcePriority = priorityByKey.get(sourcePriorityKey);
+    if (isReviewApplication && !sourcePriority) {
+      throw new Error("Mudança de objetivo não corresponde a uma prioridade da revisão aprovada");
+    }
+
+    if (operation === "keep") {
+      const objectiveId = asText(change.objectiveId ?? change.objective_id ?? change.objetivo_id);
+      const objective = objectivesById.get(objectiveId);
+      if (!objective) throw new Error("Objetivo estratégico mantido não pertence ao plano anual desta empresa");
+      objectiveIdByPriorityKey.set(sourcePriorityKey, objective.id);
+      normalizedObjectiveChanges.push({
+        operacao: "keep",
+        chave_origem: sourcePriorityKey,
+        objetivo_id: objective.id,
+        titulo: asText(objective.title),
+        porque: because,
+        antes: snapshotStrategicObjective(objective),
+        depois: snapshotStrategicObjective(objective),
+      });
+      continue;
+    }
 
     if (operation === "update") {
       const objectiveId = asText(change.objectiveId ?? change.objective_id ?? change.objetivo_id);
@@ -1227,8 +1339,10 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
         .filter((entry): entry is { field: StrategicReviewField; value: unknown } => Boolean(entry.field));
       if (!fieldEntries.length) throw new Error("Mudança de objetivo não contém campos válidos");
       for (const entry of fieldEntries) queueObjectiveUpdate(objective, entry.field, entry.value, because);
+      objectiveIdByPriorityKey.set(sourcePriorityKey, objective.id);
       normalizedObjectiveChanges.push({
         operacao: "update",
+        chave_origem: sourcePriorityKey,
         objetivo_id: objective.id,
         titulo: asText(objective.title),
         porque: because,
@@ -1268,8 +1382,10 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
         period: String(year),
       });
       await applyProposedKpiLinks(client, session, inserted, objective, userId);
+      objectiveIdByPriorityKey.set(sourcePriorityKey, inserted.id);
       normalizedObjectiveChanges.push({
         operacao: "create",
+        chave_origem: sourcePriorityKey,
         objetivo_id: inserted.id,
         titulo: asText(inserted.title),
         porque: because,
@@ -1295,6 +1411,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
       archivedObjectiveIds.add(objective.id);
       normalizedObjectiveChanges.push({
         operacao: "archive",
+        chave_origem: sourcePriorityKey,
         objetivo_id: objective.id,
         titulo: asText(objective.title),
         porque: because,
@@ -1307,10 +1424,193 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     throw new Error("Operação inválida na mudança de objetivo anual");
   }
 
+  let strategicProjects: any[] = [];
+  if (strategicPlan) {
+    const { data, error: strategicProjectsError } = await client
+      .from("strategic_projects")
+      .select("*")
+      .eq("org_id", session.org_id)
+      .eq("plan_id", strategicPlan.id)
+      .is("archived_at", null)
+      .order("created_at");
+    if (strategicProjectsError) throw strategicProjectsError;
+    strategicProjects = data ?? [];
+  }
+  const projectsById = new Map(strategicProjects.map((project: any) => [project.id, project]));
+
+  for (const [changeIndex, requestedChange] of rawProjectChanges.entries()) {
+    const change = asRecord(requestedChange);
+    const operation = asText(change.operation ?? change.operacao).toLowerCase();
+    const because = asText(change.because ?? change.porque ?? change.justificativa);
+    if (!because) throw new Error("Cada mudança de projeto precisa de justificativa");
+    const sourcePriorityKey = asText(
+      change.sourcePriorityKey ?? change.source_priority_key ?? change.chave_origem,
+      `priority-${changeIndex + 1}`,
+    ).toLowerCase();
+    const sourcePriority = priorityByKey.get(sourcePriorityKey);
+    if (isReviewApplication && !sourcePriority) {
+      throw new Error("Mudança de projeto não corresponde a uma prioridade da revisão aprovada");
+    }
+    const mappedObjectiveId = objectiveIdByPriorityKey.get(sourcePriorityKey)
+      ?? sourcePriority?.objetivo_vinculado_id
+      ?? "";
+
+    if (operation === "keep") {
+      const projectId = asText(change.projectId ?? change.project_id ?? change.projeto_id);
+      const project = projectsById.get(projectId);
+      if (!project) throw new Error("Projeto estratégico mantido não pertence ao plano anual desta empresa");
+      if (mappedObjectiveId && project.linked_objective_id !== mappedObjectiveId) {
+        throw new Error("Projeto mantido não está vinculado ao objetivo escolhido para a prioridade");
+      }
+      normalizedProjectChanges.push({
+        operacao: "keep",
+        chave_origem: sourcePriorityKey,
+        projeto_id: project.id,
+        titulo: asText(project.name),
+        porque: because,
+        antes: strategicProjectSnapshot(project),
+        depois: strategicProjectSnapshot(project),
+      });
+      continue;
+    }
+
+    if (operation === "update") {
+      const projectId = asText(change.projectId ?? change.project_id ?? change.projeto_id);
+      const project = projectsById.get(projectId);
+      if (!project) throw new Error("Projeto estratégico a atualizar não pertence ao plano anual desta empresa");
+      const fields = asRecord(change.changes ?? change.alteracoes ?? change.after ?? change.depois);
+      const update: Record<string, unknown> = {};
+      const requestedName = firstOwnedValue(fields, ["name", "nome"]);
+      const requestedOwner = firstOwnedValue(fields, ["owner", "responsavel"]);
+      const requestedDeadline = firstOwnedValue(fields, ["deadline", "prazo"]);
+      const requestedStatus = firstOwnedValue(fields, ["status"]);
+      if (requestedName.found) update.name = asText(requestedName.value);
+      if (requestedOwner.found) update.owner = asText(requestedOwner.value);
+      if (requestedDeadline.found) {
+        const deadline = cleanDate(requestedDeadline.value);
+        if (!deadline) throw new Error("Prazo do projeto estratégico precisa estar em formato AAAA-MM-DD");
+        update.deadline = deadline;
+      }
+      if (requestedStatus.found) update.status = asCloseStatus(requestedStatus.value);
+      if (mappedObjectiveId) update.linked_objective_id = mappedObjectiveId;
+      if (!Object.keys(update).length) {
+        throw new Error("Mudança de projeto não contém campos válidos");
+      }
+      const { data: updatedProject, error: projectUpdateError } = await client
+        .from("strategic_projects")
+        .update(update)
+        .eq("id", project.id)
+        .eq("org_id", session.org_id)
+        .eq("plan_id", strategicPlan.id)
+        .select("*")
+        .single();
+      if (projectUpdateError) throw projectUpdateError;
+      normalizedProjectChanges.push({
+        operacao: "update",
+        chave_origem: sourcePriorityKey,
+        projeto_id: project.id,
+        titulo: asText(updatedProject.name),
+        porque: because,
+        antes: strategicProjectSnapshot(project),
+        depois: strategicProjectSnapshot(updatedProject),
+      });
+      continue;
+    }
+
+    if (operation === "create") {
+      const projectInput = asRecord(change.project ?? change.projeto ?? change.after ?? change.depois);
+      const name = asText(projectInput.name ?? projectInput.nome, sourcePriority?.primeira_acao);
+      const owner = asText(projectInput.owner ?? projectInput.responsavel, sourcePriority?.responsavel);
+      const deadline = cleanDate(projectInput.deadline ?? projectInput.prazo ?? sourcePriority?.prazo);
+      if (!name || !owner || !deadline || !mappedObjectiveId) {
+        throw new Error("Novo projeto exige nome, responsável, prazo e vínculo com objetivo estratégico");
+      }
+      const duplicate = strategicProjects.find((project: any) => (
+        normalizedText(project.name) === normalizedText(name)
+      ));
+      if (duplicate) {
+        const { data: updatedProject, error: duplicateUpdateError } = await client
+          .from("strategic_projects")
+          .update({
+            owner,
+            deadline,
+            linked_objective_id: mappedObjectiveId,
+          })
+          .eq("id", duplicate.id)
+          .eq("org_id", session.org_id)
+          .eq("plan_id", strategicPlan.id)
+          .select("*")
+          .single();
+        if (duplicateUpdateError) throw duplicateUpdateError;
+        normalizedProjectChanges.push({
+          operacao: "update",
+          chave_origem: sourcePriorityKey,
+          projeto_id: duplicate.id,
+          titulo: asText(updatedProject.name),
+          porque: `${because} Projeto equivalente já existia e foi reconciliado sem duplicação.`,
+          antes: strategicProjectSnapshot(duplicate),
+          depois: strategicProjectSnapshot(updatedProject),
+        });
+        continue;
+      }
+      const { data: insertedProject, error: projectInsertError } = await client
+        .from("strategic_projects")
+        .insert({
+          org_id: session.org_id,
+          plan_id: strategicPlan.id,
+          name,
+          owner,
+          deadline,
+          status: asCloseStatus(projectInput.status ?? "on_track"),
+          linked_objective_id: mappedObjectiveId,
+        })
+        .select("*")
+        .single();
+      if (projectInsertError) throw projectInsertError;
+      normalizedProjectChanges.push({
+        operacao: "create",
+        chave_origem: sourcePriorityKey,
+        projeto_id: insertedProject.id,
+        titulo: asText(insertedProject.name),
+        porque: because,
+        antes: null,
+        depois: strategicProjectSnapshot(insertedProject),
+      });
+      continue;
+    }
+
+    if (operation === "archive") {
+      const projectId = asText(change.projectId ?? change.project_id ?? change.projeto_id);
+      const project = projectsById.get(projectId);
+      if (!project) throw new Error("Projeto estratégico a retirar não pertence ao plano anual desta empresa");
+      const { error: projectArchiveError } = await client.rpc("set_operational_item_archived", {
+        p_org_id: session.org_id,
+        p_entity_type: "strategic_project",
+        p_entity_id: project.id,
+        p_archived: true,
+        p_actor_id: userId,
+        p_reason: because,
+      });
+      if (projectArchiveError) throw projectArchiveError;
+      normalizedProjectChanges.push({
+        operacao: "archive",
+        chave_origem: sourcePriorityKey,
+        projeto_id: project.id,
+        titulo: asText(project.name),
+        porque: because,
+        antes: strategicProjectSnapshot(project),
+        depois: null,
+      });
+      continue;
+    }
+
+    throw new Error("Operação inválida na mudança de projeto anual");
+  }
+
   const before = (strategicObjectives ?? []).map(snapshotStrategicObjective);
   const planBefore = strategicPlanSnapshot(strategicPlan);
   let planWasUpdated = false;
-  if (updateMode === "update_current_year" && hasPlanChanges) {
+  if (updateMode === "update_current_year" && (hasPlanChanges || isReviewApplication)) {
     const planUpdate: Record<string, unknown> = {
       updated_by: userId,
       updated_at: new Date().toISOString(),
@@ -1318,9 +1618,25 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     const executiveSummary = firstOwnedValue(planChanges, ["executiveSummary", "executive_summary", "resumo_executivo"]);
     const themes = firstOwnedValue(planChanges, ["themes", "temas"]);
     const rituals = firstOwnedValue(planChanges, ["rituals", "rituais"]);
-    if (executiveSummary.found) planUpdate.executive_summary = asText(executiveSummary.value);
+    if (isReviewApplication) {
+      planUpdate.executive_summary = uniqueText([
+        secondSemesterPlan.foco,
+        semesterReview.resumo_executivo,
+        executiveSummary.found ? executiveSummary.value : "",
+      ]).join("\n\n");
+    } else if (executiveSummary.found) {
+      planUpdate.executive_summary = asText(executiveSummary.value);
+    }
     if (themes.found) planUpdate.themes = asTextArray(themes.value);
-    if (rituals.found) planUpdate.rituals = asTextArray(rituals.value);
+    if (isReviewApplication) {
+      planUpdate.rituals = uniqueText([
+        ...(strategicPlan?.rituals ?? []),
+        ...secondSemesterPlan.cadencia,
+        ...(rituals.found ? asTextArray(rituals.value) : []),
+      ]);
+    } else if (rituals.found) {
+      planUpdate.rituals = asTextArray(rituals.value);
+    }
 
     const profile = { ...asRecord(strategicPlan?.profile) };
     const profileFields = [
@@ -1332,8 +1648,42 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     let profileChanged = false;
     for (const field of profileFields) {
       const requested = firstOwnedValue(planChanges, field.keys);
-      if (!requested.found) continue;
-      profile[field.target] = asTextArray(requested.value);
+      const sourceValues = !isReviewApplication
+        ? []
+        : field.target === "renunciations"
+        ? secondSemesterPlan.renuncias
+        : field.target === "risks"
+        ? [...semesterReview.riscos, ...secondSemesterPlan.riscos]
+        : field.target === "historicalLessons"
+        ? [...semesterReview.aprendizados, ...semesterReview.padroes_repetidos]
+        : [];
+      if (!requested.found && !sourceValues.length) continue;
+      profile[field.target] = isReviewApplication
+        ? uniqueText([
+          ...asTextArray(profile[field.target]),
+          ...sourceValues,
+          ...(requested.found ? asTextArray(requested.value) : []),
+        ])
+        : asTextArray(requested.value);
+      profileChanged = true;
+    }
+    if (isReviewApplication) {
+      profile.reviewContext = {
+        sourceDocumentId: asText(sourceReviewDocument?.id),
+        sourceTitle: asText(sourceReviewDocument?.title, "Revisão Estratégica"),
+        sourceVersion: Number(sourceReviewDocument?.version ?? 1),
+        summary: semesterReview.resumo_executivo,
+        focus: secondSemesterPlan.foco,
+        confirmedAdvances: semesterReview.avancos_confirmados,
+        gaps: semesterReview.lacunas,
+        decisions: secondSemesterPlan.decisoes,
+        priorities: secondSemesterPlan.prioridades.map((priority) => priority.titulo),
+        updatedAt: new Date().toISOString(),
+      };
+      profile.reviewDecisions = uniqueText([
+        ...asTextArray(profile.reviewDecisions),
+        ...secondSemesterPlan.decisoes,
+      ]);
       profileChanged = true;
     }
     if (profileChanged) planUpdate.profile = profile;
@@ -1395,7 +1745,10 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     .maybeSingle();
   if (organizationError) throw organizationError;
 
-  const annualPlanWasUpdated = planWasUpdated || normalizedAdjustments.length > 0 || normalizedObjectiveChanges.length > 0;
+  const annualPlanWasUpdated = planWasUpdated
+    || normalizedAdjustments.length > 0
+    || normalizedObjectiveChanges.length > 0
+    || normalizedProjectChanges.length > 0;
   let updatedAnnualDocument: any = null;
   if (annualPlanWasUpdated && updatedStrategicPlan) {
     const { data: strategicProjects, error: strategicProjectsError } = await client
@@ -1479,7 +1832,17 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
       plano_antes: planBefore,
       plano_depois: strategicPlanSnapshot(updatedStrategicPlan),
       mudancas_objetivos: normalizedObjectiveChanges,
+      mudancas_projetos: normalizedProjectChanges,
     },
+    materializacao_revisao: isReviewApplication
+      ? {
+        completa: true,
+        documento_origem_id: asText(sourceReviewDocument?.id),
+        prioridades_exigidas: reviewApplicationRequirements(sourceReviewContent).priorities.map((priority) => priority.key),
+        prioridades_em_objetivos: normalizedObjectiveChanges.map((change) => asText(change.chave_origem)).filter(Boolean),
+        prioridades_em_projetos: normalizedProjectChanges.map((change) => asText(change.chave_origem)).filter(Boolean),
+      }
+      : null,
     direcionamento_proximo_ano: nextYearBrief,
     antes: before,
     depois: (updatedObjectives ?? []).map(snapshotStrategicObjective),
@@ -1511,7 +1874,7 @@ async function saveStrategicReview(client: Client, session: any, proposal: any, 
     return `Fechamento anual gravado com o plano de ${year} preservado e o direcionamento do próximo ano preparado. Documento gerado: ${document.title} (v${document.version}).`;
   }
   const annualSummary = annualPlanWasUpdated
-    ? `plano anual atualizado com ${normalizedObjectiveChanges.length} mudança(s) estrutural(is), ${normalizedAdjustments.length} alteração(ões) de campo e nova versão do documento canônico`
+    ? `plano anual atualizado com ${normalizedObjectiveChanges.length} decisão(ões) sobre objetivo(s), ${normalizedProjectChanges.length} decisão(ões) sobre projeto(s), ${normalizedAdjustments.length} alteração(ões) de campo e nova versão do documento canônico`
     : "plano anual original preservado sem alteração de objetivo";
   return `Revisão semestral gravada, com ${annualSummary}. Documento gerado: ${document.title} (v${document.version}).`;
 }

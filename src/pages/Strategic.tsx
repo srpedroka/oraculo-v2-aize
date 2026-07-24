@@ -79,7 +79,7 @@ function ReviewResult({ review }: { review: PastedPlanReview }) {
 function AnnualPlanLineage({ lineage, year }: { lineage: StrategicReviewLineage; year: number }) {
   if (!lineage.review) return null;
 
-  const updateFinished = lineage.updateMode === "update_current_year";
+  const updateFinished = lineage.updateMode === "update_current_year" && !lineage.needsRepair;
   const resultTitle = lineage.resultingPlan?.title ?? `Plano Estratégico ${year}`;
   const resultVersion = lineage.resultingPlan?.version;
 
@@ -118,7 +118,7 @@ function AnnualPlanLineage({ lineage, year }: { lineage: StrategicReviewLineage;
             ) : (
               <FileClock aria-hidden="true" className="h-3.5 w-3.5 text-status-warning" />
             )}
-            {updateFinished ? "Plano atualizado" : "Atualização pendente"}
+            {updateFinished ? "Plano atualizado" : lineage.needsRepair ? "Atualização incompleta" : "Atualização pendente"}
           </p>
           <p className="mt-1 break-words text-sm font-medium text-text">
             {updateFinished ? resultTitle : `Plano Estratégico ${year}`}
@@ -126,7 +126,9 @@ function AnnualPlanLineage({ lineage, year }: { lineage: StrategicReviewLineage;
           <p className="mt-1 text-xs leading-5 text-text-secondary">
             {updateFinished
               ? resultVersion ? `Versão ${resultVersion}` : "Nova versão registrada"
-              : "A revisão está salva, mas suas decisões ainda não foram incorporadas ao plano."}
+              : lineage.needsRepair
+                ? "A revisão está salva, mas contexto, objetivos ou projetos ainda não foram incorporados por completo."
+                : "A revisão está salva, mas suas decisões ainda não foram incorporadas ao plano."}
           </p>
         </div>
       </div>
@@ -175,7 +177,9 @@ export function Strategic() {
         period: String(planYear),
         reviewIntent: "review",
       };
-  const reviewActionLabel = reviewLineage.canApplyToCurrentPlan
+  const reviewActionLabel = reviewLineage.needsRepair
+    ? `Completar atualização do Plano ${planYear}`
+    : reviewLineage.canApplyToCurrentPlan
     ? `Atualizar Plano ${planYear} com a revisão`
     : reviewLineage.updateMode === "update_current_year"
       ? "Nova revisão estratégica"
@@ -493,7 +497,28 @@ export function Strategic() {
                   <dd className="font-medium text-text">{plan.profile.founded}</dd>
                 </div>
               </dl>
-              <p className="mt-4 break-words text-sm leading-6 text-text-secondary">{plan.profile.mainPain}</p>
+              {plan.profile.reviewContext ? (
+                <div className="mt-4 border-t border-border-subtle pt-4">
+                  <p className="text-xs font-medium text-text-tertiary">Contexto atualizado pela revisão</p>
+                  {plan.profile.reviewContext.focus ? (
+                    <p className="mt-1 break-words text-sm font-medium leading-6 text-text">
+                      {plan.profile.reviewContext.focus}
+                    </p>
+                  ) : null}
+                  {plan.profile.reviewContext.summary ? (
+                    <p className="mt-2 break-words text-sm leading-6 text-text-secondary">
+                      {plan.profile.reviewContext.summary}
+                    </p>
+                  ) : null}
+                  {plan.profile.mainPain ? (
+                    <p className="mt-3 break-words text-xs leading-5 text-text-tertiary">
+                      Contexto de origem: {plan.profile.mainPain}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-4 break-words text-sm leading-6 text-text-secondary">{plan.profile.mainPain}</p>
+              )}
             </Card>
 
             <Card>

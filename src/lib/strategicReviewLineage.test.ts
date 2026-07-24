@@ -59,6 +59,32 @@ describe("linhagem da revisão estratégica", () => {
     expect(result.canApplyToCurrentPlan).toBe(false);
   });
 
+  it("oferece completar uma aplicação antiga que deixou prioridades e projetos de fora", () => {
+    const result = buildStrategicReviewLineage([
+      document("plan-v1", "strategic", 1, "2026-01-05T10:00:00Z"),
+      document("plan-v2", "strategic", 2, "2026-07-23T10:00:00Z"),
+      document("review-v2", "strategic_review", 2, "2026-07-23T10:00:01Z", {
+        ciclo_revisao: "midyear",
+        plano_anual_atualizado: true,
+        documento_plano_anual_atualizado: { id: "plan-v2", versao: 2 },
+        plano_segundo_semestre: {
+          prioridades: [{
+            titulo: "Evolução da fábrica",
+            primeira_acao: "Formalizar o plano industrial",
+          }],
+        },
+        atualizacao_plano_anual: {
+          modo: "update_current_year",
+          mudancas_objetivos: [],
+          mudancas_projetos: [],
+        },
+      }),
+    ], 2026);
+
+    expect(result.needsRepair).toBe(true);
+    expect(result.canApplyToCurrentPlan).toBe(true);
+  });
+
   it("nunca oferece reescrever o plano encerrado", () => {
     const result = buildStrategicReviewLineage([
       document("plan-v1", "strategic", 1, "2026-01-05T10:00:00Z"),

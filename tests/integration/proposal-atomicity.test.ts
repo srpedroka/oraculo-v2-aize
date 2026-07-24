@@ -713,6 +713,195 @@ d("Fatia 1A — atomicidade e idempotência (staging, endpoint real)", () => {
     expect(count).toBe(1);
   });
 
+  it("R1B: materializa revisão aprovada em contexto, objetivo, projeto e documento anual", async () => {
+    const hierarchy = await seedAnnualHierarchy(org.areas.producaoId, "Evoluir a fábrica R1B materialização");
+    const { data: strategicPlan, error: planError } = await admin
+      .from("strategic_plans")
+      .upsert({
+        org_id: org.orgId,
+        year: 2026,
+        profile: {
+          sector: "Indústria",
+          mainPain: "Contexto original",
+          renunciations: [],
+          risks: [],
+          historicalLessons: [],
+        },
+        drivers: {},
+        swot: {},
+        themes: ["Tema original"],
+        rituals: ["Revisão trimestral"],
+        executive_summary: "Direção anterior",
+        updated_by: org.owner.id,
+      }, { onConflict: "org_id,year" })
+      .select("id")
+      .single();
+    if (planError) throw planError;
+
+    const { data: latestReview } = await admin
+      .from("plan_documents")
+      .select("version")
+      .eq("org_id", org.orgId)
+      .eq("type", "strategic_review")
+      .eq("period", "2026")
+      .is("area_id", null)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const sourceVersion = Number(latestReview?.version ?? 0) + 1;
+    const sourceContent = {
+      ciclo_revisao: "midyear",
+      plano_anual_atualizado: true,
+      documento_plano_anual_atualizado: { id: "documento-incompleto" },
+      revisao_semestre: {
+        resumo_executivo: "O semestre confirmou receita, mas expôs a produtividade industrial como restrição central.",
+        avancos_confirmados: ["Receita sustentada"],
+        lacunas: ["Produtividade abaixo do necessário"],
+        aprendizados: ["Poucas prioridades aumentam a disciplina de execução"],
+        riscos: ["Nova parada industrial"],
+      },
+      plano_segundo_semestre: {
+        foco: "Concentrar o segundo semestre na evolução da fábrica.",
+        prioridades: [{
+          titulo: "Evolução da fábrica",
+          objetivo_vinculado_id: hierarchy.strategic.id,
+          resultado_esperado: "Ganho de produtividade sem elevar custo fixo",
+          indicador: "Produtividade industrial",
+          meta: "20% no ano",
+          prazo: "2026-12-31",
+          responsavel: "Marcelo",
+          primeira_acao: "Formalizar o plano executivo da fábrica",
+        }],
+        decisoes: ["Fábrica é prioridade quando houver conflito de capacidade"],
+        renuncias: ["Não abrir novas prioridades estratégicas"],
+        riscos: ["Baixa disciplina de acompanhamento"],
+        cadencia: ["Revisão industrial quinzenal"],
+      },
+      atualizacao_plano_anual: {
+        modo: "update_current_year",
+        mudancas_objetivos: [],
+        mudancas_projetos: [],
+      },
+    };
+    const { data: sourceReview, error: sourceError } = await admin
+      .from("plan_documents")
+      .insert({
+        org_id: org.orgId,
+        area_id: null,
+        session_id: null,
+        type: "strategic_review",
+        origin: "session",
+        period: "2026",
+        title: "Revisão Semestral origem R1B",
+        content: sourceContent,
+        version: sourceVersion,
+        created_by: org.owner.id,
+      })
+      .select("id,title,version")
+      .single();
+    if (sourceError) throw sourceError;
+
+    const sessionId = await seedSession({
+      org_id: org.orgId,
+      area_id: null,
+      user_id: org.owner.id,
+      type: "strategic_review",
+      period: "2026",
+      state: {
+        review_intent: "apply_existing_review",
+        source_review_document_id: sourceReview.id,
+        source_review_title: sourceReview.title,
+        source_review_version: sourceReview.version,
+        required_annual_plan_mode: "update_current_year",
+        review_application_repair: true,
+        required_review_priorities: [{
+          key: "priority-1",
+          title: "Evolução da fábrica",
+          linkedObjectiveId: hierarchy.strategic.id,
+          firstAction: "Formalizar o plano executivo da fábrica",
+        }],
+      },
+      pending_proposal: {
+        type: "apply_strategic_review",
+        period: "2026",
+        review_cycle: "midyear",
+        motivo_revisao: "Completar aplicação aprovada",
+        annual_plan_update: {
+          mode: "update_current_year",
+          planChanges: {
+            executiveSummary: "Resumo proposto pelo modelo",
+          },
+          objectiveChanges: [{
+            operation: "keep",
+            sourcePriorityKey: "priority-1",
+            objectiveId: hierarchy.strategic.id,
+            because: "O objetivo vigente já representa a prioridade aprovada",
+          }],
+          projectChanges: [{
+            operation: "create",
+            sourcePriorityKey: "priority-1",
+            because: "A primeira ação precisa aparecer no portfólio prioritário",
+            project: {
+              name: "Formalizar o plano executivo da fábrica",
+              owner: "Marcelo",
+              deadline: "2026-12-31",
+            },
+          }],
+        },
+      },
+    });
+
+    const result = await confirm(sessionId);
+    expect(result.status).toBe(200);
+
+    const { data: updatedPlan, error: updatedPlanError } = await admin
+      .from("strategic_plans")
+      .select("executive_summary,rituals,profile")
+      .eq("id", strategicPlan.id)
+      .single();
+    if (updatedPlanError) throw updatedPlanError;
+    expect(updatedPlan.executive_summary).toContain("evolução da fábrica");
+    expect(updatedPlan.executive_summary).toContain("produtividade industrial");
+    expect(updatedPlan.rituals).toContain("Revisão industrial quinzenal");
+    expect(updatedPlan.profile.reviewContext).toMatchObject({
+      sourceDocumentId: sourceReview.id,
+      focus: "Concentrar o segundo semestre na evolução da fábrica.",
+    });
+    expect(updatedPlan.profile.renunciations).toContain("Não abrir novas prioridades estratégicas");
+    expect(updatedPlan.profile.historicalLessons).toContain("Poucas prioridades aumentam a disciplina de execução");
+
+    const { data: projects, error: projectsError } = await admin
+      .from("strategic_projects")
+      .select("name,owner,deadline,linked_objective_id")
+      .eq("org_id", org.orgId)
+      .eq("plan_id", strategicPlan.id)
+      .eq("name", "Formalizar o plano executivo da fábrica")
+      .is("archived_at", null);
+    if (projectsError) throw projectsError;
+    expect(projects).toEqual([expect.objectContaining({
+      owner: "Marcelo",
+      deadline: "2026-12-31",
+      linked_objective_id: hierarchy.strategic.id,
+    })]);
+
+    const { data: reviewDocuments, error: reviewDocumentsError } = await admin
+      .from("plan_documents")
+      .select("content")
+      .eq("org_id", org.orgId)
+      .eq("session_id", sessionId)
+      .eq("type", "strategic_review");
+    if (reviewDocumentsError) throw reviewDocumentsError;
+    expect(reviewDocuments).toHaveLength(1);
+    expect(reviewDocuments[0].content.materializacao_revisao).toMatchObject({
+      completa: true,
+      documento_origem_id: sourceReview.id,
+      prioridades_em_objetivos: ["priority-1"],
+      prioridades_em_projetos: ["priority-1"],
+    });
+    expect(reviewDocuments[0].content.atualizacao_plano_anual.mudancas_objetivos[0].operacao).toBe("keep");
+    expect(reviewDocuments[0].content.atualizacao_plano_anual.mudancas_projetos[0].operacao).toBe("create");
+  });
+
   it("R1B: atualiza, cria e retira objetivos do plano anual em uma confirmação reversível", async () => {
     const updateHierarchy = await seedAnnualHierarchy(org.areas.comercialId, "Objetivo anual atualizado R1B");
     const archiveHierarchy = await seedAnnualHierarchy(org.areas.producaoId, "Objetivo anual retirado R1B");

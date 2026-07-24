@@ -135,6 +135,8 @@ function ObjectiveBlock({ objective }: { objective: Record<string, unknown> }) {
 function StrategicSection({ content }: { content: Record<string, unknown> }) {
   const strategic = asRecord(content.strategic);
   if (!Object.keys(strategic).length) return null;
+  const profile = asRecord(strategic.perfil);
+  const reviewContext = asRecord(profile.reviewContext);
   const drivers = asRecord(strategic.direcionadores);
   const swot = asRecord(strategic.swot);
   const projects = asArray<Record<string, unknown>>(strategic.projetos);
@@ -148,6 +150,8 @@ function StrategicSection({ content }: { content: Record<string, unknown> }) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <div className="space-y-2">
+        <KeyValue label="Contexto atualizado pela revisão" value={reviewContext.summary} />
+        <KeyValue label="Foco do ciclo revisado" value={reviewContext.focus} />
         <KeyValue label="Propósito" value={drivers.proposito} />
         <KeyValue label="Visão" value={drivers.visao} />
         <KeyValue label="Temas" value={asArray<string>(strategic.temas).join("; ")} />
@@ -247,6 +251,7 @@ function StrategicReviewSection({ content }: { content: Record<string, unknown> 
   const areaResults = asArray<Record<string, unknown>>(review.resultados_por_area);
   const priorities = asArray<Record<string, unknown>>(plan.prioridades);
   const objectiveChanges = asArray<Record<string, unknown>>(annualUpdate.mudancas_objetivos);
+  const projectChanges = asArray<Record<string, unknown>>(annualUpdate.mudancas_projetos);
   const snapshotSummary = (value: unknown) => {
     const snapshot = asRecord(value);
     return [
@@ -311,12 +316,34 @@ function StrategicReviewSection({ content }: { content: Record<string, unknown> 
           <div className="mt-3 space-y-4">
             {objectiveChanges.map((change, index) => {
               const operation = asText(change.operacao);
-              const operationLabel = operation === "create" ? "Criado" : operation === "archive" ? "Retirado" : "Atualizado";
+              const operationLabel = operation === "create" ? "Criado" : operation === "archive" ? "Retirado" : operation === "keep" ? "Mantido" : "Atualizado";
               return (
                 <article key={`${asText(change.objetivo_id)}-${index}`} className="border-t border-border pt-4 first:border-t-0 first:pt-0">
                   <p className="text-sm font-semibold text-text">{operationLabel}: {asText(change.titulo, "Objetivo")}</p>
                   <KeyValue label="Antes" value={snapshotSummary(change.antes)} />
                   <KeyValue label="Depois" value={snapshotSummary(change.depois)} />
+                  <KeyValue label="Por quê" value={change.porque} />
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {projectChanges.length ? (
+        <div className="border-t border-border pt-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-tertiary">Projetos estratégicos</p>
+          <div className="mt-3 space-y-3">
+            {projectChanges.map((change, index) => {
+              const operation = asText(change.operacao);
+              const operationLabel = operation === "create" ? "Criado" : operation === "archive" ? "Retirado" : operation === "keep" ? "Mantido" : "Atualizado";
+              const after = asRecord(change.depois);
+              return (
+                <article key={`${asText(change.projeto_id)}-${index}`} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+                  <p className="text-sm font-semibold text-text">{operationLabel}: {asText(change.titulo, "Projeto")}</p>
+                  <KeyValue
+                    label="Responsável e prazo"
+                    value={[asText(after.responsavel), asText(after.prazo)].filter(Boolean).join(" · ")}
+                  />
                   <KeyValue label="Por quê" value={change.porque} />
                 </article>
               );

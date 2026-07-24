@@ -17,6 +17,19 @@ export function mapStrategicPlan(row: any, projects: StrategicProject[]): Strate
     profile: {
       sector: row.profile?.sector ?? "", size: row.profile?.size ?? "", region: row.profile?.region ?? "",
       founded: row.profile?.founded ?? "", mainPain: row.profile?.mainPain ?? row.profile?.main_pain ?? "",
+      reviewContext: row.profile?.reviewContext ? {
+        sourceDocumentId: row.profile.reviewContext.sourceDocumentId ?? "",
+        sourceTitle: row.profile.reviewContext.sourceTitle ?? "Revisão Estratégica",
+        sourceVersion: Number(row.profile.reviewContext.sourceVersion ?? 1),
+        summary: row.profile.reviewContext.summary ?? "",
+        focus: row.profile.reviewContext.focus ?? "",
+        confirmedAdvances: Array.isArray(row.profile.reviewContext.confirmedAdvances) ? row.profile.reviewContext.confirmedAdvances : [],
+        gaps: Array.isArray(row.profile.reviewContext.gaps) ? row.profile.reviewContext.gaps : [],
+        decisions: Array.isArray(row.profile.reviewContext.decisions) ? row.profile.reviewContext.decisions : [],
+        priorities: Array.isArray(row.profile.reviewContext.priorities) ? row.profile.reviewContext.priorities : [],
+        updatedAt: row.profile.reviewContext.updatedAt ?? "",
+      } : undefined,
+      reviewDecisions: Array.isArray(row.profile?.reviewDecisions) ? row.profile.reviewDecisions : [],
     },
     drivers: { purpose: row.drivers?.purpose ?? "", vision: row.drivers?.vision ?? "", values: Array.isArray(row.drivers?.values) ? row.drivers.values : [] },
     swot: {

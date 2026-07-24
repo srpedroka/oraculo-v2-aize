@@ -30,6 +30,7 @@ import {
   REVIEW_APPLICATION_INTENT,
   reviewApplicationContext,
   reviewApplicationDirective,
+  reviewApplicationNeedsRepair,
   reviewApplicationOpening,
   reviewApplicationState,
   validateReviewApplicationEnvelope,
@@ -245,7 +246,9 @@ async function reviewSourceForStart(
     || annualUpdate.modo === "update_current_year"
     || (content as any).documento_plano_anual_atualizado?.id
   ) {
-    throw new Error("Esta revisão já gerou uma versão atualizada do plano anual");
+    if (!reviewApplicationNeedsRepair(content)) {
+      throw new Error("Esta revisão já gerou uma versão completa e atualizada do plano anual");
+    }
   }
   return document;
 }
@@ -340,14 +343,20 @@ export async function startPlanningSession(
     const sourceAlreadyLinked = reviewSource
       && existingState.source_review_document_id === reviewSource.id
       && existingState.review_intent === REVIEW_APPLICATION_INTENT;
+    const reviewContractNeedsRefresh = Boolean(
+      reviewSource
+      && sourceAlreadyLinked
+      && !Array.isArray(existingState.required_review_priorities),
+    );
     if (reviewSource && existing.pending_proposal && !sourceAlreadyLinked) {
       throw new Error("Existe uma proposta de revisão pendente. Confirme ou descarte antes de aplicar outro documento");
     }
     const updatePayload: Record<string, unknown> = {};
     if (existing.conversation_id !== conversation.id) updatePayload.conversation_id = conversation.id;
-    if (reviewSource && !sourceAlreadyLinked) {
+    if (reviewSource && (!sourceAlreadyLinked || reviewContractNeedsRefresh)) {
       updatePayload.state = shallowMergeState(existingState, reviewState);
       updatePayload.phase = initialPhase;
+      if (reviewContractNeedsRefresh) updatePayload.pending_proposal = null;
     }
     let resumed = existing;
     if (Object.keys(updatePayload).length) {
