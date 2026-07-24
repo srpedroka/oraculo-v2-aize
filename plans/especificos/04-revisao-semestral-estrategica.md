@@ -6,7 +6,7 @@ Progresso especifico: **50%**
 
 Contribuicao atual ao geral: **7,5%**
 
-Status: **R1A APROVADA - R1B EM CORRECAO E RETESTE**
+Status: **R1A APROVADA - R1B PUBLICADA E EM RETESTE**
 
 ## Objetivo
 
@@ -20,7 +20,7 @@ semestre e um novo planejamento estrategico para julho-dezembro.
 | --- | ---: | --- | --- |
 | R1A. Preflight e contrato para o ciclo real | 50 | Aprovada em 2026-07-20 | Contexto semestral, contrato e testes aprovados |
 | Equilibrio da IA F1-F4 | 0 extra | F1-F4 concluidas no staging; 90% interno | Fala natural com gravacao server-side intacta |
-| R1B. Revisao e novo planejamento reais com owner | 50 | Correcao validada no staging; aguarda release/reteste | Duas secoes canonicas, plano anual versionado, PDF completo, uma confirmacao e qualidade aprovadas |
+| R1B. Revisao e novo planejamento reais com owner | 50 | Correcao publicada; aguarda reteste real | Duas secoes canonicas, plano anual versionado, PDF completo, uma confirmacao e qualidade aprovadas |
 | **Total** | **100** | **Em andamento** | **50%** |
 
 ## Entregas
@@ -89,9 +89,11 @@ fechamento anual, nova preservacao ou atualizacao vazia sao recusados
 server-side. Fonte:
 `plans/ddr/R1B-ponte-revisao-plano-anual.md`.
 
-O gate tecnico passou com 594 unitarios, 32 arquivos de integracao, 7 provas
-de seguranca, lint, build e bundle. O progresso permanece em 50% ate release e
-reteste real aprovados.
+O gate tecnico passou com 602 unitarios, integracao local completa, seguranca,
+E2E autenticado, lint, build e bundle. A ponte foi publicada pela PR #30,
+merge `fc508d0`, release `30102384560`, Netlify
+`6a637bb588a6e544269cbb75` e verificacao `30102788853`. O progresso
+permanece em 50% ate o reteste real ser aprovado.
 
 ## Evidencia R1A
 

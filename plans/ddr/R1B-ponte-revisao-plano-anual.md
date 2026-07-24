@@ -2,7 +2,7 @@
 
 Data: 2026-07-24
 
-Status: **IMPLEMENTADA; AGUARDA CI, RELEASE E RETESTE REAL**
+Status: **PUBLICADA EM PRODUCAO; AGUARDA RETESTE REAL**
 
 ## Problema
 
@@ -66,6 +66,18 @@ documentos e sessoes, fazendo a linhagem apontar para a nova versao.
   recusas de escopo;
 - suite completa, lint, build, bundle e CI obrigatorios;
 - smoke autenticado em producao antes do reteste real do owner.
+
+## Release
+
+- PR #30 e merge `fc508d0`;
+- CI da `main` `30101922305`, com os tres gates verdes;
+- `oracle-session` publicada pelo release protegido `30102384560`;
+- frontend Netlify `6a637bb588a6e544269cbb75`;
+- verificacao read-only protegida `30102788853`;
+- smoke autenticado em producao confirmou a linhagem, a revisao correta,
+  `Atualizacao pendente` e a acao
+  `Atualizar Plano 2026 com a revisao`, sem iniciar sessao ou gravar dados;
+- nenhuma migration, chamada paga de IA, compra ou mutacao do plano real.
 
 ## Progresso
 

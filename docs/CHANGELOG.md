@@ -1,13 +1,18 @@
 # Changelog
 
-- Ligada a Revisao Semestral ao Plano Estrategico Anual sem fundir seus
+- Publicada em producao pela PR #30 e merge `fc508d0` a ponte entre Revisao
+  Semestral e Plano Estrategico Anual sem fundir seus
   documentos. A tela passa a mostrar `Plano de origem -> Revisao -> Plano
   atualizado` e troca a acao generica por `Atualizar Plano {ano} com a revisao`
   quando existe revisao de meio do ano ainda nao aplicada. A sessao recebe o
   documento exato, nao reinicia o diagnostico e termina em uma proposta com
   diff e uma confirmacao. O servidor recusa outra empresa, outro ano, revisao
   ja aplicada, fechamento anual, nova preservacao e atualizacao vazia. Sem
-  migration ou chamada paga de IA; R1B continua pendente ate o reteste real.
+  migration ou chamada paga de IA. CI `30101922305`, release da Function
+  `30102384560`, Netlify `6a637bb588a6e544269cbb75` e verificacao protegida
+  `30102788853` ficaram verdes. O smoke autenticado confirmou a revisao real e
+  a atualizacao pendente sem iniciar sessao; R1B continua pendente ate o
+  reteste real.
 
 - Publicada em producao a correcao da R1B pela PR #28 e merge `53d3a28`.
   O PDF do WhatsApp passou a usar o conteudo integral da revisao estrategica,

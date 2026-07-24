@@ -9,8 +9,10 @@ separados e auditaveis, mas a tela agora explicita sua linhagem e seleciona a
 revisao semestral aprovada ao iniciar a atualizacao do plano. O motor nao
 reinicia o diagnostico, exige diferencas concretas, uma confirmacao e nova
 versao canonica; escopo de empresa/ano e fechamento anual seguem bloqueados
-server-side. Aguarda CI, release e reteste real. O progresso permanece 52,5%
-geral e 50% no Plano 4. Fonte:
+server-side. O progresso permanece 52,5% geral e 50% no Plano 4. A ponte foi
+publicada pela PR #30, merge `fc508d0`,
+release protegido `30102384560`, Netlify `6a637bb588a6e544269cbb75` e
+verificacao `30102788853`; aguarda somente o reteste real. Fonte:
 `plans/ddr/R1B-ponte-revisao-plano-anual.md`.
 
 Atualizacao de 2026-07-23 (R1B): a conducao real e o documento salvo no app
@@ -21,8 +23,9 @@ correcao local iguala app/PDF/WhatsApp, permite atualizacao transacional e
 reversivel do plano vigente com uma confirmacao, gera nova versao canonica
 anual e preserva o ano encerrado na revisao de fim de ano. O gate de staging
 passou com 594 unitarios, 32 arquivos de integracao, 7 provas de seguranca,
-lint e build. Aguarda release e reteste real. O progresso permanece 52,5%
-geral e 50% no Plano 4.
+lint e build. O pacote foi publicado pela PR #28 e merge `53d3a28`; aguarda o
+reteste real junto com a ponte contextual. O progresso permanece 52,5% geral
+e 50% no Plano 4.
 Fonte: `plans/ddr/R1B-paridade-pdf-e-plano-anual-versionado.md`.
 
 Atualizacao de 2026-07-23: o owner autorizou o rollout integral das Fases 1 a
